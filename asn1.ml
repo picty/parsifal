@@ -8,10 +8,10 @@ type asn1_class =
   | C_Application
   | C_ContextSpecific
   | C_Private
-      
+
 let class_map = [| C_Universal; C_Application;
 		   C_ContextSpecific; C_Private |]
-  
+
 type asn1_universal_tag =
   | T_EndOfContents
   | T_Boolean
@@ -43,7 +43,7 @@ type asn1_universal_tag =
   | T_UnspecifiedCharacterString
   | T_BMPString
   | T_Unknown
-      
+
 let universal_tag_map =
   [| T_EndOfContents; T_Boolean; T_Integer; T_BitString; T_OctetString;
      T_Null; T_OId; T_ObjectDescriptor; T_External; T_Real;
@@ -52,7 +52,7 @@ let universal_tag_map =
      T_T61String; T_VideoString; T_IA5String; T_UTCTime; T_GeneralizedTime;
      T_GraphicString; T_VisibleString; T_GeneralString; T_UniversalString;
      T_UnspecifiedCharacterString; T_BMPString |]
-    
+
 type asn1_object = asn1_class * int * asn1_content 
 and asn1_content =
   | EndOfContents
@@ -64,22 +64,24 @@ and asn1_content =
   | String of string
   | Constructed of asn1_object list
   | Unknown of string
-      
+
+
 (* Trivial useful functions *)
-      
+(* TODO: Put all this shit inside a correct BigNum implementation *)
+
 let intlist_of_string s =
   let rec aux accu offset = function
     | 0 -> List.rev accu
     | n -> aux ((int_of_char (String.get s offset))::accu) (offset + 1) (n - 1)
   in
   aux [] 0 (String.length s)
-    
+
 let bigint_of_intlist l =
   let rec aux accu = function
     | [] -> accu
     | d::r -> aux (Big_int.add_int_big_int d (Big_int.mult_int_big_int 256 accu)) r
   in aux Big_int.zero_big_int l
-  
+
 let string_of_charlist il =
   let res = String.create (List.length il) in
   let rec aux offset l =
@@ -89,46 +91,47 @@ let string_of_charlist il =
 	String.set res offset i;
 	aux (offset + 1) r
   in aux 0 il
-  
+
+
 (* Trivial parsing functions *)
-  
+
 let extract_class (x : int) : asn1_class =
   let i = x lsr 6 in
   class_map.(i)
-    
+
 let extract_isConstructed (x : int) : bool =
   let i = (x lsr 5) land 1 in
   i = 1
-      
+
 let extract_shorttype (x : int) : int =
   x land 31
-    
-let extract_longtype (str : string) (offset : int) : int * int =
+
+let extract_longtype (pstate : parsing_state) : (int * parsing_state) =
   (* str is the complete string, with one char to skip *)
-  failwith "Long type not implemented"
-    
-let extract_header (str : string) (offset : int) : ((asn1_class * bool * int) * int) =
-  let hdr = int_of_char (String.get str offset) in
+  raise NotImplemented ("Long type", pstate)
+
+let extract_header (pstate : parsing_state) : ((asn1_class * bool * int) * parsing_state) =
+  let hdr = cur_byte pstate in
   let c = extract_class hdr in
   let isC = extract_isConstructed hdr in
   let t = extract_shorttype hdr in
   if (t < 0x1f)
-  then ((c, isC, t), offset + 1)
+  then ((c, isC, t), eat_bytes pstate 1
   else
-    let (longT, new_offset) = extract_longtype str offset in
-    ((c, isC, longT), new_offset)
-      
-let extract_length (str : string) (offset : int) : (int * int) =
-  let first = int_of_char (String.get str offset) in
+    let (longT, new_pstate) = extract_longtype pstate in
+    ((c, isC, longT), new_pstate)
+
+let extract_length (pstate : parsing_state) : parsing_state =
+  let first = cur_byte pstate in
   if first land 0x80 = 0
-  then (first, offset + 1)
+  then pstate with {offset = pstate.offset + 1; len = first}
   else
     let lenlen = first land 0x7f in
     let rec aux accu offset = function
       | 0 -> (accu, offset)
       | n -> aux ((accu lsl 8) lor (int_of_char (String.get str offset))) (offset + 1) (n-1)
     in (aux 0 (offset + 1) lenlen)
-    
+
 let string_of_header c isC t =
   let cstr = match c with
     | C_Universal -> "[UNIVERSAL "
@@ -138,7 +141,7 @@ let string_of_header c isC t =
   in
   let isCstr = if isC then "] (cons)" else "] (prim)" in
   cstr ^ (string_of_int t) ^ isCstr
-    
+
 let der_to_subid str offset =
   let rec aux accu o =
     let c = int_of_char (String.get str o) in
@@ -147,37 +150,44 @@ let der_to_subid str offset =
     then aux new_accu (o+1)
     else (new_accu, o+1)
   in aux 0 offset
-  
-(* Generic ASN.1 parsing function *)
-  
-type parse_function = string -> int -> int -> int -> asn1_content
-    
-let der_to_boolean str base offset len =
-  if len <> 1
-  then failwith ("Incorrect boolean length" ^ (string_of_int (base + offset)));
-  let v = int_of_char (String.get str offset) in
-  if v = 0 then Boolean false
-  else if v = 255 then Boolean true
-  else failwith ("Incorrect boolean value at offset " ^ (string_of_int (base + offset)))
 
-let der_to_int str base offset len =
+
+(* Generic ASN.1 parsing function *)
+
+type parse_function = error_handling_function -> parsing_state -> asn1_content
+
+let der_to_boolean ehf pstate =
+  if l <> pstate.len then ehf (IncorrectLength "bool") S_IdempotenceBreaker pstate;
+  if pstate.len = 0 then Boolean false
+  else begin
+    let v = int_of_char (String.get pstate.str offset) in
+    if v = 0 then Boolean false
+    else if v = 255 then Boolean true
+    else begin
+      ehf (NotInNormalForm "boolean") S_IdempotenceBreaker pstate;
+      Boolean false
+    end
+  end
+
+let der_to_int ehf pstate =
+  if l <> pstate.len then ehf (IncorrectLength "bool") S_IdempotenceBreaker pstate;
   if len <= 0
-  then failwith ("Incorrect integer length" ^ (string_of_int (base + offset)));
+  then raise ParsingError (IncorrectLength "integer", string_of_int (base + offset));
   let l = intlist_of_string (String.sub str offset len) in
   let negative = match l with
-    | [] -> failwith ("Incorrect integer length" ^ (string_of_int (base + offset)))
-    | x::y::r when x = 0xff -> failwith ("Integer not in normal form" ^ (string_of_int (base + offset)))
-    | x::y::r when (x = 0) && (y land 0x80) = 0 -> failwith ("Integer not in normal form" ^ (string_of_int (base + offset)))
+    | [] -> raise ParsingError (IncorrectLength "integer", string_of_int (base + offset));
+    | x::y::r when x = 0xff -> raise ParsingError (NotInNormalForm "integer", string_of_int (base + offset))
+    | x::y::r when (x = 0) && (y land 0x80) = 0 -> raise ParsingError (NotInNormalForm "integer", string_of_int (base + offset))
     | x::r -> (x land 0x80) = 0x80
   in
-  if negative then failwith ("Negative integer not implemented yet" ^ (string_of_int (base + offset)));
+  if negative then NotImplemented ("Negative integer", (string_of_int (base + offset));
   Integer (bigint_of_intlist l)
-    
+
 let der_to_null str base offset len =
   if len <> 0
-  then failwith ("Incorrect null length" ^ (string_of_int (base + offset)));
+  then raise ParsingError (IncorrectLength "null", string_of_int (base + offset));
   Null
-    
+
 let der_to_oid str _ offset len =
   let rec aux o =
     if o - offset = len
@@ -187,10 +197,10 @@ let der_to_oid str _ offset len =
       next::(aux new_offset)
   in
   OId (aux offset)
-    
+
 let der_to_bitstring str _ offset len =
   BitString (int_of_char (String.get str offset), String.sub str (offset + 1) (len - 1))
-    
+
 let der_to_octetstring str _ offset len =
   String (String.sub str offset len)
     
@@ -244,14 +254,14 @@ and choose_parse_fun (c : asn1_class) (isC : bool) (t : int) : parse_function =
 	| (T_Set, true)
 	  -> der_to_constructed
 	  
-	| (T_Unknown, _) -> failwith "Invalid type for Universal class"
+	| (T_Unknown, _) -> raise ParsingError (UnknownUniversal t,  "Invalid type for Universal class"
 	  
-	| (_, true) -> failwith "Invalid constructed type"
+	| (_, true) -> raisego "Invalid constructed type"
 	  
-	| _ -> failwith ("parse: case not implemented: " ^ (string_of_int t))
+	| _ -> raisego ("parse: case not implemented: " ^ (string_of_int t))
     end
       
-    | C_Universal -> failwith "Invalid type for Universal class"
+    | C_Universal -> raisego "Invalid type for Universal class"
     | _ when isC -> der_to_constructed
     | _ -> der_to_unknown
       
@@ -265,7 +275,7 @@ let exact_parse str : asn1_object =
   let (res, o) = parse str 0 0 in
   if (String.length str) == o
   then res
-  else failwith "Trailing bytes at the end of the string"
+  else raisego "Trailing bytes at the end of the string"
     
 (* DER export functions *)
     
@@ -273,7 +283,7 @@ let boolean_to_der b =
   if b then "\xff" else "\x00"
     
 let int_to_der i =
-  failwith "Not implemented yet"
+  raisego "Not implemented yet"
     
 let null_to_der = ""
   
@@ -305,7 +315,7 @@ let dump_isConstructed isC =
   if isC then 0x20 else 0
     
 let dump_longtype t =
-  failwith "Long type not implemented"
+  raisego "Long type not implemented"
     
 let dump_header (c : asn1_class) (isC : bool) (t : int) : string =
   let t' = if t < 0x1f then t else 0x1f in
@@ -352,7 +362,7 @@ and constructed_to_der objlist =
     
 let decapsulate = function
   | (_, _, Constructed l) -> l
-  | _ -> failwith "Cannot decapsulate a primitive type"
+  | _ -> raisego "Cannot decapsulate a primitive type"
     
 let encapsulate c t l =
   (c, t, Constructed l)
