@@ -9,56 +9,6 @@ module type ParsingParameters = sig
   val compare_severity : severity -> severity -> int
 end
 
-module Asn1ParserParams = struct
-  type parsing_error =
-    | InternalMayhem
-    | OutOfBounds
-    | NotImplemented of string
-    | IncorrectLength of string
-    | NotInNormalForm of string
-    | UnknownUniversal of int
-
-  let out_of_bounds_error = OutOfBounds
-
-  let string_of_perror = function
-    | InternalMayhem -> "Internal mayhem"
-    | OutOfBounds -> "Out of bounds"
-    | NotImplemented s -> "Not implemented (" ^ s ^  ")"
-    | IncorrectLength t -> "Incorrect length for a " ^ t
-    | NotInNormalForm t -> t ^ " not in normal form"
-    | UnknownUniversal t -> "Unknown universal type " ^ (string_of_int t)
-
-
-  type severity =
-    | S_OK
-    | S_Benign
-    | S_IdempotenceBreaker
-    | S_SpecLightlyViolated
-    | S_SpecFatallyViolated
-    | S_Fatal
-
-  let fatal_severity = S_Fatal
-
-  let string_of_severity = function
-    | S_OK -> "OK"
-    | S_Benign -> "Benign"
-    | S_IdempotenceBreaker -> "IdempotenceBreaker"
-    | S_SpecLightlyViolated -> "SpecLightlyViolated"
-    | S_SpecFatallyViolated -> "SpecFatallyViolated"
-    | S_Fatal -> "Fatal"
-
-  let int_of_severity = function
-    | S_OK -> 0
-    | S_Benign -> 1
-    | S_IdempotenceBreaker -> 2
-    | S_SpecLightlyViolated -> 3
-    | S_SpecFatallyViolated -> 4
-    | S_Fatal -> 5
-
-  let compare_severity x y =
-    compare (int_of_severity x) (int_of_severity y)
-end
-
 module ParsingEngine =
   functor (Params : ParsingParameters) -> struct
     open Params
@@ -112,7 +62,7 @@ module ParsingEngine =
 
     let make_pstate ehfun orig contents =
       {ehf = ehfun; origin = orig; str = contents;
-       base = 0; offset = 0; len = String.length str;
+       base = 0; offset = 0; len = String.length contents;
        position = []}
 
   end
