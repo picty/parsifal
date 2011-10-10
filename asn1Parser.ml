@@ -1,17 +1,17 @@
 module Asn1EngineParams = struct
   type parsing_error =
     | InternalMayhem
-    | OutOfBounds
+    | OutOfBounds of string
     | NotImplemented of string
     | IncorrectLength of string
     | NotInNormalForm of string
     | UnknownUniversal of int
 
-  let out_of_bounds_error = OutOfBounds
+  let out_of_bounds_error s = OutOfBounds s
 
   let string_of_perror = function
     | InternalMayhem -> "Internal mayhem"
-    | OutOfBounds -> "Out of bounds"
+    | OutOfBounds s -> "Out of bounds (" ^ s ^ ")"
     | NotImplemented s -> "Not implemented (" ^ s ^  ")"
     | IncorrectLength t -> "Incorrect length for a " ^ t
     | NotInNormalForm t -> t ^ " not in normal form"
@@ -50,15 +50,11 @@ end
 
 open Asn1EngineParams;;
 module Engine = ParsingEngine.ParsingEngine (Asn1EngineParams);;
+open Asn1;;
+open Engine;;
+
 (* Trivial useful functions *)
 (* TODO: Put all this shit inside a correct BigNum implementation *)
-
-let intlist_of_string s =
-  let rec aux accu offset = function
-    | 0 -> List.rev accu
-    | n -> aux ((int_of_char (String.get s offset))::accu) (offset + 1) (n - 1)
-  in
-  aux [] 0 (String.length s)
 
 let bigint_of_intlist l =
   let rec aux accu = function
@@ -66,7 +62,7 @@ let bigint_of_intlist l =
     | d::r -> aux (Big_int.add_int_big_int d (Big_int.mult_int_big_int 256 accu)) r
   in aux Big_int.zero_big_int l
 
-let string_of_charlist il =
+(*let string_of_charlist il =
   let res = String.create (List.length il) in
   let rec aux offset l =
     match l with
@@ -74,7 +70,7 @@ let string_of_charlist il =
       | i::r ->
 	String.set res offset i;
 	aux (offset + 1) r
-  in aux 0 il
+  in aux 0 il*)
 
 
 (* Trivial parsing functions *)
@@ -91,97 +87,92 @@ let extract_shorttype (x : int) : int =
   x land 31
 
 let extract_longtype (pstate : parsing_state) : (int * parsing_state) =
-  (* str is the complete string, with one char to skip *)
-  raise NotImplemented ("Long type", pstate)
+  raise (ParsingError (NotImplemented "Long type", S_Fatal, pstate))
+
 
 let extract_header (pstate : parsing_state) : ((asn1_class * bool * int) * parsing_state) =
-  let hdr = cur_byte pstate in
+  let hdr, new_pstate = pop_byte pstate in
   let c = extract_class hdr in
   let isC = extract_isConstructed hdr in
   let t = extract_shorttype hdr in
   if (t < 0x1f)
-  then ((c, isC, t), eat_bytes pstate 1
+  then ((c, isC, t), new_pstate)
   else
-    let (longT, new_pstate) = extract_longtype pstate in
+    let (longT, new_pstate) = extract_longtype new_pstate in
     ((c, isC, longT), new_pstate)
 
 let extract_length (pstate : parsing_state) : parsing_state =
-  let first = cur_byte pstate in
+  let first, new_pstate = pop_byte pstate in
   if first land 0x80 = 0
-  then pstate with {offset = pstate.offset + 1; len = first}
+  then {new_pstate with len = first}
   else
-    let lenlen = first land 0x7f in
-    let rec aux accu offset = function
-      | 0 -> (accu, offset)
-      | n -> aux ((accu lsl 8) lor (int_of_char (String.get str offset))) (offset + 1) (n-1)
-    in (aux 0 (offset + 1) lenlen)
+    let len_pstate = {new_pstate with len = first land 0x7f} in
+    let rec aux accu pstate = match pstate.len with
+      | 0 -> {pstate with len = accu}
+      | n ->
+	let x, next_pstate = pop_byte pstate in
+	aux ((accu lsl 8) lor x) next_pstate
+    in aux 0 len_pstate
 
-let string_of_header c isC t =
-  let cstr = match c with
-    | C_Universal -> "[UNIVERSAL "
-    | C_Private -> "[PRIVATE "
-    | C_Application -> "[APPLICATION "
-    | C_ContextSpecific -> "[CONTEXT SPE "
-  in
-  let isCstr = if isC then "] (cons)" else "] (prim)" in
-  cstr ^ (string_of_int t) ^ isCstr
 
-let der_to_subid str offset =
-  let rec aux accu o =
-    let c = int_of_char (String.get str o) in
+let der_to_subid (pstate : parsing_state) : (int * parsing_state) =
+  let rec aux accu pstate =
+    let c, new_state = pop_byte pstate in
     let new_accu = (accu lsl 7) lor (c land 0x7f) in
     if c land 0x80 != 0
-    then aux new_accu (o+1)
-    else (new_accu, o+1)
-  in aux 0 offset
+    then aux new_accu new_state
+    else new_accu, new_state
+  in aux 0 pstate
 
 
 (* Generic ASN.1 parsing function *)
 
-type parse_function = error_handling_function -> parsing_state -> asn1_content
+type parse_function = parsing_state -> asn1_content
 
-let der_to_boolean ehf pstate =
-  if l <> pstate.len then ehf (IncorrectLength "bool") S_IdempotenceBreaker pstate;
+let der_to_boolean pstate =
+  if pstate.len <> 1 then pstate.ehf (IncorrectLength "bool") S_IdempotenceBreaker pstate;
   if pstate.len = 0 then Boolean false
   else begin
-    let v = int_of_char (String.get pstate.str offset) in
+    let v, _ = pop_byte pstate in
     if v = 0 then Boolean false
     else if v = 255 then Boolean true
     else begin
-      ehf (NotInNormalForm "boolean") S_IdempotenceBreaker pstate;
+      pstate.ehf (NotInNormalForm "boolean") S_IdempotenceBreaker pstate;
       Boolean false
     end
   end
 
-let der_to_int ehf pstate =
-  if l <> pstate.len then ehf (IncorrectLength "bool") S_IdempotenceBreaker pstate;
-  if len <= 0
-  then raise ParsingError (IncorrectLength "integer", string_of_int (base + offset));
-  let l = intlist_of_string (String.sub str offset len) in
+let der_to_int pstate =
+  if pstate.len <= 0 then pstate.ehf (IncorrectLength "integer") S_IdempotenceBreaker pstate;
+  let l = cur_bytes pstate in
   let negative = match l with
-    | [] -> raise ParsingError (IncorrectLength "integer", string_of_int (base + offset));
-    | x::y::r when x = 0xff -> raise ParsingError (NotInNormalForm "integer", string_of_int (base + offset))
-    | x::y::r when (x = 0) && (y land 0x80) = 0 -> raise ParsingError (NotInNormalForm "integer", string_of_int (base + offset))
+    | [] -> false
+    | x::y::r when x = 0xff ->
+      pstate.ehf (NotInNormalForm "integer") S_IdempotenceBreaker pstate;
+      true
+    | x::y::r when (x = 0) && (y land 0x80) = 0 ->
+      pstate.ehf (NotInNormalForm "integer") S_IdempotenceBreaker pstate;
+      false
     | x::r -> (x land 0x80) = 0x80
   in
-  if negative then NotImplemented ("Negative integer", (string_of_int (base + offset));
-  Integer (bigint_of_intlist l)
+  if negative
+  then raise (ParsingError (NotImplemented "Negative integer", S_Fatal, pstate))
+  else Integer (bigint_of_intlist l)
 
-let der_to_null str base offset len =
-  if len <> 0
-  then raise ParsingError (IncorrectLength "null", string_of_int (base + offset));
+let der_to_null pstate =
+  if pstate.len <> 0 then pstate.ehf (IncorrectLength "null") S_IdempotenceBreaker pstate;
   Null
 
-let der_to_oid str _ offset len =
-  let rec aux o =
-    if o - offset = len
-    then []
-    else
-      let (next, new_offset) = der_to_subid str o in
-      next::(aux new_offset)
+let der_to_oid pstate =
+  let rec aux pstate = match pstate.len with
+    | 0 -> []
+    | _ ->
+      let next, new_pstate = der_to_subid pstate in
+      next::(aux new_pstate)
   in
-  OId (aux offset)
+  OId (aux pstate)
 
+(*
 let der_to_bitstring str _ offset len =
   BitString (int_of_char (String.get str offset), String.sub str (offset + 1) (len - 1))
 
@@ -260,7 +251,13 @@ let exact_parse str : asn1_object =
   if (String.length str) == o
   then res
   else raisego "Trailing bytes at the end of the string"
-    
+*)
+
+
+
+  
+(*
+
 (* DER export functions *)
     
 let boolean_to_der b =
@@ -287,7 +284,9 @@ let oid_to_der idlist =
 let bitstring_to_der nBits s =
   let prefix = String.make 1 (char_of_int nBits) in
   prefix ^ s
-    
+
+
+
 let dump_class c =
   match c with
     | C_Universal -> 0
@@ -340,8 +339,8 @@ let rec dump (c, t, o) =
 and constructed_to_der objlist =
   let subdumps = List.map dump objlist in
   String.concat "" subdumps
-    
-    
+
+
 (* Useful functions *)
     
 let decapsulate = function
@@ -351,3 +350,4 @@ let decapsulate = function
 let encapsulate c t l =
   (c, t, Constructed l)
       
+*)

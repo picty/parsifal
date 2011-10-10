@@ -2,3 +2,5 @@
 *.cmo
 *.cmi
 a.out
+_build
+*.native

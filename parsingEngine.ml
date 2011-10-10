@@ -1,6 +1,6 @@
 module type ParsingParameters = sig
   type parsing_error
-  val out_of_bounds_error : parsing_error
+  val out_of_bounds_error : string -> parsing_error
   val string_of_perror : parsing_error -> string
 
   type severity
@@ -40,18 +40,42 @@ module ParsingEngine =
 	" at offset " ^ (string_of_int (pstate.base + pstate.offset)) ^
 	" inside [" ^ (String.concat ", " (List.rev pstate.position)) ^ "]"
 
-    let cur_char pstate = String.get pstate.str pstate.offset
-    let cur_byte pstate = int_of_char (String.get pstate.str pstate.offset)
 
-    let update_pstate pstate newoffset newlen = 
+    let pop_byte pstate =
+      if pstate.len = 0
+      then raise (ParsingError (out_of_bounds_error "pop_byte", fatal_severity, pstate))
+      else begin
+	let res = int_of_char (String.get pstate.str pstate.offset) in
+	let new_pstate = {pstate with offset = pstate.offset + 1; len = pstate.len - 1} in
+	res, new_pstate
+      end
+
+(*    let byte_at pstate offset =
+      if offset >= pstate.offset && offset < pstate.offset + pstate.len
+      then int_of_char (String.get pstate.str offset)
+      else raise (ParsingError (out_of_bounds_error "byte at", fatal_severity, pstate))*)
+
+(*    let cur_string pstate =
+      String.get pstate.str pstate.offset pstate.len*)
+
+    let cur_bytes pstate =
+      let rec aux accu o = function
+	| 0 -> List.rev accu
+	| n -> aux (int_of_char (String.get pstate.str o)::accu) (o + 1) (n - 1)
+      in
+      aux [] pstate.offset pstate.len
+
+
+(*    let update_pstate pstate newoffset newlen = 
       if newoffset >= 0 && (newoffset + newlen) <= (String.length pstate.str)
       then {pstate with offset = newoffset; len = newlen}
-      else raise (ParsingError (out_of_bounds_error, fatal_severity, pstate))
+      else raise (ParsingError (out_of_bounds_error "update_pstate", fatal_severity, pstate))
 
     let eat_bytes pstate howmany =
       let newoffset = pstate.offset + howmany
       and newlen = pstate.len - howmany in
-      update_pstate pstate newoffset newlen
+      update_pstate pstate newoffset newlen*)
+
 
     let default_error_handling_function tolerance minDisplay err sev pstate =
       if compare_severity sev tolerance < 0
