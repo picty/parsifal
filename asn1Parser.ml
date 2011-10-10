@@ -5,7 +5,7 @@ module Asn1EngineParams = struct
     | NotImplemented of string
     | IncorrectLength of string
     | NotInNormalForm of string
-    | UnknownUniversal of int
+    | UnknownUniversal of (bool * int)
 
   let out_of_bounds_error s = OutOfBounds s
 
@@ -15,7 +15,9 @@ module Asn1EngineParams = struct
     | NotImplemented s -> "Not implemented (" ^ s ^  ")"
     | IncorrectLength t -> "Incorrect length for a " ^ t
     | NotInNormalForm t -> t ^ " not in normal form"
-    | UnknownUniversal t -> "Unknown universal type " ^ (string_of_int t)
+    | UnknownUniversal (isC, t) ->
+      "Unknown " ^ (if isC then "constructed" else "primitive") ^
+	"universal type " ^ (string_of_int t)
 
 
   type severity =
@@ -101,14 +103,14 @@ let extract_header (pstate : parsing_state) : ((asn1_class * bool * int) * parsi
     let (longT, new_pstate) = extract_longtype new_pstate in
     ((c, isC, longT), new_pstate)
 
-let extract_length (pstate : parsing_state) : parsing_state =
+let extract_length (pstate : parsing_state) : (parsing_state * parsing_state) =
   let first, new_pstate = pop_byte pstate in
   if first land 0x80 = 0
-  then {new_pstate with len = first}
+  then split_pstate new_pstate first
   else
     let len_pstate = {new_pstate with len = first land 0x7f} in
     let rec aux accu pstate = match pstate.len with
-      | 0 -> {pstate with len = accu}
+      | 0 -> split_pstate pstate accu
       | n ->
 	let x, next_pstate = pop_byte pstate in
 	aux ((accu lsl 8) lor x) next_pstate
@@ -144,7 +146,7 @@ let der_to_boolean pstate =
 
 let der_to_int pstate =
   if pstate.len <= 0 then pstate.ehf (IncorrectLength "integer") S_IdempotenceBreaker pstate;
-  let l = cur_bytes pstate in
+  let l = get_bytes pstate in
   let negative = match l with
     | [] -> false
     | x::y::r when x = 0xff ->
@@ -172,30 +174,33 @@ let der_to_oid pstate =
   in
   OId (aux pstate)
 
-(*
-let der_to_bitstring str _ offset len =
-  BitString (int_of_char (String.get str offset), String.sub str (offset + 1) (len - 1))
+let der_to_bitstring _type pstate =
+  let nBits, new_pstate = pop_byte pstate in
+  let content = get_string new_pstate in
+  (* TODO: Checks on nBits and on the final zeros *)
+  BitString (nBits, content)
 
-let der_to_octetstring str _ offset len =
-  String (String.sub str offset len)
+(* TODO: Add constraints *)
+(* In particular, wether the octetstring is binary or not *)
+let der_to_octetstring _constraints pstate =
+  String (get_string pstate, true)
+
+let der_to_unknown pstate =
+  Unknown (get_string pstate)
+
+
+let rec der_to_constructed name pstate =
+  let new_pstate = enter_pstate name pstate in
     
-let der_to_unknown str _ offset len =
-  Unknown (String.sub str offset len)
-    
-let rec der_to_constructed str base offset len =
-  let substring = String.sub str offset len in
-  let new_base = base + offset in
-    
-  let rec parse_aux offset =
-    if offset = len
-    then []
-    else 
-      let (next, new_offset) = parse substring new_base offset in
-      next::(parse_aux new_offset)
+  let rec parse_aux pstate = match pstate.len with
+    | 0 -> []
+    | _ ->
+      let (next, new_pstate) = parse pstate in
+      next::(parse_aux new_pstate)
   in
-  Constructed (parse_aux 0)
+  Constructed (parse_aux new_pstate)
     
-and choose_parse_fun (c : asn1_class) (isC : bool) (t : int) : parse_function =
+and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_function =
   match c with
     | C_Universal when t >= 0 && t < Array.length universal_tag_map -> begin
       match (universal_tag_map.(t), isC) with
@@ -207,7 +212,7 @@ and choose_parse_fun (c : asn1_class) (isC : bool) (t : int) : parse_function =
 	  
 	| ( T_OId, false) -> der_to_oid
 	  
-	| (T_BitString, false) -> der_to_bitstring
+	| (T_BitString, false) -> der_to_bitstring None
 	  
 	| ( T_OctetString, false)
 	| ( T_UTF8String, false)
@@ -223,35 +228,42 @@ and choose_parse_fun (c : asn1_class) (isC : bool) (t : int) : parse_function =
 	| ( T_GeneralString, false)
 	| ( T_UniversalString, false)
 	| ( T_UnspecifiedCharacterString, false)
-	| ( T_BMPString, false) -> der_to_octetstring
+	| ( T_BMPString, false) -> der_to_octetstring None
 	  
-	| (T_Sequence, true)
-	| (T_Set, true)
-	  -> der_to_constructed
+	| (T_Sequence, true) -> der_to_constructed "Sequence"
+	| (T_Set, true) -> der_to_constructed "Set"
 	  
-	| (T_Unknown, _) -> raise ParsingError (UnknownUniversal t,  "Invalid type for Universal class"
-	  
-	| (_, true) -> raisego "Invalid constructed type"
-	  
-	| _ -> raisego ("parse: case not implemented: " ^ (string_of_int t))
+	| (_, false) ->
+	  pstate.ehf (UnknownUniversal (false, t)) S_SpecLightlyViolated pstate;
+	  der_to_unknown
+
+	| (_, true) ->
+	  pstate.ehf (UnknownUniversal (true, t)) S_SpecLightlyViolated pstate;
+	  der_to_constructed (string_of_header_raw c true t)
     end
       
-    | C_Universal -> raisego "Invalid type for Universal class"
-    | _ when isC -> der_to_constructed
+    | C_Universal when isC ->
+      pstate.ehf (UnknownUniversal (true, t)) S_SpecLightlyViolated pstate;
+      der_to_constructed (string_of_header_raw c true t)
+    | C_Universal ->
+      pstate.ehf (UnknownUniversal (false, t)) S_SpecLightlyViolated pstate;
+      der_to_unknown
+
+    | _ when isC -> der_to_constructed (string_of_header_raw c true t)
     | _ -> der_to_unknown
       
-and parse str base offset : asn1_object * int =
-  let ((c, isC, t), o1) = extract_header str offset in
-  let (len, o2) = extract_length str o1 in
-  let parse_fun = choose_parse_fun c isC t in
-  ((c, t, parse_fun str base o2 len), o2 + len)
+and parse pstate : asn1_object * parsing_state =
+  let (c, isC, t), hdr_pstate = extract_header pstate in
+  let obj_pstate, new_pstate = extract_length hdr_pstate in
+  let parse_fun = choose_parse_fun obj_pstate c isC t in
+  ({a_class = c; a_tag = t; a_content = parse_fun obj_pstate; a_name = ""}, new_pstate)
 
-let exact_parse str : asn1_object =
-  let (res, o) = parse str 0 0 in
-  if (String.length str) == o
-  then res
-  else raisego "Trailing bytes at the end of the string"
-*)
+let exact_parse ehf orig str : asn1_object =
+  let pstate = make_pstate ehf orig str in
+  let (res, end_state) = parse pstate in
+  if (end_state.len <> 0)
+  then failwith "Trailing bytes at the end of the string"
+  else res
 
 
 
