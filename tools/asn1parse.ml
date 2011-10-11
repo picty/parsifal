@@ -104,7 +104,7 @@ let parse_input pstate =
 
 
 (* ASN1PARSE *)
-let string_of_header_asn1parse c isC t = 
+let string_of_header_asn1parse depth c isC t = 
   let supertag = match c with
     | C_Universal ->
       if t >= 0 && t < (Array.length universal_tag_map)
@@ -148,32 +148,35 @@ let string_of_header_asn1parse c isC t =
 	| C_ContextSpecific -> "cont [ " ^ (string_of_int t) ^ " ]        "
     end
   in
-  (if isC then "cons: " else "prim: ") ^ res
+  (if isC then "cons: " else "prim: ") ^
+    (if !indent then String.make (depth * 2) ' ' else "") ^
+    res
 
 
-let content_string depth content =
+let content_string content =
   let v = match !data_repr, content with
     | _, Constructed _
     | NoData, _
     | _, EndOfContents
-    | _, Null -> []
+    | _, Null -> None
 
-    | _, Boolean true -> ["0"]
-    | _, Boolean false -> ["255"]
+    | _, Boolean true -> Some "0"
+    | _, Boolean false -> Some "255"
 
     (* TODO: I would like it to be in hexa *)
-    | _, Integer i -> [Big_int.string_of_big_int i]
+    | _, Integer i -> Some (Big_int.string_of_big_int i)
 
-    | _, BitString (nBits, s) -> [string_of_bitstring (!data_repr = RawData) nBits s]
-    | _, OId oid -> [string_of_oid !resolver oid]
+    | _, BitString (nBits, s) -> Some (string_of_bitstring (!data_repr = RawData) nBits s)
+    | _, OId oid -> Some (string_of_oid !resolver oid)
 
     | RawData, String (s, _)
     | _, String (s, true)
-    | _, Unknown s -> ["[HEX DUMP]:" ^ (hexdump s)]  
-    | _, String (s, _) -> [s]
+    | _, Unknown s -> Some ("[HEX DUMP]:" ^ (hexdump s))
+    | _, String (s, _) -> Some (s)
   in
-  let indent = String.make (depth * 2) ' ' in
-  String.concat ":" (indent::v)
+  match v with
+    | None -> ""
+    | Some value -> ":" ^ value
 
 
 let rec asn1parse_input depth pstate =
@@ -197,7 +200,7 @@ let rec asn1parse_input depth pstate =
     then Printf.printf "l=%4d " len;
 
     if !type_repr <> NoType
-    then print_string (string_of_header_asn1parse c isC t);
+    then print_string (string_of_header_asn1parse depth c isC t);
 
     if isC then begin
       print_newline ();
@@ -209,7 +212,7 @@ let rec asn1parse_input depth pstate =
       then
 	let parse_fun = choose_parse_fun pstate c isC t in
 	let o = parse_fun pstate in
-	Printf.printf "%s\n" (content_string (if !indent then depth else 0) o)
+	Printf.printf "%s\n" (content_string o)
       else
 	print_newline ();
     end;
