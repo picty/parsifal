@@ -21,45 +21,76 @@ module ParsingEngine =
     let string_of_severity = Params.string_of_severity
     let compare_severity = Params.compare_severity
 
+    type plength = UndefLength | Length of int
+
     type error_handling_function = parsing_error -> severity -> parsing_state -> unit
     and parsing_state = {
       ehf : error_handling_function;
       origin : string;        (* The origin of what we are parsing (a filename for example) *)
-      str : string;           (* The content of the innermost constructed currently parsed *)
-      base : int;             (* The offset of str in the global string *)
-      offset : int;           (* The offset of the object to parse in str *)
-      len : int;              (* The length of the object to parse in str *)
-      (* The invariant should be offset+len <= String.length str *)
-      position : string list; (* A list of strings describing the objects including str *)
+      str : char Stream.t;    (* The content of the innermost constructed currently parsed *)
+      mutable len : plength;  (* The length of the current object to parse in str *)
+      mutable position : string list; (* A list of strings describing the objects including str *)
+      mutable lengths : plength list  (* List of the previous lengths *)
     }
 
     exception ParsingError of parsing_error * severity * parsing_state;;
 
+    let emit err sev pstate =  pstate.ehf err sev pstate
+
     let string_of_pstate pstate =
       " in " ^ pstate.origin ^
-	" at offset " ^ (string_of_int (pstate.base + pstate.offset)) ^
+	" at offset " ^ (string_of_int (Stream.count pstate.str)) ^
+	" (len = " ^ (match pstate.len with
+                       | UndefLength -> "undef"
+		       | Length n -> (string_of_int n)) ^ ")" ^
 	" inside [" ^ (String.concat ", " (List.rev pstate.position)) ^ "]"
 
+    let eos pstate = 
+      match pstate.len with
+	| UndefLength -> begin
+	  try
+	    Stream.empty pstate.str;
+	    true
+	  with Stream.Failure -> false
+	end
+	| Length 0 -> true
+	| _ -> false
 
     let pop_byte pstate =
-      if pstate.len = 0
-      then raise (ParsingError (out_of_bounds_error "pop_byte", fatal_severity, pstate))
-      else begin
-	let res = int_of_char (String.get pstate.str pstate.offset) in
-	let new_pstate = {pstate with offset = pstate.offset + 1; len = pstate.len - 1} in
-	res, new_pstate
-      end
+      try
+	match pstate.len with
+	  | UndefLength -> int_of_char (Stream.next pstate.str)
+	  | Length n ->
+	    pstate.len <- Length (n - 1);
+	    int_of_char (Stream.next pstate.str)
+      with
+	  Stream.Failure -> raise (ParsingError (out_of_bounds_error "pop_byte", fatal_severity, pstate))
 
     let get_string pstate =
-      String.sub pstate.str pstate.offset pstate.len
+      match pstate.len with
+	| UndefLength -> raise (ParsingError (out_of_bounds_error "get_string(UndefLength)", fatal_severity, pstate))
+	| Length n ->
+	  try
+	    let res = String.make n ' ' in
+	    for i = 0 to (n - 1) do
+	      res.[i] <- Stream.next pstate.str
+	    done;
+	    pstate.len <- Length 0;
+	    res
+	  with
+	      Stream.Failure -> raise (ParsingError (out_of_bounds_error "get_string", fatal_severity, pstate))
 
     let get_bytes pstate =
-      let rec aux accu o = function
-	| 0 -> List.rev accu
-	| n -> aux (int_of_char (String.get pstate.str o)::accu) (o + 1) (n - 1)
-      in
-      aux [] pstate.offset pstate.len
-
+      match pstate.len with
+	| UndefLength -> raise (ParsingError (out_of_bounds_error "get_bytes(UndefLength)", fatal_severity, pstate))
+	| Length n ->
+	  try
+	    let rec aux accu = function
+	      | 0 -> List.rev accu
+	      | n -> aux ((int_of_char (Stream.next pstate.str))::accu) (n-1)
+	    in aux [] n
+	  with 
+	      Stream.Failure -> raise (ParsingError (out_of_bounds_error "get_bytes", fatal_severity, pstate))
 
     let default_error_handling_function tolerance minDisplay err sev pstate =
       if compare_severity sev tolerance < 0
@@ -68,31 +99,31 @@ module ParsingEngine =
       then print_endline ("Warning (" ^ (string_of_severity sev) ^ "): " ^ 
 			     (string_of_perror err) ^ (string_of_pstate pstate))
 
-    let make_pstate ehfun orig contents =
-      {ehf = ehfun; origin = orig; str = contents;
-       base = 0; offset = 0; len = String.length contents;
-       position = []}
+    let pstate_of_string ehfun orig contents =
+      {ehf = ehfun; origin = orig; str = Stream.of_string contents;
+       len = Length (String.length contents); position = []; lengths = []}
 
-    let enter_pstate name pstate =
-      {pstate with str = String.sub pstate.str pstate.offset pstate.len;
-	base = pstate.base + pstate.offset; offset = 0;
-	position = name::pstate.position}
+    let pstate_of_channel ehfun orig contents =
+      {ehf = ehfun; origin = orig; str = Stream.of_channel contents;
+       len = UndefLength; position = []; lengths = []}
 
-    let split_pstate pstate added_offset = 
-      if added_offset >= 0 && added_offset <= pstate.len
-      then {pstate with len = added_offset},
-	{pstate with offset = pstate.offset + added_offset; len = pstate.len - added_offset}
-      else raise (ParsingError (out_of_bounds_error "split_pstate", fatal_severity, pstate))
-
+    let go_down pstate name l =
+      let saved_len = match pstate.len with
+	| UndefLength -> UndefLength
+	| Length n ->
+	  if l > n
+	  then raise (ParsingError (out_of_bounds_error "go_down", fatal_severity, pstate))
+	  else Length (n - l)
+      in
+      pstate.lengths <- saved_len::(pstate.lengths);
+      pstate.position <- name::(pstate.position);
+      pstate.len <- Length l
+	  
+    let go_up pstate =
+      match pstate.lengths, pstate.position with
+	| l::lens, _::names ->
+	  pstate.len <- l;
+	  pstate.lengths <- lens;
+	  pstate.position <- names	  
+	| _ -> raise (ParsingError (out_of_bounds_error "go_up", fatal_severity, pstate))
   end
-
-
-(*
-ocaml
-
-open ParsingEngine;;
-module ASN1Parser = ParsingEngine (Asn1ParserParams);;
-open ASN1Parser;;
-open ASN1ParserParams;;
-let s = {ehf = default_error_handling_function S_OK S_OK; origin = "stdin"; str = "tititoto"; base = 0; offset = 0; len = 4; position = []};;
-*)

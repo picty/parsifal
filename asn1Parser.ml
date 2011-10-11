@@ -88,43 +88,39 @@ let extract_isConstructed (x : int) : bool =
 let extract_shorttype (x : int) : int =
   x land 31
 
-let extract_longtype (pstate : parsing_state) : (int * parsing_state) =
+let extract_longtype (pstate : parsing_state) : int =
   raise (ParsingError (NotImplemented "Long type", S_Fatal, pstate))
 
 
-let extract_header (pstate : parsing_state) : ((asn1_class * bool * int) * parsing_state) =
-  let hdr, new_pstate = pop_byte pstate in
+let extract_header pstate : (asn1_class * bool * int) =
+  let hdr = pop_byte pstate in
   let c = extract_class hdr in
   let isC = extract_isConstructed hdr in
   let t = extract_shorttype hdr in
   if (t < 0x1f)
-  then ((c, isC, t), new_pstate)
-  else
-    let (longT, new_pstate) = extract_longtype new_pstate in
-    ((c, isC, longT), new_pstate)
+  then (c, isC, t)
+  else (c, isC, extract_longtype pstate)
 
-let extract_length (pstate : parsing_state) : (parsing_state * parsing_state) =
-  let first, new_pstate = pop_byte pstate in
+let extract_length pstate name =
+  let first = pop_byte pstate in
   if first land 0x80 = 0
-  then split_pstate new_pstate first
-  else
-    let len_pstate = {new_pstate with len = first land 0x7f} in
-    let rec aux accu pstate = match pstate.len with
-      | 0 -> split_pstate pstate accu
-      | n ->
-	let x, next_pstate = pop_byte pstate in
-	aux ((accu lsl 8) lor x) next_pstate
-    in aux 0 len_pstate
+  then go_down pstate name first
+  else begin
+    let accu = ref 0 in
+    for i = 1 to (first land 0x7f) do
+      accu := (!accu lsl 8) lor (pop_byte pstate);
+    done;
+    go_down pstate name !accu
+  end
 
-
-let der_to_subid (pstate : parsing_state) : (int * parsing_state) =
-  let rec aux accu pstate =
-    let c, new_state = pop_byte pstate in
+let der_to_subid (pstate : parsing_state) : int =
+  let rec aux accu =
+    let c = pop_byte pstate in
     let new_accu = (accu lsl 7) lor (c land 0x7f) in
     if c land 0x80 != 0
-    then aux new_accu new_state
-    else new_accu, new_state
-  in aux 0 pstate
+    then aux new_accu
+    else new_accu
+  in aux 0
 
 
 (* Generic ASN.1 parsing function *)
@@ -132,28 +128,28 @@ let der_to_subid (pstate : parsing_state) : (int * parsing_state) =
 type parse_function = parsing_state -> asn1_content
 
 let der_to_boolean pstate =
-  if pstate.len <> 1 then pstate.ehf (IncorrectLength "bool") S_IdempotenceBreaker pstate;
-  if pstate.len = 0 then Boolean false
-  else begin
-    let v, _ = pop_byte pstate in
-    if v = 0 then Boolean false
-    else if v = 255 then Boolean true
-    else begin
-      pstate.ehf (NotInNormalForm "boolean") S_IdempotenceBreaker pstate;
+  let value = get_bytes pstate in
+  match value with
+    | [] ->
+      emit (IncorrectLength "boolean") S_IdempotenceBreaker pstate;
       Boolean false
-    end
-  end
+    | [0] -> Boolean false
+    | [255] -> Boolean true
+    | v::_ ->
+      emit (NotInNormalForm "boolean") S_IdempotenceBreaker pstate;
+      Boolean (v <> 0)
 
 let der_to_int pstate =
-  if pstate.len <= 0 then pstate.ehf (IncorrectLength "integer") S_IdempotenceBreaker pstate;
   let l = get_bytes pstate in
   let negative = match l with
-    | [] -> false
+    | [] ->
+      emit (IncorrectLength "integer") S_IdempotenceBreaker pstate;
+      false
     | x::y::r when x = 0xff ->
-      pstate.ehf (NotInNormalForm "integer") S_IdempotenceBreaker pstate;
+      emit (NotInNormalForm "integer") S_IdempotenceBreaker pstate;
       true
     | x::y::r when (x = 0) && (y land 0x80) = 0 ->
-      pstate.ehf (NotInNormalForm "integer") S_IdempotenceBreaker pstate;
+      emit (NotInNormalForm "integer") S_IdempotenceBreaker pstate;
       false
     | x::r -> (x land 0x80) = 0x80
   in
@@ -162,21 +158,33 @@ let der_to_int pstate =
   else Integer (bigint_of_intlist l)
 
 let der_to_null pstate =
-  if pstate.len <> 0 then pstate.ehf (IncorrectLength "null") S_IdempotenceBreaker pstate;
+  if not (eos pstate)
+  then emit (IncorrectLength "null") S_IdempotenceBreaker pstate;
   Null
 
 let der_to_oid pstate =
-  let rec aux pstate = match pstate.len with
-    | 0 -> []
-    | _ ->
-      let next, new_pstate = der_to_subid pstate in
-      next::(aux new_pstate)
+  let rec aux () =
+    if eos pstate
+    then []
+    else begin
+      try
+	let next = der_to_subid pstate in
+	next::(aux ())
+      with ParsingError (OutOfBounds _, _, _) ->
+	emit (IncorrectLength "null") S_IdempotenceBreaker pstate;
+	[]
+    end
   in
-  OId (aux pstate)
+  OId (aux ())
 
 let der_to_bitstring _type pstate =
-  let nBits, new_pstate = pop_byte pstate in
-  let content = get_string new_pstate in
+  let nBits =
+    if eos pstate then begin
+      emit (IncorrectLength "null") S_IdempotenceBreaker pstate;
+      0
+    end else pop_byte pstate
+  in
+  let content = get_string pstate in
   (* TODO: Checks on nBits and on the final zeros *)
   BitString (nBits, content)
 
@@ -189,16 +197,15 @@ let der_to_unknown pstate =
   Unknown (get_string pstate)
 
 
-let rec der_to_constructed name pstate =
-  let new_pstate = enter_pstate name pstate in
-    
-  let rec parse_aux pstate = match pstate.len with
-    | 0 -> []
-    | _ ->
-      let (next, new_pstate) = parse pstate in
-      next::(parse_aux new_pstate)
+let rec der_to_constructed pstate =
+  let rec parse_aux () =
+    if eos pstate
+    then []
+    else
+      let next = parse pstate in
+      next::(parse_aux ())
   in
-  Constructed (parse_aux new_pstate)
+  Constructed (parse_aux ())
     
 and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_function =
   match c with
@@ -230,38 +237,36 @@ and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_func
 	| ( T_UnspecifiedCharacterString, false)
 	| ( T_BMPString, false) -> der_to_octetstring None
 	  
-	| (T_Sequence, true) -> der_to_constructed "Sequence"
-	| (T_Set, true) -> der_to_constructed "Set"
+	| (T_Sequence, true)
+	| (T_Set, true) -> der_to_constructed
 	  
 	| (_, false) ->
-	  pstate.ehf (UnknownUniversal (false, t)) S_SpecLightlyViolated pstate;
+	  emit (UnknownUniversal (false, t)) S_SpecLightlyViolated pstate;
 	  der_to_unknown
 
 	| (_, true) ->
-	  pstate.ehf (UnknownUniversal (true, t)) S_SpecLightlyViolated pstate;
-	  der_to_constructed (string_of_header_raw c true t)
+	  emit (UnknownUniversal (true, t)) S_SpecLightlyViolated pstate;
+	  der_to_constructed
     end
       
-    | C_Universal when isC ->
-      pstate.ehf (UnknownUniversal (true, t)) S_SpecLightlyViolated pstate;
-      der_to_constructed (string_of_header_raw c true t)
     | C_Universal ->
-      pstate.ehf (UnknownUniversal (false, t)) S_SpecLightlyViolated pstate;
-      der_to_unknown
+      emit (UnknownUniversal (isC, t)) S_SpecLightlyViolated pstate;
+      if isC then der_to_constructed else der_to_unknown
 
-    | _ when isC -> der_to_constructed (string_of_header_raw c true t)
-    | _ -> der_to_unknown
+    | _ -> if isC then der_to_constructed else der_to_unknown
       
-and parse pstate : asn1_object * parsing_state =
-  let (c, isC, t), hdr_pstate = extract_header pstate in
-  let obj_pstate, new_pstate = extract_length hdr_pstate in
-  let parse_fun = choose_parse_fun obj_pstate c isC t in
-  ({a_class = c; a_tag = t; a_content = parse_fun obj_pstate; a_name = ""}, new_pstate)
+and parse pstate : asn1_object =
+  let (c, isC, t) = extract_header pstate in
+  extract_length pstate (string_of_header_pretty c isC t);
+  let parse_fun = choose_parse_fun pstate c isC t in
+  let res = {a_class = c; a_tag = t; a_content = parse_fun pstate; a_name = ""} in
+  go_up pstate;
+  res
 
 let exact_parse ehf orig str : asn1_object =
-  let pstate = make_pstate ehf orig str in
-  let (res, end_state) = parse pstate in
-  if (end_state.len <> 0)
+  let pstate = pstate_of_string ehf orig str in
+  let res = parse pstate in
+  if not (eos pstate)
   then failwith "Trailing bytes at the end of the string"
   else res
 
