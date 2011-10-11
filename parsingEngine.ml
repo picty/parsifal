@@ -37,12 +37,16 @@ module ParsingEngine =
 
     let emit err sev pstate =  pstate.ehf err sev pstate
 
+    let get_depth pstate = List.length pstate.position
+    let get_offset pstate = Stream.count pstate.str
+    let get_len pstate = match pstate.len with
+      | UndefLength -> -1
+      | Length n -> n
+
     let string_of_pstate pstate =
       " in " ^ pstate.origin ^
 	" at offset " ^ (string_of_int (Stream.count pstate.str)) ^
-	" (len = " ^ (match pstate.len with
-                       | UndefLength -> "undef"
-		       | Length n -> (string_of_int n)) ^ ")" ^
+	" (len = " ^ (string_of_int (get_len pstate)) ^ ")" ^
 	" inside [" ^ (String.concat ", " (List.rev pstate.position)) ^ "]"
 
     let eos pstate = 
@@ -96,8 +100,9 @@ module ParsingEngine =
       if compare_severity sev tolerance < 0
       then raise (ParsingError (err, sev, pstate))
       else if compare_severity minDisplay sev <= 0
-      then print_endline ("Warning (" ^ (string_of_severity sev) ^ "): " ^ 
-			     (string_of_perror err) ^ (string_of_pstate pstate))
+      then
+	output_string stderr ("Warning (" ^ (string_of_severity sev) ^ "): " ^ 
+				 (string_of_perror err) ^ (string_of_pstate pstate) ^ "\n")
 
     let pstate_of_string ehfun orig contents =
       {ehf = ehfun; origin = orig; str = Stream.of_string contents;

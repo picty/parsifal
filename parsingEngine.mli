@@ -21,6 +21,9 @@ module ParsingEngine :
       type plength = UndefLength | Length of int
       type parsing_state
       type error_handling_function
+      val get_depth : parsing_state -> int
+      val get_offset : parsing_state -> int
+      val get_len : parsing_state -> int
       val emit : parsing_error -> severity -> parsing_state -> unit
       exception ParsingError of parsing_error * severity * parsing_state
       val string_of_pstate : parsing_state -> string

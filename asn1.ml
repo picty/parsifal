@@ -200,6 +200,8 @@ let rec string_of_object indent popts o =
   in
 
   let content_string = match popts.data_repr, o.a_content with
+    | _, Constructed l -> [string_of_constructed indent popts l]
+
     | NoData, _
     | _, EndOfContents
     | _, Null -> []
@@ -217,8 +219,6 @@ let rec string_of_object indent popts o =
     | _, String (s, true)
     | _, Unknown s -> ["[HEX:]" ^ (hexdump s)]  
     | _, String (s, _) -> [s]
-
-    | _, Constructed l -> [string_of_constructed indent popts l]
   in
 
   let res = String.concat ": " (type_string@content_string) in
