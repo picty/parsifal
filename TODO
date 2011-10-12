@@ -1,0 +1,4 @@
+Clean up code for validasn1.
+Add parsers for SSLv2, TLS, dump format.
+Rewrite map_language with ocamllex + menhir.
+Write some quick stats.
