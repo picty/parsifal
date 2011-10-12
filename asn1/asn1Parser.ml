@@ -10,8 +10,8 @@ module Asn1EngineParams = struct
     | UnknownUniversal of (bool * int)
     | UnexpectedHeader of (asn1_class * bool * int) * (asn1_class * bool * int) option
     | WrongNumberOfObjects of int * int
-    | TooManyObjects of int * int
-    | TooFewObjects of int * int
+    | TooManyObjects of (int * int) option
+    | TooFewObjects of (int * int) option
 
   let out_of_bounds_error s = OutOfBounds s
 
@@ -24,21 +24,25 @@ module Asn1EngineParams = struct
     | UnknownUniversal (isC, t) ->
       "Unknown " ^ (if isC then "constructed" else "primitive") ^
 	"universal type " ^ (string_of_int t)
+
     | UnexpectedHeader ((c, isC, t), None) ->
       "Unexpected header " ^ (Asn1.string_of_header_pretty c isC t)
     | UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t)) ->
       "Unexpected header " ^ (Asn1.string_of_header_pretty c isC t) ^
 	" (" ^ (Asn1.string_of_header_pretty exp_c exp_isC exp_t) ^
 	" expected)"
+
     | WrongNumberOfObjects (n, exp_n) ->
       "Too many objects (" ^ (string_of_int n) ^ " read; " ^
 	(string_of_int exp_n) ^ " expected)"
-    | TooManyObjects (n, exp_n) ->
+    | TooManyObjects (Some (n, exp_n)) ->
       "Too many objects (" ^ (string_of_int n) ^ " read; at most " ^
 	(string_of_int exp_n) ^ " expected)"
-    | TooFewObjects (n, exp_n) ->
+    | TooManyObjects None -> "Too many objects in sequence"
+    | TooFewObjects (Some (n, exp_n)) ->
       "Too few objects (" ^ (string_of_int n) ^ " read; at least " ^
 	(string_of_int exp_n) ^ " expected)"
+    | TooFewObjects None -> "Too few objects in sequence"
 
   type severity =
     | S_OK

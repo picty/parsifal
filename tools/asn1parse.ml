@@ -2,12 +2,14 @@ open Asn1Parser
 open Asn1Parser.Asn1EngineParams
 open Asn1Parser.Engine
 open Asn1;;
+open Validasn1;;
 
 (* display type *)
 
 type display_type =
   | ASN1
   | ASN1PARSE
+  | X509
 
 let dtype = ref ASN1
 
@@ -49,12 +51,13 @@ let set_dtype arg =
   let v = match String.lowercase arg with
     | "asn1" -> ASN1
     | "asn1parse" -> ASN1PARSE
-    | _ -> raise (Arg.Bad "Invalid display (should be one of asn1, asn1parse)")
+    | "x509" -> X509
+    | _ -> raise (Arg.Bad "Invalid display (should be one of asn1, asn1parse, x509)")
   in dtype := v
 
 let options = [
   (* display type *)
-  ("-display", Arg.String set_dtype, "Set display type (asn1 or asn1parse)");
+  ("-display", Arg.String set_dtype, "Set display type (asn1, asn1parse or x509)");
 
   (* General options *)
   ("-tolerance", Arg.String (update_sev tolerance), "Adjust the maximum severity acceptable while parsing");
@@ -221,11 +224,20 @@ let rec asn1parse_input depth pstate =
   done;;
 
 
+(* X509 *)
+let parse_and_validate_input cons pstate =
+  while not (eos pstate) do
+    let o = constrained_parse cons pstate in
+    Printf.printf "%s" (string_of_object "" opts o)
+  done;;
+
+
 try
   begin
     match !dtype with
       | ASN1 -> List.iter parse_input inputs
       | ASN1PARSE -> List.iter (asn1parse_input 0) inputs
+      | X509 -> List.iter (parse_and_validate_input x509_certificate_cons) inputs
   end
 with
   | ParsingError (err, sev, pstate) ->
