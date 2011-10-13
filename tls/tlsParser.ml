@@ -228,7 +228,7 @@ let parse_handshake pstate =
     | H_CertificateRequest -> UnparsedHandshakeMsg (htype, pop_string pstate)
     | H_ServerHelloDone ->
       assert_eos pstate;
-      HelloRequest
+      ServerHelloDone
     | H_CertificateVerify
     | H_ClientKeyExchange
     | H_Finished
