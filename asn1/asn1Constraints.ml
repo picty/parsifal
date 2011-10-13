@@ -1,9 +1,8 @@
 (* Constrained parsing *)
 
 open Asn1
-open Asn1Parser
-open Asn1Parser.Asn1EngineParams
-open Asn1Parser.Engine
+open Asn1.Asn1EngineParams
+open Asn1.Engine
 
 type asn1_constraint = 
   | Anything

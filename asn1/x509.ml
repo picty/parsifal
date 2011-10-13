@@ -1,13 +1,32 @@
 open Asn1
+open Validasn1
+
+
+type oid_type =
+  | HashAlgo
+  | SigAlgo
+  | PubKeyAlgo
+  | ATV
+  | Extension
+
+type preparse_function = parsing_state -> parsing_state
+type predump_function = parsing_state -> parsing_state
+
+let name_directory = Hashtbl.create 100 : (int list, string) Hashtbl.t
+let object_directory = Hashtbl.create 50 : ((oid_type, int list), (asn1_constraint, severity)) Hashtbl.t
+let pubkey_directory = Hashtbl.create 10 : (int list, asn1_constraints) Hashtbl.t
+let signature_directory = Hashtbl.create 10 : (int list, (asn1_constraints, preparse_function, predump_function)) Hashtbl.t
+
 
 (* Algorithm identifier *)
   
-type hash_algo =
+(*type hash_algo =
   | Sha1
 
 
 type sig_algo =
-  | Sha1WithRSA
+  | RSA of hash_algo
+  | DSA of hash_algo
 
 let sha1WithRSAEncryption_oid = [42;840;113549;1;1;5]
 
@@ -22,7 +41,7 @@ type algoId =
   | HashAlgo of hash_algo
   | SigAlgo of sig_algo
   | PubKeyAlgo of pubkey_algo
-  | OtherAlgo of (int list * asn1_object option)
+  | OtherAlgo of (int list * asn1_object option)*)
 
 
 let checkNull laxist = function

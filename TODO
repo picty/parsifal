@@ -1,5 +1,5 @@
-Clean up code for asn1 and tls -> reorganize it so as dump/parse/print functions are grouped for objects of the same type.
-Clean up code for validasn1.
+Clean up code for asn1Constraints (and add comments)
+Add real nice X.509 parser
 Add parsers for SSLv2, TLS, dump format.
 Rewrite map_language with ocamllex + menhir.
 Write some quick stats.
