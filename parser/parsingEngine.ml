@@ -84,17 +84,23 @@ module ParsingEngine =
 	  with
 	      Stream.Failure -> raise (ParsingError (out_of_bounds_error "get_string", fatal_severity, pstate))
 
-    let get_bytes pstate =
+    let get_bytes pstate n =
       match pstate.len with
-	| UndefLength -> raise (ParsingError (out_of_bounds_error "get_bytes(UndefLength)", fatal_severity, pstate))
-	| Length n ->
+	| Length l when l < n -> raise (ParsingError (out_of_bounds_error "get_bytes", fatal_severity, pstate))
+	| _ ->
 	  try
-	    let rec aux accu = function
-	      | 0 -> List.rev accu
-	      | n -> aux ((int_of_char (Stream.next pstate.str))::accu) (n-1)
-	    in aux [] n
-	  with 
-	      Stream.Failure -> raise (ParsingError (out_of_bounds_error "get_bytes", fatal_severity, pstate))
+	    let res = Array.make n 0 in
+	    for i = 0 to (n - 1) do
+	      res.(i) <- Stream.next pstate.str
+	    done;
+	    begin
+	      match pstate.len with
+		| Length l -> pstate.len <- Length (l - n)
+		| _ -> ()
+	    end;
+	    res
+	  with
+	      Stream.Failure -> raise (ParsingError (out_of_bounds_error "get_string", fatal_severity, pstate))
 
     let default_error_handling_function tolerance minDisplay err sev pstate =
       if compare_severity sev tolerance < 0
