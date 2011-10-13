@@ -29,8 +29,9 @@ module ParsingEngine :
       val string_of_pstate : parsing_state -> string
       val eos : parsing_state -> bool
       val pop_byte : parsing_state -> int
-      val get_string : parsing_state -> string
-      val get_bytes : parsing_state -> int -> int array
+      val pop_string : parsing_state -> string
+      val pop_list : parsing_state -> int list
+      val pop_bytes : parsing_state -> int -> int array
       val default_error_handling_function :
         Params.severity -> Params.severity -> error_handling_function
       val pstate_of_string :

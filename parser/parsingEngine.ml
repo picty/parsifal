@@ -70,37 +70,44 @@ module ParsingEngine =
       with
 	  Stream.Failure -> raise (ParsingError (out_of_bounds_error "pop_byte", fatal_severity, pstate))
 
-    let get_string pstate =
+
+    let _pop_bytes pstate n assign =
+      try
+	for i = 0 to (n - 1) do
+	  assign i (Stream.next pstate.str)
+	done;
+        begin
+          match pstate.len with
+            | Length l -> pstate.len <- Length (l - n)
+            | _ -> ()
+        end;
+      with
+	  Stream.Failure -> raise (ParsingError (out_of_bounds_error "get_string", fatal_severity, pstate))
+
+    let pop_string pstate =
       match pstate.len with
 	| UndefLength -> raise (ParsingError (out_of_bounds_error "get_string(UndefLength)", fatal_severity, pstate))
 	| Length n ->
-	  try
-	    let res = String.make n ' ' in
-	    for i = 0 to (n - 1) do
-	      res.[i] <- Stream.next pstate.str
-	    done;
-	    pstate.len <- Length 0;
-	    res
-	  with
-	      Stream.Failure -> raise (ParsingError (out_of_bounds_error "get_string", fatal_severity, pstate))
+	  let res = String.make n ' ' in
+	  _pop_bytes pstate n (String.set res);
+	  res
 
-    let get_bytes pstate n =
+    let pop_bytes pstate n =
       match pstate.len with
 	| Length l when l < n -> raise (ParsingError (out_of_bounds_error "get_bytes", fatal_severity, pstate))
 	| _ ->
-	  try
-	    let res = Array.make n 0 in
-	    for i = 0 to (n - 1) do
-	      res.(i) <- Stream.next pstate.str
-	    done;
-	    begin
-	      match pstate.len with
-		| Length l -> pstate.len <- Length (l - n)
-		| _ -> ()
-	    end;
-	    res
-	  with
-	      Stream.Failure -> raise (ParsingError (out_of_bounds_error "get_string", fatal_severity, pstate))
+	  let res = Array.make n 0 in
+	  _pop_bytes pstate n (fun i -> fun c -> Array.set res i (int_of_char c));
+	  res
+
+    let pop_list pstate =
+      match pstate.len with
+	| UndefLength -> raise (ParsingError (out_of_bounds_error "get_string(UndefLength)", fatal_severity, pstate))
+	| Length n ->
+	  let res = Array.make n 0 in
+	  _pop_bytes pstate n (fun i -> fun c -> Array.set res i (int_of_char c));
+	  Array.to_list (res)
+
 
     let default_error_handling_function tolerance minDisplay err sev pstate =
       if compare_severity sev tolerance < 0

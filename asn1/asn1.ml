@@ -147,32 +147,6 @@ type print_options = {
 
 (* Useful func *)
 
-let hexa_char = [| '0'; '1'; '2'; '3';
-		   '4'; '5'; '6'; '7';
-		   '8'; '9'; 'a'; 'b';
-		   'c'; 'd'; 'e'; 'f' |]
-
-let only_ascii s =
-  let len = String.length s in
-  let res = String.make len ' ' in
-  for i = 0 to (len - 1) do
-    let c = String.get s i in
-    let x = int_of_char c in
-    if x >= 32 && x < 128
-    then res.[i] <- c
-  done;
-  res
-
-let hexdump s =
-  let len = String.length s in
-  let res = String.make (len * 2) ' ' in
-  for i = 0 to (len - 1) do
-    let x = int_of_char (String.get s i) in
-    res.[i * 2] <- hexa_char.((x lsr 4) land 0xf);
-    res.[i * 2 + 1] <- hexa_char.(x land 0xf);
-  done;
-  res
-
 let isConstructed o = match o.a_content with
   | Constructed _ -> true
   | _ -> false
@@ -180,8 +154,8 @@ let isConstructed o = match o.a_content with
 
 let string_of_bitstring raw nBits s =
   if raw && nBits == 0
-  then "[" ^ (string_of_int nBits) ^ "]:" ^ (hexdump s)
-  else hexdump s
+  then "[" ^ (string_of_int nBits) ^ "]:" ^ (Common.hexdump s)
+  else Common.hexdump s
 
 let string_of_oid diropt oid = match diropt with
   | Some dir when Hashtbl.mem dir oid ->
@@ -217,7 +191,7 @@ let rec string_of_object indent popts o =
 
     | RawData, String (s, _)
     | _, String (s, true)
-    | _, Unknown s -> ["[HEX:]" ^ (hexdump s)]  
+    | _, Unknown s -> ["[HEX:]" ^ (Common.hexdump s)]  
     | _, String (s, _) -> [s]
   in
 

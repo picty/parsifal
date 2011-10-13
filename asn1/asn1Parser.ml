@@ -152,7 +152,7 @@ let der_to_subid (pstate : parsing_state) : int =
 type parse_function = parsing_state -> asn1_content
 
 let der_to_boolean pstate =
-  let value = get_bytes pstate in
+  let value = pop_list pstate in
   match value with
     | [] ->
       emit (IncorrectLength "boolean") S_IdempotenceBreaker pstate;
@@ -164,7 +164,7 @@ let der_to_boolean pstate =
       Boolean (v <> 0)
 
 let der_to_int pstate =
-  let l = get_bytes pstate in
+  let l = pop_list pstate in
   let negative = match l with
     | [] ->
       emit (IncorrectLength "integer") S_IdempotenceBreaker pstate;
@@ -208,17 +208,17 @@ let der_to_bitstring _type pstate =
       0
     end else pop_byte pstate
   in
-  let content = get_string pstate in
+  let content = pop_string pstate in
   (* TODO: Checks on nBits and on the final zeros *)
   BitString (nBits, content)
 
 (* TODO: Add constraints *)
 (* In particular, wether the octetstring is binary or not *)
 let der_to_octetstring _constraints pstate =
-  String (get_string pstate, true)
+  String (pop_string pstate, true)
 
 let der_to_unknown pstate =
-  Unknown (get_string pstate)
+  Unknown (pop_string pstate)
 
 
 let rec der_to_constructed pstate =

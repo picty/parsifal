@@ -174,7 +174,7 @@ let content_string content =
 
     | RawData, String (s, _)
     | _, String (s, true)
-    | _, Unknown s -> Some ("[HEX DUMP]:" ^ (hexdump s))
+    | _, Unknown s -> Some ("[HEX DUMP]:" ^ (Common.hexdump s))
     | _, String (s, _) -> Some (s)
   in
   match v with
