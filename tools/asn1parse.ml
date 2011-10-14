@@ -233,7 +233,7 @@ let rec asn1parse_input depth pstate =
 let parse_and_validate_cert cons pstate =
   while not (eos pstate) do
     let o = constrained_parse cons pstate in
-    Printf.printf "Certificate:\n%s" (X509.string_of_certificate "" !resolver o)
+    print_endline (X509.string_of_certificate true "" !resolver o)
   done;;
 
 
@@ -247,4 +247,4 @@ try
 with
   | ParsingError (err, sev, pstate) ->
     output_string stderr ("Fatal (" ^ (string_of_severity sev) ^ "): " ^ 
-			     (string_of_perror err) ^ (string_of_pstate pstate) ^ "\n");;
+			     (string_of_perror err) ^ " in " ^ (string_of_pstate pstate) ^ "\n");;

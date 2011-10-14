@@ -18,5 +18,5 @@ try
 with
   | ParsingError (err, sev, pstate) ->
     print_endline ("Fatal (" ^ (string_of_severity sev) ^ "): " ^ 
-		      (string_of_perror err) ^ (string_of_pstate pstate));;
+		      (string_of_perror err) ^ " in " ^ (string_of_pstate pstate));;
 

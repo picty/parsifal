@@ -374,9 +374,11 @@ let certificate_constraint dir : certificate asn1_constraint =
   Simple_cons (C_Universal, true, 16, "Certificate", parse_certificate dir)
 
 
-let string_of_certificate indent resolver c =
+let rec string_of_certificate print_title indent resolver c =
   let new_indent = indent ^ "  " in
-  indent ^ "tbsCertificate:\n" ^ (string_of_tbs_certificate new_indent resolver c.tbs) ^
+  if (print_title)
+  then indent ^ "Certificate:\n" ^ (string_of_certificate false new_indent resolver c)
+  else indent ^ "tbsCertificate:\n" ^ (string_of_tbs_certificate new_indent resolver c.tbs) ^
     indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent resolver c.cert_sig_algo) ^
     indent ^ "Signature: " ^ (string_of_bitstring false (fst c.signature) (snd c.signature)) ^
     "\n"

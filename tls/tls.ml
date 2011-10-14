@@ -1,3 +1,5 @@
+open X509Directory
+
 (* Alert *)
 
 type alert_level =
@@ -169,7 +171,7 @@ type handshake_msg =
   | HelloRequest
   | ClientHello of client_hello
   | ServerHello of server_hello
-  | Certificate
+  | Certificate of X509.certificate list
   | ServerKeyExchange
   | CertificateRequest
   | ServerHelloDone
@@ -182,7 +184,9 @@ let string_of_handshake_msg = function
   | HelloRequest -> "Hello Request"
   | ClientHello ch -> string_of_client_hello ch
   | ServerHello sh -> string_of_server_hello sh
-  | Certificate -> "Certificate"
+  | Certificate certs ->
+    "Certificates:\n" ^
+      (String.concat "\n" (List.map (X509.string_of_certificate true "  " (Some X509.name_directory)) certs))
   | ServerKeyExchange -> "Server Key Exchange"
   | CertificateRequest -> "Certificate Request"
   | ServerHelloDone -> "Server Hello Done"

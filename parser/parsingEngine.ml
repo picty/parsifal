@@ -44,7 +44,7 @@ module ParsingEngine =
       | Length n -> n
 
     let string_of_pstate pstate =
-      " in " ^ pstate.origin ^
+      pstate.origin ^
 	" at offset " ^ (string_of_int (Stream.count pstate.str)) ^
 	" (len = " ^ (string_of_int (get_len pstate)) ^ ")" ^
 	" inside [" ^ (String.concat ", " (List.rev pstate.position)) ^ "]"
@@ -124,7 +124,7 @@ module ParsingEngine =
       else if compare_severity minDisplay sev <= 0
       then
 	output_string stderr ("Warning (" ^ (string_of_severity sev) ^ "): " ^ 
-				 (string_of_perror err) ^ (string_of_pstate pstate) ^ "\n")
+				 (string_of_perror err) ^ " in " ^ (string_of_pstate pstate) ^ "\n")
 
     let pstate_of_string ehfun orig contents =
       {ehf = ehfun; origin = orig; str = Stream.of_string contents;

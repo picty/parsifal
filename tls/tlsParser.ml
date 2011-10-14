@@ -214,6 +214,28 @@ let parse_server_hello pstate =
 		s_compression_method = compression_method;
 		s_extensions = extensions }
 
+
+let asn1_opts = { Asn1.type_repr = Asn1.NoType; Asn1.data_repr = Asn1.NoData;
+		  Asn1.resolver = None; Asn1.indent_output = false }
+let asn1_ehf = (Asn1.Engine.default_error_handling_function
+		  Asn1.Asn1EngineParams.S_SpecFatallyViolated
+		  Asn1.Asn1EngineParams.S_SpecFatallyViolated)
+
+let parse_one_certificate pstate =
+  let s = extract_variable_length_string "Certificate" extract_uint24 pstate in
+  try
+    let asn1_pstate = Asn1.Engine.pstate_of_string asn1_ehf (string_of_pstate pstate) s in
+    let res = Asn1Constraints.constrained_parse (X509.certificate_constraint X509.object_directory) asn1_pstate in
+    if not (Asn1.Engine.eos asn1_pstate) then emit UnexpectedJunk S_Benign pstate;
+    res
+  with
+      (* TODO: Handle things better? *)
+      e -> raise e
+
+let parse_certificates pstate =
+  Certificate (extract_list "Certificates" extract_uint24 parse_one_certificate pstate)
+  
+
 let parse_handshake pstate =
   let (htype, len) = extract_handshake_header pstate in
   go_down pstate (string_of_handshake_msg_type htype) len;
@@ -223,7 +245,7 @@ let parse_handshake pstate =
       HelloRequest
     | H_ClientHello -> parse_client_hello pstate
     | H_ServerHello -> parse_server_hello pstate
-    | H_Certificate
+    | H_Certificate -> parse_certificates pstate
     | H_ServerKeyExchange
     | H_CertificateRequest -> UnparsedHandshakeMsg (htype, pop_string pstate)
     | H_ServerHelloDone ->
