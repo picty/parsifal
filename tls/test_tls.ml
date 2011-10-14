@@ -3,12 +3,17 @@ open TlsParser
 open TlsParser.TlsEngineParams
 open TlsParser.Engine
 
+let asn1_ehf = (Asn1.Engine.default_error_handling_function
+		  Asn1.Asn1EngineParams.S_SpecFatallyViolated
+		  Asn1.Asn1EngineParams.S_Benign)
+
+
 let record_string = "\x16\x03\x00\x00\x86\x01\x00\x00\x82\x03\x00\x4e\x97\x15\xc9\x4d\x53\x29\xfb\x6b\x2f\xbe\xaf\x38\xcd\x50\xb5\x12\xc5\x6f\x28\x39\xbe\xd2\xff\x6f\xe6\x3f\x91\x15\x3b\x0e\x6b\x00\x00\x5a\xc0\x14\xc0\x0a\x00\x39\x00\x38\x00\x88\x00\x87\xc0\x0f\xc0\x05\x00\x35\x00\x84\xc0\x12\xc0\x08\x00\x16\x00\x13\xc0\x0d\xc0\x03\x00\x0a\xc0\x13\xc0\x09\x00\x33\x00\x32\x00\x9a\x00\x99\x00\x45\x00\x44\xc0\x0e\xc0\x04\x00\x2f\x00\x96\x00\x41\xc0\x11\xc0\x07\xc0\x0c\xc0\x02\x00\x05\x00\x04\x00\x15\x00\x12\x00\x09\x00\x14\x00\x11\x00\x08\x00\x06\x00\x03\x00\xff\x02\x01\x00"
 
 let pstate = pstate_of_string (default_error_handling_function S_Fatal S_OK) "ClientHello_openssl" record_string;;
 
 try
-  let record = parse_record pstate in
+  let record = parse_record asn1_ehf pstate in
   Printf.printf "%s\n" (string_of_record record)
 with
   | ParsingError (err, sev, pstate) ->
@@ -22,7 +27,7 @@ let pstate = pstate_of_string (default_error_handling_function S_Fatal S_OK) "Se
 
 try
   while not (eos pstate) do
-    let record = parse_record pstate in
+    let record = parse_record asn1_ehf pstate in
     Printf.printf "%s\n" (string_of_record record)
   done
 with

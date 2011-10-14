@@ -246,5 +246,4 @@ try
   end
 with
   | ParsingError (err, sev, pstate) ->
-    output_string stderr ("Fatal (" ^ (string_of_severity sev) ^ "): " ^ 
-			     (string_of_perror err) ^ " in " ^ (string_of_pstate pstate) ^ "\n");;
+    output_string stderr ("Fatal (" ^ (string_of_exception err sev pstate) ^ "\n");;

@@ -17,6 +17,5 @@ try
   Printf.printf "%s" (string_of_object "" opts o)
 with
   | ParsingError (err, sev, pstate) ->
-    print_endline ("Fatal (" ^ (string_of_severity sev) ^ "): " ^ 
-		      (string_of_perror err) ^ " in " ^ (string_of_pstate pstate));;
+    print_endline ("Fatal (" ^ (string_of_exception err sev pstate));;
 

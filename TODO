@@ -1,4 +1,4 @@
-Add parser for dump format.
+Merge Tls and TlsParser files.
 Enrich TLS parser.
 Add parser for SSLv2.
 Rewrite map_language with ocamllex + menhir.

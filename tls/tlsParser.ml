@@ -10,6 +10,7 @@ module TlsEngineParams = struct
     | UnexpectedAlertLevel of int
     | UnexpectedAlertType of int
     | UnexpectedHandshakeMsgType of int
+    | ASN1ParsingError of Asn1.Engine.parsing_error
     | NotImplemented of string
 
   let out_of_bounds_error s = OutOfBounds s
@@ -23,6 +24,7 @@ module TlsEngineParams = struct
     | UnexpectedAlertLevel x -> "Unknown alert level " ^ (string_of_int x)
     | UnexpectedAlertType x -> "Unknown alert type " ^ (string_of_int x)
     | UnexpectedHandshakeMsgType x -> "Unknown handshake message type " ^ (string_of_int x)
+    | ASN1ParsingError e -> "ASN1 parsing error (" ^ (Asn1.Engine. string_of_perror e) ^ ")"
     | NotImplemented s -> "Not implemented (" ^ s ^  ")"
 
   type severity =
@@ -52,27 +54,6 @@ open Engine;;
 
 
 (* Trivial parsing functions *)
-
-let extract_uint24 pstate =
-  let res = pop_bytes pstate 3 in
-  (res.(0) lsl 16) lor (res.(1) lsl 8) lor res.(2)
-
-let extract_uint16 pstate =
-  let res = pop_bytes pstate 2 in
-  (res.(0) lsl 8) lor res.(1)
-
-let extract_string name len pstate =
-  go_down pstate name len;
-  let res = pop_string pstate in
-  go_up pstate;
-  res
-
-let extract_variable_length_string name length_fun pstate =
-  let len = length_fun pstate in
-  go_down pstate name len;
-  let res = pop_string pstate in
-  go_up pstate;
-  res
 
 let extract_list name length_fun extract_fun pstate =
   let rec aux () =
@@ -217,11 +198,8 @@ let parse_server_hello pstate =
 
 let asn1_opts = { Asn1.type_repr = Asn1.NoType; Asn1.data_repr = Asn1.NoData;
 		  Asn1.resolver = None; Asn1.indent_output = false }
-let asn1_ehf = (Asn1.Engine.default_error_handling_function
-		  Asn1.Asn1EngineParams.S_SpecFatallyViolated
-		  Asn1.Asn1EngineParams.S_SpecFatallyViolated)
 
-let parse_one_certificate pstate =
+let parse_one_certificate asn1_ehf pstate =
   let s = extract_variable_length_string "Certificate" extract_uint24 pstate in
   try
     let asn1_pstate = Asn1.Engine.pstate_of_string asn1_ehf (string_of_pstate pstate) s in
@@ -232,11 +210,11 @@ let parse_one_certificate pstate =
       (* TODO: Handle things better? *)
       e -> raise e
 
-let parse_certificates pstate =
-  Certificate (extract_list "Certificates" extract_uint24 parse_one_certificate pstate)
+let parse_certificates asn1_ehf pstate =
+  Certificate (extract_list "Certificates" extract_uint24 (parse_one_certificate asn1_ehf) pstate)
   
 
-let parse_handshake pstate =
+let parse_handshake asn1_ehf pstate =
   let (htype, len) = extract_handshake_header pstate in
   go_down pstate (string_of_handshake_msg_type htype) len;
   let content = match htype with
@@ -245,7 +223,7 @@ let parse_handshake pstate =
       HelloRequest
     | H_ClientHello -> parse_client_hello pstate
     | H_ServerHello -> parse_server_hello pstate
-    | H_Certificate -> parse_certificates pstate
+    | H_Certificate -> parse_certificates asn1_ehf pstate
     | H_ServerKeyExchange
     | H_CertificateRequest -> UnparsedHandshakeMsg (htype, pop_string pstate)
     | H_ServerHelloDone ->
@@ -279,13 +257,13 @@ let extract_record_header pstate =
   (ctype, {major = maj; minor = min}, len)
 
 
-let parse_record pstate =
+let parse_record asn1_ehf pstate =
   let (ctype, version, len) = extract_record_header pstate in
   go_down pstate (string_of_content_type ctype) len;
   let content = match ctype with
     | CT_ChangeCipherSpec -> parse_change_cipher_spec pstate
     | CT_Alert -> parse_alert pstate
-    | CT_Handshake -> parse_handshake pstate
+    | CT_Handshake -> parse_handshake asn1_ehf pstate
     | CT_ApplicationData
     | CT_Unknown _ -> UnparsedRecord (ctype, pop_string pstate)
   in

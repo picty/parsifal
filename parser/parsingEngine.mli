@@ -27,12 +27,16 @@ module ParsingEngine :
       val emit : parsing_error -> severity -> parsing_state -> unit
       exception ParsingError of parsing_error * severity * parsing_state
       val string_of_pstate : parsing_state -> string
+      val string_of_exception : parsing_error -> severity -> parsing_state -> string
       val eos : parsing_state -> bool
+
       val peek_byte : parsing_state -> int -> int
+
       val pop_byte : parsing_state -> int
       val pop_string : parsing_state -> string
       val pop_list : parsing_state -> int list
       val pop_bytes : parsing_state -> int -> int array
+
       val default_error_handling_function :
         Params.severity -> Params.severity -> error_handling_function
       val pstate_of_string :
@@ -41,4 +45,10 @@ module ParsingEngine :
         error_handling_function -> string -> in_channel -> parsing_state
       val go_down : parsing_state -> string -> int -> unit
       val go_up : parsing_state -> unit
+
+      val extract_uint32 : parsing_state -> int
+      val extract_uint24 : parsing_state -> int
+      val extract_uint16 : parsing_state -> int
+      val extract_string : string -> int -> parsing_state -> string
+      val extract_variable_length_string : string -> (parsing_state -> int) -> parsing_state -> string
     end

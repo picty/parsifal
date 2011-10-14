@@ -80,6 +80,7 @@ module ParsingEngine =
 	  with Failure "nth" -> raise (ParsingError (out_of_bounds_error "peek_bytes", fatal_severity, pstate))
 
 
+
     let _pop_bytes pstate n assign =
       try
 	for i = 0 to (n - 1) do
@@ -118,13 +119,14 @@ module ParsingEngine =
 	  Array.to_list (res)
 
 
+    let string_of_exception err sev pstate =
+      (string_of_severity sev) ^ "): " ^ (string_of_perror err) ^ " in " ^ (string_of_pstate pstate)
+
     let default_error_handling_function tolerance minDisplay err sev pstate =
       if compare_severity sev tolerance >= 0
       then raise (ParsingError (err, sev, pstate))
       else if compare_severity minDisplay sev <= 0
-      then
-	output_string stderr ("Warning (" ^ (string_of_severity sev) ^ "): " ^ 
-				 (string_of_perror err) ^ " in " ^ (string_of_pstate pstate) ^ "\n")
+      then output_string stderr ("Warning (" ^ (string_of_exception err sev pstate) ^ "\n")
 
     let pstate_of_string ehfun orig contents =
       {ehf = ehfun; origin = orig; str = Stream.of_string contents;
@@ -153,4 +155,30 @@ module ParsingEngine =
 	  pstate.lengths <- lens;
 	  pstate.position <- names	  
 	| _ -> raise (ParsingError (out_of_bounds_error "go_up", fatal_severity, pstate))
+
+
+    let extract_uint32 pstate =
+      let res = pop_bytes pstate 4 in
+      (res.(0) lsl 24) lor (res.(1) lsl 16) lor (res.(2) lsl 8) lor res.(3)
+
+    let extract_uint24 pstate =
+      let res = pop_bytes pstate 3 in
+      (res.(0) lsl 16) lor (res.(1) lsl 8) lor res.(2)
+
+    let extract_uint16 pstate =
+      let res = pop_bytes pstate 2 in
+      (res.(0) lsl 8) lor res.(1)
+
+    let extract_string name len pstate =
+      go_down pstate name len;
+      let res = pop_string pstate in
+      go_up pstate;
+      res
+
+    let extract_variable_length_string name length_fun pstate =
+      let len = length_fun pstate in
+      go_down pstate name len;
+      let res = pop_string pstate in
+      go_up pstate;
+      res
   end
