@@ -29,7 +29,8 @@ type 'a sequence_constraint = {
 let common_constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state)
     : (parsing_error, 'a) alternative =
 
-  let aux name f =
+  let aux to_discard name f =
+    ignore (pop_bytes pstate to_discard);
     extract_length pstate name;
     let content = f pstate in
     if not (eos pstate) then begin
@@ -41,9 +42,10 @@ let common_constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state
   in
 
   if eos pstate then Left (TooFewObjects None) else begin
-    let (c, isC, t) = extract_header pstate in
+    let (c, isC, t), to_discard = extract_header_rewindable pstate in
     match cons with
       | Anything postprocess ->
+	ignore (pop_bytes pstate to_discard);
 	extract_length pstate (string_of_header_pretty c isC t);
 	let content = (choose_parse_fun pstate c isC t) pstate in
 	let res = mk_object c t (string_of_header_pretty c isC t) content in
@@ -55,14 +57,14 @@ let common_constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state
 	Right (postprocess res)
 
       | Simple_cons (c', isC', t', name, f) when c = c' && isC = isC' && t = t' ->
-	aux name f
+	aux to_discard name f
       | Simple_cons (c', isC', t', _, _) ->    
 	Left (UnexpectedHeader ((c, isC, t), Some (c', isC', t')))
 
       | Complex_cons get_f ->
 	match get_f c isC t with
 	  | None -> Left (UnexpectedHeader ((c, isC, t), None))
-	  | Some (name, f) -> aux name f
+	  | Some (name, f) -> aux to_discard name f
   end
 
 

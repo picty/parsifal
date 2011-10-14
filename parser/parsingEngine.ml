@@ -70,6 +70,15 @@ module ParsingEngine =
       with
 	  Stream.Failure -> raise (ParsingError (out_of_bounds_error "pop_byte", fatal_severity, pstate))
 
+    let peek_byte pstate n =
+      match pstate.len with
+	| Length l when l < n -> raise (ParsingError (out_of_bounds_error "peek_bytes", fatal_severity, pstate))
+	| _ ->
+	  let tmp = Stream.npeek (n+1) pstate.str in
+	  try
+	    int_of_char (List.nth tmp n)
+	  with Failure "nth" -> raise (ParsingError (out_of_bounds_error "peek_bytes", fatal_severity, pstate))
+
 
     let _pop_bytes pstate n assign =
       try
@@ -110,7 +119,7 @@ module ParsingEngine =
 
 
     let default_error_handling_function tolerance minDisplay err sev pstate =
-      if compare_severity sev tolerance < 0
+      if compare_severity sev tolerance >= 0
       then raise (ParsingError (err, sev, pstate))
       else if compare_severity minDisplay sev <= 0
       then

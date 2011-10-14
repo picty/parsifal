@@ -28,6 +28,7 @@ module ParsingEngine :
       exception ParsingError of parsing_error * severity * parsing_state
       val string_of_pstate : parsing_state -> string
       val eos : parsing_state -> bool
+      val peek_byte : parsing_state -> int -> int
       val pop_byte : parsing_state -> int
       val pop_string : parsing_state -> string
       val pop_list : parsing_state -> int list

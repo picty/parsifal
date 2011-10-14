@@ -242,9 +242,9 @@ let extract_isConstructed (x : int) : bool =
 let extract_shorttype (x : int) : int =
   x land 31
 
-let extract_longtype pstate : int =
+(* This function should use peek_byte and consider one byte has already been read *)
+let extract_longtype pstate : int  =
   raise (ParsingError (NotImplemented "Long type", S_Fatal, pstate))
-
 
 let extract_header pstate : (asn1_class * bool * int) =
   let hdr = pop_byte pstate in
@@ -254,6 +254,23 @@ let extract_header pstate : (asn1_class * bool * int) =
   if (t < 0x1f)
   then (c, isC, t)
   else (c, isC, extract_longtype pstate)
+
+
+(* This function should use peek_byte and consider one byte has already been read *)
+let extract_longtype_rewindable pstate : int * int  =
+  raise (ParsingError (NotImplemented "Long type", S_Fatal, pstate))
+
+let extract_header_rewindable pstate : ((asn1_class * bool * int) * int) =
+  let hdr = peek_byte pstate 0 in
+  let c = extract_class hdr in
+  let isC = extract_isConstructed hdr in
+  let t = extract_shorttype hdr in
+  if (t < 0x1f)
+  then ((c, isC, t), 1)
+  else
+    let (ltype, bytesToDiscard) = extract_longtype_rewindable pstate in
+    (c, isC, ltype), bytesToDiscard
+
 
 let extract_length pstate name =
   let first = pop_byte pstate in

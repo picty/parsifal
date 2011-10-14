@@ -276,12 +276,15 @@ let parse_tbs_certificate dir pstate =
   let validity = constrained_parse_def validity_constraint S_SpecFatallyViolated empty_validity pstate in
   let subject = constrained_parse_def (dn_constraint dir "Subject") S_SpecFatallyViolated [] pstate in
   let pk_info = constrained_parse_def (public_key_info_constraint dir) S_SpecFatallyViolated empty_public_key_info pstate in
-  (*  let issuer_unique_id =
+
+  let issuer_unique_id =
       constrained_parse_opt (Simple_cons (C_ContextSpecific, false, 1, "Issuer Unique Identifer",
-      raw_der_to_bitstring 54)) S_OK pstate in
-      let subject_unique_id =
-      constrained_parse_opt (Simple_cons (C_ContextSpecific, false, 2, "Subject Unique Identifer",
-      raw_der_to_bitstring 54)) S_OK pstate in*)
+					  raw_der_to_bitstring 54)) S_OK pstate in
+
+  let subject_unique_id =
+    constrained_parse_opt (Simple_cons (C_ContextSpecific, false, 2, "Subject Unique Identifer",
+					raw_der_to_bitstring 54)) S_OK pstate in
+
 
   (* TODO *)
   let extensions =
@@ -296,12 +299,12 @@ let parse_tbs_certificate dir pstate =
     | Some x -> x
   in
 
-  (*  begin
-      match effective_version, issuer_unique_id, subject_unique_id with
+  begin
+    match effective_version, issuer_unique_id, subject_unique_id with
       | _, None, None -> ()
       | v, _, _ ->
-      if v < 2 then emit (UnexpectedObject "unique id") S_SpecLightlyViolated pstate
-      end;*)
+	if v < 2 then emit (UnexpectedObject "unique id") S_SpecLightlyViolated pstate
+  end;
 
   begin
     match effective_version, extensions with
@@ -314,8 +317,8 @@ let parse_tbs_certificate dir pstate =
 
   { version = version; serial = serial; sig_algo = sig_algo;
     issuer = issuer; validity = validity; subject = subject;
-    pk_info = pk_info; issuer_unique_id = None (*issuer_unique_id*);
-    subject_unique_id = None (*subject_unique_id*); extensions = extensions }
+    pk_info = pk_info; issuer_unique_id = issuer_unique_id;
+    subject_unique_id = subject_unique_id; extensions = extensions }
 
 let tbs_certificate_constraint dir : tbs_certificate asn1_constraint =
   Simple_cons (C_Universal, true, 16, "tbsCertificate", parse_tbs_certificate dir)
