@@ -72,6 +72,7 @@ and asn1_content =
   | Constructed of asn1_object list
   | Unknown of string
 
+let mk_object c t name content = {a_class = c; a_tag = t; a_content = content; a_name = name}
 
 
 (*****************************)
@@ -152,6 +153,8 @@ module Asn1EngineParams = struct
     | WrongNumberOfObjects of int * int
     | TooManyObjects of (int * int) option
     | TooFewObjects of (int * int) option
+    | UnexpectedJunk
+    | UnexpectedObject of string
 
   let out_of_bounds_error s = OutOfBounds s
 
@@ -183,6 +186,8 @@ module Asn1EngineParams = struct
       "Too few objects (" ^ (string_of_int n) ^ " read; at least " ^
 	(string_of_int exp_n) ^ " expected)"
     | TooFewObjects None -> "Too few objects in sequence"
+    | UnexpectedJunk -> "Unexpected junk"
+    | UnexpectedObject s -> "Unexpected object " ^ s
 
   type severity =
     | S_OK
@@ -267,17 +272,19 @@ type parse_function = parsing_state -> asn1_content
 
 (* Boolean *)
 
-let der_to_boolean pstate =
+let raw_der_to_boolean pstate =
   let value = pop_list pstate in
   match value with
     | [] ->
       emit (IncorrectLength "boolean") S_IdempotenceBreaker pstate;
-      Boolean false
-    | [0] -> Boolean false
-    | [255] -> Boolean true
+      false
+    | [0] -> false
+    | [255] -> true
     | v::_ ->
       emit (NotInNormalForm "boolean") S_IdempotenceBreaker pstate;
-      Boolean (v <> 0)
+      (v <> 0)
+
+let der_to_boolean pstate = Boolean (raw_der_to_boolean pstate)
 
 
 (* Integer *)
@@ -289,7 +296,8 @@ let bigint_of_intlist l =
     | d::r -> aux (Big_int.add_int_big_int d (Big_int.mult_int_big_int 256 accu)) r
   in aux Big_int.zero_big_int l
 
-let der_to_int pstate =
+
+let raw_der_to_int pstate =
   let l = pop_list pstate in
   let negative = match l with
     | [] ->
@@ -305,14 +313,21 @@ let der_to_int pstate =
   in
   if negative
   then raise (ParsingError (NotImplemented "Negative integer", S_Fatal, pstate))
-  else Integer (bigint_of_intlist l)
+  else bigint_of_intlist l
+
+let der_to_int pstate = Integer (raw_der_to_int pstate)
+
 
 (* Null *)
 
-let der_to_null pstate =
+let raw_der_to_null pstate =
   if not (eos pstate)
-  then emit (IncorrectLength "null") S_IdempotenceBreaker pstate;
+  then emit (IncorrectLength "null") S_IdempotenceBreaker pstate
+
+let der_to_null pstate =
+  raw_der_to_null pstate;
   Null
+
 
 
 (* OId *)
@@ -326,7 +341,7 @@ let der_to_subid pstate : int =
     else new_accu
   in aux 0
 
-let der_to_oid pstate =
+let raw_der_to_oid pstate =
   let rec aux () =
     if eos pstate
     then []
@@ -339,12 +354,14 @@ let der_to_oid pstate =
 	[]
     end
   in
-  OId (aux ())
+  aux ()
+
+let der_to_oid pstate = OId (raw_der_to_oid pstate)
 
 
 (* Bit String *)
 
-let der_to_bitstring _type pstate =
+let raw_der_to_bitstring _type pstate =
   let nBits =
     if eos pstate then begin
       emit (IncorrectLength "null") S_IdempotenceBreaker pstate;
@@ -353,6 +370,10 @@ let der_to_bitstring _type pstate =
   in
   let content = pop_string pstate in
   (* TODO: Checks on nBits and on the final zeros *)
+  (nBits, content)
+
+let der_to_bitstring _type pstate =
+  let nBits, content = raw_der_to_bitstring _type pstate in
   BitString (nBits, content)
 
 
@@ -360,8 +381,8 @@ let der_to_bitstring _type pstate =
 
 (* TODO: Add constraints *)
 (* In particular, wether the octetstring is binary or not *)
-let der_to_octetstring _constraints pstate =
-  String (pop_string pstate, true)
+let der_to_octetstring binary pstate =
+  String (pop_string pstate, binary)
 
 let der_to_unknown pstate =
   Unknown (pop_string pstate)
@@ -393,7 +414,8 @@ and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_func
 	  
 	| (T_BitString, false) -> der_to_bitstring None
 	  
-	| ( T_OctetString, false)
+	| ( T_OctetString, false) -> der_to_octetstring true
+
 	| ( T_UTF8String, false)
 	| ( T_NumericString, false)
 	| ( T_PrintableString, false)
@@ -407,7 +429,7 @@ and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_func
 	| ( T_GeneralString, false)
 	| ( T_UniversalString, false)
 	| ( T_UnspecifiedCharacterString, false)
-	| ( T_BMPString, false) -> der_to_octetstring None
+	| ( T_BMPString, false) -> der_to_octetstring false
 	  
 	| (T_Sequence, true)
 	| (T_Set, true) -> der_to_constructed
@@ -432,6 +454,10 @@ and parse pstate : asn1_object =
   extract_length pstate (string_of_header_pretty c isC t);
   let parse_fun = choose_parse_fun pstate c isC t in
   let res = {a_class = c; a_tag = t; a_content = parse_fun pstate; a_name = ""} in
+  if not (eos pstate) then begin
+    emit UnexpectedJunk S_IdempotenceBreaker pstate;
+    ignore (pop_string pstate)
+  end;
   go_up pstate;
   res
 
@@ -477,7 +503,7 @@ let isConstructed o = match o.a_content with
 
 
 let string_of_bitstring raw nBits s =
-  if raw && nBits == 0
+  if raw || nBits <> 0
   then "[" ^ (string_of_int nBits) ^ "]:" ^ (Common.hexdump s)
   else Common.hexdump s
 
@@ -497,7 +523,6 @@ let string_of_oid diropt oid = match diropt with
 
 
 let rec string_of_object indent popts o =
-
   let type_string = match popts.type_repr with
     | NoType -> []
     | RawType -> [string_of_header_raw o.a_class (isConstructed o) o.a_tag]
@@ -515,8 +540,7 @@ let rec string_of_object indent popts o =
     | _, Boolean true -> ["true"]
     | _, Boolean false -> ["false"]
 
-    (* TODO: I would like it to be in hexa *)
-    | _, Integer i -> [Big_int.string_of_big_int i]
+    | _, Integer i -> [Common.hexdump_bigint i]
 
     | _, BitString (nBits, s) -> [string_of_bitstring (popts.data_repr = RawData) nBits s]
     | _, OId oid -> [string_of_oid popts.resolver oid]

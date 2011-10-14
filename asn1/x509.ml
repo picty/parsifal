@@ -14,37 +14,36 @@ type preparse_function = parsing_state -> parsing_state
 type predump_function = parsing_state -> parsing_state
 
 let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
-let (object_directory : ((oid_type * int list), (asn1_constraint * severity)) Hashtbl.t) = Hashtbl.create 50
+let (object_directory : ((oid_type * int list),
+			 (asn1_object asn1_constraint * severity)) Hashtbl.t) = Hashtbl.create 50
 let (initial_directory : (int list, string) Hashtbl.t) = Hashtbl.create 50
-let (pubkey_directory : (int list, asn1_constraint) Hashtbl.t) = Hashtbl.create 10
-let (signature_directory : (int list, (asn1_constraint * preparse_function * predump_function)) Hashtbl.t) = Hashtbl.create 10
+let (pubkey_directory : (int list, asn1_object asn1_constraint) Hashtbl.t) = Hashtbl.create 10
+let (signature_directory : (int list, (asn1_object asn1_constraint *
+					 preparse_function * predump_function)) Hashtbl.t) = Hashtbl.create 10
+
+
+(* Generic code about objects (OId + ASN1_Object depending on the OId) *)
 
 type oid_object = {
   oo_id : int list;
   oo_content : asn1_object option
 }
 
+let empty_oid_object = { oo_id = []; oo_content = None }
 
-let rec parse_object dir oid_sev pstate =
-  let oid = match common_constrained_parse oid_cons pstate with
-    | Left err ->
-      emit (TooFewObjects None) oid_sev pstate;
-      []
-    | Right { a_content = OId l } -> l
-    | Right _ ->
-      emit InternalMayhem S_Fatal pstate;
-      []
-  in
-  let content_cons, content_sev = if Hashtbl.mem dir oid
-    then Hashtbl.find dir oid
-    else Anything, S_Benign
+
+let parse_oid_object dir oid_type oid_sev pstate =
+  let oid = constrained_parse_def oid_cons oid_sev [] pstate in
+  let content_cons, content_sev = if Hashtbl.mem dir (oid_type, oid)
+    then Hashtbl.find dir (oid_type, oid)
+    else (Anything Common.identity), S_Benign
   in
   let content = match common_constrained_parse content_cons pstate with
     | Left (TooFewObjects _) -> None
     | Left err ->
       emit err content_sev pstate;
       (* We try to get anything is the severity was not too much *)
-      constrained_parse_opt Anything pstate
+      constrained_parse_opt (Anything Common.identity) S_OK pstate
     | Right o -> Some o
   in
   if not (eos pstate)
@@ -52,283 +51,340 @@ let rec parse_object dir oid_sev pstate =
   { oo_id = oid; oo_content = content }
 
 
-(*
-(* Distinguished Names *)
+let object_constraint dir oid_type oid_sev name =
+  Simple_cons (C_Universal, true, 16, name, parse_oid_object dir oid_type oid_sev)
+
+
+let string_of_oid_object indent resolver o =
+  let oid_string = indent ^ (string_of_oid resolver o.oo_id) ^ "\n" in
+  begin
+    match o.oo_content with
+      | None
+      | Some {a_content = Null} -> oid_string
+      | Some p ->
+	(* TODO *)
+	let opts = { type_repr = PrettyType; data_repr = PrettyData;
+		     resolver = resolver; indent_output = true } in
+	let new_indent = indent ^ "  " in
+	oid_string ^ "Parameters:\n" ^ (string_of_object new_indent opts p)
+  end
+
+
+(* Version *)
+
+let extract_version l =
+  try
+    match l with
+      | [big_v] -> (Big_int.int_of_big_int big_v) + 1
+      | _ -> 0
+  with
+      Failure "int_of_big_int" -> 0
+
+let version_constraint : int asn1_constraint =
+  Simple_cons (C_ContextSpecific, true, 0, "Version",
+	       parse_sequenceof extract_version int_cons (Exactly (1, S_SpecFatallyViolated)))
 
 
 
+
+(* Serial *)
+let serial_constraint = int_cons
+
+
+(* Signature algo *)
+
+let sigalgo_constraint dir : oid_object asn1_constraint =
+  object_constraint dir SigAlgo S_SpecFatallyViolated "Signature Algorithm"
+
+
+(* Distinguished names *)
+
+type atv = oid_object
 type rdn = atv list
 type dn = rdn list
 
+let atv_constraint dir : atv asn1_constraint =
+  object_constraint dir ATV S_SpecFatallyViolated "ATV"
+let rdn_constraint dir : rdn asn1_constraint =
+  setOf_cons Common.identity "Relative DN" (atv_constraint dir) (AtLeast (1, S_SpecFatallyViolated))
+let dn_constraint dir name : dn asn1_constraint =
+  seqOf_cons Common.identity name (rdn_constraint dir) AlwaysOK
 
-let extract_string = function
-  | (Asn1.C_Universal, t, Asn1.String s) ->
-    if t == 12 || (t >= 18 && t <= 22) || (t >= 25 || t <= 30)
-    then s
-    else failwith "The value should be string"
-  | _ -> failwith "String parameter expected"
+let string_of_atv indent resolver atv =
+  let atv_opts = { type_repr = NoType; data_repr = PrettyData;
+		   resolver = resolver; indent_output = false } in
+  indent ^ (string_of_oid resolver atv.oo_id) ^
+    (match atv.oo_content with
+      | None -> ""
+      | Some o ->
+	 ": " ^ (string_of_object "" atv_opts o)
+    ) ^ "\n"
 
-let atv_map =
-  [ (country_oid, fun o -> Country (extract_string o));
-    (locality_oid, fun o -> Locality (extract_string o));
-    (state_oid, fun o -> State (extract_string o));
-    (organization_oid, fun o -> Organization (extract_string o));
-    (organizationalUnit_oid, fun o -> OrganizationalUnit (extract_string o));
-    (commonName_oid, fun o -> CommonName (extract_string o));
-    (email_oid, fun o -> Email (extract_string o)) ]
+let string_of_rdn indent resolver rdn =
+  String.concat "" (List.map (string_of_atv indent resolver) rdn)
 
-let extract_atv objList =
-  let oid, arg = match objList with
-    | [(Asn1.C_Universal, 6, Asn1.OId oid); o] -> oid, o
-    | _ -> failwith "Invalid algorithm identifier"
+let string_of_dn indent resolver dn =
+  String.concat "" (List.map (string_of_rdn indent resolver) dn)
+
+
+(* Time and validity *)
+
+type datetime_content = {
+  year : int; month : int; day : int;
+  hour : int; minute : int; second : int
+}
+
+type datetime =
+  | InvalidDateTime
+  | DateTime of datetime_content
+
+
+let pop_datetime four_digit_year pstate =
+  let s = pop_string pstate in
+
+  let year_of_string () =
+    if four_digit_year
+    then Common.pop_int s 0 4
+    else begin
+      match Common.pop_int s 0 2 with
+	| None -> None
+	| Some x -> Some ((if x < 50 then 2000 else 1900) + x)
+    end
   in
-  try
-    (List.assoc oid atv_map) arg
-  with
-      Not_found -> OtherATV (oid, arg)
+
+  let year_len = if four_digit_year then 4 else 2 in
+  let expected_len = year_len + 8 in
+  let n = String.length s in
+  if n < expected_len then InvalidDateTime else begin
+    let year = year_of_string () in
+    let month = Common.pop_int s year_len 2 in
+    let day = Common.pop_int s (2 + year_len) 2 in
+    let hour = Common.pop_int s (4 + year_len) 2 in
+    let minute = Common.pop_int s (6 + year_len) 2 in
+    match year, month, day, hour, minute with
+      | Some y, Some m, Some d, Some hh, Some mm ->
+	let ss = if (n < expected_len + 2)
+	  then 0
+	  else begin 
+	    match (Common.pop_int s (8 + year_len) 2) with
+	      | None -> 0
+	      | Some seconds -> seconds
+	  end
+	in DateTime { year = y; month = m; day = d;
+		      hour = hh; minute = mm; second = ss }
+      | _ -> InvalidDateTime
+  (* TODO: Handle trailing bytes? *)
+  end
+
+let datetime_constraint : datetime asn1_constraint =
+  let aux c isC t =
+    if c = C_Universal && not isC then begin
+      match t with
+	| 23 -> Some ("Time", pop_datetime false)
+	| 24 -> Some ("Time", pop_datetime true)
+	| _ -> None
+    end else None
+  in Complex_cons aux
 
 
-(* Extensions *)
+type validity = { not_before : datetime; not_after : datetime }
 
-type aki =
-  | AKI_KeyIdentifier of string
-  | AKI_Unknown
+let empty_validity = { not_before = InvalidDateTime; not_after = InvalidDateTime }
 
-type ext_content =
-  | BasicConstraints of (bool option * int option)
-  | SubjectKeyIdentifier of string
-  | AuthorityKeyIdentifier of aki (* Not fully compliant *)
-  | CRLDistributionPoint of string (* Only partial implementation *)
-  | AuthorityInfoAccess_OCSP of string (* Only OCSP is supported for now *)
-  | OtherExt of (int list * string)
-  | KeyUsage of (int * string)
-  | ExtKeyUsage of int list list
-let basicConstraints_oid = [85;29;19]
-let subjectKeyIdentifier_oid = [85;29;14]
-let authorityKeyIdentifier_oid = [85;29;35]
-let crlDistributionPoint_oid = [85;29;31]
-let authorityInfoAccess_oid = [43;6;1;5;5;7;1;1]
-let keyUsage_oid = [85;29;15]
-let extKeyUsage_oid = [85;29;37]
-let ocsp_oid = [43;6;1;5;5;7;48;1]
+let extract_validity = function
+  | [nb; na] -> { not_before = nb; not_after = na }
+  | _ -> { not_before = InvalidDateTime; not_after = InvalidDateTime }
 
-type ext = ext_content * bool option
-
-let mkBasicConstraints s =
-  let asn1struct = Asn1.exact_parse s in
-  let ca, rem = match asn1struct with
-    | (Asn1.C_Universal, 16, Asn1.Constructed 
-      ((Asn1.C_Universal, 1, Asn1.Boolean ca)::rem)) -> Some ca, rem
-    | (Asn1.C_Universal, 16, Asn1.Constructed rem) -> None, rem
-    | _ -> failwith "Invalid basic constraints"
-  in
-  let pathLenConstraint = match rem with
-    | [] -> None
-    | [(Asn1.C_Universal, 2, Asn1.Integer i)] -> Some (Big_int.int_of_big_int i)
-    | _ -> failwith "Invalid basic constraints"
-  in
-  BasicConstraints (ca, pathLenConstraint)
-
-let mkSKI s =
-  let asn1struct = Asn1.exact_parse s in
-  match asn1struct with
-    | (Asn1.C_Universal, 4, Asn1.String ki) -> SubjectKeyIdentifier ki
-    | _ -> failwith "Invalid subject key identifier"
-
-let mkAKI s =
-  let asn1struct = Asn1.exact_parse s in
-  match asn1struct with
-    | (Asn1.C_Universal, 16, Asn1.Constructed
-      [(Asn1.C_ContextSpecific, 0, Asn1.Unknown ki)]) -> AuthorityKeyIdentifier (AKI_KeyIdentifier ki)
-    | _ -> AuthorityKeyIdentifier (AKI_Unknown)
-
-let mkCRLDistributionPoint s =
-  let asn1struct = Asn1.exact_parse s in
-  match asn1struct with
-    | (Asn1.C_Universal, 16, Asn1.Constructed
-      [(Asn1.C_Universal, 16, Asn1.Constructed
-	[(Asn1.C_ContextSpecific, 0, Asn1.Constructed
-	  [(Asn1.C_ContextSpecific, 0, Asn1.Constructed
-	    [(Asn1.C_ContextSpecific, 6, Asn1.Unknown url)])])])]) -> CRLDistributionPoint url
-    | _ -> failwith "Invalid or unknown CRL distribution point"
-
-let mkAuthorityInfoAccess s =
-  let asn1struct = Asn1.exact_parse s in
-  match asn1struct with
-    | (Asn1.C_Universal, 16, Asn1.Constructed
-      [(Asn1.C_Universal, 16, Asn1.Constructed
-	[(Asn1.C_Universal, 6, Asn1.OId oid);
-	 (Asn1.C_ContextSpecific, 6, Asn1.Unknown url)])]) ->
-      if oid == ocsp_oid
-      then AuthorityInfoAccess_OCSP url
-      else failwith "Unknown authority info access extension"
-    | _ -> failwith "Invalid or unknown CRL authority info access extension"
-
-let mkKeyUsage s =
-  let asn1struct = Asn1.exact_parse s in
-  match asn1struct with
-    | (Asn1.C_Universal, 3, Asn1.BitString (n, s)) -> KeyUsage (n, s)
-    | _ -> failwith "Invalid key usage"
-
-let mkExtKeyUsage s =
-  let extractOid = function
-    | (Asn1.C_Universal, 6, Asn1.OId oid) -> oid
-    | __ -> failwith "OId expected"
-  in
-  let asn1struct = Asn1.exact_parse s in
-  match asn1struct with
-    | (Asn1.C_Universal, 16, Asn1.Constructed oidlist) ->
-      ExtKeyUsage (List.map extractOid oidlist)
-    | _ -> failwith "Invalid extended key usage"
+let validity_constraint : validity asn1_constraint =
+  seqOf_cons extract_validity "Validity" datetime_constraint (Exactly (2, S_SpecFatallyViolated))
 
 
-let extension_map =
-  [ (basicConstraints_oid, mkBasicConstraints);
-    (subjectKeyIdentifier_oid, mkSKI);
-    (authorityKeyIdentifier_oid, mkAKI);
-    (crlDistributionPoint_oid, mkCRLDistributionPoint);
-    (authorityInfoAccess_oid, mkAuthorityInfoAccess);
-    (keyUsage_oid, mkKeyUsage);
-    (extKeyUsage_oid, mkExtKeyUsage) ]
+let string_of_datetime = function
+  | InvalidDateTime -> "Invalid date/time"
+  | DateTime dt ->
+    Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d"
+      dt.year dt.month dt.day dt.hour dt.minute dt.second
 
-let extract_extension e = 
-  let oid, s, critical = match e with
-    | (Asn1.C_Universal, 16, Asn1.Constructed
-      [(Asn1.C_Universal, 6, Asn1.OId oid);
-       (Asn1.C_Universal, 4, Asn1.String s)])
-      -> (oid, s, None)
-    | (Asn1.C_Universal, 16, Asn1.Constructed
-      [(Asn1.C_Universal, 6, Asn1.OId oid);
-       (Asn1.C_Universal, 1, Asn1.Boolean b);
-       (Asn1.C_Universal, 4, Asn1.String s)])
-      -> (oid, s, Some b)
-    | _ -> failwith "Invalid extension"
-  in
-  try
-    ((List.assoc oid extension_map) s, critical)
-  with
-      Not_found -> (OtherExt (oid, s), critical)
+let string_of_validity indent _ v =
+  indent ^ "Not before: " ^ (string_of_datetime v.not_before) ^ "\n" ^
+  indent ^ "Not after: " ^ (string_of_datetime v.not_after) ^ "\n"
 
 
 
-(* type datetime = int * int * int * int * int * int *)
-(* TODO *)
-type datetime = string
-type validity = datetime * datetime
+(* Public key *)
 
-type rsa_pubkey_info = { n : Big_int.big_int; e : Big_int.big_int}
+type public_key =
+  | PK_WrongPKInfo
+  | PK_Unparsed of string
 
-type pubkey_info =
-  | PK_RSA of rsa_pubkey_info
-  | PK_Other of (algoId * string)
+type public_key_info = {
+  pk_algo : oid_object;
+  public_key : public_key;
+}
+
+let empty_public_key_info = { pk_algo = empty_oid_object; public_key = PK_WrongPKInfo }
+
+let extract_public_key_info = function
+  | Some algo, Some (0, pk) -> { pk_algo = algo; public_key = PK_Unparsed pk }
+  | Some algo, _ -> { pk_algo = algo; public_key = PK_WrongPKInfo }
+  | _ -> empty_public_key_info
+
+let pubkeyalgo_constraint dir : oid_object asn1_constraint =
+  object_constraint dir PubKeyAlgo S_SpecFatallyViolated "Public Key Algorithm"
+
+let public_key_info_constraint dir : public_key_info asn1_constraint =
+  custom_pair_cons C_Universal 16 "Public Key Info" extract_public_key_info
+    (pubkeyalgo_constraint dir) bitstring_cons S_SpecFatallyViolated
 
 
-type tbsCertificate = {
+let string_of_public_key_info indent resolver pki =
+  let new_indent = indent ^ "  " in
+  indent ^ "Public key algorithm:\n" ^ (string_of_oid_object new_indent resolver pki.pk_algo) ^
+    (match pki.public_key with
+      | PK_WrongPKInfo -> "Wrong PK Info\n"
+      | PK_Unparsed s -> Common.hexdump (s) ^ "\n")
+
+
+
+(* TBS Certificate *)
+
+type tbs_certificate = {
   version : int option;
   serial : Big_int.big_int;
-  sig_algo : algoId;
+  sig_algo : oid_object;
   issuer : dn;
   validity : validity;
   subject : dn;
-  pkinfo : pubkey_info;
-  issuerUniqueId : string option;
-  subjectUniqueId : string option;
-  extensions : ext list
+  pk_info : public_key_info;
+  issuer_unique_id : (int * string) option;
+  subject_unique_id : (int * string) option;
+  (* TODO *)
+  extensions : asn1_object option
 }
+
+let empty_tbs_certificate =
+  { version = None; serial = Big_int.zero_big_int; sig_algo = empty_oid_object;
+    issuer = []; validity = empty_validity; subject = [];
+    pk_info = empty_public_key_info; issuer_unique_id = None;
+    subject_unique_id = None; extensions = None }
+
+let parse_tbs_certificate dir pstate =
+  let version = constrained_parse_opt version_constraint S_OK pstate in
+  let serial = constrained_parse_def serial_constraint S_SpecFatallyViolated Big_int.zero_big_int pstate in
+  let sig_algo = constrained_parse_def (sigalgo_constraint dir) S_SpecFatallyViolated empty_oid_object pstate in
+  let issuer = constrained_parse_def (dn_constraint dir "Issuer") S_SpecFatallyViolated [] pstate in
+  let validity = constrained_parse_def validity_constraint S_SpecFatallyViolated empty_validity pstate in
+  let subject = constrained_parse_def (dn_constraint dir "Subject") S_SpecFatallyViolated [] pstate in
+  let pk_info = constrained_parse_def (public_key_info_constraint dir) S_SpecFatallyViolated empty_public_key_info pstate in
+  (*  let issuer_unique_id =
+      constrained_parse_opt (Simple_cons (C_ContextSpecific, false, 1, "Issuer Unique Identifer",
+      raw_der_to_bitstring 54)) S_OK pstate in
+      let subject_unique_id =
+      constrained_parse_opt (Simple_cons (C_ContextSpecific, false, 2, "Subject Unique Identifer",
+      raw_der_to_bitstring 54)) S_OK pstate in*)
+
+  (* TODO *)
+  let extensions =
+    constrained_parse_opt (Simple_cons (C_ContextSpecific, true, 3, "Extensions container",
+					parse_sequenceof List.hd (Anything Common.identity)
+					  (Exactly (1, S_SpecLightlyViolated))))
+      S_OK pstate in
+
+
+  let effective_version = match version with
+    | None -> 1
+    | Some x -> x
+  in
+
+  (*  begin
+      match effective_version, issuer_unique_id, subject_unique_id with
+      | _, None, None -> ()
+      | v, _, _ ->
+      if v < 2 then emit (UnexpectedObject "unique id") S_SpecLightlyViolated pstate
+      end;*)
+
+  begin
+    match effective_version, extensions with
+      | _, None -> ()
+      | v, _ ->
+	if v < 3 then emit (UnexpectedObject "extension") S_SpecLightlyViolated pstate
+  end;
+
+  if not (eos pstate) then emit (TooManyObjects None) S_SpecLightlyViolated pstate;
+
+  { version = version; serial = serial; sig_algo = sig_algo;
+    issuer = issuer; validity = validity; subject = subject;
+    pk_info = pk_info; issuer_unique_id = None (*issuer_unique_id*);
+    subject_unique_id = None (*subject_unique_id*); extensions = extensions }
+
+let tbs_certificate_constraint dir : tbs_certificate asn1_constraint =
+  Simple_cons (C_Universal, true, 16, "tbsCertificate", parse_tbs_certificate dir)
+
+
+let string_of_tbs_certificate indent resolver tbs =
+  let new_indent = indent ^ "  " in
+  (match tbs.version with
+    | None -> ""
+    | Some i -> indent ^ "Version: " ^ (string_of_int i) ^ "\n") ^ 
+    indent ^ "Serial: " ^ (Common.hexdump_bigint tbs.serial) ^ "\n" ^
+    indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent resolver tbs.sig_algo) ^
+    indent ^ "Issuer:\n" ^ (string_of_dn new_indent resolver tbs.issuer) ^
+    indent ^ "Validity:\n" ^ (string_of_validity new_indent resolver tbs.validity) ^
+    indent ^ "Subject:\n" ^ (string_of_dn new_indent resolver tbs.subject) ^
+    indent ^ "Public Key Info:\n" ^ (string_of_public_key_info new_indent resolver tbs.pk_info) ^
+    (match tbs.issuer_unique_id with
+      | None -> ""
+      | Some (nb, s) ->
+	indent ^ "Issuer Unique Identifier:" ^ indent ^ (string_of_bitstring false nb s) ^ "\n") ^
+    (match tbs.subject_unique_id with
+      | None -> ""
+      | Some (nb, s) ->
+  	indent ^ "Subject Unique Identifier:" ^ indent ^ (string_of_bitstring false nb s) ^ "\n") ^
+    (match tbs.extensions with
+      | None -> ""
+      | Some e ->
+	(* TODO *)
+	let opts = { type_repr = PrettyType; data_repr = PrettyData;
+		     resolver = resolver; indent_output = true } in
+	indent ^ "Extensions:\n" ^ (string_of_object new_indent opts e))
+
+
+(* Certificate *)
+ 
 type certificate = {
-  tbs : tbsCertificate;
-  cert_sig_algo : algoId;
-  signature : Big_int.big_int
+  tbs : tbs_certificate;
+  cert_sig_algo : oid_object;
+  signature : (int * string)
 }
 
 
-let extract_rdn r =
-  match r with
-    | (Asn1.C_Universal, 17, Asn1.Constructed [Asn1.C_Universal, 16, Asn1.Constructed a]) -> [extract_atv a]
-    | (Asn1.C_Universal, 17, Asn1.Constructed _) -> failwith "RDN must contain exactly one ATV"
-    | _ -> failwith "Invalid RDN"
+let parse_certificate dir pstate =
+  let tbs = constrained_parse_def (tbs_certificate_constraint dir) S_SpecFatallyViolated empty_tbs_certificate pstate in
+  let sig_algo = constrained_parse_def (sigalgo_constraint dir) S_SpecFatallyViolated empty_oid_object pstate in
+  let signature = constrained_parse_def (Simple_cons (C_Universal, false, 3, "Signature",
+					raw_der_to_bitstring 54)) S_OK (0, "") pstate in
 
-let extract_dn d = List.map extract_rdn d
-
-(* TODO *)
-let extract_date t d = d
-
-(* TODO *)
-let extract_rsa_key s =
-  match (exact_parse s) with
-    | (Asn1.C_Universal, 16, Asn1.Constructed 
-      [(Asn1.C_Universal, 2, Asn1.Integer n);
-       (Asn1.C_Universal, 2, Asn1.Integer e)]) -> {n = n; e = e}
-    | _ -> failwith "Invalid RSA public key"
-
-let extract_pubkey_info a s = 
-  match extract_algoId a with
-    | PubKeyAlgo (PKA_RSA) -> PK_RSA (extract_rsa_key s)
-    | OtherAlgo oid -> PK_Other (OtherAlgo oid, s)
-    | _ -> failwith "Invalid algoId in public key info"
-
-let extract_uniqueId lst =
-  match lst with
-    | (Asn1.C_ContextSpecific, 1, Asn1.BitString (n, id))::r ->
-      if n = 0
-      then (Some id, r)
-      else failwith "Unique identifier with nBits != 0 not supported"
-    | _ -> (None, lst)
-
-  
-
-let extract_tbsCertificate tbs =
-  let v, afterV = match tbs with
-    | (Asn1.C_ContextSpecific, 0, Asn1.Constructed
-        [(Asn1.C_Universal, 2, Asn1.Integer i)])::r -> (Some (Big_int.int_of_big_int i), r)
-    | _ -> (None, tbs)
-  in
-  let sn, sa, issuer, validity, subject, pkinfo, afterPkInfo = match afterV with
-    | (Asn1.C_Universal, 2, Asn1.Integer num)::
-	(Asn1.C_Universal, 16, Asn1.Constructed alg1)::
-	(Asn1.C_Universal, 16, Asn1.Constructed i)::
-	(Asn1.C_Universal, 16, Asn1.Constructed
-	  [(Asn1.C_Universal, nbt, Asn1.String notBefore); 
-	   (Asn1.C_Universal, nat, Asn1.String notAfter)])::
-	(Asn1.C_Universal, 16, Asn1.Constructed s)::
-	(Asn1.C_Universal, 16, Asn1.Constructed
-	  [(Asn1.C_Universal, 16, Asn1.Constructed alg2);
-	   (Asn1.C_Universal, 3, Asn1.BitString (n, pk))])::r ->
-	 if n = 0
-	 then (num, extract_algoId alg1, extract_dn i,
-	       (extract_date nbt notBefore, extract_date nat notAfter),
-	       extract_dn s, extract_pubkey_info alg2 pk, r)
-	 else failwith "Public key with nBits != 0 not supported"
-    | _ -> failwith "Wrong content in the tbsCertificate"
-  in
-  let issuerUniqueId, afterIUI = extract_uniqueId afterPkInfo in
-  let subjectUniqueId, afterSUI = extract_uniqueId afterIUI in
-  let extensions = match afterSUI with
-    | [(Asn1.C_ContextSpecific, 3, Constructed
-      [(Asn1.C_Universal, 16, Constructed (e::exts))])] ->
-      List.map extract_extension (e::exts)
-    | _ -> failwith "Wrong content in the tbsCertificate"
-  in
-  { version = v; serial = sn; sig_algo = sa; issuer = issuer;
-    validity = validity; subject = subject; pkinfo = pkinfo;
-    issuerUniqueId = issuerUniqueId; subjectUniqueId = subjectUniqueId;
-    extensions = extensions}
+  { tbs = tbs; cert_sig_algo = sig_algo; signature = signature }
 
 
-let extract_certificate c =
-  match c with
-    | [(Asn1.C_Universal, 16, Asn1.Constructed tbs_s);
-       (Asn1.C_Universal, 16, Asn1.Constructed sa);
-       (Asn1.C_Universal, 3, Asn1.BitString (n, s))] ->
-      if n = 0
-      then {tbs = extract_tbsCertificate tbs_s;
-	    cert_sig_algo = extract_algoId sa;
-	    signature = Asn1.bigint_of_intlist (Asn1.intlist_of_string s)}
-      else failwith "Signature field with nBits != 0 not supported"
-    | _ -> failwith "Wrong content in the certifiacte"
+let certificate_constraint dir : certificate asn1_constraint =
+  Simple_cons (C_Universal, true, 16, "Certificate", parse_certificate dir)
 
-let string_to_certificate s : certificate =
-  match (exact_parse s) with 
-    | (Asn1.C_Universal, 16, Asn1.Constructed cert) -> extract_certificate cert
-    | _ -> failwith "Sequence expected at certificate level"
+
+let string_of_certificate indent resolver c =
+  let new_indent = indent ^ "  " in
+  indent ^ "tbsCertificate:\n" ^ (string_of_tbs_certificate new_indent resolver c.tbs) ^
+    indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent resolver c.cert_sig_algo) ^
+    indent ^ "Signature: " ^ (string_of_bitstring false (fst c.signature) (snd c.signature)) ^
+    "\n"
+		 
+
+
+
+
+(*
+
+let pkcs1_RSA_private_key = seqOf_cons mk_object "RSA Private Key" int_cons (Exactly (9, S_SpecFatallyViolated))
+let pkcs1_RSA_public_key = seqOf_cons mk_object "RSA Public Key" int_cons (Exactly (2, S_SpecFatallyViolated))
+
 *)

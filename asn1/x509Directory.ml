@@ -9,10 +9,10 @@ let rsaEncryption_oid = [42;840;113549;1;1;1]
 
 let add_rsa_stuff () =
   Hashtbl.add name_directory sha1WithRSAEncryption_oid "sha1WithRSAEncryption";
-  Hashtbl.add object_directory (SigAlgo, sha1WithRSAEncryption_oid) (null_cons, S_Benign);
+  Hashtbl.add object_directory (SigAlgo, sha1WithRSAEncryption_oid) (null_obj_cons, S_Benign);
 
   Hashtbl.add name_directory rsaEncryption_oid "rsaEncryption";
-  Hashtbl.add object_directory (PubKeyAlgo, rsaEncryption_oid) (null_cons, S_Benign);;
+  Hashtbl.add object_directory (PubKeyAlgo, rsaEncryption_oid) (null_obj_cons, S_Benign);;
 
 
 

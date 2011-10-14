@@ -220,15 +220,20 @@ let rec asn1parse_input depth pstate =
 	print_newline ();
     end;
 
+    if not (eos pstate) then begin
+      emit UnexpectedJunk S_IdempotenceBreaker pstate;
+      ignore (pop_string pstate)
+    end;
+
     go_up pstate
   done;;
 
 
 (* X509 *)
-let parse_and_validate_input cons pstate =
+let parse_and_validate_cert cons pstate =
   while not (eos pstate) do
     let o = constrained_parse cons pstate in
-    Printf.printf "%s" (string_of_object "" opts o)
+    Printf.printf "Certificate:\n%s" (X509.string_of_certificate "" !resolver o)
   done;;
 
 
@@ -237,7 +242,7 @@ try
     match !dtype with
       | ASN1 -> List.iter parse_input inputs
       | ASN1PARSE -> List.iter (asn1parse_input 0) inputs
-      | X509 -> List.iter (parse_and_validate_input x509_certificate_cons) inputs
+      | X509 -> List.iter (parse_and_validate_cert (X509.certificate_constraint X509.object_directory)) inputs
   end
 with
   | ParsingError (err, sev, pstate) ->
