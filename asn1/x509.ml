@@ -1,6 +1,7 @@
 open Asn1
-open Validasn1
-
+open Asn1Constraints
+open Asn1.Asn1EngineParams
+open Asn1.Engine
 
 type oid_type =
   | HashAlgo
@@ -12,82 +13,48 @@ type oid_type =
 type preparse_function = parsing_state -> parsing_state
 type predump_function = parsing_state -> parsing_state
 
-let name_directory = Hashtbl.create 100 : (int list, string) Hashtbl.t
-let object_directory = Hashtbl.create 50 : ((oid_type, int list), (asn1_constraint, severity)) Hashtbl.t
-let pubkey_directory = Hashtbl.create 10 : (int list, asn1_constraints) Hashtbl.t
-let signature_directory = Hashtbl.create 10 : (int list, (asn1_constraints, preparse_function, predump_function)) Hashtbl.t
+let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
+let (object_directory : ((oid_type * int list), (asn1_constraint * severity)) Hashtbl.t) = Hashtbl.create 50
+let (initial_directory : (int list, string) Hashtbl.t) = Hashtbl.create 50
+let (pubkey_directory : (int list, asn1_constraint) Hashtbl.t) = Hashtbl.create 10
+let (signature_directory : (int list, (asn1_constraint * preparse_function * predump_function)) Hashtbl.t) = Hashtbl.create 10
+
+type oid_object = {
+  oo_id : int list;
+  oo_content : asn1_object option
+}
 
 
-(* Algorithm identifier *)
-  
-(*type hash_algo =
-  | Sha1
-
-
-type sig_algo =
-  | RSA of hash_algo
-  | DSA of hash_algo
-
-let sha1WithRSAEncryption_oid = [42;840;113549;1;1;5]
-
-
-type pubkey_algo =
-  | PKA_RSA
-
-let rsaEncryption_oid = [42;840;113549;1;1;1]
-
-
-type algoId =
-  | HashAlgo of hash_algo
-  | SigAlgo of sig_algo
-  | PubKeyAlgo of pubkey_algo
-  | OtherAlgo of (int list * asn1_object option)*)
-
-
-let checkNull laxist = function
-  | None when laxist -> ()
-  | Some (Asn1.C_Universal, 5, Asn1.Null) -> ()
-  | _ -> failwith "Null parameter expected"
-
-(* laxist is true for now *)
-let algoId_map =
-  [ (sha1WithRSAEncryption_oid, (checkNull true, fun _ -> SigAlgo (Sha1WithRSA)));
-    (rsaEncryption_oid, (checkNull true, fun _ -> PubKeyAlgo (PKA_RSA))) ]
-
-let extract_algoId objList =
-  let oid, arg = match objList with
-    | [(Asn1.C_Universal, 6, Asn1.OId oid)] -> oid, None
-    | [(Asn1.C_Universal, 6, Asn1.OId oid); o] -> oid, Some o
-    | _ -> failwith "Invalid algorithm identifier"
+let rec parse_object dir oid_sev pstate =
+  let oid = match common_constrained_parse oid_cons pstate with
+    | Left err ->
+      emit (TooFewObjects None) oid_sev pstate;
+      []
+    | Right { a_content = OId l } -> l
+    | Right _ ->
+      emit InternalMayhem S_Fatal pstate;
+      []
   in
-  try
-    let check, make = List.assoc oid algoId_map in
-    check arg;
-    make arg
-  with
-      Not_found -> OtherAlgo (oid, arg)
+  let content_cons, content_sev = if Hashtbl.mem dir oid
+    then Hashtbl.find dir oid
+    else Anything, S_Benign
+  in
+  let content = match common_constrained_parse content_cons pstate with
+    | Left (TooFewObjects _) -> None
+    | Left err ->
+      emit err content_sev pstate;
+      (* We try to get anything is the severity was not too much *)
+      constrained_parse_opt Anything pstate
+    | Right o -> Some o
+  in
+  if not (eos pstate)
+  then emit (TooManyObjects None) S_SpecLightlyViolated pstate;
+  { oo_id = oid; oo_content = content }
 
 
-
+(*
 (* Distinguished Names *)
 
-type atv = 
-  | Country of string
-  | Locality of string
-  | State of string
-  | Organization of string
-  | OrganizationalUnit of string
-  | CommonName of string
-  | Email of string
-  | OtherATV of (int list * asn1_object)
-
-let country_oid = [85;4;6]
-let locality_oid = [85;4;7]
-let state_oid = [85;4;8]
-let organization_oid = [85;4;10]
-let organizationalUnit_oid = [85;4;11]
-let commonName_oid = [85;4;3]
-let email_oid = [42;840;113549;1;9;1]
 
 
 type rdn = atv list
@@ -364,3 +331,4 @@ let string_to_certificate s : certificate =
   match (exact_parse s) with 
     | (Asn1.C_Universal, 16, Asn1.Constructed cert) -> extract_certificate cert
     | _ -> failwith "Sequence expected at certificate level"
+*)

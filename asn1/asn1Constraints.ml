@@ -26,28 +26,30 @@ type sequence_constraint = {
 }
 
 let common_constrained_parse cons pstate =
-  let (c, isC, t) = extract_header pstate in
-  let name_and_fun = match cons with
-    | Anything ->
+  if eos pstate then Left (TooFewObjects None) else begin
+    let (c, isC, t) = extract_header pstate in
+    let name_and_fun = match cons with
+      | Anything ->
       Right (string_of_header_pretty c isC t, choose_parse_fun pstate c isC t)
 
-    | Simple_cons (c', isC', t', name, f) when c = c' && isC = isC' && t = t' ->
-      Right (name, f)
-    | Simple_cons (c', isC', t', _, _) ->    
-      Left (UnexpectedHeader ((c, isC, t), Some (c', isC', t')))
+      | Simple_cons (c', isC', t', name, f) when c = c' && isC = isC' && t = t' ->
+	Right (name, f)
+      | Simple_cons (c', isC', t', _, _) ->    
+	Left (UnexpectedHeader ((c, isC, t), Some (c', isC', t')))
 
-    | Complex_cons get_f ->
-      match get_f c isC t with
-	| None -> Left (UnexpectedHeader ((c, isC, t), None))
-	| Some (name, f) -> Right (name, f)
-  in
-  match name_and_fun with
-    | Left err -> Left err
-    | Right (name, parse_fun) ->
-      extract_length pstate name;
-      let content = parse_fun pstate in
-      go_up pstate;
-      Right {a_class = c; a_tag = t; a_content = content; a_name = name}
+      | Complex_cons get_f ->
+	match get_f c isC t with
+	  | None -> Left (UnexpectedHeader ((c, isC, t), None))
+	  | Some (name, f) -> Right (name, f)
+    in
+    match name_and_fun with
+      | Left err -> Left err
+      | Right (name, parse_fun) ->
+	extract_length pstate name;
+	let content = parse_fun pstate in
+	go_up pstate;
+	Right {a_class = c; a_tag = t; a_content = content; a_name = name}
+  end
 
 
 let constrained_parse_opt cons pstate : asn1_object option =
@@ -125,10 +127,24 @@ let bool_cons = Simple_cons (C_Universal, false, 1, "Boolean", der_to_boolean)
 let int_cons = Simple_cons (C_Universal, false, 2, "Integer", der_to_int)
 let bitstring_cons = Simple_cons (C_Universal, false, 3, "Bit String", der_to_bitstring 54)
 let octetstring_cons = Simple_cons (C_Universal, false, 4, "Octet String", der_to_octetstring 54)
+let null_cons = Simple_cons (C_Universal, false, 5, "Null", der_to_null)
 let oid_cons = Simple_cons (C_Universal, false, 6, "OId", der_to_oid)
+let printablestring_cons = Simple_cons (C_Universal, false, 19, "Printable String", der_to_octetstring 54)
+let ia5string_cons = Simple_cons (C_Universal, false, 22, "IA5 String", der_to_octetstring 54)
+
 let seqOf_cons name cons n = Simple_cons (C_Universal, true, 16, name, parse_sequenceof cons n)
 let setOf_cons name cons n = Simple_cons (C_Universal, true, 17, name, parse_sequenceof cons n)
 let custom_seq_cons c t name conss = Simple_cons (c, true, t, name, parse_constrained_sequence conss)
+
+
+let directory_name_cons =
+  let aux c isC t =
+    if c = C_Universal && not isC && (List.mem t [12; 19; 20; 28; 30])
+    then Some ("Time", der_to_octetstring 54)
+    else None
+  in Complex_cons aux
+
+(* TODO: Reorganise this stuff *)
 
 let pkcs1_RSA_private_key = seqOf_cons "RSA Private Key" int_cons (Exactly (9, S_SpecFatallyViolated))
 let pkcs1_RSA_public_key = seqOf_cons "RSA Public Key" int_cons (Exactly (2, S_SpecFatallyViolated))

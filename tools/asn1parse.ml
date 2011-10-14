@@ -2,6 +2,7 @@ open Asn1;;
 open Asn1.Asn1EngineParams
 open Asn1.Engine
 open Asn1Constraints;;
+open X509Directory;;
 
 (* display type *)
 
@@ -17,7 +18,7 @@ let dtype = ref ASN1
 
 let type_repr = ref PrettyType
 let data_repr = ref PrettyData
-let resolver = ref None
+let resolver = ref (Some (X509.name_directory))
 let indent = ref true
 
 let tolerance = ref S_SpecFatallyViolated

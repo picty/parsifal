@@ -13,35 +13,35 @@ let class_map = [| C_Universal; C_Application;
 
 
 type asn1_universal_tag =
-  | T_EndOfContents
-  | T_Boolean
-  | T_Integer
-  | T_BitString
-  | T_OctetString
-  | T_Null
-  | T_OId
-  | T_ObjectDescriptor
-  | T_External
-  | T_Real
-  | T_Enumerated
-  | T_EmbeddedPDV
-  | T_UTF8String
-  | T_RelativeOId
-  | T_Sequence
-  | T_Set
-  | T_NumericString
-  | T_PrintableString
-  | T_T61String
-  | T_VideoString
-  | T_IA5String
-  | T_UTCTime
-  | T_GeneralizedTime
-  | T_GraphicString
-  | T_VisibleString
-  | T_GeneralString
-  | T_UniversalString
-  | T_UnspecifiedCharacterString
-  | T_BMPString
+  | T_EndOfContents               (*  0 *)
+  | T_Boolean                     (*  1 *)
+  | T_Integer                     (*  2 *)
+  | T_BitString                   (*  3 *)
+  | T_OctetString                 (*  4 *)
+  | T_Null                        (*  5 *)
+  | T_OId                         (*  6 *)
+  | T_ObjectDescriptor            (*  7 *)
+  | T_External                    (*  8 *)
+  | T_Real                        (*  9 *)
+  | T_Enumerated                  (* 10 *)
+  | T_EmbeddedPDV                 (* 11 *)
+  | T_UTF8String                  (* 12 *)
+  | T_RelativeOId                 (* 13 *)
+  | T_Sequence                    (* 16 *)
+  | T_Set                         (* 17 *)
+  | T_NumericString               (* 18 *)
+  | T_PrintableString             (* 19 *)
+  | T_T61String                   (* 20 *)
+  | T_VideoString                 (* 21 *)
+  | T_IA5String                   (* 22 *)
+  | T_UTCTime                     (* 23 *)
+  | T_GeneralizedTime             (* 24 *)
+  | T_GraphicString               (* 25 *)
+  | T_VisibleString               (* 26 *)
+  | T_GeneralString               (* 27 *)
+  | T_UniversalString             (* 28 *)
+  | T_UnspecifiedCharacterString  (* 29 *)
+  | T_BMPString                   (* 30 *)
   | T_Unknown
 
 let universal_tag_map =
@@ -481,11 +481,19 @@ let string_of_bitstring raw nBits s =
   then "[" ^ (string_of_int nBits) ^ "]:" ^ (Common.hexdump s)
   else Common.hexdump s
 
+let oid_expand = function
+  | [] -> []
+  | x::r ->
+    let a, b = if x >= 80
+      then 2, (x - 80)
+      else (x / 40), (x mod 40)
+    in a::b::r
+
 let string_of_oid diropt oid = match diropt with
   | Some dir when Hashtbl.mem dir oid ->
     Hashtbl.find dir oid
   | _ ->
-    String.concat "." (List.map string_of_int oid)
+    String.concat "." (List.map string_of_int (oid_expand oid))
 
 
 let rec string_of_object indent popts o =
