@@ -19,6 +19,8 @@ let add_str l = function
 rule main_token = parse
   | '(' { T_LeftPar }
   | ')' { T_RightPar }
+  | '{' { T_LeftBrace }
+  | '}' { T_RightBrace }
 
   | '+' { T_Plus }
   | '-' { T_Minus }
@@ -51,8 +53,10 @@ rule main_token = parse
   | "else" { T_Else }
   | "fi"   { T_Fi }
 
+  | "function" { T_Function }
+  | "return" { T_Return }
+
   | "print" { T_Print }
-  | "filter" { T_Filter }
   | ';' { T_SemiColumn }
 
   | "typeof" { T_TypeOf }

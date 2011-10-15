@@ -1,4 +1,4 @@
-%token T_LeftPar T_RightPar
+%token T_LeftPar T_RightPar T_LeftBrace T_RightBrace
 %token T_Plus T_Minus T_Mult T_Div T_Mod
 %token T_Equal T_Neq T_Le T_Lt T_Ge T_Gt T_In T_Like
 %token T_LAnd T_LOr T_LNot
@@ -7,14 +7,15 @@
 %token T_Assign
 %token T_SemiColumn
 %token T_Eof
-%token T_Print T_Filter
+%token T_Print
 %token T_TypeOf T_Parse T_Open
+%token T_Function
+%token T_Return
 %token <int> T_Int
 %token <string> T_Ident
 %token <MapLang.string_token list> T_String
 
 %left T_SemiColumn
-%left T_If T_Then T_Else T_Fi T_Assign
 %left T_LOr
 %left T_LAnd
 %left T_LNot
@@ -67,6 +68,10 @@ expr:
     | T_Parse expr       { MapLang.E_Parse $2 }
     | T_Open expr        { MapLang.E_Open $2 }
 
+    | T_Function T_LeftBrace commands T_RightBrace
+	                 { MapLang.E_Function $3 }
+    | expr T_LeftPar T_RightPar { MapLang.E_Apply $1 }
+
 
 command:
     | T_Ident T_Assign expr  { MapLang.C_Assign ($1, $3) }
@@ -75,7 +80,8 @@ command:
     | T_If expr T_Then commands T_Fi
 	{ MapLang.C_IfThenElse ($2, $4, []) }
     | T_Print expr  { MapLang.C_Print $2 }
-    | T_Filter expr { MapLang.C_Filter $2 }
+    | T_Return expr { MapLang.C_Return $2 }
+    | expr          { MapLang.C_Print $1 }
 
 commands:
     | T_Eof          { [] }
