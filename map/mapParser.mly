@@ -29,8 +29,8 @@
 %nonassoc T_UMinus
 
 
-%start commands
-%type <MapLang.command list> commands
+%start exprs
+%type <MapLang.expression list> exprs
 
 %%
 
@@ -70,24 +70,21 @@ expr:
     | T_Parse expr       { MapLang.E_Parse $2 }
     | T_Open expr        { MapLang.E_Open $2 }
 
-    | T_Function T_LeftBrace commands T_RightBrace
+    | T_Function T_LeftBrace exprs T_RightBrace
 	                 { MapLang.E_Function $3 }
     | expr T_LeftPar T_RightPar { MapLang.E_Apply $1 }
 
+    | T_Ident T_Assign expr  { MapLang.E_Assign ($1, $3) }
+    | T_If expr T_Then exprs T_Else exprs T_Fi
+	{ MapLang.E_IfThenElse ($2, $4, $6) }
+    | T_If expr T_Then exprs T_Fi
+	{ MapLang.E_IfThenElse ($2, $4, []) }
+    | T_Print expr  { MapLang.E_Print $2 }
+    | T_Return expr { MapLang.E_Return $2 }
 
-command:
-    | T_Ident T_Assign expr  { MapLang.C_Assign ($1, $3) }
-    | T_If expr T_Then commands T_Else commands T_Fi
-	{ MapLang.C_IfThenElse ($2, $4, $6) }
-    | T_If expr T_Then commands T_Fi
-	{ MapLang.C_IfThenElse ($2, $4, []) }
-    | T_Print expr  { MapLang.C_Print $2 }
-    | T_Return expr { MapLang.C_Return $2 }
-    | expr          { MapLang.C_Print $1 }
-
-commands:
-    | T_Eof          { [] }
-    | /* empty */    { [] }
-    | command T_Eof  { [$1] }
-    | command        { [$1] }
-    | command T_SemiColumn commands { $1::$3 }
+exprs:
+    | T_Eof       { [] }
+    | /* empty */ { [] }
+    | expr T_Eof  { [$1] }
+    | expr        { [$1] }
+    | expr T_SemiColumn exprs { $1::$3 }
