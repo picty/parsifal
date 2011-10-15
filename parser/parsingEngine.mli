@@ -11,23 +11,16 @@ module type ParsingParameters =
 module ParsingEngine :
   functor (Params : ParsingParameters) ->
     sig
-      type parsing_error = Params.parsing_error
-      val out_of_bounds_error : string -> Params.parsing_error
-      val string_of_perror : Params.parsing_error -> string
-      type severity = Params.severity
-      val fatal_severity : Params.severity
-      val string_of_severity : Params.severity -> string
-      val compare_severity : Params.severity -> Params.severity -> int
       type plength = UndefLength | Length of int
       type parsing_state
       type error_handling_function
       val get_depth : parsing_state -> int
       val get_offset : parsing_state -> int
       val get_len : parsing_state -> int
-      val emit : parsing_error -> severity -> parsing_state -> unit
-      exception ParsingError of parsing_error * severity * parsing_state
+      val emit : Params.parsing_error -> Params.severity -> parsing_state -> unit
+      exception ParsingError of Params.parsing_error * Params.severity * parsing_state
       val string_of_pstate : parsing_state -> string
-      val string_of_exception : parsing_error -> severity -> parsing_state -> string
+      val string_of_exception : Params.parsing_error -> Params.severity -> parsing_state -> string
       val eos : parsing_state -> bool
 
       val peek_byte : parsing_state -> int -> int

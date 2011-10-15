@@ -10,7 +10,7 @@ module TlsEngineParams = struct
     | UnexpectedAlertLevel of int
     | UnexpectedAlertType of int
     | UnexpectedHandshakeMsgType of int
-    | ASN1ParsingError of Asn1.Engine.parsing_error
+    | ASN1ParsingError of Asn1.Asn1EngineParams.parsing_error
     | NotImplemented of string
 
   let out_of_bounds_error s = OutOfBounds s
@@ -24,7 +24,7 @@ module TlsEngineParams = struct
     | UnexpectedAlertLevel x -> "Unknown alert level " ^ (string_of_int x)
     | UnexpectedAlertType x -> "Unknown alert type " ^ (string_of_int x)
     | UnexpectedHandshakeMsgType x -> "Unknown handshake message type " ^ (string_of_int x)
-    | ASN1ParsingError e -> "ASN1 parsing error (" ^ (Asn1.Engine. string_of_perror e) ^ ")"
+    | ASN1ParsingError e -> "ASN1 parsing error (" ^ (Asn1.Asn1EngineParams.string_of_perror e) ^ ")"
     | NotImplemented s -> "Not implemented (" ^ s ^  ")"
 
   type severity =
@@ -269,3 +269,7 @@ let parse_record asn1_ehf pstate =
   in
   go_up pstate;
   { version = version; content = content}
+
+
+let pstate_of_channel = Engine.pstate_of_channel
+let pstate_of_string = Engine.pstate_of_string

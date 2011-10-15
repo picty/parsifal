@@ -198,6 +198,19 @@ let string_of_handshake_msg = function
       (string_of_int (String.length s)) ^ "): " ^
       (Common.hexdump s)
 
+let type_of_handshake_msg = function
+  | HelloRequest -> H_HelloRequest
+  | ClientHello _ ->  H_ClientHello
+  | ServerHello _ -> H_ServerHello
+  | Certificate _ -> H_Certificate
+  | ServerKeyExchange -> H_ServerKeyExchange
+  | CertificateRequest -> H_CertificateRequest
+  | ServerHelloDone -> H_ServerHelloDone
+  | CertificateVerify -> H_CertificateVerify
+  | ClientKeyExchange -> H_ClientKeyExchange
+  | Finished -> H_Finished
+  | UnparsedHandshakeMsg (htype, _) -> htype
+
 
 
 (* Record *)
@@ -237,6 +250,13 @@ let string_of_record_content = function
     (string_of_content_type ct) ^ " (len=" ^
       (string_of_int (String.length s)) ^ "): " ^
       (Common.hexdump s)
+
+let type_of_record_content = function
+  | ChangeCipherSpec -> CT_ChangeCipherSpec
+  | Alert _ -> CT_Alert
+  | Handshake _ -> CT_Handshake
+  | ApplicationData _ -> CT_ApplicationData
+  | UnparsedRecord (ct, _) -> ct
 
 type record = {
   version : protocol_version;

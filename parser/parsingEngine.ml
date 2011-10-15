@@ -11,19 +11,9 @@ end
 
 module ParsingEngine =
   functor (Params : ParsingParameters) -> struct
-    open Params
-    type parsing_error = Params.parsing_error
-    let out_of_bounds_error = Params.out_of_bounds_error
-    let string_of_perror = Params.string_of_perror
-
-    type severity = Params.severity
-    let fatal_severity = Params.fatal_severity
-    let string_of_severity = Params.string_of_severity
-    let compare_severity = Params.compare_severity
-
     type plength = UndefLength | Length of int
 
-    type error_handling_function = parsing_error -> severity -> parsing_state -> unit
+    type error_handling_function = Params.parsing_error -> Params.severity -> parsing_state -> unit
     and parsing_state = {
       ehf : error_handling_function;
       origin : string;        (* The origin of what we are parsing (a filename for example) *)
@@ -33,7 +23,7 @@ module ParsingEngine =
       mutable lengths : plength list  (* List of the previous lengths *)
     }
 
-    exception ParsingError of parsing_error * severity * parsing_state;;
+    exception ParsingError of Params.parsing_error * Params.severity * parsing_state;;
 
     let emit err sev pstate =  pstate.ehf err sev pstate
 
@@ -68,16 +58,16 @@ module ParsingEngine =
 	    pstate.len <- Length (n - 1);
 	    int_of_char (Stream.next pstate.str)
       with
-	  Stream.Failure -> raise (ParsingError (out_of_bounds_error "pop_byte", fatal_severity, pstate))
+	  Stream.Failure -> raise (ParsingError (Params.out_of_bounds_error "pop_byte", Params.fatal_severity, pstate))
 
     let peek_byte pstate n =
       match pstate.len with
-	| Length l when l < n -> raise (ParsingError (out_of_bounds_error "peek_bytes", fatal_severity, pstate))
+	| Length l when l < n -> raise (ParsingError (Params.out_of_bounds_error "peek_bytes", Params.fatal_severity, pstate))
 	| _ ->
 	  let tmp = Stream.npeek (n+1) pstate.str in
 	  try
 	    int_of_char (List.nth tmp n)
-	  with Failure "nth" -> raise (ParsingError (out_of_bounds_error "peek_bytes", fatal_severity, pstate))
+	  with Failure "nth" -> raise (ParsingError (Params.out_of_bounds_error "peek_bytes", Params.fatal_severity, pstate))
 
 
 
@@ -92,11 +82,11 @@ module ParsingEngine =
             | _ -> ()
         end;
       with
-	  Stream.Failure -> raise (ParsingError (out_of_bounds_error "get_string", fatal_severity, pstate))
+	  Stream.Failure -> raise (ParsingError (Params.out_of_bounds_error "get_string", Params.fatal_severity, pstate))
 
     let pop_string pstate =
       match pstate.len with
-	| UndefLength -> raise (ParsingError (out_of_bounds_error "get_string(UndefLength)", fatal_severity, pstate))
+	| UndefLength -> raise (ParsingError (Params.out_of_bounds_error "get_string(UndefLength)", Params.fatal_severity, pstate))
 	| Length n ->
 	  let res = String.make n ' ' in
 	  _pop_bytes pstate n (String.set res);
@@ -104,7 +94,7 @@ module ParsingEngine =
 
     let pop_bytes pstate n =
       match pstate.len with
-	| Length l when l < n -> raise (ParsingError (out_of_bounds_error "get_bytes", fatal_severity, pstate))
+	| Length l when l < n -> raise (ParsingError (Params.out_of_bounds_error "get_bytes", Params.fatal_severity, pstate))
 	| _ ->
 	  let res = Array.make n 0 in
 	  _pop_bytes pstate n (fun i -> fun c -> Array.set res i (int_of_char c));
@@ -112,7 +102,7 @@ module ParsingEngine =
 
     let pop_list pstate =
       match pstate.len with
-	| UndefLength -> raise (ParsingError (out_of_bounds_error "get_string(UndefLength)", fatal_severity, pstate))
+	| UndefLength -> raise (ParsingError (Params.out_of_bounds_error "get_string(UndefLength)", Params.fatal_severity, pstate))
 	| Length n ->
 	  let res = Array.make n 0 in
 	  _pop_bytes pstate n (fun i -> fun c -> Array.set res i (int_of_char c));
@@ -120,12 +110,12 @@ module ParsingEngine =
 
 
     let string_of_exception err sev pstate =
-      (string_of_severity sev) ^ "): " ^ (string_of_perror err) ^ " in " ^ (string_of_pstate pstate)
+      (Params.string_of_severity sev) ^ "): " ^ (Params.string_of_perror err) ^ " in " ^ (string_of_pstate pstate)
 
     let default_error_handling_function tolerance minDisplay err sev pstate =
-      if compare_severity sev tolerance >= 0
+      if Params.compare_severity sev tolerance >= 0
       then raise (ParsingError (err, sev, pstate))
-      else if compare_severity minDisplay sev <= 0
+      else if Params.compare_severity minDisplay sev <= 0
       then output_string stderr ("Warning (" ^ (string_of_exception err sev pstate) ^ "\n")
 
     let pstate_of_string ehfun orig contents =
@@ -141,7 +131,7 @@ module ParsingEngine =
 	| UndefLength -> UndefLength
 	| Length n ->
 	  if l > n
-	  then raise (ParsingError (out_of_bounds_error "go_down", fatal_severity, pstate))
+	  then raise (ParsingError (Params.out_of_bounds_error "go_down", Params.fatal_severity, pstate))
 	  else Length (n - l)
       in
       pstate.lengths <- saved_len::(pstate.lengths);
@@ -154,7 +144,7 @@ module ParsingEngine =
 	  pstate.len <- l;
 	  pstate.lengths <- lens;
 	  pstate.position <- names	  
-	| _ -> raise (ParsingError (out_of_bounds_error "go_up", fatal_severity, pstate))
+	| _ -> raise (ParsingError (Params.out_of_bounds_error "go_up", Params.fatal_severity, pstate))
 
 
     let extract_uint32 pstate =

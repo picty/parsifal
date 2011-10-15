@@ -584,6 +584,8 @@ and string_of_constructed indent popts l =
   else "{" ^ (String.concat "; " objects) ^ "}"
 
 
+let pstate_of_channel = Engine.pstate_of_channel
+let pstate_of_string = Engine.pstate_of_string
 
 (*
 (********************)

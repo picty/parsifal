@@ -51,5 +51,7 @@ let parse_answer_record pstate =
   let content = extract_variable_length_string "messages" extract_uint32 pstate in
   { ip = ip; port = port; name = name; client_hello_type = client_hello_type;
     msg_type = msg_type; content = content }
-  
-    
+
+
+let pstate_of_channel = Engine.pstate_of_channel (default_error_handling_function S_Fatal S_OK)
+let pstate_of_string = Engine.pstate_of_string (default_error_handling_function S_Fatal S_OK)

@@ -63,9 +63,7 @@ let hexdump_bigint bi =
   res
 
 
-
 let identity x = x
-
 
 
 let pop_int s offset n =
@@ -74,3 +72,10 @@ let pop_int s offset n =
     Some (int_of_string content)
   with
       Failure "int_of_string" -> None
+
+
+let string_of_ip ip  =
+  (string_of_int ip.(0)) ^ "." ^
+  (string_of_int ip.(1)) ^ "." ^
+  (string_of_int ip.(2)) ^ "." ^
+  (string_of_int ip.(3))
