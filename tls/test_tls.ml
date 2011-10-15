@@ -32,7 +32,6 @@ try
   done
 with
   | ParsingError (err, sev, pstate) ->
-    print_endline ("Fatal (" ^ (string_of_severity sev) ^ "): " ^ 
-		      (string_of_perror err) ^ " in " ^ (string_of_pstate pstate));;
+    output_string stderr ("Fatal (" ^ (string_of_exception err sev pstate) ^ ")\n");;
 
 

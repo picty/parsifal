@@ -54,6 +54,7 @@ module ParsingEngine =
       try
 	match pstate.len with
 	  | UndefLength -> int_of_char (Stream.next pstate.str)
+	  | Length 0 -> raise Stream.Failure
 	  | Length n ->
 	    pstate.len <- Length (n - 1);
 	    int_of_char (Stream.next pstate.str)

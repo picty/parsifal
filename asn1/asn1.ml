@@ -328,9 +328,10 @@ let raw_der_to_int pstate =
       false
     | x::r -> (x land 0x80) = 0x80
   in
+  (* TODO *)
   if negative
-  then raise (ParsingError (NotImplemented "Negative integer", S_Fatal, pstate))
-  else bigint_of_intlist l
+  then emit (NotImplemented "Negative integer") S_IdempotenceBreaker pstate;
+  bigint_of_intlist l
 
 let der_to_int pstate = Integer (raw_der_to_int pstate)
 
