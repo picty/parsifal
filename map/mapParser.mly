@@ -15,7 +15,8 @@
 %token <string> T_Ident
 %token <MapLang.string_token list> T_String
 
-%left T_SemiColumn
+%left T_SemiColumn T_LeftPar T_RightPar
+%left T_Parse T_TypeOf T_Open
 %left T_LOr
 %left T_LAnd
 %left T_LNot
@@ -26,6 +27,7 @@
 %left T_BAnd
 %left T_BNot
 %nonassoc T_UMinus
+
 
 %start commands
 %type <MapLang.command list> commands
