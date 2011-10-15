@@ -119,13 +119,15 @@ module ParsingEngine =
       else if Params.compare_severity minDisplay sev <= 0
       then output_string stderr ("Warning (" ^ (string_of_exception err sev pstate) ^ "\n")
 
+    let pstate_of_stream ehfun orig contents =
+      {ehf = ehfun; origin = orig; str = contents;
+       len = UndefLength; position = []; lengths = []}
+
     let pstate_of_string ehfun orig contents =
-      {ehf = ehfun; origin = orig; str = Stream.of_string contents;
-       len = Length (String.length contents); position = []; lengths = []}
+      pstate_of_stream ehfun orig (Stream.of_string contents)
 
     let pstate_of_channel ehfun orig contents =
-      {ehf = ehfun; origin = orig; str = Stream.of_channel contents;
-       len = UndefLength; position = []; lengths = []}
+      pstate_of_stream ehfun orig (Stream.of_channel contents)
 
     let go_down pstate name l =
       let saved_len = match pstate.len with

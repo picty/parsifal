@@ -32,6 +32,8 @@ module ParsingEngine :
 
       val default_error_handling_function :
         Params.severity -> Params.severity -> error_handling_function
+      val pstate_of_stream :
+        error_handling_function -> string -> char Stream.t -> parsing_state
       val pstate_of_string :
         error_handling_function -> string -> string -> parsing_state
       val pstate_of_channel :
