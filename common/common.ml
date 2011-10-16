@@ -79,3 +79,10 @@ let string_of_ip ip  =
   (string_of_int ip.(1)) ^ "." ^
   (string_of_int ip.(2)) ^ "." ^
   (string_of_int ip.(3))
+
+
+let eos stream =
+  try
+    Stream.empty stream;
+    true
+  with Stream.Failure -> false

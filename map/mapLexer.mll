@@ -17,10 +17,16 @@ let add_str l = function
 
 
 rule main_token = parse
+  | eof { T_Eof }
+  | [' ' '\n' '\t' ] { main_token lexbuf }
+
   | '(' { T_LeftPar }
   | ')' { T_RightPar }
   | '{' { T_LeftBrace }
   | '}' { T_RightBrace }
+  | '[' { T_LeftBracket }
+  | ']' { T_RightBracket }
+  | ',' { T_Comma }
 
   | '+' { T_Plus }
   | '-' { T_Minus }
@@ -53,21 +59,25 @@ rule main_token = parse
   | "else" { T_Else }
   | "fi"   { T_Fi }
 
+  | "while"    { T_While}
+  | "do"       { T_Do}
+  | "done"     { T_Done }
+  | "break"    { T_Break }
+  | "continue" { T_Continue }
+
   | "function" { T_Function }
+  | "local" { T_Local }
   | "return" { T_Return }
 
-  | "print" { T_Print }
   | ';' { T_SemiColumn }
 
   | "typeof" { T_TypeOf }
-  | "open" { T_Open }
-  | "parse" { T_Parse }
 
-  | eof { T_Eof }
-  | [' ' '\n' '\t' ] { main_token lexbuf }
+  | "true"     { T_Bool true }
+  | "false"    { T_Bool false }
   | ['0'-'9']+ { T_Int (int_of_string (Lexing.lexeme lexbuf))}
   | ['A'-'Z' 'a'-'z' '_'] ['A'-'Z' 'a'-'z' '_' '0'-'9']*
-      { T_Ident (Lexing.lexeme lexbuf) }
+               { T_Ident (Lexing.lexeme lexbuf) }
 
   | "/*" { comment_token lexbuf }
   | "//" { comment_oneline_token lexbuf }
@@ -83,6 +93,14 @@ and comment_oneline_token = parse
 
 and string_token cur accu = parse
   | '\\' ['\\' '"' '$'] { string_token ((Lexing.lexeme_char lexbuf 1)::cur) accu lexbuf }
+  | "\\n" { string_token ('\n'::cur) accu lexbuf }
+  | "\\x" ['A'-'F' 'a'-'f' '0'-'9'] ['A'-'F' 'a'-'f' '0'-'9']
+      {
+	let s = String.copy (Lexing.lexeme lexbuf) in
+	s.[0] <- '0';
+	let c = char_of_int (int_of_string s) in
+	string_token (c::cur) accu lexbuf 
+      }
   | '"' { T_String (List.rev (add_str accu cur)) }
   | '$' ( ['A'-'Z' 'a'-'z' '_'] ['A'-'Z' 'a'-'z' '_' '0'-'9']* as ident )
       { string_token [] ((MapLang.ST_Var ident)::(add_str accu cur)) lexbuf }

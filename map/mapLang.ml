@@ -1,3 +1,5 @@
+(* Expression definition *)
+
 type string_token =
    | ST_String of string
    | ST_Var of string
@@ -7,6 +9,7 @@ let string_of_string_token = function
   | ST_Var s -> "$" ^ s
 
 type expression =
+  | E_Bool of bool
   | E_Int of int
   | E_String of string_token list
   | E_Var of string
@@ -32,23 +35,26 @@ type expression =
   | E_BNot of expression
 
   | E_TypeOf of expression
-  | E_Parse of expression
-  | E_Open of expression
 
-  | E_Function of expression list
-  | E_Apply of expression
+  | E_Function of string list * expression list
+  | E_Local of string
+  | E_Apply of expression * expression list
+  | E_Return of expression
+
+  | E_List of expression list
 
   | E_Assign of (string * expression)
   | E_IfThenElse of (expression * expression list * expression list)
-  | E_Print of expression
-  | E_Return of expression
-
+  | E_While of (expression * expression list)
+  | E_Continue
+  | E_Break
 
 let rec string_of_exp indent exp =
   let soe = string_of_exp indent in
   let new_indent = indent ^ "  " in
   let soes = string_of_exps new_indent in
   match exp with
+    | E_Bool b -> string_of_bool b
     | E_Int i -> string_of_int i
     | E_String sts ->
       "\"" ^ (String.concat "" (List.map string_of_string_token sts)) ^ "\""
@@ -77,11 +83,16 @@ let rec string_of_exp indent exp =
     | E_BNot a -> "~ " ^ (soe a)
 
     | E_TypeOf e -> "typeof " ^ (soe e)
-    | E_Parse e -> "parse " ^ (soe e)
-    | E_Open e -> "open " ^ (soe e)
 
-    | E_Function body -> "fun {\n" ^ (soes body) ^ indent ^ "}"
-    | E_Apply e -> (soe e) ^ " ()"
+    | E_Function (arg_names, body) ->
+      "fun (" ^ (String.concat ", " arg_names) ^
+	"{\n" ^ (soes body) ^ indent ^ "}"
+    | E_Local id -> "local " ^ id
+    | E_Apply (e, args) ->
+      (soe e) ^ " (" ^ (String.concat ", " (List.map soe args)) ^ ")"
+    | E_Return e -> "return " ^ (soe e)
+
+    | E_List e -> "[" ^ (String.concat ", " (List.map soe e)) ^ "]b"
 
     | E_Assign (s, e) -> s ^ " := " ^ (soe e)
     | E_IfThenElse (i, t, []) ->
@@ -93,8 +104,12 @@ let rec string_of_exp indent exp =
 	indent ^ "then\n" ^ (soes t) ^
 	indent ^ "else\n" ^ (soes e) ^
 	indent ^ "fi\n"
-    | E_Print e -> "print (" ^ (soe e) ^ ")"
-    | E_Return e -> "return " ^ (soe e)
+
+    | E_While (cond, body) ->
+      "while (" ^ (soe cond) ^ ") do\n" ^
+	(soes body) ^ indent ^ "done\n"
+    | E_Continue -> "continue"
+    | E_Break -> "break"
 
 and string_of_exps indent cmds =
   let aux cmd = indent ^ (string_of_exp indent cmd) ^ "\n" in
@@ -102,74 +117,136 @@ and string_of_exps indent cmds =
 
 
 
-type value =
+(* Value and environment handling *)
+
+type function_sort =
+  | NativeFun of (environment -> expression list -> value)
+  | InterpretedFun of (string list * expression list)
+
+and value =
   | V_Unit
   | V_Bool of bool
   | V_Int of int
   | V_String of string
+  | V_Function of function_sort
+  | V_List of value list
   | V_Stream of string * char Stream.t
+  | V_OutChannel of string * out_channel
   | V_Certificate of X509.certificate
-  | V_Function of expression list
 
-type set_variable = string -> value -> unit
-type get_variable = string -> value
+and environment = (string, value) Hashtbl.t list
+
+let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
 
 exception NotImplemented
+exception WrongNumberOfArguments
 exception ContentError of string
 exception ReturnValue of value
+exception Continue
+exception Break
 
 
-let eval_as_string = function
+let rec eval_as_string = function
   | V_Bool b -> string_of_bool b
   | V_Int i -> string_of_int i
   | V_String s -> s
+  | V_List l ->
+    "[" ^ (String.concat ", " (List.map eval_as_string l)) ^ "]"
   | V_Certificate c -> X509.string_of_certificate true "" (Some X509.name_directory) c
-  | V_Unit
-  | V_Function _
-  | V_Stream _ -> raise (ContentError "String expected")
+  | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _ ->
+    raise (ContentError "String expected")
 
 let eval_as_int = function
   | V_Int i -> i
   | V_String s -> int_of_string s
-  | V_Unit
-  | V_Bool _
-  | V_Stream _
-  | V_Function _
-  | V_Certificate _ -> raise (ContentError "Integer expected")
+  | V_Unit | V_Bool _ | V_Function _ | V_List _ | V_Stream _
+  | V_OutChannel _ | V_Certificate _ ->
+    raise (ContentError "Integer expected")
 
 let eval_as_bool = function
   | V_Bool b -> b
-  | V_Int i -> i <> 0
+  | V_Int 0 -> false
+  | V_Int _ -> true
   | V_String s -> (String.length s) <> 0
-  | V_Unit
-  | V_Stream _
-  | V_Function _
-  | V_Certificate _ -> raise (ContentError "Boolean expected")
+  | V_List [] -> false
+  | V_List _ -> true
+  | V_Stream (_, s) -> not (Common.eos s)
+  | V_Unit | V_Function _ | V_OutChannel _ | V_Certificate _ ->
+    raise (ContentError "Boolean expected")
 
 let eval_as_function = function
   | V_Function body -> body
-  | V_Unit | V_Bool _ | V_Int _ | V_String _ | V_Stream _ | V_Certificate _ -> raise (ContentError "Function expected")
+  | V_Unit | V_Bool _ | V_Int _ | V_String _ | V_List _
+  | V_Stream _ | V_OutChannel _ | V_Certificate _ ->
+    raise (ContentError "Function expected")
+
+let eval_as_list = function
+  | V_List l -> l
+  | V_Unit | V_Bool _ | V_Int _ | V_String _ | V_Function _
+  | V_Stream _ | V_OutChannel _ | V_Certificate _ ->
+    raise (ContentError "List expected")
 
 let string_of_type = function
   | V_Unit -> "unit"
   | V_Bool _ -> "bool"
   | V_Int _ -> "int"
   | V_String _ -> "string"
-  | V_Stream _ -> "stream"
-  | V_Certificate _ -> "certificate"
   | V_Function _ -> "function"
+  | V_List _ -> "list"
+  | V_Stream _ -> "stream"
+  | V_OutChannel _ -> "outchannel"
+  | V_Certificate _ -> "certificate"
 
+let rec getv env name = match env with
+  | [] -> raise Not_found
+  | e::r -> begin
+    try
+      Hashtbl.find e name
+    with
+      | Not_found -> getv r name
+  end
 
-let eval_string_token getv = function
+let rec setv env name v = match env with
+  | [] -> raise Not_found
+  | [e] -> Hashtbl.replace e name v
+  | e::r ->
+    if Hashtbl.mem e name
+    then Hashtbl.replace e name v
+    else setv r name v
+
+let eval_string_token env = function
   | ST_String s -> s
-  | ST_Var s -> eval_as_string (getv s)
+  | ST_Var s -> eval_as_string (getv env s)
 
-let rec eval_exp getv setv exp =
-  let eval = eval_exp getv setv in
+let make_local_env env args values =
+  let na = List.length args in
+  let nv = List.length values in
+  if na <> nv
+  then raise WrongNumberOfArguments
+  else begin
+    let local_env = Hashtbl.create (2 * na) in
+    let rec instanciate = function
+      | [], [] -> ()
+      | a::rargs, v::rvalues ->
+	Hashtbl.replace local_env a v;
+	instanciate (rargs, rvalues)
+      | _ -> raise WrongNumberOfArguments
+    in
+    instanciate (args, values);
+    local_env::env
+  end
+
+
+
+(* Interpretation *)
+
+let rec eval_exp env exp =
+  let eval = eval_exp env in
   match exp with
+    | E_Bool b -> V_Bool b
     | E_Int i -> V_Int i
-    | E_String l -> V_String (String.concat "" (List.map (eval_string_token getv) l))
-    | E_Var s -> getv s
+    | E_String l -> V_String (String.concat "" (List.map (eval_string_token env) l))
+    | E_Var s -> getv env s
 
     | E_Plus (a, b) -> begin
       match eval a, eval b with
@@ -202,47 +279,50 @@ let rec eval_exp getv setv exp =
     | E_BNot e -> V_Int (lnot (eval_as_int (eval e)))
 
     | E_TypeOf e -> V_String (string_of_type (eval e))
-    | E_Parse e ->
-      let pstate = match eval e with
-	| V_String s ->
-	  Asn1.Engine.pstate_of_string
-	    (Asn1.Engine.default_error_handling_function
-	       Asn1.Asn1EngineParams.S_SpecFatallyViolated
-	       Asn1.Asn1EngineParams.S_OK) "inline_parse" s
-	| V_Stream (filename, s) ->
-	  Asn1.Engine.pstate_of_stream
-	    (Asn1.Engine.default_error_handling_function
-	       Asn1.Asn1EngineParams.S_SpecFatallyViolated
-	       Asn1.Asn1EngineParams.S_OK) filename s
-	| _ -> raise (ContentError "String or stream expected")
-      in
-    (* TODO: inline_parse, really ? *)
-      V_Certificate (Asn1Constraints.constrained_parse (X509.certificate_constraint X509.object_directory) pstate)
-    | E_Open e ->
-      let filename = eval_as_string (eval e) in
-      V_Stream (filename, Stream.of_channel (open_in filename))
-    | E_Function e -> V_Function e
-    | E_Apply e -> begin
-      try
-	eval_exps getv setv (eval_as_function (eval e));
-      with
-	| ReturnValue v -> v
-    end
 
-    | E_Assign (var, e) ->
-      setv var (eval e);
+    | E_Function (arg_names, e) -> V_Function (InterpretedFun (arg_names, e))
+    | E_Local id -> begin
+      match env with
+	| [] -> raise Not_found
+	| e::_ -> Hashtbl.replace e id V_Unit
+      end;
       V_Unit
-    | E_IfThenElse (i, t, e) ->
-      eval_exps getv setv (if (eval_as_bool (eval i)) then t else e)
-    | E_Print e ->
-      print_endline (eval_as_string (eval e));
-      V_Unit
+    | E_Apply (e, args) -> begin
+      match eval_as_function (eval e) with
+	| NativeFun f -> f env args
+	| InterpretedFun (arg_names, body) ->
+	  let arg_values = List.map eval args in
+	  let new_env = make_local_env env arg_names arg_values in
+	  try
+	    eval_exps new_env body;
+	  with
+	    | ReturnValue v -> v
+    end
     | E_Return e -> raise (ReturnValue (eval e))
 
-and eval_exps getv setv = function
+    | E_List e -> V_List (List.map eval e)
+
+    | E_Assign (var, e) ->
+      setv env var (eval e);
+      V_Unit
+    | E_IfThenElse (i, t, e) ->
+      eval_exps env (if (eval_as_bool (eval i)) then t else e)
+    | E_While (cond, body) -> begin
+      try
+	while (eval_as_bool (eval cond)) do
+	  try
+	    ignore (eval_exps env body)
+	  with Continue -> ()
+	done;
+	V_Unit;
+      with Break -> V_Unit
+    end
+    | E_Continue -> raise Continue
+    | E_Break -> raise Break
+
+and eval_exps env = function
   | [] -> V_Unit
-  | [e] -> eval_exp getv setv e
+  | [e] -> eval_exp env e
   | e::r ->
-    ignore (eval_exp getv setv e);
-    eval_exps getv setv r
-  
+    ignore (eval_exp env e);
+    eval_exps env r
