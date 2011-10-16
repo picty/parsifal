@@ -83,15 +83,18 @@ rule main_token = parse
 
   | "/*" { comment_token lexbuf }
   | "//" { comment_oneline_token lexbuf }
+  | '#' { comment_oneline_token lexbuf }
   | '"'  { string_token [] [] lexbuf }
 
 and comment_token = parse
   | "*/" { main_token lexbuf }
+  | eof  { T_Eof }
   | _    { comment_token lexbuf }
 
 and comment_oneline_token = parse
   | '\n' { main_token lexbuf }
-  | _    { comment_token lexbuf }
+  | eof  { T_Eof }
+  | _    { comment_oneline_token lexbuf }
 
 and string_token cur accu = parse
   | '\\' ['\\' '"' '$'] { string_token ((Lexing.lexeme_char lexbuf 1)::cur) accu lexbuf }
@@ -106,5 +109,7 @@ and string_token cur accu = parse
       }
   | '"' { T_String (List.rev (add_str accu cur)) }
   | '$' ( ['A'-'Z' 'a'-'z' '_'] ['A'-'Z' 'a'-'z' '_' '0'-'9']* as ident )
+      { string_token [] ((MapLang.ST_Var ident)::(add_str accu cur)) lexbuf }
+  | "${" ( ['A'-'Z' 'a'-'z' '_'] ['A'-'Z' 'a'-'z' '_' '0'-'9']* as ident ) '}'
       { string_token [] ((MapLang.ST_Var ident)::(add_str accu cur)) lexbuf }
   | _ as c { string_token (c::cur) accu lexbuf }

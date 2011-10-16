@@ -1,5 +1,22 @@
+Language
+ - Incorporate TLS parser + field accessors
+ - Add DN as a value
+ - Add certificate field accessors
+ - Add encode/decode for hexa and base64
+ - Custom output (global _output) for print function
+ - Add a printenv function to show all the environment
+ - Add a getenv function to take strings from the OS environment
+ - Add Bigint handling?
+ - Add for loops, break n, continue n ?
+ - Implement in and like operators
+
+map tool
+ - Add argv handling (to be able to set things in the environment)
+ - Add a late interactive mode (first we load files, then we can use them)
+
+Others
+
 Merge Tls and TlsParser files.
 Enrich TLS parser.
 Add parser for SSLv2.
-Rewrite map_language with ocamllex + menhir.
 Write some quick stats.

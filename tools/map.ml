@@ -3,7 +3,7 @@ open MapLang;;
 open MapNativeFunctions;;
 open MapAccessFields;;
 
-let main () =
+let interactive () =
   setv [global_env] "PS1" (V_String "> ");
   try
     while true do
@@ -26,7 +26,7 @@ let main () =
 	  with
 	    | Asn1.Engine.ParsingError (err, sev, pstate) ->
 	      output_string stderr ((Asn1.Engine.string_of_exception err sev pstate) ^ "\n"); flush stderr
-	    | NotImplemented -> output_string stderr ("Not implemented\n"); flush stderr
+	    | NotImplemented -> output_string stderr "Not implemented\n"; flush stderr
 	    | e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); flush stderr
 	end;
 	flush stdout
@@ -34,6 +34,28 @@ let main () =
 	output_string stderr ("Syntax error\n"); flush stderr
     done
   with End_of_file -> ()
-in
 
-Printexc.print main ()
+let script_interpreter filename =
+  try
+    let lexbuf = Lexing.from_channel (open_in filename) in
+    let ast = MapParser.exprs MapLexer.main_token lexbuf in
+    let res = match eval_exps [global_env] ast with
+      | V_Unit
+      | V_Bool true -> 0
+      | V_Bool false -> -1
+      | V_Int i -> i
+      | _ -> 0
+    in exit (res)
+  with
+    | Asn1.Engine.ParsingError (err, sev, pstate) ->
+      output_string stderr ((Asn1.Engine.string_of_exception err sev pstate) ^ "\n"); exit (-2)
+    | NotImplemented -> output_string stderr ("Not implemented\n"); exit (-2)
+    | Parsing.Parse_error ->
+      output_string stderr ("Syntax error\n"); exit (-2)
+    | e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); exit (-2);;
+
+let _ =
+  match Array.length (Sys.argv) with
+    | 0 | 1 -> Printexc.print interactive ()
+    | 2     -> script_interpreter Sys.argv.(1)
+    | _ -> output_string stderr "This program takes 0 or 1 argument"; exit (-2)
