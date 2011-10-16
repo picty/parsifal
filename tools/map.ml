@@ -57,5 +57,11 @@ let script_interpreter filename =
 let _ =
   match Array.length (Sys.argv) with
     | 0 | 1 -> Printexc.print interactive ()
-    | 2     -> script_interpreter Sys.argv.(1)
-    | _ -> output_string stderr "This program takes 0 or 1 argument"; exit (-2)
+    | _ -> begin
+      match Array.to_list Sys.argv with
+	| [] | [_] -> ()
+	| _::_::args ->
+	  setv [global_env] "args" (V_List (List.map (fun s -> V_String s) args))
+      end;
+      script_interpreter Sys.argv.(1)
+

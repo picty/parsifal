@@ -76,7 +76,10 @@ let parse format input =
     | _ -> raise (ContentError ("Unknown format"))
 
 
-let open_file filename = V_Stream (filename, Stream.of_channel (open_in filename))
+let open_file filename =
+  let f = open_in filename in
+  Gc.finalise close_in_noerr f;
+  V_Stream (filename, Stream.of_channel f)
 
 
 let encode format input = match format with
