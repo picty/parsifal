@@ -15,8 +15,6 @@ map tool
  - Add a late interactive mode (first we load files, then we can use them)
 
 Others
-
-Merge Tls and TlsParser files.
-Enrich TLS parser.
-Add parser for SSLv2.
-Write some quick stats.
+ - Enrich TLS parser.
+ - Add parser for SSLv2.
+ - Write some quick stats.

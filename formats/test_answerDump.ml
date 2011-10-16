@@ -9,7 +9,7 @@ let pstate = AnswerDump.pstate_of_channel "(stdin)" stdin;;
 let asn1_ehf = (Asn1.Engine.default_error_handling_function
 		  Asn1.Asn1EngineParams.S_SpecFatallyViolated
 		  Asn1.Asn1EngineParams.S_SpecFatallyViolated)
-let parse_record = TlsParser.parse_record asn1_ehf;;
+let parse_record = Tls.parse_record asn1_ehf;;
 
 try
   while not (AnswerDump.Engine.eos pstate) do
@@ -17,10 +17,10 @@ try
     let name = get_name answer in
     Printf.printf "%s:" name;
    try
-      let tls_pstate = TlsParser.pstate_of_string (TlsParser.Engine.default_error_handling_function
-						     TlsParser.TlsEngineParams.S_Benign
-						     TlsParser.TlsEngineParams.S_OK) name answer.AnswerDump.content in
-      while not (TlsParser.Engine.eos tls_pstate) do
+      let tls_pstate = Tls.pstate_of_string (Tls.Engine.default_error_handling_function
+						     Tls.TlsEngineParams.S_Benign
+						     Tls.TlsEngineParams.S_OK) name answer.AnswerDump.content in
+      while not (Tls.Engine.eos tls_pstate) do
 	try
 	  let record = parse_record tls_pstate in begin
 	    match record.Tls.content with
@@ -28,8 +28,8 @@ try
 	      | Tls.ApplicationData _ -> Printf.printf " ApplicationData"
 	      | Tls.Handshake hm -> Printf.printf " Handshake (%s)" (Tls.string_of_handshake_msg_type (Tls.type_of_handshake_msg hm))
 	      | Tls.UnparsedRecord (ct, _) ->
-		TlsParser.Engine.emit (TlsParser.TlsEngineParams.NotImplemented "SSLv2 ?")
-		  TlsParser.TlsEngineParams.S_Fatal tls_pstate
+		Tls.Engine.emit (Tls.TlsEngineParams.NotImplemented "SSLv2 ?")
+		  Tls.TlsEngineParams.S_Fatal tls_pstate
 	  end;
 	with
 	  | Asn1.Engine.ParsingError (err, sev, pstate) ->
@@ -37,9 +37,9 @@ try
       done;
       print_newline ();
     with
-      | TlsParser.Engine.ParsingError (err, sev, pstate) ->
+      | Tls.Engine.ParsingError (err, sev, pstate) ->
 	print_newline ();
-	output_string stderr ("Tls.Error (" ^ (TlsParser.Engine.string_of_exception err sev pstate) ^ ")\n");
+	output_string stderr ("Tls.Error (" ^ (Tls.Engine.string_of_exception err sev pstate) ^ ")\n");
   done
 with
   | AnswerDump.Engine.ParsingError (err, sev, pstate) ->
@@ -48,6 +48,6 @@ with
   | Asn1.Engine.ParsingError (err, sev, pstate) ->
     print_newline ();
     output_string stderr ("Asn1.Fatal (" ^ (Asn1.Engine.string_of_exception err sev pstate) ^ ")\n")
-  | TlsParser.Engine.ParsingError (err, sev, pstate) ->
+  | Tls.Engine.ParsingError (err, sev, pstate) ->
     print_newline ();
-    output_string stderr ("Tls.Fatal (" ^ (TlsParser.Engine.string_of_exception err sev pstate) ^ ")\n");;
+    output_string stderr ("Tls.Fatal (" ^ (Tls.Engine.string_of_exception err sev pstate) ^ ")\n");;

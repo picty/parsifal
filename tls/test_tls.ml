@@ -1,7 +1,6 @@
 open Tls
-open TlsParser
-open TlsParser.TlsEngineParams
-open TlsParser.Engine
+open Tls.TlsEngineParams
+open Tls.Engine
 
 let asn1_ehf = (Asn1.Engine.default_error_handling_function
 		  Asn1.Asn1EngineParams.S_SpecFatallyViolated
