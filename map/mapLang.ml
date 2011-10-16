@@ -42,6 +42,7 @@ type expression =
   | E_Return of expression
 
   | E_List of expression list
+  | E_Cons of (expression * expression)
   | E_Field of expression * string
 
   | E_Assign of (string * expression)
@@ -94,6 +95,7 @@ let rec string_of_exp indent exp =
     | E_Return e -> "return " ^ (soe e)
 
     | E_List e -> "[" ^ (String.concat ", " (List.map soe e)) ^ "]b"
+    | E_Cons (e1, e2) -> (soe e1) ^ "::" ^ (soe e2)
     | E_Field (e, f) -> (soe e) ^ "." ^ f
 
     | E_Assign (s, e) -> s ^ " := " ^ (soe e)
@@ -122,7 +124,8 @@ and string_of_exps indent cmds =
 (* Value and environment handling *)
 
 type function_sort =
-  | NativeFun of (environment -> expression list -> value)
+  | NativeFun of (value list -> value)
+  | NativeFunWithEnv of (environment -> value list -> value)
   | InterpretedFun of (string list * expression list)
 
 and value =
@@ -141,6 +144,9 @@ and value =
 and environment = (string, value) Hashtbl.t list
 
 let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
+
+let certificate_field_access : (string, X509.certificate -> value) Hashtbl.t = Hashtbl.create 40
+let answer_field_access : (string, AnswerDump.answer_record -> value) Hashtbl.t = Hashtbl.create 10
 
 exception NotImplemented
 exception WrongNumberOfArguments
@@ -228,6 +234,13 @@ let rec setv env name v = match env with
     then Hashtbl.replace e name v
     else setv r name v
 
+let getv_str env name default =
+  try
+    eval_as_string (getv env name)
+  with
+    | Not_found -> default
+    | ContentError _ -> default
+
 let eval_string_token env = function
   | ST_String s -> s
   | ST_Var s -> eval_as_string (getv env s)
@@ -302,10 +315,12 @@ let rec eval_exp env exp =
       end;
       V_Unit
     | E_Apply (e, args) -> begin
-      match eval_as_function (eval e) with
-	| NativeFun f -> f env args
+      let f_value = eval_as_function (eval e) in
+      let arg_values = List.map eval args in
+      match f_value with
+	| NativeFun f -> f arg_values
+	| NativeFunWithEnv f -> f env arg_values
 	| InterpretedFun (arg_names, body) ->
-	  let arg_values = List.map eval args in
 	  let new_env = make_local_env env arg_names arg_values in
 	  try
 	    eval_exps new_env body;
@@ -315,7 +330,13 @@ let rec eval_exp env exp =
     | E_Return e -> raise (ReturnValue (eval e))
 
     | E_List e -> V_List (List.map eval e)
-    | E_Field (e, f) -> raise NotImplemented
+    | E_Cons (e1, e2) -> V_List ((eval e1)::(eval_as_list (eval e2)))
+    | E_Field (e, f) -> begin
+      match eval e with
+	| V_Certificate c -> (Hashtbl.find certificate_field_access f) c
+	| V_AnswerRecord a -> (Hashtbl.find answer_field_access f) a
+	| _ -> raise (ContentError ("Object with fields expected"))
+    end
 
     | E_Assign (var, e) ->
       setv env var (eval e);

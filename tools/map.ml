@@ -1,12 +1,13 @@
 open X509Directory;;
 open MapLang;;
 open MapNativeFunctions;;
+open MapAccessFields;;
 
 let main () =
-  Hashtbl.add global_env "PS1" (V_String "> ");
+  setv [global_env] "PS1" (V_String "> ");
   try
     while true do
-      print_string (eval_as_string (Hashtbl.find global_env ("PS1")));
+      print_string (getv_str [global_env] ("PS1") "> ");
       flush stdout;
       try
 	let line = input_line stdin in

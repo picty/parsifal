@@ -1,4 +1,4 @@
-%token T_LeftPar T_RightPar T_LeftBrace T_RightBrace T_LeftBracket T_RightBracket T_Comma T_Period
+%token T_LeftPar T_RightPar T_LeftBrace T_RightBrace T_LeftBracket T_RightBracket T_Comma T_Period T_Cons
 %token T_Plus T_Minus T_Mult T_Div T_Mod
 %token T_Equal T_Neq T_Le T_Lt T_Ge T_Gt T_In T_Like
 %token T_LAnd T_LOr T_LNot
@@ -21,6 +21,7 @@
 %left T_LAnd
 %left T_LNot
 %left T_Equal T_Neq T_Le T_Lt T_Ge T_Gt T_In T_Like
+%right T_Cons
 %left T_Plus T_Minus
 %left T_Mult T_Div T_Mod
 %left T_BOr T_BXor
@@ -88,6 +89,7 @@ expr:
 
     | T_LeftBracket expr_list T_RightBracket { MapLang.E_List $2 }
 
+    | expr T_Cons expr   { MapLang.E_Cons ($1, $3) }
     | expr T_Period T_Ident { MapLang.E_Field ($1, $3) }
 
 args:

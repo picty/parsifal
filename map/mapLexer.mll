@@ -28,6 +28,7 @@ rule main_token = parse
   | ']' { T_RightBracket }
   | ',' { T_Comma }
   | '.' { T_Period }
+  | "::" { T_Cons }
 
   | '+' { T_Plus }
   | '-' { T_Minus }
@@ -95,6 +96,7 @@ and comment_oneline_token = parse
 and string_token cur accu = parse
   | '\\' ['\\' '"' '$'] { string_token ((Lexing.lexeme_char lexbuf 1)::cur) accu lexbuf }
   | "\\n" { string_token ('\n'::cur) accu lexbuf }
+  | "\\t" { string_token ('\t'::cur) accu lexbuf }
   | "\\x" ['A'-'F' 'a'-'f' '0'-'9'] ['A'-'F' 'a'-'f' '0'-'9']
       {
 	let s = String.copy (Lexing.lexeme lexbuf) in
