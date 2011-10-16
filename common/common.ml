@@ -1,4 +1,5 @@
 exception IntegerOverflow
+exception FormatError
 
 let hexa_char = [| '0'; '1'; '2'; '3';
 		   '4'; '5'; '6'; '7';
@@ -25,6 +26,18 @@ let hexdump s =
     res.[i * 2 + 1] <- hexa_char.(x land 0xf);
   done;
   res
+
+let hexparse s =
+  let len = String.length s in
+  if len mod 2 = 1 then raise FormatError else begin
+    try
+      let res = String.make (len / 2) ' ' in
+      for i = 0 to ((len / 2) - 1) do
+	res.[i] <- char_of_int (int_of_string ("0x" ^ String.sub s (i * 2) 2))
+      done;
+      res
+    with Failure "int_of_string" -> raise FormatError
+  end
 
 
 let hexdump_int len x =

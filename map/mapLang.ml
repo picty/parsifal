@@ -34,7 +34,7 @@ type expression =
   | E_BXor of (expression * expression)
   | E_BNot of expression
 
-  | E_TypeOf of expression
+  | E_Exists of expression
 
   | E_Function of string list * expression list
   | E_Local of string
@@ -84,7 +84,7 @@ let rec string_of_exp indent exp =
     | E_BXor (a, b) -> "(" ^ (soe a) ^ " ^ " ^ (soe b) ^ ")"
     | E_BNot a -> "~ " ^ (soe a)
 
-    | E_TypeOf e -> "typeof " ^ (soe e)
+    | E_Exists e -> "exists " ^ (soe e)
 
     | E_Function (arg_names, body) ->
       "fun (" ^ (String.concat ", " arg_names) ^
@@ -138,7 +138,9 @@ and value =
   | V_Stream of string * char Stream.t
   | V_OutChannel of string * out_channel
   | V_AnswerRecord of AnswerDump.answer_record
+  | V_TlsRecord of Tls.record
   | V_Asn1 of Asn1.asn1_object
+  | V_DN of X509.dn
   | V_Certificate of X509.certificate
 
 and environment = (string, value) Hashtbl.t list
@@ -146,6 +148,9 @@ and environment = (string, value) Hashtbl.t list
 let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
 
 let certificate_field_access : (string, X509.certificate -> value) Hashtbl.t = Hashtbl.create 40
+let tls_field_access : (string, Tls.record -> value) Hashtbl.t = Hashtbl.create 40
+let dn_field_access : (string, X509.dn -> value) Hashtbl.t = Hashtbl.create 40
+let asn1_field_access : (string, Asn1.asn1_object -> value) Hashtbl.t = Hashtbl.create 40
 let answer_field_access : (string, AnswerDump.answer_record -> value) Hashtbl.t = Hashtbl.create 10
 
 exception NotImplemented
@@ -165,7 +170,9 @@ let rec eval_as_string = function
   | V_String s -> s
   | V_List l ->
     "[" ^ (String.concat ", " (List.map eval_as_string l)) ^ "]"
+  | V_TlsRecord r -> Tls.string_of_record r
   | V_Asn1 o -> Asn1.string_of_object "" opts o
+  | V_DN dn -> X509.string_of_dn "" (Some X509.name_directory) dn
   | V_Certificate c -> X509.string_of_certificate true "" (Some X509.name_directory) c
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
   | V_AnswerRecord _ ->
@@ -174,9 +181,7 @@ let rec eval_as_string = function
 let eval_as_int = function
   | V_Int i -> i
   | V_String s -> int_of_string s
-  | V_Unit | V_Bool _ | V_Function _ | V_List _ | V_Stream _
-  | V_OutChannel _ | V_AnswerRecord _ | V_Asn1 _ | V_Certificate _ ->
-    raise (ContentError "Integer expected")
+  | _ -> raise (ContentError "Integer expected")
 
 let eval_as_bool = function
   | V_Bool b -> b
@@ -187,21 +192,18 @@ let eval_as_bool = function
   | V_List _ -> true
   | V_Stream (_, s) -> not (Common.eos s)
   | V_Unit | V_Function _ | V_OutChannel _
-  | V_AnswerRecord _ | V_Asn1 _ | V_Certificate _ ->
+  | V_AnswerRecord _ | V_TlsRecord _ | V_Asn1 _
+  | V_DN _ | V_Certificate _ ->
     raise (ContentError "Boolean expected")
 
 let eval_as_function = function
   | V_Function body -> body
-  | V_Unit | V_Bool _ | V_Int _ | V_String _ | V_List _
-  | V_Stream _ | V_OutChannel _ | V_AnswerRecord _
-  | V_Asn1 _ | V_Certificate _ ->
+  | _ ->
     raise (ContentError "Function expected")
 
 let eval_as_list = function
   | V_List l -> l
-  | V_Unit | V_Bool _ | V_Int _ | V_String _ | V_Function _
-  | V_Stream _ | V_OutChannel _ | V_AnswerRecord _ | V_Asn1 _
-  | V_Certificate _ ->
+  | _ ->
     raise (ContentError "List expected")
 
 let string_of_type = function
@@ -214,7 +216,9 @@ let string_of_type = function
   | V_Stream _ -> "stream"
   | V_OutChannel _ -> "outchannel"
   | V_AnswerRecord _ -> "answer"
+  | V_TlsRecord _ -> "TLSrecord"
   | V_Asn1 _ -> "asn1object"
+  | V_DN _ -> "DN"
   | V_Certificate _ -> "certificate"
 
 let rec getv env name = match env with
@@ -305,7 +309,12 @@ let rec eval_exp env exp =
     | E_BXor (a, b) -> V_Int (eval_as_int (eval a) lxor eval_as_int (eval b))
     | E_BNot e -> V_Int (lnot (eval_as_int (eval e)))
 
-    | E_TypeOf e -> V_String (string_of_type (eval e))
+    | E_Exists e -> begin
+      try
+	ignore (eval e);
+	V_Bool true
+      with Not_found -> V_Bool false
+    end
 
     | E_Function (arg_names, e) -> V_Function (InterpretedFun (arg_names, e))
     | E_Local id -> begin
@@ -333,7 +342,10 @@ let rec eval_exp env exp =
     | E_Cons (e1, e2) -> V_List ((eval e1)::(eval_as_list (eval e2)))
     | E_Field (e, f) -> begin
       match eval e with
+	| V_Asn1 a -> (Hashtbl.find asn1_field_access f) a
 	| V_Certificate c -> (Hashtbl.find certificate_field_access f) c
+	| V_DN dn -> (Hashtbl.find dn_field_access f) dn
+	| V_TlsRecord r -> (Hashtbl.find tls_field_access f) r
 	| V_AnswerRecord a -> (Hashtbl.find answer_field_access f) a
 	| _ -> raise (ContentError ("Object with fields expected"))
     end

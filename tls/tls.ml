@@ -545,5 +545,6 @@ let parse_record asn1_ehf pstate =
   { version = version; content = content}
 
 
-let pstate_of_channel = Engine.pstate_of_channel
-let pstate_of_string = Engine.pstate_of_string
+let pstate_of_channel = Engine.pstate_of_channel (default_error_handling_function S_Fatal S_OK)
+let pstate_of_string = Engine.pstate_of_string (default_error_handling_function S_Fatal S_OK)
+let pstate_of_stream = Engine.pstate_of_stream (default_error_handling_function S_Fatal S_OK)

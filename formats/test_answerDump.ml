@@ -17,9 +17,7 @@ try
     let name = get_name answer in
     Printf.printf "%s:" name;
    try
-      let tls_pstate = Tls.pstate_of_string (Tls.Engine.default_error_handling_function
-						     Tls.TlsEngineParams.S_Benign
-						     Tls.TlsEngineParams.S_OK) name answer.AnswerDump.content in
+      let tls_pstate = Tls.pstate_of_string name answer.AnswerDump.content in
       while not (Tls.Engine.eos tls_pstate) do
 	try
 	  let record = parse_record tls_pstate in begin

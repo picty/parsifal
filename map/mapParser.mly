@@ -8,14 +8,14 @@
 %token T_Assign
 %token T_SemiColumn
 %token T_Eof
-%token T_TypeOf
+%token T_Exists
 %token T_Function T_Return T_Local
 %token <bool> T_Bool
 %token <int> T_Int
 %token <string> T_Ident
 %token <MapLang.string_token list> T_String
 
-%right T_TypeOf T_Return T_Assign
+%right T_Exists T_Return T_Assign
 %left T_SemiColumn T_LeftPar T_RightPar T_Comma
 %left T_LOr
 %left T_LAnd
@@ -69,7 +69,7 @@ expr:
     | expr T_BXor expr   { MapLang.E_BXor ($1, $3) }
     | T_BNot expr        { MapLang.E_BNot $2 }
 
-    | T_TypeOf expr      { MapLang.E_TypeOf $2 }
+    | T_Exists expr      { MapLang.E_Exists $2 }
 
     | T_Ident T_Assign expr  { MapLang.E_Assign ($1, $3) }
     | T_If expr T_Then exprs T_Else exprs T_Fi

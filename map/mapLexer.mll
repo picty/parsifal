@@ -73,7 +73,7 @@ rule main_token = parse
 
   | ';' { T_SemiColumn }
 
-  | "typeof" { T_TypeOf }
+  | "exists" { T_Exists }
 
   | "true"     { T_Bool true }
   | "false"    { T_Bool false }

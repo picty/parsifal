@@ -117,6 +117,14 @@ let string_of_universal_tag = function
   | T_BMPString -> "BMP String"
   | T_Unknown -> "Unknown"
 
+let string_of_tag c t =
+  if c = C_Universal && t >= 0 && t < Array.length universal_tag_map
+  then begin
+    match universal_tag_map.(t) with
+      | T_Unknown -> string_of_int t
+      | univ_tag -> string_of_universal_tag univ_tag
+  end else string_of_int t
+
 let string_of_header_raw c isC t =
   let cstr = match c with
     | C_Universal -> "[UNIVERSAL "

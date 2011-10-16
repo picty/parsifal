@@ -1,13 +1,6 @@
 open MapLang
 
 
-let print env args =
-  let separator = getv_str env "_separator" "," in
-  let endline = getv_str env "_endline" "\n" in
-  print_string ((String.concat separator (List.map eval_as_string args)) ^ endline);
-  V_Unit
-
-
 let one_value_fun f = function
   | [e] -> f e
   | _ -> raise WrongNumberOfArguments
@@ -33,24 +26,48 @@ let two_string_fun f = function
   | _ -> raise WrongNumberOfArguments
 
 
+let typeof v = V_String (string_of_type v)
+
+
+let print env args =
+  let separator = getv_str env "_separator" "," in
+  let endline = getv_str env "_endline" "\n" in
+  print_string ((String.concat separator (List.map eval_as_string args)) ^ endline);
+  V_Unit
+
+
 let length = function
   | V_String s -> V_Int (String.length s)
   | V_List l -> V_Int (List.length l)
   | _ -> raise (ContentError "String or list expected")
 
 
+
+let open_file filename =
+  let f = open_in filename in
+  Gc.finalise close_in_noerr f;
+  V_Stream (filename, Stream.of_channel f)
+
+
+let encode format input = match format with
+  | "hex" -> V_String (Common.hexdump input)
+  | _ -> raise (ContentError ("Unknown format"))
+
+let decode format input = match format with
+  | "hex" -> V_String (Common.hexparse input)
+  | _ -> raise (ContentError ("Unknown format"))
+
+
+let asn1_ehf = Asn1.Engine.default_error_handling_function
+  Asn1.Asn1EngineParams.S_SpecFatallyViolated
+  Asn1.Asn1EngineParams.S_OK
+
 let parse_constrained_asn1 cons input =
   let pstate = match input with
     | V_String s ->
-      Asn1.Engine.pstate_of_string
-	(Asn1.Engine.default_error_handling_function
-	   Asn1.Asn1EngineParams.S_SpecFatallyViolated
-	   Asn1.Asn1EngineParams.S_OK) "(inline)" s
+      Asn1.Engine.pstate_of_string asn1_ehf "(inline)" s
     | V_Stream (filename, s) ->
-      Asn1.Engine.pstate_of_stream
-	(Asn1.Engine.default_error_handling_function
-	   Asn1.Asn1EngineParams.S_SpecFatallyViolated
-	   Asn1.Asn1EngineParams.S_OK) filename s
+      Asn1.Engine.pstate_of_stream asn1_ehf filename s
     | _ -> raise (ContentError "String or stream expected")
   in
   Asn1Constraints.constrained_parse cons pstate
@@ -65,27 +82,48 @@ let parse_answer_dump input =
   in
   V_AnswerRecord (AnswerDump.parse_answer_record pstate)
 
+let parse_tls_record input =
+  let pstate = match input with
+    | V_String s ->
+      Tls.pstate_of_string "(inline)" s
+    | V_Stream (filename, s) ->
+      Tls.pstate_of_stream filename s
+    | _ -> raise (ContentError "String or stream expected")
+  in
+  V_TlsRecord (Tls.parse_record asn1_ehf pstate)
+
 let parse format input =
   match format with
     | V_String "x509" ->
       V_Certificate (parse_constrained_asn1 (X509.certificate_constraint X509.object_directory) input)
+    | V_String "dn" ->
+      V_DN (parse_constrained_asn1 (X509.dn_constraint X509.object_directory "dn") input)
     | V_String "asn1" ->
       V_Asn1 (parse_constrained_asn1 (Asn1Constraints.Anything Common.identity) input)
+    | V_String "tls" ->
+      parse_tls_record input
     | V_String "answer" ->
       parse_answer_dump input
     | _ -> raise (ContentError ("Unknown format"))
 
 
-let open_file filename =
-  let f = open_in filename in
-  Gc.finalise close_in_noerr f;
-  V_Stream (filename, Stream.of_channel f)
+let stream_of_string n s =
+  V_Stream (n, Stream.of_string s)
 
 
-let encode format input = match format with
-  | "hex" -> V_String (Common.hexdump input)
-  | _ -> raise (ContentError ("Unknown format"))
+let head = function
+  | [] -> raise Not_found
+  | h::_ -> h
 
+let tail = function
+  | [] -> raise Not_found
+  | _::r -> V_List r
+
+let nth n l =
+  let rec nth_aux n = function
+  | [] -> raise Not_found
+  | h::r -> if n = 0 then h else nth_aux (n-1) r
+  in nth_aux (eval_as_int n) (eval_as_list l)
 
 let filter env f l =
   match f, l with
@@ -140,12 +178,18 @@ let add_native_with_env name f =
   Hashtbl.replace global_env name (V_Function (NativeFunWithEnv f))
 
 let _ =
+  add_native "typeof" (one_value_fun typeof);
   add_native_with_env "print" print;
   add_native "length" (one_value_fun length);
-  add_native "parse" (two_value_fun parse);
+
   add_native "open" (one_string_fun open_file);
   add_native "encode" (two_string_fun encode);
-  add_native "head" (one_list_fun List.hd);
-  add_native "tail" (one_list_fun (fun l -> V_List (List.tl l)));
+  add_native "decode" (two_string_fun decode);
+  add_native "parse" (two_value_fun parse);
+  add_native "stream" (two_string_fun stream_of_string);
+
+  add_native "head" (one_list_fun head);
+  add_native "tail" (one_list_fun tail);
+  add_native "nth" (two_value_fun nth);
   add_native_with_env "filter" (two_value_fun_with_env filter);
   add_native_with_env "map" (two_value_fun_with_env map)
