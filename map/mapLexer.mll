@@ -27,6 +27,7 @@ rule main_token = parse
   | '[' { T_LeftBracket }
   | ']' { T_RightBracket }
   | ',' { T_Comma }
+  | '.' { T_Period }
 
   | '+' { T_Plus }
   | '-' { T_Minus }

@@ -42,6 +42,7 @@ type expression =
   | E_Return of expression
 
   | E_List of expression list
+  | E_Field of expression * string
 
   | E_Assign of (string * expression)
   | E_IfThenElse of (expression * expression list * expression list)
@@ -93,6 +94,7 @@ let rec string_of_exp indent exp =
     | E_Return e -> "return " ^ (soe e)
 
     | E_List e -> "[" ^ (String.concat ", " (List.map soe e)) ^ "]b"
+    | E_Field (e, f) -> (soe e) ^ "." ^ f
 
     | E_Assign (s, e) -> s ^ " := " ^ (soe e)
     | E_IfThenElse (i, t, []) ->
@@ -132,6 +134,8 @@ and value =
   | V_List of value list
   | V_Stream of string * char Stream.t
   | V_OutChannel of string * out_channel
+  | V_AnswerRecord of AnswerDump.answer_record
+  | V_Asn1 of Asn1.asn1_object
   | V_Certificate of X509.certificate
 
 and environment = (string, value) Hashtbl.t list
@@ -145,6 +149,9 @@ exception ReturnValue of value
 exception Continue
 exception Break
 
+(* TODO: Make asn1_display_options from config? *)
+let opts = { Asn1.type_repr = Asn1.PrettyType; Asn1.data_repr = Asn1.PrettyData;
+	     Asn1.resolver = Some X509.name_directory; Asn1.indent_output = true };;
 
 let rec eval_as_string = function
   | V_Bool b -> string_of_bool b
@@ -152,15 +159,17 @@ let rec eval_as_string = function
   | V_String s -> s
   | V_List l ->
     "[" ^ (String.concat ", " (List.map eval_as_string l)) ^ "]"
+  | V_Asn1 o -> Asn1.string_of_object "" opts o
   | V_Certificate c -> X509.string_of_certificate true "" (Some X509.name_directory) c
-  | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _ ->
+  | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
+  | V_AnswerRecord _ ->
     raise (ContentError "String expected")
 
 let eval_as_int = function
   | V_Int i -> i
   | V_String s -> int_of_string s
   | V_Unit | V_Bool _ | V_Function _ | V_List _ | V_Stream _
-  | V_OutChannel _ | V_Certificate _ ->
+  | V_OutChannel _ | V_AnswerRecord _ | V_Asn1 _ | V_Certificate _ ->
     raise (ContentError "Integer expected")
 
 let eval_as_bool = function
@@ -171,19 +180,22 @@ let eval_as_bool = function
   | V_List [] -> false
   | V_List _ -> true
   | V_Stream (_, s) -> not (Common.eos s)
-  | V_Unit | V_Function _ | V_OutChannel _ | V_Certificate _ ->
+  | V_Unit | V_Function _ | V_OutChannel _
+  | V_AnswerRecord _ | V_Asn1 _ | V_Certificate _ ->
     raise (ContentError "Boolean expected")
 
 let eval_as_function = function
   | V_Function body -> body
   | V_Unit | V_Bool _ | V_Int _ | V_String _ | V_List _
-  | V_Stream _ | V_OutChannel _ | V_Certificate _ ->
+  | V_Stream _ | V_OutChannel _ | V_AnswerRecord _
+  | V_Asn1 _ | V_Certificate _ ->
     raise (ContentError "Function expected")
 
 let eval_as_list = function
   | V_List l -> l
   | V_Unit | V_Bool _ | V_Int _ | V_String _ | V_Function _
-  | V_Stream _ | V_OutChannel _ | V_Certificate _ ->
+  | V_Stream _ | V_OutChannel _ | V_AnswerRecord _ | V_Asn1 _
+  | V_Certificate _ ->
     raise (ContentError "List expected")
 
 let string_of_type = function
@@ -195,6 +207,8 @@ let string_of_type = function
   | V_List _ -> "list"
   | V_Stream _ -> "stream"
   | V_OutChannel _ -> "outchannel"
+  | V_AnswerRecord _ -> "answer"
+  | V_Asn1 _ -> "asn1object"
   | V_Certificate _ -> "certificate"
 
 let rec getv env name = match env with
@@ -301,6 +315,7 @@ let rec eval_exp env exp =
     | E_Return e -> raise (ReturnValue (eval e))
 
     | E_List e -> V_List (List.map eval e)
+    | E_Field (e, f) -> raise NotImplemented
 
     | E_Assign (var, e) ->
       setv env var (eval e);

@@ -15,20 +15,17 @@ let main () =
 	begin
 	  try
 	    let res = match eval_exps [global_env] result with
-	      | (V_Bool _ | V_Int _ | V_String _ 
-		    | V_List _ | V_Certificate _) as value ->
+	      | (V_Bool _ | V_Int _ | V_String _ | V_List _) as value ->
 		eval_as_string value
 	      | V_Unit -> "OK."
-	      | V_Function _ -> "<fun>"
-	      | V_Stream _ -> "<stream>"
-	      | V_OutChannel _ -> "<outchannel>"
+	      | v -> "<" ^ string_of_type (v) ^ ">"
 	    in
 	    print_endline res;
 	    flush stdout
 	  with
 	    | Asn1.Engine.ParsingError (err, sev, pstate) ->
 	      output_string stderr ((Asn1.Engine.string_of_exception err sev pstate) ^ "\n"); flush stderr
-	    | NotImplemented -> ()
+	    | NotImplemented -> output_string stderr ("Not implemented\n"); flush stderr
 	    | e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); flush stderr
 	end;
 	flush stdout
