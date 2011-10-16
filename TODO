@@ -1,8 +1,9 @@
 Language
- - Incorporate TLS parser + field accessors
- - Add DN as a value
- - Add certificate field accessors
- - Add encode/decode for hexa and base64
+ - Write efficient equality by specifying == when both sides have the same type
+ - Add a eval operator to bring filters from the command line
+ - Think about partial applications?
+ - Add more field accessors (DN, X509, Tls)
+ - Add encode/decode for base64
  - Custom output (global _output) for print function
  - Add a printenv function to show all the environment
  - Add a getenv function to take strings from the OS environment
@@ -13,6 +14,8 @@ Language
 map tool
  - Add argv handling (to be able to set things in the environment)
  - Add a late interactive mode (first we load files, then we can use them)
+ - Add a way to import new functions (Dynlink for native)
+ - Add a library to filter and extract certs, either in native or interpreted form
 
 Others
  - Enrich TLS parser.

@@ -1,0 +1,12 @@
+#!/home/yeye/dev/FAceSL/map.native
+
+list_ips := function (n) {
+  path := "/mnt/stock/ssl-data/Campaigns/002_December_2010_EFF/$n.dump";
+  f := open (path);
+  while f do
+    a := parse ("answer", f);
+    print (a.ip, a.port, length (a.content));
+   done
+};
+
+list_ips (108);

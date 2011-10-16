@@ -24,8 +24,6 @@ let interactive () =
 	    print_endline res;
 	    flush stdout
 	  with
-	    | Asn1.Engine.ParsingError (err, sev, pstate) ->
-	      output_string stderr ((Asn1.Engine.string_of_exception err sev pstate) ^ "\n"); flush stderr
 	    | NotImplemented -> output_string stderr "Not implemented\n"; flush stderr
 	    | e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); flush stderr
 	end;
@@ -47,8 +45,6 @@ let script_interpreter filename =
       | _ -> 0
     in exit (res)
   with
-    | Asn1.Engine.ParsingError (err, sev, pstate) ->
-      output_string stderr ((Asn1.Engine.string_of_exception err sev pstate) ^ "\n"); exit (-2)
     | NotImplemented -> output_string stderr ("Not implemented\n"); exit (-2)
     | Parsing.Parse_error ->
       output_string stderr ("Syntax error\n"); exit (-2)

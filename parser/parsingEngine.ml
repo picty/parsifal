@@ -111,7 +111,7 @@ module ParsingEngine =
 
 
     let string_of_exception err sev pstate =
-      (Params.string_of_severity sev) ^ "): " ^ (Params.string_of_perror err) ^ " in " ^ (string_of_pstate pstate)
+      "(" ^ (Params.string_of_severity sev) ^ "): " ^ (Params.string_of_perror err) ^ " in " ^ (string_of_pstate pstate)
 
     let default_error_handling_function tolerance minDisplay err sev pstate =
       if Params.compare_severity sev tolerance >= 0

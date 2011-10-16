@@ -32,6 +32,10 @@ type tbs_certificate = {
 
   add_tls_field "version" (fun x -> V_String (Tls.string_of_protocol_version x.Tls.version));
   add_tls_field "content_type" (fun x -> V_String (Tls.string_of_content_type (Tls.type_of_record_content x.Tls.content)));
+  let hsmsgs_of_record r = match r.Tls.content with
+    | Tls.Handshake h -> V_String (Tls.string_of_handshake_msg_type (Tls.type_of_handshake_msg h))
+    | _ -> raise Not_found
+  in add_tls_field "handshake_msg_type" hsmsgs_of_record;
   let certs_of_record r = match r.Tls.content with
     | Tls.Handshake (Tls.Certificate certs) ->
       let aux cert = V_Certificate cert in

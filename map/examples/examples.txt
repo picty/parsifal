@@ -1,0 +1,14 @@
+list_ips := function (n) { path := "/mnt/stock/ssl-data/Campaigns/002_December_2010_EFF/$n.dump"; f := open (path); while f do a := parse ("answer", f); print a.ip; done }
+
+list_ips := function (n) { path := "/mnt/stock/ssl-data/Campaigns/002_December_2010_EFF/$n.dump"; f := open (path); while f do a := parse ("answer", f); print (a.ip, a.port, length (a.content)); done }
+
+o := parse ("asn1", open ("AC.der"));
+extensions := (head (nth (7, nth (0, o.content).content).content).content)
+extensions_contents := map (function (x) { ext := x.content; nth (length (ext) - 1, ext).content }, extensions)
+map (function (x) { parse ("asn1", decode ("hex", x)) }, extensions_contents)
+
+f := open (path)
+next_answer := function (f) { answer := parse ("answer", f); stream (answer.ip, answer.content) }
+next_record := function (a) { parse ("tls", a) }
+
+

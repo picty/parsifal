@@ -1,0 +1,11 @@
+#!/home/yeye/dev/FAceSL/map.native
+
+print_x509 := function (name) {
+	f := open (name);
+	while f do
+		c := parse ("x509", f);
+		print (c);
+	done
+};
+
+map (print_x509, args);

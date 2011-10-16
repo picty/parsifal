@@ -30,6 +30,7 @@ rule main_token = parse
   | '.' { T_Period }
   | "::" { T_Cons }
 
+  | "++" { T_Concat }
   | '+' { T_Plus }
   | '-' { T_Minus }
   | '*' { T_Mult }

@@ -1,6 +1,7 @@
 %token T_LeftPar T_RightPar T_LeftBrace T_RightBrace T_LeftBracket T_RightBracket T_Comma T_Period T_Cons
 %token T_Plus T_Minus T_Mult T_Div T_Mod
 %token T_Equal T_Neq T_Le T_Lt T_Ge T_Gt T_In T_Like
+%token T_Concat
 %token T_LAnd T_LOr T_LNot
 %token T_BAnd T_BOr T_BNot T_BXor
 %token T_If T_Then T_Else T_Fi
@@ -16,18 +17,19 @@
 %token <MapLang.string_token list> T_String
 
 %right T_Exists T_Return T_Assign
-%left T_SemiColumn T_LeftPar T_RightPar T_Comma
+%left T_SemiColumn T_Comma
 %left T_LOr
 %left T_LAnd
 %left T_LNot
 %left T_Equal T_Neq T_Le T_Lt T_Ge T_Gt T_In T_Like
 %right T_Cons
-%left T_Plus T_Minus
+%left T_Plus T_Minus T_Concat
 %left T_Mult T_Div T_Mod
 %left T_BOr T_BXor
 %left T_BAnd
 %left T_BNot
 %left T_Period
+%right T_LeftPar T_RightPar
 %nonassoc T_UMinus
 
 
@@ -44,6 +46,7 @@ expr:
 
     | T_LeftPar expr T_RightPar { $2 }
 
+    | expr T_Concat expr { MapLang.E_Concat ($1, $3) }
     | expr T_Plus expr   { MapLang.E_Plus ($1, $3) }
     | expr T_Minus expr  { MapLang.E_Minus ($1, $3) }
     | expr T_Mult expr   { MapLang.E_Mult ($1, $3) }

@@ -93,18 +93,32 @@ let parse_tls_record input =
   V_TlsRecord (Tls.parse_record asn1_ehf pstate)
 
 let parse format input =
-  match format with
-    | V_String "x509" ->
-      V_Certificate (parse_constrained_asn1 (X509.certificate_constraint X509.object_directory) input)
-    | V_String "dn" ->
-      V_DN (parse_constrained_asn1 (X509.dn_constraint X509.object_directory "dn") input)
-    | V_String "asn1" ->
-      V_Asn1 (parse_constrained_asn1 (Asn1Constraints.Anything Common.identity) input)
-    | V_String "tls" ->
-      parse_tls_record input
-    | V_String "answer" ->
-      parse_answer_dump input
-    | _ -> raise (ContentError ("Unknown format"))
+  try
+    match format with
+      | V_String "x509" ->
+	V_Certificate (parse_constrained_asn1 (X509.certificate_constraint X509.object_directory) input)
+      | V_String "dn" ->
+	V_DN (parse_constrained_asn1 (X509.dn_constraint X509.object_directory "dn") input)
+      | V_String "asn1" ->
+	V_Asn1 (parse_constrained_asn1 (Asn1Constraints.Anything Common.identity) input)
+      | V_String "tls" ->
+	parse_tls_record input
+      | V_String "answer" ->
+	parse_answer_dump input
+      | _ -> raise (ContentError ("Unknown format"))
+  with
+    | Asn1.Engine.ParsingError (err, sev, pstate) ->
+      output_string stderr ("Asn1 parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ "\n");
+      flush stderr;
+      V_Unit
+    | Tls.Engine.ParsingError (err, sev, pstate) ->
+      output_string stderr ("Tls parsing error: " ^ (Tls.Engine.string_of_exception err sev pstate) ^ "\n");
+      flush stderr;
+      V_Unit
+    | AnswerDump.Engine.ParsingError (err, sev, pstate) ->
+      output_string stderr ("Answer parsing error: " ^ (AnswerDump.Engine.string_of_exception err sev pstate) ^ "\n");
+      flush stderr;
+      V_Unit;;
 
 
 let stream_of_string n s =

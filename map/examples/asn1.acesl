@@ -1,0 +1,11 @@
+#!/home/yeye/dev/FAceSL/map.native
+
+print_asn1 := function (name) {
+	f := open (name);
+	while f do
+		o := parse ("asn1", f);
+		print (o);
+	done
+};
+
+map (print_asn1, args);

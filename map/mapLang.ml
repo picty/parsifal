@@ -14,6 +14,7 @@ type expression =
   | E_String of string_token list
   | E_Var of string
 
+  | E_Concat of (expression * expression)
   | E_Plus of (expression * expression)
   | E_Minus of (expression * expression)
   | E_Mult of (expression * expression)
@@ -62,6 +63,7 @@ let rec string_of_exp indent exp =
       "\"" ^ (String.concat "" (List.map string_of_string_token sts)) ^ "\""
     | E_Var s -> s
 
+    | E_Concat (a, b) -> "(" ^ (soe a) ^ " ++ " ^ (soe b) ^ ")"
     | E_Plus (a, b) -> "(" ^ (soe a) ^ " + " ^ (soe b) ^ ")"
     | E_Minus (E_Int 0, b) -> "-" ^ (soe b)
     | E_Minus (a, b) -> "(" ^ (soe a) ^ " - " ^ (soe b) ^ ")"
@@ -185,16 +187,13 @@ let eval_as_int = function
 
 let eval_as_bool = function
   | V_Bool b -> b
-  | V_Int 0 -> false
-  | V_Int _ -> true
+  | V_Unit | V_Int 0 | V_List [] -> false
+  | V_Int _ | V_List _ -> true
   | V_String s -> (String.length s) <> 0
-  | V_List [] -> false
-  | V_List _ -> true
   | V_Stream (_, s) -> not (Common.eos s)
-  | V_Unit | V_Function _ | V_OutChannel _
+  | V_Function _ | V_OutChannel _
   | V_AnswerRecord _ | V_TlsRecord _ | V_Asn1 _
-  | V_DN _ | V_Certificate _ ->
-    raise (ContentError "Boolean expected")
+  | V_DN _ | V_Certificate _ -> true
 
 let eval_as_function = function
   | V_Function body -> body
@@ -279,11 +278,8 @@ let rec eval_exp env exp =
     | E_String l -> V_String (String.concat "" (List.map (eval_string_token env) l))
     | E_Var s -> getv env s
 
-    | E_Plus (a, b) -> begin
-      match eval a, eval b with
-	| V_Int i1, V_Int i2 -> V_Int (i1 + i2)
-	| v1, v2 -> V_String ((eval_as_string v1) ^ (eval_as_string v2))
-    end
+    | E_Concat (a, b) -> V_String ((eval_as_string (eval a)) ^ (eval_as_string (eval b)))
+    | E_Plus (a, b) -> V_Int ((eval_as_int (eval a)) + (eval_as_int (eval b)))
     | E_Minus (a, b) -> V_Int (eval_as_int (eval a) - eval_as_int (eval b))
     | E_Mult (a, b) -> V_Int (eval_as_int (eval a) * eval_as_int (eval b))
     | E_Div (a, b) -> V_Int (eval_as_int (eval a) / eval_as_int (eval b))
@@ -295,8 +291,11 @@ let rec eval_exp env exp =
 	| V_String s1, V_String s2 -> s1 = s2
 	| v1, v2 -> eval_as_string v1 = eval_as_string v2
     )
-    
-    | E_Lt (a, b) -> V_Bool (eval_as_int (eval a) < eval_as_int (eval b))
+    | E_Lt (a, b) -> V_Bool (match eval a, eval b with
+	| V_Int i1, V_Int i2 -> i1 < i2
+	| V_String s1, V_String s2 -> s1 < s2
+	| v1, v2 -> eval_as_string v1 = eval_as_string v2
+    )
     | E_In _
     | E_Like _ -> raise NotImplemented
 
