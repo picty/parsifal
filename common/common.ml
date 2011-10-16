@@ -40,26 +40,17 @@ let hexdump_int len x =
   aux x (len - 1);
   res
 
-let two_hundred_fifty_six = Big_int.big_int_of_int 256
-
-let hexdump_bigint bi =
-  let rec intlist_of_bigint bi =
-    if Big_int.eq_big_int bi Big_int.zero_big_int then []
-    else
-      let q, r = Big_int.quomod_big_int bi two_hundred_fifty_six in
-      (Big_int.int_of_big_int r)::(intlist_of_bigint q)
-  in
-  let l = intlist_of_bigint bi in
-  let len = List.length l in
+let hexdump_int_list x =
+  let len = List.length x in
   let res = String.make (len * 2) ' ' in
-  let rec write_string offset = function
+  let rec aux pos = function
     | [] -> ()
-    | x::r ->
-      res.[offset] <- hexa_char.((x lsr 4) land 0xf);
-      res.[offset + 1] <- hexa_char.(x land 0xf);
-      write_string (offset + 2) r
+    | i::r ->
+      res.[pos] <- hexa_char.((i lsr 4) land 0xf);
+      res.[pos + 1] <- hexa_char.(i land 0xf);
+      aux (pos + 2) r
   in
-  write_string 0 l;
+  aux 0 x;
   res
 
 

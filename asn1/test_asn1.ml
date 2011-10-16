@@ -1,6 +1,6 @@
 open Asn1;;
 
-let i = { a_class = C_Universal; a_tag = 2; a_content = Integer (Big_int.big_int_of_int 5); a_name = "Integer" };;
+let i = { a_class = C_Universal; a_tag = 2; a_content = Integer [5]; a_name = "Integer" };;
 let s = { a_class = C_Universal; a_tag = 4; a_content = String ("titi", true); a_name = "Str" };;
 let s2 = { a_class = C_Universal; a_tag = 19; a_content = String ("234", false); a_name = "Str" };;
 

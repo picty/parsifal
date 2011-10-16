@@ -64,7 +64,7 @@ type asn1_object = {
 and asn1_content =
   | EndOfContents
   | Boolean of bool
-  | Integer of Big_int.big_int
+  | Integer of int list
   | BitString of int * string
   | Null
   | OId of int list
@@ -306,14 +306,6 @@ let der_to_boolean pstate = Boolean (raw_der_to_boolean pstate)
 
 (* Integer *)
 
-(* TODO: Put all this shit inside a correct BigNum implementation *)
-let bigint_of_intlist l =
-  let rec aux accu = function
-    | [] -> accu
-    | d::r -> aux (Big_int.add_int_big_int d (Big_int.mult_int_big_int 256 accu)) r
-  in aux Big_int.zero_big_int l
-
-
 let raw_der_to_int pstate =
   let l = pop_list pstate in
   let negative = match l with
@@ -331,7 +323,8 @@ let raw_der_to_int pstate =
   (* TODO *)
   if negative
   then emit (NotImplemented "Negative integer") S_IdempotenceBreaker pstate;
-  bigint_of_intlist l
+  l
+(*  bigint_of_intlist l *)
 
 let der_to_int pstate = Integer (raw_der_to_int pstate)
 
@@ -558,7 +551,7 @@ let rec string_of_object indent popts o =
     | _, Boolean true -> ["true"]
     | _, Boolean false -> ["false"]
 
-    | _, Integer i -> [Common.hexdump_bigint i]
+    | _, Integer i -> [Common.hexdump_int_list i]
 
     | _, BitString (nBits, s) -> [string_of_bitstring (popts.data_repr = RawData) nBits s]
     | _, OId oid -> [string_of_oid popts.resolver oid]

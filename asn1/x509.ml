@@ -75,7 +75,7 @@ let string_of_oid_object indent resolver o =
 let extract_version l =
   try
     match l with
-      | [big_v] -> (Big_int.int_of_big_int big_v) + 1
+      | [[i]] -> i + 1
       | _ -> 0
   with
       Failure "int_of_big_int" -> 0
@@ -250,7 +250,7 @@ let string_of_public_key_info indent resolver pki =
 
 type tbs_certificate = {
   version : int option;
-  serial : Big_int.big_int;
+  serial : int list;
   sig_algo : oid_object;
   issuer : dn;
   validity : validity;
@@ -263,14 +263,14 @@ type tbs_certificate = {
 }
 
 let empty_tbs_certificate =
-  { version = None; serial = Big_int.zero_big_int; sig_algo = empty_oid_object;
+  { version = None; serial = []; sig_algo = empty_oid_object;
     issuer = []; validity = empty_validity; subject = [];
     pk_info = empty_public_key_info; issuer_unique_id = None;
     subject_unique_id = None; extensions = None }
 
 let parse_tbs_certificate dir pstate =
   let version = constrained_parse_opt version_constraint S_OK pstate in
-  let serial = constrained_parse_def serial_constraint S_SpecFatallyViolated Big_int.zero_big_int pstate in
+  let serial = constrained_parse_def serial_constraint S_SpecFatallyViolated [] pstate in
   let sig_algo = constrained_parse_def (sigalgo_constraint dir) S_SpecFatallyViolated empty_oid_object pstate in
   let issuer = constrained_parse_def (dn_constraint dir "Issuer") S_SpecFatallyViolated [] pstate in
   let validity = constrained_parse_def validity_constraint S_SpecFatallyViolated empty_validity pstate in
@@ -329,7 +329,7 @@ let string_of_tbs_certificate indent resolver tbs =
   (match tbs.version with
     | None -> ""
     | Some i -> indent ^ "Version: " ^ (string_of_int i) ^ "\n") ^ 
-    indent ^ "Serial: " ^ (Common.hexdump_bigint tbs.serial) ^ "\n" ^
+    indent ^ "Serial: " ^ (Common.hexdump_int_list tbs.serial) ^ "\n" ^
     indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent resolver tbs.sig_algo) ^
     indent ^ "Issuer:\n" ^ (string_of_dn new_indent resolver tbs.issuer) ^
     indent ^ "Validity:\n" ^ (string_of_validity new_indent resolver tbs.validity) ^
