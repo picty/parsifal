@@ -325,15 +325,7 @@ let rec eval_exp env exp =
     | E_Apply (e, args) -> begin
       let f_value = eval_as_function (eval e) in
       let arg_values = List.map eval args in
-      match f_value with
-	| NativeFun f -> f arg_values
-	| NativeFunWithEnv f -> f env arg_values
-	| InterpretedFun (arg_names, body) ->
-	  let new_env = make_local_env env arg_names arg_values in
-	  try
-	    eval_exps new_env body;
-	  with
-	    | ReturnValue v -> v
+      eval_function env f_value arg_values
     end
     | E_Return e -> raise (ReturnValue (eval e))
 
@@ -366,6 +358,18 @@ let rec eval_exp env exp =
     end
     | E_Continue -> raise Continue
     | E_Break -> raise Break
+
+and eval_function env f args = match f with
+  | NativeFun f -> f args
+  | NativeFunWithEnv f -> f env args
+  | InterpretedFun (arg_names, body) ->
+    let new_env = make_local_env env arg_names args in
+    begin
+      try
+	eval_exps new_env body
+      with
+	| ReturnValue v -> v
+    end
 
 and eval_exps env = function
   | [] -> V_Unit

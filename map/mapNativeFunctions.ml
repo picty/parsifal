@@ -139,50 +139,23 @@ let nth n l =
   | h::r -> if n = 0 then h else nth_aux (n-1) r
   in nth_aux (eval_as_int n) (eval_as_list l)
 
+
 let filter env f l =
-  match f, l with
-    | V_Function (NativeFun f), V_List l ->
-      V_List (List.filter (fun elt -> eval_as_bool (f [elt])) l)
-
-    | V_Function (NativeFunWithEnv f), V_List l ->
-      V_List (List.filter (fun elt -> eval_as_bool (f env [elt])) l)
-
-    | V_Function (InterpretedFun ([arg1], body)), V_List l ->
-      let filter_aux elt =
-	let new_env = make_local_env env [arg1] [elt] in
-	let retval = 
-	  try
-	    eval_exps new_env body
-	  with
-	    | ReturnValue v -> v
-	in eval_as_bool retval
-      in
-      V_List (List.filter filter_aux l)
-
-    | V_Function _, V_List _ -> raise (ContentError ("Wrong filter format"))
-    | _ -> raise (ContentError ("(filter function, list) expected"))
-
+  let real_f = eval_as_function f in
+  let real_l = eval_as_list l in
+  let filter_aux elt = eval_as_bool (eval_function env real_f [elt]) in
+  V_List (List.filter filter_aux real_l)
 
 let map env f l =
-  match f, l with
-    | V_Function (NativeFun f), V_List l ->
-      V_List (List.map (fun elt -> f [elt]) l)
+  let real_f = eval_as_function f in
+  let real_l = eval_as_list l in
+  V_List (List.map (fun elt -> eval_function env real_f [elt]) real_l)
 
-    | V_Function (NativeFunWithEnv f), V_List l ->
-      V_List (List.map (fun elt -> f env [elt]) l)
-
-    | V_Function (InterpretedFun ([arg1], body)), V_List l ->
-      let filter_aux elt =
-	let new_env = make_local_env env [arg1] [elt] in
-	try
-	  eval_exps new_env body
-	with
-	  | ReturnValue v -> v
-      in
-      V_List (List.map filter_aux l)
-
-    | V_Function _, V_List _ -> raise (ContentError ("Wrong filter format"))
-    | _ -> raise (ContentError ("(filter function, list) expected"))
+let iter env f l =
+  let real_f = eval_as_function f in
+  let real_l = eval_as_list l in
+  List.iter (fun elt -> ignore (eval_function env real_f [elt])) real_l;
+  V_Unit
 
 
 let add_native name f =
@@ -206,4 +179,5 @@ let _ =
   add_native "tail" (one_list_fun tail);
   add_native "nth" (two_value_fun nth);
   add_native_with_env "filter" (two_value_fun_with_env filter);
-  add_native_with_env "map" (two_value_fun_with_env map)
+  add_native_with_env "map" (two_value_fun_with_env map);
+  add_native_with_env "iter" (two_value_fun_with_env iter)

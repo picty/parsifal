@@ -8,4 +8,4 @@ print_x509 := function (name) {
 	done
 };
 
-map (print_x509, args);
+iter (print_x509, args);

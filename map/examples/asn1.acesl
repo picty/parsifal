@@ -8,4 +8,4 @@ print_asn1 := function (name) {
 	done
 };
 
-map (print_asn1, args);
+iter (print_asn1, args);

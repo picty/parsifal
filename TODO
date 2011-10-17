@@ -1,5 +1,4 @@
 Language
- - iter
  - socket
  - Write efficient equality by specifying == when both sides have the same type
  - Add a eval operator to bring filters from the command line
@@ -21,6 +20,7 @@ Language extension
     -> les objets sont abstraits et ne peuvent être manipulés que par print / les accesseurs et les opérations sur les listes
 
 map tool
+ - Improve the error messages of the lexer/parser
  - Add argv handling (to be able to set things in the environment)
  - Add a late interactive mode (first we load files, then we can use them)
  - Add a way to import new functions (Dynlink for native)
