@@ -10,7 +10,7 @@ Language
  - Add a getenv function to take strings from the OS environment
  - Add Bigint handling?
  - Add for loops, break n, continue n ?
- - Implement in and like operators
+ - Implement in operator (with sets?)
  - concurrentmap (Nproc, OutputTemplate, fun (verif pas d'effet de bord hors la fonction))
 
 Language extension

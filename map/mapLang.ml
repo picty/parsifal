@@ -296,8 +296,11 @@ let rec eval_exp env exp =
 	| V_String s1, V_String s2 -> s1 < s2
 	| v1, v2 -> eval_as_string v1 = eval_as_string v2
     )
-    | E_In _
-    | E_Like _ -> raise NotImplemented
+    | E_In _ -> raise NotImplemented
+
+    | E_Like (a, b) ->
+      V_Bool (Str.string_match (Str.regexp (eval_as_string (eval b)))
+		(eval_as_string (eval a)) 0)
 
     | E_LAnd (a, b) -> V_Bool (eval_as_bool (eval a) && eval_as_bool (eval b))
     | E_LOr (a, b) -> V_Bool (eval_as_bool (eval a) || eval_as_bool (eval b))
