@@ -1,4 +1,6 @@
 Language
+ - iter
+ - socket
  - Write efficient equality by specifying == when both sides have the same type
  - Add a eval operator to bring filters from the command line
  - Think about partial applications?
@@ -10,6 +12,13 @@ Language
  - Add Bigint handling?
  - Add for loops, break n, continue n ?
  - Implement in and like operators
+ - concurrentmap (Nproc, OutputTemplate, fun (verif pas d'effet de bord hors la fonction))
+
+Language extension
+ - V_Other of string * string (module_name, binary)
+ - A chaque utilisation, on appelle parse du module module_name. Celui-ci peut être un module créé à l'aide d'un foncteur utilisant la mémoisation (weak pointers / module Weak ou tables de hachage avec un roulement pour effacer les donnees non utilisees) pour rendre la chose efficace.
+    -> une extension enregistre un ensemble de fonctions (print, access) et les associe à un nom
+    -> les objets sont abstraits et ne peuvent être manipulés que par print / les accesseurs et les opérations sur les listes
 
 map tool
  - Add argv handling (to be able to set things in the environment)
