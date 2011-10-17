@@ -78,6 +78,7 @@ rule main_token = parse
 
   | "true"     { T_Bool true }
   | "false"    { T_Bool false }
+  | "0x" ['0'-'9' 'a'-'f' 'A'-'F']+
   | ['0'-'9']+ { T_Int (int_of_string (Lexing.lexeme lexbuf))}
   | ['A'-'Z' 'a'-'z' '_'] ['A'-'Z' 'a'-'z' '_' '0'-'9']*
                { T_Ident (Lexing.lexeme lexbuf) }
