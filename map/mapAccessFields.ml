@@ -48,19 +48,20 @@ type tbs_certificate = {
   add_asn1_field "tag" (fun x -> V_Int (x.Asn1.a_tag));
   add_asn1_field "tag_str" (fun x -> V_String (Asn1.string_of_tag x.Asn1.a_class x.Asn1.a_tag));
   add_asn1_field "is_constructed" (fun x -> V_Bool (Asn1.isConstructed x));
-  let value_of_asn1_content o = match o.Asn1.a_content with
+  let value_of_asn1_content raw o = match o.Asn1.a_content with
     | Asn1.Null
     | Asn1.EndOfContents -> V_Unit
     | Asn1.Boolean b -> V_Bool b
     | Asn1.Integer i -> V_String (Common.hexdump_int_list i)
-    | Asn1.BitString (_, s) -> V_String (Common.hexdump s)
+    | Asn1.BitString (_, s) -> V_String (if raw then s else Common.hexdump s)
     | Asn1.OId oid -> V_List (List.map (fun x -> V_Int x) (Asn1.oid_expand oid))
     | Asn1.Unknown s
-    | Asn1.String (s, true) -> V_String (Common.hexdump s)
+    | Asn1.String (s, true) -> V_String (if raw then s else Common.hexdump s)
     | Asn1.String (s, false) -> V_String s
     | Asn1.Constructed objs -> V_List (List.map (fun x -> V_Asn1 x) objs)
   in
-  add_asn1_field "content" value_of_asn1_content;
+  add_asn1_field "content" (value_of_asn1_content false);
+  add_asn1_field "content_raw" (value_of_asn1_content true);
 
   (* TODO: let add_dn_field name f = Hashtbl.replace dn_field_access name f *)
 
