@@ -1,5 +1,6 @@
 Language
  - socket
+ - add construction ""
  - Write efficient equality by specifying == when both sides have the same type
  - Add a eval operator to bring filters from the command line
  - Think about partial applications?
@@ -15,9 +16,17 @@ Language
 
 Language extension
  - V_Other of string * string (module_name, binary)
+ - Each type should contain some functions (parse, print, dump) and a generic accessor
+ - Each type could be represented by a new value (V_Module) which should implement options and optionnaly functions
+ - print should call module.print / dump and parse too.
  - A chaque utilisation, on appelle parse du module module_name. Celui-ci peut être un module créé à l'aide d'un foncteur utilisant la mémoisation (weak pointers / module Weak ou tables de hachage avec un roulement pour effacer les donnees non utilisees) pour rendre la chose efficace.
     -> une extension enregistre un ensemble de fonctions (print, access) et les associe à un nom
     -> les objets sont abstraits et ne peuvent être manipulés que par print / les accesseurs et les opérations sur les listes
+
+asn1
+ - Add a orig_hlen / orig_len in asn1_object
+ - Write in FAcesl a asn1parse like
+ - Add options for the parser (asn1.tolerance <- 0, with a new value sort "module")
 
 map tool
  - Improve the error messages of the lexer/parser
