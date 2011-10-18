@@ -11,26 +11,19 @@ let interactive () =
       print_string (getv_str [global_env] ("PS1") "> ");
       flush stdout;
       try
-	let line = input_line stdin in
-	let lexbuf = Lexing.from_string line in
-	let result = MapParser.exprs MapLexer.main_token lexbuf in
-	begin
-	  try
-	    let res = match eval_exps [global_env] result with
-	      | (V_Bool _ | V_Int _ | V_String _ | V_List _) as value ->
-		eval_as_string value
-	      | V_Unit -> "OK."
-	      | v -> "<" ^ string_of_type (v) ^ ">"
-	    in
-	    print_endline res;
-	    flush stdout
-	  with
-	    | NotImplemented -> output_string stderr "Not implemented\n"; flush stderr
-	    | e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); flush stderr
-	end;
+	let res = match interpret_string [global_env] (input_line stdin) with
+	  | (V_Bool _ | V_Int _ | V_String _ | V_List _) as value ->
+	    eval_as_string value
+	  | V_Unit -> "OK."
+	  | v -> "<" ^ string_of_type (v) ^ ">"
+	in
+	print_endline res;
 	flush stdout
-      with Parsing.Parse_error ->
-	output_string stderr ("Syntax error\n"); flush stderr
+      with
+	| NotImplemented -> output_string stderr "Not implemented\n"; flush stderr
+	| Parsing.Parse_error -> output_string stderr ("Syntax error\n"); flush stderr
+	| End_of_file -> raise End_of_file
+	| e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); flush stderr
     done
   with End_of_file -> ()
 

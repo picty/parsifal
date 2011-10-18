@@ -10,6 +10,10 @@ let one_string_fun f = function
   | [e] -> f (eval_as_string e)
   | _ -> raise WrongNumberOfArguments
 
+let one_string_fun_with_env f env = function
+  | [e] -> f env (eval_as_string e)
+  | _ -> raise WrongNumberOfArguments
+
 let one_list_fun f = function
   | [e] -> f (eval_as_list e)
   | _ -> raise WrongNumberOfArguments
@@ -181,4 +185,6 @@ let _ =
   add_native "nth" (two_value_fun nth);
   add_native_with_env "filter" (two_value_fun_with_env filter);
   add_native_with_env "map" (two_value_fun_with_env map);
-  add_native_with_env "iter" (two_value_fun_with_env iter)
+  add_native_with_env "iter" (two_value_fun_with_env iter);
+
+  add_native_with_env "eval" (one_string_fun_with_env interpret_string);

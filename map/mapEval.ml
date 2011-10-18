@@ -147,10 +147,7 @@ let make_local_env env args values =
 let rec  eval_string_token env = function
   | ST_String s -> s
   | ST_Var s -> eval_as_string (getv env s)
-  | ST_Expr s ->
-      let lexbuf = Lexing.from_string s in
-      let ast = MapParser.exprs MapLexer.main_token lexbuf in
-      eval_as_string (eval_exps env ast)
+  | ST_Expr s -> eval_as_string (interpret_string env s)
 
 and eval_exp env exp =
   let eval = eval_exp env in
@@ -262,3 +259,8 @@ and eval_exps env = function
   | e::r ->
     ignore (eval_exp env e);
     eval_exps env r
+
+and interpret_string env s =
+  let lexbuf = Lexing.from_string s in
+  let ast = MapParser.exprs MapLexer.main_token lexbuf in
+  eval_exps env ast
