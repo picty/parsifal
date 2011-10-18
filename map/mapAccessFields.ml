@@ -1,4 +1,5 @@
 open MapLang
+open MapEval
 
 let add_cert_field name f = Hashtbl.replace certificate_field_access name f
 let add_answer_field name f = Hashtbl.replace answer_field_access name f

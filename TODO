@@ -1,6 +1,5 @@
 Language
  - socket
- - add construction ""
  - Write efficient equality by specifying == when both sides have the same type
  - Add a eval operator to bring filters from the command line
  - Think about partial applications?

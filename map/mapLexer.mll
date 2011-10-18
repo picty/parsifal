@@ -112,6 +112,6 @@ and string_token cur accu = parse
   | '"' { T_String (List.rev (add_str accu cur)) }
   | '$' ( ['A'-'Z' 'a'-'z' '_'] ['A'-'Z' 'a'-'z' '_' '0'-'9']* as ident )
       { string_token [] ((MapLang.ST_Var ident)::(add_str accu cur)) lexbuf }
-  | "${" ( ['A'-'Z' 'a'-'z' '_'] ['A'-'Z' 'a'-'z' '_' '0'-'9']* as ident ) '}'
-      { string_token [] ((MapLang.ST_Var ident)::(add_str accu cur)) lexbuf }
+  | "${" ( [^ '}']* as e ) '}'
+      { string_token [] ((MapLang.ST_Expr e)::(add_str accu cur)) lexbuf }
   | _ as c { string_token (c::cur) accu lexbuf }
