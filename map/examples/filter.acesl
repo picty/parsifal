@@ -1,0 +1,8 @@
+#!/home/yeye/dev/FAceSL/facesl.native
+
+mk_filter := function (filter, value) {
+    eval (filter)
+};
+
+print (filter (mk_filter (head (args)), tail (args)))
+

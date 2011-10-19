@@ -5,7 +5,7 @@ open MapLang
 type function_sort =
   | NativeFun of (value list -> value)
   | NativeFunWithEnv of (environment -> value list -> value)
-  | InterpretedFun of (string list * expression list)
+  | InterpretedFun of (environment * string list * expression list)
 
 and value =
   | V_Unit
@@ -122,26 +122,6 @@ let getv_str env name default =
     | ContentError _ -> default
 
 
-let make_local_env env args values =
-  let na = List.length args in
-  let nv = List.length values in
-  if na <> nv
-  then raise WrongNumberOfArguments
-  else begin
-    let local_env = Hashtbl.create (2 * na) in
-    let rec instanciate = function
-      | [], [] -> ()
-      | a::rargs, v::rvalues ->
-	Hashtbl.replace local_env a v;
-	instanciate (rargs, rvalues)
-      | _ -> raise WrongNumberOfArguments
-    in
-    instanciate (args, values);
-    local_env::env
-  end
-
-
-
 (* Interpretation *)
 
 let rec  eval_string_token env = function
@@ -197,7 +177,10 @@ and eval_exp env exp =
       with Not_found -> V_Bool false
     end
 
-    | E_Function (arg_names, e) -> V_Function (InterpretedFun (arg_names, e))
+    | E_Function (arg_names, e) ->
+      let na = List.length arg_names in
+      let new_env = Hashtbl.create (2 * na) in
+      V_Function (InterpretedFun (new_env::env, arg_names, e))
     | E_Local id -> begin
       match env with
 	| [] -> raise Not_found
@@ -244,14 +227,23 @@ and eval_exp env exp =
 and eval_function env f args = match f with
   | NativeFun f -> f args
   | NativeFunWithEnv f -> f env args
-  | InterpretedFun (arg_names, body) ->
-    let new_env = make_local_env env arg_names args in
-    begin
-      try
-	eval_exps new_env body
-      with
-	| ReturnValue v -> v
-    end
+  | InterpretedFun (saved_env::r, arg_names, body) ->
+    let local_env = Hashtbl.copy saved_env in
+    let rec instanciate_and_eval = function
+      | [], [] -> begin
+	try
+	  eval_exps (local_env::r) body
+	with
+	  | ReturnValue v -> v
+      end
+      | remaining_names, [] ->
+	V_Function (InterpretedFun (local_env::r, remaining_names, body))
+      | name::names, value::values ->
+	Hashtbl.replace local_env name value;
+	instanciate_and_eval (names, values)
+      | _ -> raise WrongNumberOfArguments
+    in instanciate_and_eval (arg_names, args)
+  | InterpretedFun _ -> failwith "eval_function called on an InterpretedFun with an empty saved_environment"
 
 and eval_exps env = function
   | [] -> V_Unit
