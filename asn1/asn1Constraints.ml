@@ -42,13 +42,15 @@ let common_constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state
   in
 
   if eos pstate then Left (TooFewObjects None) else begin
+    let offset = get_offset pstate in
     let (c, isC, t), to_discard = extract_header_rewindable pstate in
     match cons with
       | Anything postprocess ->
 	ignore (pop_bytes pstate to_discard);
 	extract_length pstate (string_of_header_pretty c isC t);
+	let len = get_len pstate in
 	let content = (choose_parse_fun pstate c isC t) pstate in
-	let res = mk_object c t (string_of_header_pretty c isC t) content in
+	let res = mk_object (string_of_header_pretty c isC t) c t offset to_discard len content in
 	if not (eos pstate) then begin
 	  emit UnexpectedJunk s_idempotencebreaker pstate;
 	  ignore (pop_string pstate)
@@ -173,11 +175,11 @@ let custom_pair_cons c t name postprocess cons1 cons2 sev =
 
 
 let validating_parser_simple_cons c isC t name parse_fun =
-  let aux pstate = mk_object c t name (parse_fun pstate) in
+  let aux pstate = mk_object' name c t (parse_fun pstate) in
   Simple_cons (c, isC, t, name, aux)
 
 let validating_parser_complex_cons_from_list c isC t_list parse_fun =
-  let aux c t name pstate = mk_object c t name (parse_fun pstate) in
+  let aux c t name pstate = mk_object' name c t (parse_fun pstate) in
   let cons_fun c' isC' t' =
     if c = c' && isC = isC' && (List.mem t' t_list)
     then begin

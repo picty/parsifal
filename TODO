@@ -22,7 +22,6 @@ Language extension
     -> les objets sont abstraits et ne peuvent être manipulés que par print / les accesseurs et les opérations sur les listes
 
 asn1
- - Add a orig_hlen / orig_len in asn1_object
  - Write in FAcesl a asn1parse like
  - Add options for the parser (asn1.tolerance <- 0, with a new value sort "module")
 

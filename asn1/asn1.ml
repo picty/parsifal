@@ -57,6 +57,7 @@ let universal_tag_map =
 type asn1_object = {
   a_class : asn1_class;
   a_tag : int;
+  a_ohl : (int * int * int) option;  (* offset, hlen, len *)
   a_content : asn1_content;
   a_name : string;
 }
@@ -72,7 +73,13 @@ and asn1_content =
   | Constructed of asn1_object list
   | Unknown of string
 
-let mk_object c t name content = {a_class = c; a_tag = t; a_content = content; a_name = name}
+let mk_object name c t offset hlen len content =
+  {a_class = c; a_tag = t; a_ohl = Some (offset, hlen, len);
+   a_content = content; a_name = name}
+
+let mk_object' name c t content =
+  {a_class = c; a_tag = t; a_ohl = None;
+   a_content = content; a_name = name}
 
 
 (*****************************)
@@ -447,10 +454,14 @@ and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_func
     | _ -> if isC then der_to_constructed else der_to_unknown
       
 and parse pstate : asn1_object =
+  let offset = get_offset pstate in
   let (c, isC, t) = extract_header pstate in
+  let hlen = (get_offset pstate) - offset in
   extract_length pstate (string_of_header_pretty c isC t);
+  let len = get_len pstate in
   let parse_fun = choose_parse_fun pstate c isC t in
-  let res = {a_class = c; a_tag = t; a_content = parse_fun pstate; a_name = ""} in
+  let res = mk_object (string_of_header_pretty c isC t)
+    c t offset hlen len (parse_fun pstate) in
   if not (eos pstate) then begin
     emit UnexpectedJunk s_idempotencebreaker pstate;
     ignore (pop_string pstate)
