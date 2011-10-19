@@ -9,22 +9,7 @@ module AnswerDumpEngineParams = struct
     | OutOfBounds s -> "Out of bounds (" ^ s ^ ")"
     | NotImplemented s -> "Not implemented (" ^ s ^  ")"
 
-  type severity =
-    | S_OK
-    | S_Fatal
-
-  let fatal_severity = S_Fatal
-
-  let string_of_severity = function
-    | S_OK -> "OK"
-    | S_Fatal -> "Fatal"
-
-  let int_of_severity = function
-    | S_OK -> 0
-    | S_Fatal -> 2
-
-  let compare_severity x y =
-    compare (int_of_severity x) (int_of_severity y)
+  let severities = [| "OK"; "Fatal" |]
 end
 
 open AnswerDumpEngineParams;;
@@ -53,6 +38,6 @@ let parse_answer_record pstate =
     msg_type = msg_type; content = content }
 
 
-let pstate_of_channel = Engine.pstate_of_channel (default_error_handling_function S_Fatal S_OK)
-let pstate_of_string = Engine.pstate_of_string (default_error_handling_function S_Fatal S_OK)
-let pstate_of_stream = Engine.pstate_of_stream (default_error_handling_function S_Fatal S_OK)
+let pstate_of_channel = Engine.pstate_of_channel (default_error_handling_function 1 0)
+let pstate_of_string = Engine.pstate_of_string (default_error_handling_function 1 0)
+let pstate_of_stream = Engine.pstate_of_stream (default_error_handling_function 1 0)

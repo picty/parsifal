@@ -34,7 +34,7 @@ let common_constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state
     extract_length pstate name;
     let content = f pstate in
     if not (eos pstate) then begin
-      emit UnexpectedJunk S_IdempotenceBreaker pstate;
+      emit UnexpectedJunk s_idempotencebreaker pstate;
       ignore (pop_string pstate)
     end;
     go_up pstate;
@@ -50,7 +50,7 @@ let common_constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state
 	let content = (choose_parse_fun pstate c isC t) pstate in
 	let res = mk_object c t (string_of_header_pretty c isC t) content in
 	if not (eos pstate) then begin
-	  emit UnexpectedJunk S_IdempotenceBreaker pstate;
+	  emit UnexpectedJunk s_idempotencebreaker pstate;
 	  ignore (pop_string pstate)
 	end;
 	go_up pstate;
@@ -72,7 +72,7 @@ let constrained_parse_opt (cons : 'a asn1_constraint) (sev : severity) (pstate :
   let res = common_constrained_parse cons pstate in
   match res with
     | Left err ->
-      if sev <> S_OK then emit err sev pstate;
+      if sev <> s_ok then emit err sev pstate;
       None
     | Right x -> Some x
 
@@ -82,7 +82,7 @@ let constrained_parse_def (cons : 'a asn1_constraint) (sev : severity)
   let res = common_constrained_parse cons pstate in
   match res with
     | Left err ->
-      if sev <> S_OK then emit err sev pstate;
+      if sev <> s_ok then emit err sev pstate;
       default_value
     | Right x -> x
 
@@ -90,7 +90,7 @@ let constrained_parse_def (cons : 'a asn1_constraint) (sev : severity)
 let constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state) : 'a =
   let res = common_constrained_parse cons pstate in
   match res with
-    | Left err -> raise (ParsingError (err, S_Fatal, pstate))
+    | Left err -> raise (ParsingError (err, s_fatal, pstate))
     | Right x -> x
 
 

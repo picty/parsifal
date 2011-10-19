@@ -36,18 +36,18 @@ let parse_oid_object dir oid_type oid_sev pstate =
   let oid = constrained_parse_def oid_cons oid_sev [] pstate in
   let content_cons, content_sev = if Hashtbl.mem dir (oid_type, oid)
     then Hashtbl.find dir (oid_type, oid)
-    else (Anything Common.identity), S_Benign
+    else (Anything Common.identity), s_benign
   in
   let content = match common_constrained_parse content_cons pstate with
     | Left (TooFewObjects _) -> None
     | Left err ->
       emit err content_sev pstate;
       (* We try to get anything is the severity was not too much *)
-      constrained_parse_opt (Anything Common.identity) S_OK pstate
+      constrained_parse_opt (Anything Common.identity) s_ok pstate
     | Right o -> Some o
   in
   if not (eos pstate)
-  then emit (TooManyObjects None) S_SpecLightlyViolated pstate;
+  then emit (TooManyObjects None) s_speclightlyviolated pstate;
   { oo_id = oid; oo_content = content }
 
 
@@ -82,7 +82,7 @@ let extract_version l =
 
 let version_constraint : int asn1_constraint =
   Simple_cons (C_ContextSpecific, true, 0, "Version",
-	       parse_sequenceof extract_version int_cons (Exactly (1, S_SpecFatallyViolated)))
+	       parse_sequenceof extract_version int_cons (Exactly (1, s_specfatallyviolated)))
 
 
 
@@ -94,7 +94,7 @@ let serial_constraint = int_cons
 (* Signature algo *)
 
 let sigalgo_constraint dir : oid_object asn1_constraint =
-  object_constraint dir SigAlgo S_SpecFatallyViolated "Signature Algorithm"
+  object_constraint dir SigAlgo s_specfatallyviolated "Signature Algorithm"
 
 
 (* Distinguished names *)
@@ -104,9 +104,9 @@ type rdn = atv list
 type dn = rdn list
 
 let atv_constraint dir : atv asn1_constraint =
-  object_constraint dir ATV S_SpecFatallyViolated "ATV"
+  object_constraint dir ATV s_specfatallyviolated "ATV"
 let rdn_constraint dir : rdn asn1_constraint =
-  setOf_cons Common.identity "Relative DN" (atv_constraint dir) (AtLeast (1, S_SpecFatallyViolated))
+  setOf_cons Common.identity "Relative DN" (atv_constraint dir) (AtLeast (1, s_specfatallyviolated))
 let dn_constraint dir name : dn asn1_constraint =
   seqOf_cons Common.identity name (rdn_constraint dir) AlwaysOK
 
@@ -196,7 +196,7 @@ let extract_validity = function
   | _ -> { not_before = InvalidDateTime; not_after = InvalidDateTime }
 
 let validity_constraint : validity asn1_constraint =
-  seqOf_cons extract_validity "Validity" datetime_constraint (Exactly (2, S_SpecFatallyViolated))
+  seqOf_cons extract_validity "Validity" datetime_constraint (Exactly (2, s_specfatallyviolated))
 
 
 let string_of_datetime = function
@@ -230,11 +230,11 @@ let extract_public_key_info = function
   | _ -> empty_public_key_info
 
 let pubkeyalgo_constraint dir : oid_object asn1_constraint =
-  object_constraint dir PubKeyAlgo S_SpecFatallyViolated "Public Key Algorithm"
+  object_constraint dir PubKeyAlgo s_specfatallyviolated "Public Key Algorithm"
 
 let public_key_info_constraint dir : public_key_info asn1_constraint =
   custom_pair_cons C_Universal 16 "Public Key Info" extract_public_key_info
-    (pubkeyalgo_constraint dir) bitstring_cons S_SpecFatallyViolated
+    (pubkeyalgo_constraint dir) bitstring_cons s_specfatallyviolated
 
 
 let string_of_public_key_info indent resolver pki =
@@ -269,29 +269,29 @@ let empty_tbs_certificate =
     subject_unique_id = None; extensions = None }
 
 let parse_tbs_certificate dir pstate =
-  let version = constrained_parse_opt version_constraint S_OK pstate in
-  let serial = constrained_parse_def serial_constraint S_SpecFatallyViolated [] pstate in
-  let sig_algo = constrained_parse_def (sigalgo_constraint dir) S_SpecFatallyViolated empty_oid_object pstate in
-  let issuer = constrained_parse_def (dn_constraint dir "Issuer") S_SpecFatallyViolated [] pstate in
-  let validity = constrained_parse_def validity_constraint S_SpecFatallyViolated empty_validity pstate in
-  let subject = constrained_parse_def (dn_constraint dir "Subject") S_SpecFatallyViolated [] pstate in
-  let pk_info = constrained_parse_def (public_key_info_constraint dir) S_SpecFatallyViolated empty_public_key_info pstate in
+  let version = constrained_parse_opt version_constraint s_ok pstate in
+  let serial = constrained_parse_def serial_constraint s_specfatallyviolated [] pstate in
+  let sig_algo = constrained_parse_def (sigalgo_constraint dir) s_specfatallyviolated empty_oid_object pstate in
+  let issuer = constrained_parse_def (dn_constraint dir "Issuer") s_specfatallyviolated [] pstate in
+  let validity = constrained_parse_def validity_constraint s_specfatallyviolated empty_validity pstate in
+  let subject = constrained_parse_def (dn_constraint dir "Subject") s_specfatallyviolated [] pstate in
+  let pk_info = constrained_parse_def (public_key_info_constraint dir) s_specfatallyviolated empty_public_key_info pstate in
 
   let issuer_unique_id =
       constrained_parse_opt (Simple_cons (C_ContextSpecific, false, 1, "Issuer Unique Identifer",
-					  raw_der_to_bitstring 54)) S_OK pstate in
+					  raw_der_to_bitstring 54)) s_ok pstate in
 
   let subject_unique_id =
     constrained_parse_opt (Simple_cons (C_ContextSpecific, false, 2, "Subject Unique Identifer",
-					raw_der_to_bitstring 54)) S_OK pstate in
+					raw_der_to_bitstring 54)) s_ok pstate in
 
 
   (* TODO *)
   let extensions =
     constrained_parse_opt (Simple_cons (C_ContextSpecific, true, 3, "Extensions container",
 					parse_sequenceof List.hd (Anything Common.identity)
-					  (Exactly (1, S_SpecLightlyViolated))))
-      S_OK pstate in
+					  (Exactly (1, s_speclightlyviolated))))
+      s_ok pstate in
 
 
   let effective_version = match version with
@@ -303,17 +303,17 @@ let parse_tbs_certificate dir pstate =
     match effective_version, issuer_unique_id, subject_unique_id with
       | _, None, None -> ()
       | v, _, _ ->
-	if v < 2 then emit (UnexpectedObject "unique id") S_SpecLightlyViolated pstate
+	if v < 2 then emit (UnexpectedObject "unique id") s_speclightlyviolated pstate
   end;
 
   begin
     match effective_version, extensions with
       | _, None -> ()
       | v, _ ->
-	if v < 3 then emit (UnexpectedObject "extension") S_SpecLightlyViolated pstate
+	if v < 3 then emit (UnexpectedObject "extension") s_speclightlyviolated pstate
   end;
 
-  if not (eos pstate) then emit (TooManyObjects None) S_SpecLightlyViolated pstate;
+  if not (eos pstate) then emit (TooManyObjects None) s_speclightlyviolated pstate;
 
   { version = version; serial = serial; sig_algo = sig_algo;
     issuer = issuer; validity = validity; subject = subject;
@@ -362,10 +362,10 @@ type certificate = {
 
 
 let parse_certificate dir pstate =
-  let tbs = constrained_parse_def (tbs_certificate_constraint dir) S_SpecFatallyViolated empty_tbs_certificate pstate in
-  let sig_algo = constrained_parse_def (sigalgo_constraint dir) S_SpecFatallyViolated empty_oid_object pstate in
+  let tbs = constrained_parse_def (tbs_certificate_constraint dir) s_specfatallyviolated empty_tbs_certificate pstate in
+  let sig_algo = constrained_parse_def (sigalgo_constraint dir) s_specfatallyviolated empty_oid_object pstate in
   let signature = constrained_parse_def (Simple_cons (C_Universal, false, 3, "Signature",
-					raw_der_to_bitstring 54)) S_OK (0, "") pstate in
+					raw_der_to_bitstring 54)) s_ok (0, "") pstate in
 
   { tbs = tbs; cert_sig_algo = sig_algo; signature = signature }
 
@@ -389,7 +389,7 @@ let rec string_of_certificate print_title indent resolver c =
 
 (*
 
-let pkcs1_RSA_private_key = seqOf_cons mk_object "RSA Private Key" int_cons (Exactly (9, S_SpecFatallyViolated))
-let pkcs1_RSA_public_key = seqOf_cons mk_object "RSA Public Key" int_cons (Exactly (2, S_SpecFatallyViolated))
+let pkcs1_RSA_private_key = seqOf_cons mk_object "RSA Private Key" int_cons (Exactly (9, s_specfatallyviolated))
+let pkcs1_RSA_public_key = seqOf_cons mk_object "RSA Public Key" int_cons (Exactly (2, s_specfatallyviolated))
 
 *)

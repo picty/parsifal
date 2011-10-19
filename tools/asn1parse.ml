@@ -21,8 +21,8 @@ let data_repr = ref PrettyData
 let resolver = ref (Some (X509.name_directory))
 let indent = ref true
 
-let tolerance = ref S_SpecFatallyViolated
-let minDisplay = ref S_OK
+let tolerance = ref s_specfatallyviolated
+let minDisplay = ref s_ok
 let files = ref []
 
 
@@ -39,11 +39,11 @@ let assign r v = Arg.Unit (fun () -> r:=v)
 
 let update_sev r arg =
   let v = match String.lowercase arg with
-    | "ok" | "0" -> S_OK
-    | "benign" | "1" -> S_Benign
-    | "idempotence" | "2" -> S_IdempotenceBreaker
-    | "speclightly" | "3" -> S_SpecLightlyViolated
-    | "spcefatally" | "4" -> S_SpecFatallyViolated
+    | "ok" | "0" -> s_ok
+    | "benign" | "1" -> s_benign
+    | "idempotence" | "2" -> s_idempotencebreaker
+    | "speclightly" | "3" -> s_speclightlyviolated
+    | "spcefatally" | "4" -> s_specfatallyviolated
     | _ -> raise (Arg.Bad "Invalid severity (should be one of OK, Benign, Idempotence, SpecLightly, SpecFatally)")
   in r := v
 
@@ -221,7 +221,7 @@ let rec asn1parse_input depth pstate =
     end;
 
     if not (eos pstate) then begin
-      emit UnexpectedJunk S_IdempotenceBreaker pstate;
+      emit UnexpectedJunk s_idempotencebreaker pstate;
       ignore (pop_string pstate)
     end;
 

@@ -6,9 +6,7 @@ let get_name answer =
 
 let pstate = AnswerDump.pstate_of_channel "(stdin)" stdin;;
 
-let asn1_ehf = (Asn1.Engine.default_error_handling_function
-		  Asn1.Asn1EngineParams.S_SpecFatallyViolated
-		  Asn1.Asn1EngineParams.S_SpecFatallyViolated)
+let asn1_ehf = (Asn1.Engine.default_error_handling_function 4 4)
 let parse_record = Tls.parse_record asn1_ehf;;
 
 try
@@ -27,7 +25,7 @@ try
 	      | Tls.Handshake hm -> Printf.printf " Handshake (%s)" (Tls.string_of_handshake_msg_type (Tls.type_of_handshake_msg hm))
 	      | Tls.UnparsedRecord (ct, _) ->
 		Tls.Engine.emit (Tls.TlsEngineParams.NotImplemented "SSLv2 ?")
-		  Tls.TlsEngineParams.S_Fatal tls_pstate
+		  Tls.TlsEngineParams.s_fatal tls_pstate
 	  end;
 	with
 	  | Asn1.Engine.ParsingError (err, sev, pstate) ->

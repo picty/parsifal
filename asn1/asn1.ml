@@ -197,34 +197,12 @@ module Asn1EngineParams = struct
     | UnexpectedJunk -> "Unexpected junk"
     | UnexpectedObject s -> "Unexpected object " ^ s
 
-  type severity =
-    | S_OK
-    | S_Benign
-    | S_IdempotenceBreaker
-    | S_SpecLightlyViolated
-    | S_SpecFatallyViolated
-    | S_Fatal
-
-  let fatal_severity = S_Fatal
-
-  let string_of_severity = function
-    | S_OK -> "OK"
-    | S_Benign -> "Benign"
-    | S_IdempotenceBreaker -> "IdempotenceBreaker"
-    | S_SpecLightlyViolated -> "SpecLightlyViolated"
-    | S_SpecFatallyViolated -> "SpecFatallyViolated"
-    | S_Fatal -> "Fatal"
-
-  let int_of_severity = function
-    | S_OK -> 0
-    | S_Benign -> 1
-    | S_IdempotenceBreaker -> 2
-    | S_SpecLightlyViolated -> 3
-    | S_SpecFatallyViolated -> 4
-    | S_Fatal -> 5
-
-  let compare_severity x y =
-    compare (int_of_severity x) (int_of_severity y)
+  let severities = [| "OK"; "Benign"; "IdempotenceBreaker";
+		      "SpecLightlyViolated"; "SpecFatallyViolated";
+		      "Fatal" |]
+  let s_ok = 0 and s_benign = 1 and s_idempotencebreaker = 2 and
+      s_speclightlyviolated = 3 and s_specfatallyviolated = 4 and
+      s_fatal = 5
 end
 
 open Asn1EngineParams;;
@@ -252,7 +230,7 @@ let extract_shorttype (x : int) : int =
 
 (* This function should use peek_byte and consider one byte has already been read *)
 let extract_longtype pstate : int  =
-  raise (ParsingError (NotImplemented "Long type", S_Fatal, pstate))
+  raise (ParsingError (NotImplemented "Long type", s_fatal, pstate))
 
 let extract_header pstate : (asn1_class * bool * int) =
   let hdr = pop_byte pstate in
@@ -266,7 +244,7 @@ let extract_header pstate : (asn1_class * bool * int) =
 
 (* This function should use peek_byte and consider one byte has already been read *)
 let extract_longtype_rewindable pstate : int * int  =
-  raise (ParsingError (NotImplemented "Long type", S_Fatal, pstate))
+  raise (ParsingError (NotImplemented "Long type", s_fatal, pstate))
 
 let extract_header_rewindable pstate : ((asn1_class * bool * int) * int) =
   let hdr = peek_byte pstate 0 in
@@ -301,12 +279,12 @@ let raw_der_to_boolean pstate =
   let value = pop_list pstate in
   match value with
     | [] ->
-      emit (IncorrectLength "boolean") S_IdempotenceBreaker pstate;
+      emit (IncorrectLength "boolean") s_idempotencebreaker pstate;
       false
     | [0] -> false
     | [255] -> true
     | v::_ ->
-      emit (NotInNormalForm "boolean") S_IdempotenceBreaker pstate;
+      emit (NotInNormalForm "boolean") s_idempotencebreaker pstate;
       (v <> 0)
 
 let der_to_boolean pstate = Boolean (raw_der_to_boolean pstate)
@@ -318,19 +296,19 @@ let raw_der_to_int pstate =
   let l = pop_list pstate in
   let negative = match l with
     | [] ->
-      emit (IncorrectLength "integer") S_IdempotenceBreaker pstate;
+      emit (IncorrectLength "integer") s_idempotencebreaker pstate;
       false
     | x::y::r when x = 0xff ->
-      emit (NotInNormalForm "integer") S_IdempotenceBreaker pstate;
+      emit (NotInNormalForm "integer") s_idempotencebreaker pstate;
       true
     | x::y::r when (x = 0) && (y land 0x80) = 0 ->
-      emit (NotInNormalForm "integer") S_IdempotenceBreaker pstate;
+      emit (NotInNormalForm "integer") s_idempotencebreaker pstate;
       false
     | x::r -> (x land 0x80) = 0x80
   in
   (* TODO *)
   if negative
-  then emit (NotImplemented "Negative integer") S_IdempotenceBreaker pstate;
+  then emit (NotImplemented "Negative integer") s_idempotencebreaker pstate;
   l
 (*  bigint_of_intlist l *)
 
@@ -341,7 +319,7 @@ let der_to_int pstate = Integer (raw_der_to_int pstate)
 
 let raw_der_to_null pstate =
   if not (eos pstate)
-  then emit (IncorrectLength "null") S_IdempotenceBreaker pstate
+  then emit (IncorrectLength "null") s_idempotencebreaker pstate
 
 let der_to_null pstate =
   raw_der_to_null pstate;
@@ -369,7 +347,7 @@ let raw_der_to_oid pstate =
 	let next = der_to_subid pstate in
 	next::(aux ())
       with ParsingError (OutOfBounds _, _, _) ->
-	emit (IncorrectLength "null") S_IdempotenceBreaker pstate;
+	emit (IncorrectLength "null") s_idempotencebreaker pstate;
 	[]
     end
   in
@@ -383,7 +361,7 @@ let der_to_oid pstate = OId (raw_der_to_oid pstate)
 let raw_der_to_bitstring _type pstate =
   let nBits =
     if eos pstate then begin
-      emit (IncorrectLength "null") S_IdempotenceBreaker pstate;
+      emit (IncorrectLength "null") s_idempotencebreaker pstate;
       0
     end else pop_byte pstate
   in
@@ -454,16 +432,16 @@ and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_func
 	| (T_Set, true) -> der_to_constructed
 	  
 	| (_, false) ->
-	  emit (UnknownUniversal (false, t)) S_SpecLightlyViolated pstate;
+	  emit (UnknownUniversal (false, t)) s_speclightlyviolated pstate;
 	  der_to_unknown
 
 	| (_, true) ->
-	  emit (UnknownUniversal (true, t)) S_SpecLightlyViolated pstate;
+	  emit (UnknownUniversal (true, t)) s_speclightlyviolated pstate;
 	  der_to_constructed
     end
       
     | C_Universal ->
-      emit (UnknownUniversal (isC, t)) S_SpecLightlyViolated pstate;
+      emit (UnknownUniversal (isC, t)) s_speclightlyviolated pstate;
       if isC then der_to_constructed else der_to_unknown
 
     | _ -> if isC then der_to_constructed else der_to_unknown
@@ -474,7 +452,7 @@ and parse pstate : asn1_object =
   let parse_fun = choose_parse_fun pstate c isC t in
   let res = {a_class = c; a_tag = t; a_content = parse_fun pstate; a_name = ""} in
   if not (eos pstate) then begin
-    emit UnexpectedJunk S_IdempotenceBreaker pstate;
+    emit UnexpectedJunk s_idempotencebreaker pstate;
     ignore (pop_string pstate)
   end;
   go_up pstate;

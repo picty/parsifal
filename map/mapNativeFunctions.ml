@@ -64,8 +64,8 @@ let decode format input = match format with
 
 
 let asn1_ehf = Asn1.Engine.default_error_handling_function
-  Asn1.Asn1EngineParams.S_SpecFatallyViolated
-  Asn1.Asn1EngineParams.S_OK
+  Asn1.Asn1EngineParams.s_specfatallyviolated
+  Asn1.Asn1EngineParams.s_ok
 
 let parse_constrained_asn1 cons input =
   let pstate = match input with

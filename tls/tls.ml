@@ -149,25 +149,8 @@ module TlsEngineParams = struct
     | ASN1ParsingError e -> "ASN1 parsing error (" ^ (Asn1.Asn1EngineParams.string_of_perror e) ^ ")"
     | NotImplemented s -> "Not implemented (" ^ s ^  ")"
 
-  type severity =
-    | S_OK
-    | S_Benign
-    | S_Fatal
-
-  let fatal_severity = S_Fatal
-
-  let string_of_severity = function
-    | S_OK -> "OK"
-    | S_Benign -> "Benign"
-    | S_Fatal -> "Fatal"
-
-  let int_of_severity = function
-    | S_OK -> 0
-    | S_Benign -> 1
-    | S_Fatal -> 2
-
-  let compare_severity x y =
-    compare (int_of_severity x) (int_of_severity y)
+  let severities = [| "OK"; "Benign"; "Fatal" |]
+  let s_ok = 0 and s_benign = 1 and s_fatal = 2
 end
 
 open TlsEngineParams;;
@@ -195,7 +178,7 @@ let extract_list name length_fun extract_fun pstate =
 
 
 let assert_eos pstate =
-  if not (eos pstate) then emit UnexpectedJunk S_Benign pstate
+  if not (eos pstate) then emit UnexpectedJunk s_benign pstate
 
 
 
@@ -203,7 +186,7 @@ let assert_eos pstate =
 
 let parse_change_cipher_spec pstate =
   let v = pop_byte pstate in
-  if v <> 1 then emit (UnexpectedChangeCipherSpecValue v) S_Benign pstate;
+  if v <> 1 then emit (UnexpectedChangeCipherSpecValue v) s_benign pstate;
   assert_eos pstate;
   ChangeCipherSpec
 
@@ -248,7 +231,7 @@ let alert_level_of_int pstate = function
   | 1 -> AL_Warning
   | 2 -> AL_Fatal
   | x ->
-    emit (UnexpectedAlertLevel x) S_Benign pstate;
+    emit (UnexpectedAlertLevel x) s_benign pstate;
     AL_Unknown x
 
 let alert_type_of_int pstate = function
@@ -278,7 +261,7 @@ let alert_type_of_int pstate = function
   | 100 -> NoRenegotiation
   | 110 -> UnsupportedExtension
   | x ->
-    emit (UnexpectedAlertType x) S_Benign pstate;
+    emit (UnexpectedAlertType x) s_benign pstate;
     UnknownAlertType x
 
 let parse_alert pstate =
@@ -334,7 +317,7 @@ let handshake_msg_type_of_int pstate = function
   | 16 -> H_ClientKeyExchange
   | 20 -> H_Finished
   | x ->
-    emit (UnexpectedHandshakeMsgType x) S_Benign pstate;
+    emit (UnexpectedHandshakeMsgType x) s_benign pstate;
     H_Unknown x
 
 let extract_handshake_header pstate =
@@ -412,7 +395,7 @@ let parse_one_certificate asn1_ehf pstate =
   try
     let asn1_pstate = Asn1.Engine.pstate_of_string asn1_ehf (string_of_pstate pstate) s in
     let res = Asn1Constraints.constrained_parse (X509.certificate_constraint X509.object_directory) asn1_pstate in
-    if not (Asn1.Engine.eos asn1_pstate) then emit UnexpectedJunk S_Benign pstate;
+    if not (Asn1.Engine.eos asn1_pstate) then emit UnexpectedJunk s_benign pstate;
     res
   with
       (* TODO: Handle things better? *)
@@ -494,7 +477,7 @@ let content_type_of_int pstate = function
   | 22 -> CT_Handshake
   | 23 -> CT_ApplicationData
   | x ->
-    emit (UnexpectedContentType x) S_Benign pstate;
+    emit (UnexpectedContentType x) s_benign pstate;
     CT_Unknown x
 
 let extract_record_header pstate =
@@ -545,6 +528,6 @@ let parse_record asn1_ehf pstate =
   { version = version; content = content}
 
 
-let pstate_of_channel = Engine.pstate_of_channel (default_error_handling_function S_Fatal S_OK)
-let pstate_of_string = Engine.pstate_of_string (default_error_handling_function S_Fatal S_OK)
-let pstate_of_stream = Engine.pstate_of_stream (default_error_handling_function S_Fatal S_OK)
+let pstate_of_channel = Engine.pstate_of_channel (default_error_handling_function 2 0)
+let pstate_of_string = Engine.pstate_of_string (default_error_handling_function 2 0)
+let pstate_of_stream = Engine.pstate_of_stream (default_error_handling_function 2 0)
