@@ -3,6 +3,7 @@ open MapLang;;
 open MapEval;;
 open MapNativeFunctions;;
 open MapAccessFields;;
+open Asn1Module;;
 
 let interactive () =
   setv [global_env] "PS1" (V_String "> ");

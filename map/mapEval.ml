@@ -13,9 +13,14 @@ and value =
   | V_Int of int
   | V_String of string
   | V_Function of function_sort
+
   | V_List of value list
   | V_Stream of string * char Stream.t
   | V_OutChannel of string * out_channel
+
+  | V_Module of string
+  | V_Object of string * string
+
   | V_AnswerRecord of AnswerDump.answer_record
   | V_TlsRecord of Tls.record
   | V_Asn1 of Asn1.asn1_object
@@ -25,6 +30,21 @@ and value =
 and environment = (string, value) Hashtbl.t list
 
 let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
+
+module type MapModule = sig
+  type encoded_object = string
+  val parse : value -> encoded_object
+  val dump : encoded_object -> string
+  val print : encoded_object -> string
+  val module_get : string -> value
+(*  val module_set : string -> value -> unit *)
+(*  val module_unset : string -> unit *)
+  val get : encoded_object -> string -> value
+(*  val set : encoded_object -> string -> value -> unit *)
+(*  val set : encoded_object -> string -> unit *)
+end
+
+let module_table : (string, (module MapModule)) Hashtbl.t = Hashtbl.create 10
 
 let certificate_field_access : (string, X509.certificate -> value) Hashtbl.t = Hashtbl.create 40
 let tls_field_access : (string, Tls.record -> value) Hashtbl.t = Hashtbl.create 40
@@ -54,7 +74,7 @@ let rec eval_as_string = function
   | V_DN dn -> X509.string_of_dn "" (Some X509.name_directory) dn
   | V_Certificate c -> X509.string_of_certificate true "" (Some X509.name_directory) c
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-  | V_AnswerRecord _ ->
+  | V_AnswerRecord _ | V_Object _ | V_Module _ ->
     raise (ContentError "String expected")
 
 let eval_as_int = function
@@ -68,29 +88,30 @@ let eval_as_bool = function
   | V_Int _ | V_List _ -> true
   | V_String s -> (String.length s) <> 0
   | V_Stream (_, s) -> not (Common.eos s)
-  | V_Function _ | V_OutChannel _
-  | V_AnswerRecord _ | V_TlsRecord _ | V_Asn1 _
-  | V_DN _ | V_Certificate _ -> true
+  | _ -> raise (ContentError "Boolean expected")
 
 let eval_as_function = function
   | V_Function body -> body
-  | _ ->
-    raise (ContentError "Function expected")
+  | _ -> raise (ContentError "Function expected")
 
 let eval_as_list = function
   | V_List l -> l
-  | _ ->
-    raise (ContentError "List expected")
+  | _ -> raise (ContentError "List expected")
 
 let string_of_type = function
   | V_Unit -> "unit"
   | V_Bool _ -> "bool"
   | V_Int _ -> "int"
   | V_String _ -> "string"
-  | V_Function _ -> "function"
+  | V_Function _ -> "function"  (* TODO: arity? *)
+
   | V_List _ -> "list"
   | V_Stream _ -> "stream"
   | V_OutChannel _ -> "outchannel"
+
+  | V_Module _ -> "module"  (* TODO: module name *)
+  | V_Object _ -> "object"  (* TODO: module name *)
+
   | V_AnswerRecord _ -> "answer"
   | V_TlsRecord _ -> "TLSrecord"
   | V_Asn1 _ -> "asn1object"
@@ -203,6 +224,10 @@ and eval_exp env exp =
 	| V_DN dn -> (Hashtbl.find dn_field_access f) dn
 	| V_TlsRecord r -> (Hashtbl.find tls_field_access f) r
 	| V_AnswerRecord a -> (Hashtbl.find answer_field_access f) a
+	| V_Module name ->
+	  let m = Hashtbl.find module_table name in
+          let module M = (val m : MapModule) in
+	  M.module_get f
 	| _ -> raise (ContentError ("Object with fields expected"))
     end
 

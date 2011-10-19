@@ -90,3 +90,9 @@ let eos stream =
     Stream.empty stream;
     true
   with Stream.Failure -> false
+
+
+
+let fst3 (a, _, _) = a
+let snd3 (_, b, _) = b
+let trd3 (_, _, c) = c
