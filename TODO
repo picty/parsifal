@@ -1,5 +1,9 @@
 Language
  - Add a lazy value type, and rewrite asn1 as a module + dictionary
+ - Add a expr.ident <- value expression, which will need to deal with left values (maybe it will be alright with Dicts ?)
+ - Add get, set, unset, list for environments and dictionaries.
+ - Add a library to filter and extract certs, either in native or interpreted form
+ - Add a way to import new functions (Dynlink for native)
  - socket
  - Add more field accessors (DN, X509, Tls)
  - Add encode/decode for base64
@@ -9,6 +13,11 @@ Language
  - Add Bigint handling?
  - Add for loops, break n, continue n ?
  - concurrentmap (Nproc, OutputTemplate, fun (verif pas d'effet de bord hors la fonction))
+
+Lexer / Parser
+ - Improve the error messages of the lexer/parser
+ - Handle correctly multiply embedded () "" and ${} with a stack ?!
+ - Catch parsing errors when they are due to an incomplete parse -> this way, we could wait for what is to come "> for if "-style
 
 Language extension
  - V_Other of string * string (module_name, binary)
@@ -20,15 +29,15 @@ Language extension
     -> une extension enregistre un ensemble de fonctions (print, access) et les associe à un nom
     -> les objets sont abstraits et ne peuvent être manipulés que par print / les accesseurs et les opérations sur les listes
 
+typing
+ - Add type constraints in the language, to help understanding errors.
+
 asn1
  - Write in FAcesl a asn1parse like
  - Add options for the parser (asn1.tolerance <- 0, with a new value sort "module")
 
 map tool
- - Improve the error messages of the lexer/parser
  - Add a late interactive mode (first we load files, then we can use them)
- - Add a way to import new functions (Dynlink for native)
- - Add a library to filter and extract certs, either in native or interpreted form
 
 Others
  - Enrich TLS parser.
