@@ -87,6 +87,7 @@ rule main_token = parse
   | "//" { comment_oneline_token lexbuf }
   | '#' { comment_oneline_token lexbuf }
   | '"'  { string_token [] [] lexbuf }
+  | '\''  { uninterp_string_token [] lexbuf }
 
 and comment_token = parse
   | "*/" { main_token lexbuf }
@@ -115,3 +116,8 @@ and string_token cur accu = parse
   | "${" ( [^ '}']* as e ) '}'
       { string_token [] ((MapLang.ST_Expr e)::(add_str accu cur)) lexbuf }
   | _ as c { string_token (c::cur) accu lexbuf }
+
+and uninterp_string_token cur = parse
+  | '\\' ['\\' '\''] { uninterp_string_token ((Lexing.lexeme_char lexbuf 1)::cur) lexbuf }
+  | '\'' { T_String [MapLang.ST_String (string_of_list (List.rev cur))] }
+  | _ as c { uninterp_string_token (c::cur) lexbuf }

@@ -1,6 +1,5 @@
 Language
  - Add a lazy value type, and rewrite asn1 as a module + dictionary
- - Add '' strings (not interpreted)
  - socket
  - Add more field accessors (DN, X509, Tls)
  - Add encode/decode for base64
