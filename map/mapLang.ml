@@ -40,7 +40,7 @@ type expression =
   | E_Exists of expression
 
   | E_Function of string list * expression list
-  | E_Local of string
+  | E_Local of string list
   | E_Apply of expression * expression list
   | E_Return of expression
 
@@ -93,7 +93,7 @@ let rec string_of_exp indent exp =
     | E_Function (arg_names, body) ->
       "fun (" ^ (String.concat ", " arg_names) ^
 	"{\n" ^ (soes body) ^ indent ^ "}"
-    | E_Local id -> "local " ^ id
+    | E_Local id -> "local " ^ (String.concat ", " id)
     | E_Apply (e, args) ->
       (soe e) ^ " (" ^ (String.concat ", " (List.map soe args)) ^ ")"
     | E_Return e -> "return " ^ (soe e)

@@ -18,6 +18,7 @@ and value =
 
   | V_List of value list
   | V_Set of StringSet.t
+  | V_Dict of (value, value) Hashtbl.t
   | V_Stream of string * char Stream.t
   | V_OutChannel of string * out_channel
 
@@ -74,8 +75,8 @@ let rec eval_as_string_non_recursive = function
   | V_Int i -> string_of_int i
   | V_String s -> s
 
-  | V_List _ | V_Set _ | V_TlsRecord _ | V_Asn1 _
-  | V_DN _ | V_Certificate _
+  | V_List _ | V_Set _ | V_Dict _ | V_TlsRecord _
+  | V_Asn1 _ | V_DN _ | V_Certificate _
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
   | V_AnswerRecord _ | V_Object _ | V_Module _ ->
     raise (ContentError "String expected")
@@ -89,6 +90,12 @@ let rec eval_as_string  = function
     "[" ^ (String.concat ", " (List.map eval_as_string l)) ^ "]"
   | V_Set s ->
     "{" ^ (String.concat ", " (StringSet.elements s)) ^ "}"
+  | V_Dict d ->
+    let hash_aux k v accu =
+      ((eval_as_string k) ^ " -> " ^ (eval_as_string v))::accu
+    in
+    "{" ^ (String.concat ", " (Hashtbl.fold hash_aux d [])) ^ "}"
+
   | V_TlsRecord r -> Tls.string_of_record r
   | V_Asn1 o -> Asn1.string_of_object "" opts o
   | V_DN dn -> X509.string_of_dn "" (Some X509.name_directory) dn
@@ -110,6 +117,10 @@ let eval_as_bool = function
   | V_Set s -> StringSet.is_empty s
   | V_String s -> (String.length s) <> 0
   | V_Stream (_, s) -> not (Common.eos s)
+
+  | V_Object _ | V_AnswerRecord _ | V_TlsRecord _
+  | V_Asn1 _ | V_DN _ | V_Certificate _ -> true
+
   | _ -> raise (ContentError "Boolean expected")
 
 let eval_as_function = function
@@ -120,6 +131,10 @@ let eval_as_list = function
   | V_List l -> l
   | _ -> raise (ContentError "List expected")
 
+let eval_as_dict = function
+  | V_Dict d -> d
+  | _ -> raise (ContentError "Dictionary expected")
+
 let string_of_type = function
   | V_Unit -> "unit"
   | V_Bool _ -> "bool"
@@ -129,6 +144,7 @@ let string_of_type = function
 
   | V_List _ -> "list"
   | V_Set _ -> "set"
+  | V_Dict _ -> "dict"
   | V_Stream _ -> "stream"
   | V_OutChannel _ -> "outchannel"
 
@@ -220,12 +236,16 @@ and eval_exp env exp =
       let na = List.length arg_names in
       let new_env = Hashtbl.create (2 * na) in
       V_Function (InterpretedFun (new_env::env, arg_names, e))
-    | E_Local id -> begin
-      match env with
-	| [] -> raise Not_found
-	| e::_ -> Hashtbl.replace e id V_Unit
-      end;
-      V_Unit
+    | E_Local ids ->
+      let rec add_locals ids =
+	match env, ids with
+	  | _, [] -> V_Unit
+	  | [], _ -> raise Not_found
+	  | e::_, id::r ->
+	    Hashtbl.replace e id V_Unit;
+	    add_locals r
+      in
+      add_locals ids
     | E_Apply (e, args) -> begin
       let f_value = eval_as_function (eval e) in
       let arg_values = List.map eval args in
@@ -237,6 +257,7 @@ and eval_exp env exp =
     | E_Cons (e1, e2) -> V_List ((eval e1)::(eval_as_list (eval e2)))
     | E_Field (e, f) -> begin
       match eval e with
+	| V_Dict d -> (Hashtbl.find d (V_String f))
 	| V_Asn1 a -> (Hashtbl.find asn1_field_access f) a
 	| V_Certificate c -> (Hashtbl.find certificate_field_access f) c
 	| V_DN dn -> (Hashtbl.find dn_field_access f) dn

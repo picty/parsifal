@@ -27,7 +27,6 @@ count_certs := function (path) {
 	       self_signed := cert.issuer == cert.subject
  	    fi;
         done;
-//      print (answer_str.ip, "", n_certs, msgs)
         print (answer_str.ip, n_certs, self_signed, msgs)
     done
 };

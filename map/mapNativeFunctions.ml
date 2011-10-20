@@ -30,6 +30,10 @@ let two_string_fun f = function
   | [e1; e2] -> f (eval_as_string e1) (eval_as_string e2)
   | _ -> raise WrongNumberOfArguments
 
+let three_value_fun f = function
+  | [e1; e2; e3] -> f e1 e2 e3
+  | _ -> raise WrongNumberOfArguments
+
 
 let typeof v = V_String (string_of_type v)
 
@@ -125,9 +129,12 @@ let parse format input =
       flush stderr;
       V_Unit;;
 
-
 let stream_of_string n s =
   V_Stream (n, Stream.of_string s)
+
+let concat_strings sep l =
+  V_String (String.concat (eval_as_string sep)
+	      (List.map (fun x -> eval_as_string x) (eval_as_list l)))
 
 
 let head = function
@@ -145,31 +152,17 @@ let nth n l =
   in nth_aux (eval_as_int n) (eval_as_list l)
 
 
-let filter env f arg =
-  let real_f = eval_as_function f in
-  let filter_aux elt = eval_as_bool (eval_function env real_f [elt]) in
-  let filter_aux_set elt = filter_aux (V_String elt) in
+let rec import_list arg =
+  let rec import_aux_stream accu s =
+    if Common.eos s
+    then V_List (List.rev accu)
+    else import_aux_stream ((V_String (Common.pop_line s))::accu) s
+  in
   match arg with
-    | V_List l -> V_List (List.filter filter_aux l)
-    | V_Set s -> V_Set (StringSet.filter filter_aux_set s)
-    | _ -> raise (ContentError "Iterable value expected")
-
-let map env f l =
-  let real_f = eval_as_function f in
-  let real_l = eval_as_list l in
-  V_List (List.map (fun elt -> eval_function env real_f [elt]) real_l)
-
-let iter env f arg =
-  let real_f = eval_as_function f in
-  let iter_aux elt = ignore (eval_function env real_f [elt]) in
-  let iter_aux_set elt = iter_aux (V_String elt) in
-  begin
-    match arg with
-      | V_List l -> List.iter iter_aux l
-      | V_Set s -> StringSet.iter iter_aux_set s
-      | _ -> raise (ContentError "Iterable value expected")
-  end;
-  V_Unit
+    | V_List l -> V_List l
+    | V_Set s -> V_List (List.map (fun x -> V_String x) (StringSet.elements s))
+    | V_Stream (_, s) -> import_aux_stream [] s
+    | v -> V_List ([v])
 
 
 let rec import_set args =
@@ -192,6 +185,42 @@ let rec import_set args =
   V_Set (aux StringSet.empty args)
 
 
+let filter env f arg =
+  let real_f = eval_as_function f in
+  let filter_aux elt = eval_as_bool (eval_function env real_f [elt]) in
+  let filter_aux_set elt = filter_aux (V_String elt) in
+  match arg with
+    | V_List l -> V_List (List.filter filter_aux l)
+    | V_Set s -> V_Set (StringSet.filter filter_aux_set s)
+    | _ -> raise (ContentError "Iterable value expected")
+
+let map env f l =
+  let real_f = eval_as_function f in
+  let real_l = eval_as_list l in
+  V_List (List.map (fun elt -> eval_function env real_f [elt]) real_l)
+
+let iter env f arg =
+  let real_f = eval_as_function f in
+  let iter_aux elt = ignore (eval_function env real_f [elt]) in
+  let iter_aux_set elt = iter_aux (V_String elt) in
+  let iter_aux_dict k v = ignore (eval_function env real_f [k; v]) in
+  begin
+    match arg with
+      | V_List l -> List.iter iter_aux l
+      | V_Set s -> StringSet.iter iter_aux_set s
+      | V_Dict d -> Hashtbl.iter iter_aux_dict d
+      | _ -> raise (ContentError "Iterable value expected")
+  end;
+  V_Unit
+
+
+let hash_make n = V_Dict (Hashtbl.create (eval_as_int (n)))
+let hash_get h f = Hashtbl.find (eval_as_dict h) f
+let hash_get_def h f v = try Hashtbl.find (eval_as_dict h) f with Not_found -> v
+let hash_set h f v = Hashtbl.replace (eval_as_dict h) f v; V_Unit
+let hash_unset h f = Hashtbl.remove (eval_as_dict h) f; V_Unit
+
+
 let add_native name f =
   Hashtbl.replace global_env name (V_Function (NativeFun f))
 
@@ -199,24 +228,35 @@ let add_native_with_env name f =
   Hashtbl.replace global_env name (V_Function (NativeFunWithEnv f))
 
 let _ =
+  (* Generic functions *)
   add_native "typeof" (one_value_fun typeof);
   add_native_with_env "print" print;
   add_native "length" (one_value_fun length);
+  add_native_with_env "eval" (one_string_fun_with_env interpret_string);
 
+  (* File and string functions *)
   add_native "open" (one_string_fun open_file);
   add_native "encode" (two_string_fun encode);
   add_native "decode" (two_string_fun decode);
   add_native "parse" (two_value_fun parse);
   add_native "stream" (two_string_fun stream_of_string);
+  add_native "concat" (two_value_fun concat_strings);
 
+  (* List and set functions *)
   add_native "head" (one_list_fun head);
   add_native "tail" (one_list_fun tail);
   add_native "nth" (two_value_fun nth);
-
+  add_native "list" (one_value_fun import_list);
   add_native "set" import_set;
 
+  (* Dict functions *)
+  add_native "dict" (one_value_fun hash_make);
+  add_native "dget" (two_value_fun hash_get);
+  add_native "dget_def" (three_value_fun hash_get_def);
+  add_native "dset" (three_value_fun hash_set);
+  add_native "dunset" (two_value_fun hash_unset);
+
+  (* Iterable functions *)
   add_native_with_env "filter" (two_value_fun_with_env filter);
   add_native_with_env "map" (two_value_fun_with_env map);
   add_native_with_env "iter" (two_value_fun_with_env iter);
-
-  add_native_with_env "eval" (one_string_fun_with_env interpret_string);

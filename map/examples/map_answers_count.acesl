@@ -1,0 +1,19 @@
+#!/home/yeye/dev/FAceSL/facesl.native
+
+foreach_answer := function (f, path) {
+    local answer_stream;
+    answer_stream := open (path);
+    while answer_stream do
+        local answer;
+        answer := parse ("answer", answer_stream);
+	if answer then f (answer) fi;
+    done
+};
+
+count := 0;
+
+incr := function (x) { count := count + 1 };
+
+map (foreach_answer (incr), args);
+
+print (count);

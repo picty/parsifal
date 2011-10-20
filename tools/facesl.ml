@@ -13,7 +13,7 @@ let interactive () =
       flush stdout;
       try
 	let res = match interpret_string [global_env] (input_line stdin) with
-	  | (V_Bool _ | V_Int _ | V_String _ | V_List _) as value ->
+	  | (V_Bool _ | V_Int _ | V_String _ | V_List _ | V_Set _ | V_Dict _) as value ->
 	    eval_as_string value
 	  | V_Unit -> "OK."
 	  | v -> "<" ^ string_of_type (v) ^ ">"

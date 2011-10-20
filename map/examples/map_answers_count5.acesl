@@ -1,0 +1,63 @@
+#!/home/yeye/dev/FAceSL/facesl.native
+
+foreach_answer := function (f, path) {
+    local answer_stream;
+    answer_stream := open (path);
+    while answer_stream do
+        local answer;
+        answer := parse ("answer", answer_stream);
+	if answer then f (answer) fi;
+    done
+};
+
+msgs_of_answer := function (answer) {
+    extract_aux := function (flux) {
+        if ! flux then return [] fi;
+        local msg;
+        msg := parse ("tls", flux);
+        if msg
+        then msg::(extract_aux (flux))
+        else []
+        fi
+    };
+    extract_aux (stream (answer.ip, answer.content));
+};
+
+string_of_msg := function (record) {
+    local ct;
+
+    ct := record.content_type;
+    if ct == "Handshake" then
+        "Handshake(${record.handshake_msg_type})"
+    else
+        ct
+    fi
+};
+
+
+count := 0;
+correct_count := 0;
+content_types := dict (10);
+
+count_correct_answers := function (answer) {
+    local msgs, good, bad;
+
+    count := count + 1;
+
+    msgs := msgs_of_answer (answer);
+    good := filter (function (x) {! (x.content_type ~= "^Unknown content type")}, msgs);
+    bad := filter (function (x) {x.content_type ~= "^Unknown content type"}, msgs);
+    if good && !bad  then
+        correct_count := correct_count + 1;
+
+        local msg_types;
+        msg_types := concat (" ", map (string_of_msg, msgs));
+	dset (content_types, msg_types, dget_def (content_types, msg_types, 0) + 1)
+    fi;
+};
+
+map (foreach_answer (count_correct_answers), args);
+
+print (count, correct_count);
+_separator := " -> ";
+iter (print, content_types);
