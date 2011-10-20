@@ -145,21 +145,30 @@ let nth n l =
   in nth_aux (eval_as_int n) (eval_as_list l)
 
 
-let filter env f l =
+let filter env f arg =
   let real_f = eval_as_function f in
-  let real_l = eval_as_iterable l in
   let filter_aux elt = eval_as_bool (eval_function env real_f [elt]) in
-  V_List (List.filter filter_aux real_l)
+  let filter_aux_set elt = filter_aux (V_String elt) in
+  match arg with
+    | V_List l -> V_List (List.filter filter_aux l)
+    | V_Set s -> V_Set (StringSet.filter filter_aux_set s)
+    | _ -> raise (ContentError "Iterable value expected")
 
 let map env f l =
   let real_f = eval_as_function f in
-  let real_l = eval_as_iterable l in
+  let real_l = eval_as_list l in
   V_List (List.map (fun elt -> eval_function env real_f [elt]) real_l)
 
-let iter env f l =
+let iter env f arg =
   let real_f = eval_as_function f in
-  let real_l = eval_as_iterable l in
-  List.iter (fun elt -> ignore (eval_function env real_f [elt])) real_l;
+  let iter_aux elt = ignore (eval_function env real_f [elt]) in
+  let iter_aux_set elt = iter_aux (V_String elt) in
+  begin
+    match arg with
+      | V_List l -> List.iter iter_aux l
+      | V_Set s -> StringSet.iter iter_aux_set s
+      | _ -> raise (ContentError "Iterable value expected")
+  end;
   V_Unit
 
 
@@ -203,10 +212,11 @@ let _ =
   add_native "head" (one_list_fun head);
   add_native "tail" (one_list_fun tail);
   add_native "nth" (two_value_fun nth);
+
+  add_native "set" import_set;
+
   add_native_with_env "filter" (two_value_fun_with_env filter);
   add_native_with_env "map" (two_value_fun_with_env map);
   add_native_with_env "iter" (two_value_fun_with_env iter);
-
-  add_native "set" import_set;
 
   add_native_with_env "eval" (one_string_fun_with_env interpret_string);

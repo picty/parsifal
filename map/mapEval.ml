@@ -120,11 +120,6 @@ let eval_as_list = function
   | V_List l -> l
   | _ -> raise (ContentError "List expected")
 
-let eval_as_iterable = function
-  | V_List l -> l
-  | V_Set s -> List.map (fun x -> V_String x) (StringSet.elements s)
-  | _ -> raise (ContentError "List or set expected")
-
 let string_of_type = function
   | V_Unit -> "unit"
   | V_Bool _ -> "bool"
