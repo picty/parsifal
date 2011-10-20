@@ -2,6 +2,8 @@ open MapLang
 
 (* Value and environment handling *)
 
+module StringSet = Set.Make (String);;
+
 type function_sort =
   | NativeFun of (value list -> value)
   | NativeFunWithEnv of (environment -> value list -> value)
@@ -15,6 +17,7 @@ and value =
   | V_Function of function_sort
 
   | V_List of value list
+  | V_Set of StringSet.t
   | V_Stream of string * char Stream.t
   | V_OutChannel of string * out_channel
 
@@ -33,13 +36,16 @@ let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
 
 module type MapModule = sig
   type encoded_object = string
-  val parse : value -> encoded_object
-  val dump : encoded_object -> string
-  val print : encoded_object -> string
+  val from_binary : value -> encoded_object
+  val to_binary : encoded_object -> string
+  val to_string : encoded_object -> string
+
   val module_get : string -> value
 (*  val module_set : string -> value -> unit *)
 (*  val module_unset : string -> unit *)
+
   val get : encoded_object -> string -> value
+  val equals : encoded_object -> encoded_object -> bool
 (*  val set : encoded_object -> string -> value -> unit *)
 (*  val set : encoded_object -> string -> unit *)
 end
@@ -63,16 +69,31 @@ exception Break
 let opts = { Asn1.type_repr = Asn1.PrettyType; Asn1.data_repr = Asn1.PrettyData;
 	     Asn1.resolver = Some X509.name_directory; Asn1.indent_output = true };;
 
-let rec eval_as_string = function
+let rec eval_as_string_non_recursive = function
   | V_Bool b -> string_of_bool b
   | V_Int i -> string_of_int i
   | V_String s -> s
+
+  | V_List _ | V_Set _ | V_TlsRecord _ | V_Asn1 _
+  | V_DN _ | V_Certificate _
+  | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
+  | V_AnswerRecord _ | V_Object _ | V_Module _ ->
+    raise (ContentError "String expected")
+
+let rec eval_as_string  = function
+  | V_Bool b -> string_of_bool b
+  | V_Int i -> string_of_int i
+  | V_String s -> s
+
   | V_List l ->
     "[" ^ (String.concat ", " (List.map eval_as_string l)) ^ "]"
+  | V_Set s ->
+    "{" ^ (String.concat ", " (StringSet.elements s)) ^ "}"
   | V_TlsRecord r -> Tls.string_of_record r
   | V_Asn1 o -> Asn1.string_of_object "" opts o
   | V_DN dn -> X509.string_of_dn "" (Some X509.name_directory) dn
   | V_Certificate c -> X509.string_of_certificate true "" (Some X509.name_directory) c
+
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
   | V_AnswerRecord _ | V_Object _ | V_Module _ ->
     raise (ContentError "String expected")
@@ -86,6 +107,7 @@ let eval_as_bool = function
   | V_Bool b -> b
   | V_Unit | V_Int 0 | V_List [] -> false
   | V_Int _ | V_List _ -> true
+  | V_Set s -> StringSet.is_empty s
   | V_String s -> (String.length s) <> 0
   | V_Stream (_, s) -> not (Common.eos s)
   | _ -> raise (ContentError "Boolean expected")
@@ -98,6 +120,11 @@ let eval_as_list = function
   | V_List l -> l
   | _ -> raise (ContentError "List expected")
 
+let eval_as_iterable = function
+  | V_List l -> l
+  | V_Set s -> List.map (fun x -> V_String x) (StringSet.elements s)
+  | _ -> raise (ContentError "List or set expected")
+
 let string_of_type = function
   | V_Unit -> "unit"
   | V_Bool _ -> "bool"
@@ -106,6 +133,7 @@ let string_of_type = function
   | V_Function _ -> "function"  (* TODO: arity? *)
 
   | V_List _ -> "list"
+  | V_Set _ -> "set"
   | V_Stream _ -> "stream"
   | V_OutChannel _ -> "outchannel"
 
@@ -165,18 +193,13 @@ and eval_exp env exp =
     | E_Div (a, b) -> V_Int (eval_as_int (eval a) / eval_as_int (eval b))
     | E_Mod (a, b) -> V_Int (eval_as_int (eval a) mod eval_as_int (eval b))
 
-    | E_Equal (a, b) -> V_Bool (match eval a, eval b with
-	| V_Bool b1, V_Bool b2 -> b1 = b2
-	| V_Int i1, V_Int i2 -> i1 = i2
-	| V_String s1, V_String s2 -> s1 = s2
-	| v1, v2 -> eval_as_string v1 = eval_as_string v2
-    )
+    | E_Equal (a, b) -> V_Bool (eval_equality env (eval a) (eval b))
     | E_Lt (a, b) -> V_Bool (match eval a, eval b with
 	| V_Int i1, V_Int i2 -> i1 < i2
 	| V_String s1, V_String s2 -> s1 < s2
 	| v1, v2 -> eval_as_string v1 < eval_as_string v2
     )
-    | E_In _ -> raise NotImplemented
+    | E_In (a, b) -> V_Bool (eval_in env (eval a) (eval b))
 
     | E_Like (a, b) ->
       V_Bool (Str.string_match (Str.regexp (eval_as_string (eval b)))
@@ -269,6 +292,49 @@ and eval_function env f args = match f with
       | _ -> raise WrongNumberOfArguments
     in instanciate_and_eval (arg_names, args)
   | InterpretedFun _ -> failwith "eval_function called on an InterpretedFun with an empty saved_environment"
+
+and eval_equality env a b =
+  let rec equal_list = function
+    | [], [] -> true
+    | va::ra, vb::rb ->
+      (eval_equality env va vb) && (equal_list (ra, rb))
+    | _ -> false
+  in
+  match a, b with
+    | V_Unit, V_Unit -> true
+    | V_Bool b1, V_Bool b2 -> b1 = b2
+    | V_Int i1, V_Int i2 -> i1 = i2
+    | V_String s1, V_String s2 -> s1 = s2
+
+    | V_List l1, V_List l2 -> equal_list (l1, l2)
+    | V_Set s1, V_Set s2 -> StringSet.compare s1 s2 = 0
+
+    | V_Module m1, V_Module m2 -> m1 = m2
+    | V_Object (m1, o1), V_Object (m2, o2) ->
+      if m1 = m2 then begin
+	let m = Hashtbl.find module_table m1 in
+	let module M = (val m : MapModule) in
+	M.equals o1 o2
+      end else false
+
+    | V_AnswerRecord r1, V_AnswerRecord r2 -> r1 = r2
+    | V_TlsRecord r1, V_TlsRecord r2 -> r1 = r2
+    | V_Asn1 o1, V_Asn1 o2 -> o1 = o2
+    | V_DN dn1, V_DN dn2 -> dn1 = dn2
+    | V_Certificate c1, V_Certificate c2 -> c1 = c2
+
+    | v1, v2 -> eval_as_string v1 = eval_as_string v2
+
+and eval_in env a b =
+  let rec eval_in_list = function
+    | [] -> false
+    | v::r -> (eval_equality env a v) || (eval_in_list r)
+  in
+  match b with
+    | V_List l -> eval_in_list l
+    | V_Set s -> StringSet.mem (eval_as_string a) s
+    | _ -> raise (ContentError "List or set expected")
+
 
 and eval_exps env = function
   | [] -> V_Unit

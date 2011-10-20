@@ -68,7 +68,7 @@ module Asn1Module = struct
     let pstate = pstate_of_string asn1_ehf "(inline)" s in
     parse pstate
 
-  let parse v = (*F, from a _parse function*) match v with
+  let from_binary v = (*F, from a _parse function*) match v with
     | V_String s ->
       if not (Hashtbl.mem objects s) then begin
 	let res = _parse_str s in
@@ -79,12 +79,14 @@ module Asn1Module = struct
 
   let get_obj s =
     if not (Hashtbl.mem objects s)
-    then begin ignore (parse (V_String s)) end;
+    then begin ignore (from_binary (V_String s)) end;
     Hashtbl.find objects s
 
-  let dump s = s
+  let equals o1 o2 = o1 = o2
 
-  let print s =
+  let to_binary s = s
+
+  let to_string s =
     let o = get_obj s in
     (* TODO: Should be customizable *)
     let opts = { type_repr = PrettyType; data_repr = PrettyData;

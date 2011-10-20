@@ -1,6 +1,11 @@
 exception IntegerOverflow
 exception FormatError
 
+let identity x = x
+
+
+(* String functions *)
+
 let hexa_char = [| '0'; '1'; '2'; '3';
 		   '4'; '5'; '6'; '7';
 		   '8'; '9'; 'a'; 'b';
@@ -66,17 +71,12 @@ let hexdump_int_list x =
   aux 0 x;
   res
 
-
-let identity x = x
-
-
 let pop_int s offset n =
   let content = String.sub s offset n in
   try
     Some (int_of_string content)
   with
       Failure "int_of_string" -> None
-
 
 let string_of_ip ip  =
   (string_of_int ip.(0)) ^ "." ^
@@ -85,13 +85,31 @@ let string_of_ip ip  =
   (string_of_int ip.(3))
 
 
+(* Stream functions *)
+
 let eos stream =
   try
     Stream.empty stream;
     true
   with Stream.Failure -> false
 
+let pop_line stream =
+  let res = ref "" in
+  let rec pop_char () =
+    let next_char = Stream.next stream in
+    if next_char = '\n'
+    then !res
+    else begin
+      res := (!res) ^ (String.make 1 next_char);
+      pop_char ()
+    end
+  in
+  try
+    pop_char ()
+  with Stream.Failure -> !res
+  
 
+(* Triplet functions *)
 
 let fst3 (a, _, _) = a
 let snd3 (_, b, _) = b

@@ -147,20 +147,40 @@ let nth n l =
 
 let filter env f l =
   let real_f = eval_as_function f in
-  let real_l = eval_as_list l in
+  let real_l = eval_as_iterable l in
   let filter_aux elt = eval_as_bool (eval_function env real_f [elt]) in
   V_List (List.filter filter_aux real_l)
 
 let map env f l =
   let real_f = eval_as_function f in
-  let real_l = eval_as_list l in
+  let real_l = eval_as_iterable l in
   V_List (List.map (fun elt -> eval_function env real_f [elt]) real_l)
 
 let iter env f l =
   let real_f = eval_as_function f in
-  let real_l = eval_as_list l in
+  let real_l = eval_as_iterable l in
   List.iter (fun elt -> ignore (eval_function env real_f [elt])) real_l;
   V_Unit
+
+
+let rec import_set args =
+  let rec import_aux_list accu = function
+    | [] -> accu
+    | elt::r -> import_aux_list (StringSet.add (eval_as_string_non_recursive elt) accu) r
+  in
+  let rec import_aux_stream accu s =
+    if Common.eos s
+    then accu
+    else import_aux_stream (StringSet.add (Common.pop_line s) accu) s
+  in
+  let rec aux accu = function
+    | [] -> accu
+    | (V_List l)::r -> aux (import_aux_list accu l) r
+    | (V_Stream (_, s))::r -> aux (import_aux_stream accu s) r
+    | (V_Set s):: r -> aux (StringSet.union accu s) r
+    | v::r -> aux (StringSet.add (eval_as_string_non_recursive v) accu) r
+  in
+  V_Set (aux StringSet.empty args)
 
 
 let add_native name f =
@@ -186,5 +206,7 @@ let _ =
   add_native_with_env "filter" (two_value_fun_with_env filter);
   add_native_with_env "map" (two_value_fun_with_env map);
   add_native_with_env "iter" (two_value_fun_with_env iter);
+
+  add_native "set" import_set;
 
   add_native_with_env "eval" (one_string_fun_with_env interpret_string);
