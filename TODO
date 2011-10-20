@@ -1,11 +1,12 @@
 Language
+ - Add options for the parser (asn1.tolerance <- 0, with a new value sort "module")
  - Add a lazy value type, and rewrite asn1 as a module + dictionary
  - Add a expr.ident <- value expression, which will need to deal with left values (maybe it will be alright with Dicts ?)
  - Add get, set, unset, list for environments and dictionaries.
  - Add a library to filter and extract certs, either in native or interpreted form
  - Add a way to import new functions (Dynlink for native)
  - socket
- - Add more field accessors (DN, X509, Tls)
+ - Add more field accessors (DN, X509, Tls) -> should be easy with a dict/object value type?
  - Add encode/decode for base64
  - Custom output (global _output) for print function
  - Add a printenv function to show all the environment
@@ -34,7 +35,6 @@ typing
 
 asn1
  - Write in FAcesl a asn1parse like
- - Add options for the parser (asn1.tolerance <- 0, with a new value sort "module")
 
 map tool
  - Add a late interactive mode (first we load files, then we can use them)
@@ -42,4 +42,3 @@ map tool
 Others
  - Enrich TLS parser.
  - Add parser for SSLv2.
- - Write some quick stats.

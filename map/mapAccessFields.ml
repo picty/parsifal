@@ -43,6 +43,22 @@ type tbs_certificate = {
       V_List (List.map aux certs)
     | _ -> raise Not_found
   in add_tls_field "certificates" certs_of_record;
+  let ciphersuite_of_record r = match r.Tls.content with
+    | Tls.Handshake (Tls.ServerHello { Tls.s_cipher_suite = c }) ->
+      V_Int c
+    | _ -> raise Not_found
+  in add_tls_field "ciphersuite" ciphersuite_of_record;
+  let compression_of_record r = match r.Tls.content with
+    | Tls.Handshake (Tls.ServerHello { Tls.s_compression_method = c }) ->
+      V_Int (Tls.int_of_compression_method c)
+    | _ -> raise Not_found
+  in add_tls_field "compression" compression_of_record;
+  let sh_version_of_record r = match r.Tls.content with
+    | Tls.Handshake (Tls.ServerHello { Tls.s_version = v }) ->
+      V_String (Tls.string_of_protocol_version v)
+    | _ -> raise Not_found
+  in add_tls_field "sh_version" sh_version_of_record;
+
   (* TODO: Other infos (random, compression, ciphers)? *)
 
   add_asn1_field "class" (fun x -> V_String (Asn1.string_of_class x.Asn1.a_class));

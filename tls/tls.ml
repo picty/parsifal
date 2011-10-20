@@ -291,6 +291,9 @@ let compression_method_of_int = function
   | 0 -> CM_Null
   | x -> CM_Unknown x
 
+let int_of_compression_method = function
+  | CM_Null -> 0
+  | CM_Unknown x -> x
 
 let string_of_handshake_msg_type = function
   | H_HelloRequest -> "Hello Request"

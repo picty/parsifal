@@ -1,0 +1,2 @@
+
+safe_eval := function (e, def) { if eval ("exists $e") then eval (e) else def fi };
