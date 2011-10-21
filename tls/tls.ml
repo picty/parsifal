@@ -439,10 +439,8 @@ let type_of_handshake_msg = function
   | Finished -> H_Finished
   | UnparsedHandshakeMsg (htype, _) -> htype
 
-let parse_handshake asn1_ehf pstate =
-  let (htype, len) = extract_handshake_header pstate in
-  go_down pstate (string_of_handshake_msg_type htype) len;
-  let content = match htype with
+let parse_handshake_content asn1_ehf htype pstate =
+  match htype with
     | H_HelloRequest ->
       assert_eos pstate;
       HelloRequest
@@ -458,7 +456,11 @@ let parse_handshake asn1_ehf pstate =
     | H_ClientKeyExchange
     | H_Finished
     | H_Unknown _ -> UnparsedHandshakeMsg (htype, pop_string pstate)
-  in
+
+let parse_handshake asn1_ehf pstate =
+  let (htype, len) = extract_handshake_header pstate in
+  go_down pstate (string_of_handshake_msg_type htype) len;
+  let content = parse_handshake_content asn1_ehf htype pstate in
   go_up pstate;
   Handshake (content)
 
