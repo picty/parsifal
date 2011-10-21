@@ -1,0 +1,5 @@
+asn1/test_asn1.native
+asn1/test_asn1Parser.native
+tls/test_tls.native
+formats/test_answerDump.native
+map/test_socket.native
