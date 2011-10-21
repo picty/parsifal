@@ -3,11 +3,10 @@ open Command;;
 
 dispatch begin function
   | After_rules ->
-(*    flag ["link"; "native"; "ocaml"; "use_str"]
-      (S[A"str.cmxa"]);
+    dep ["link"; "ocaml"; "use_crypto"] ["crypto/libcrypto.a"];
 
-    flag ["link"; "byte"; "ocaml"; "program"; "use_str"]
-      (S[A"str.cma"]); *)
-()
+    flag ["c"; "compile"; "crypto_implem"] (S[A"-ccopt"; A"-Icrypto"]);
+    dep  ["c"; "compile"; "crypto_implem"] ["crypto/md5.h"; "crypto/sha1.h"];
+
   | _ -> ()
 end
