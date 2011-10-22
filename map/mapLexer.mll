@@ -72,6 +72,7 @@ rule main_token = parse
   | "function" { T_Function }
   | "local" { T_Local }
   | "return" { T_Return }
+  | "unset" { T_Unset }
 
   | ';' { T_SemiColumn }
 

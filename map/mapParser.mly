@@ -10,13 +10,13 @@
 %token T_SemiColumn
 %token T_Eof
 %token T_Exists
-%token T_Function T_Return T_Local
+%token T_Function T_Return T_Local T_Unset
 %token <bool> T_Bool
 %token <int> T_Int
 %token <string> T_Ident
 %token <MapLang.string_token list> T_String
 
-%right T_Exists T_Return T_Assign T_FieldAssign
+%right T_Exists T_Return T_Assign T_FieldAssign T_Unset
 %left T_SemiColumn T_Comma
 %left T_LOr
 %left T_LAnd
@@ -75,6 +75,7 @@ expr:
     | T_Exists expr      { MapLang.E_Exists $2 }
 
     | T_Ident T_Assign expr  { MapLang.E_Assign ($1, $3) }
+    | T_Unset T_Ident { MapLang.E_Unset $2 }
     | T_If expr T_Then exprs T_Else exprs T_Fi
 	{ MapLang.E_IfThenElse ($2, $4, $6) }
     | T_If expr T_Then exprs T_Fi

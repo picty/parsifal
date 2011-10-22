@@ -2,6 +2,10 @@ open MapLang
 open MapEval
 
 
+let zero_value_fun_with_env f env = function
+  | [] -> f env
+  | _ -> raise WrongNumberOfArguments
+
 let one_value_fun f = function
   | [e] -> f e
   | _ -> raise WrongNumberOfArguments
@@ -35,13 +39,19 @@ let typeof v = V_String (string_of_type v)
 let print env args =
   let separator = getv_str env "_separator" "," in
   let endline = getv_str env "_endline" "\n" in
-  print_string ((String.concat separator (List.map eval_as_string_rec args)) ^ endline);
+  print_string ((String.concat separator (List.map (eval_as_string_rec env) args)) ^ endline);
   V_Unit
 
 let length = function
   | V_String s -> V_Int (String.length s)
   | V_List l -> V_Int (List.length l)
   | _ -> raise (ContentError "String or list expected")
+
+
+
+(* Environment handling *)
+let current_environment env =
+  V_List (List.map (function d -> V_Dict d) env)
 
 
 
@@ -271,6 +281,9 @@ let _ =
   add_native "length" (one_value_fun length);
   add_native_with_env "eval" (one_string_fun_with_env interpret_string);
 
+  (* Environment handling *)
+  add_native_with_env "current_environment" (zero_value_fun_with_env current_environment);
+
   (* List and set functions *)
   add_native "head" (one_value_fun head);
   add_native "tail" (one_value_fun tail);
@@ -301,4 +314,4 @@ let _ =
   add_native "concat" (two_value_fun concat_strings);
 
   (* OS interface *)
-  add_native "getenv" (one_value_fun (fun x -> V_String (Unix.getenv (eval_as_string x))))
+  add_native "getenv" (one_value_fun (fun x -> V_String (Unix.getenv (eval_as_string x))));

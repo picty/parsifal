@@ -50,6 +50,7 @@ type expression =
   | E_SetField of expression * string * expression
 
   | E_Assign of (string * expression)
+  | E_Unset of string
   | E_IfThenElse of (expression * expression list * expression list)
   | E_While of (expression * expression list)
   | E_Continue
@@ -105,6 +106,7 @@ let rec string_of_exp indent exp =
     | E_SetField (e, f, v) -> (soe e) ^ "." ^ f ^ " <- " ^ (soe v)
 
     | E_Assign (s, e) -> s ^ " := " ^ (soe e)
+    | E_Unset s -> "unset " ^ s
     | E_IfThenElse (i, t, []) ->
       "if (" ^ (soe i) ^ ")\n" ^
 	indent ^ "then\n" ^ (soes t) ^

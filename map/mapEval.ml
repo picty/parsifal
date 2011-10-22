@@ -53,46 +53,6 @@ exception Break
 let opts = { Asn1.type_repr = Asn1.PrettyType; Asn1.data_repr = Asn1.PrettyData;
 	     Asn1.resolver = Some X509.name_directory; Asn1.indent_output = true };;
 
-let eval_as_string = function
-  | V_Bool b -> string_of_bool b
-  | V_Int i -> string_of_int i
-  | V_String s -> s
-
-  | V_List _ | V_Set _ | V_Dict _ | V_ValueDict _
-  | V_TlsRecord _ | V_Asn1 _ | V_DN _ | V_Certificate _
-  | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-  | V_Lazy _ ->
-    raise (ContentError "String expected")
-
-let rec eval_as_string_rec = function
-  | V_Bool b -> string_of_bool b
-  | V_Int i -> string_of_int i
-  | V_String s -> s
-
-  | V_List l ->
-    "[" ^ (String.concat ", " (List.map eval_as_string_rec l)) ^ "]"
-  | V_Set s ->
-    "{" ^ (String.concat ", " (StringSet.elements s)) ^ "}"
-  | V_Dict d ->
-    let hash_aux k v accu =
-      (k ^ " -> " ^ (eval_as_string_rec v))::accu
-    in
-    "{" ^ (String.concat ", " (Hashtbl.fold hash_aux d [])) ^ "}"
-  | V_ValueDict d ->
-    let hash_aux k v accu =
-      ((eval_as_string_rec k) ^ " -> " ^ (eval_as_string_rec v))::accu
-    in
-    "{" ^ (String.concat ", " (Hashtbl.fold hash_aux d [])) ^ "}"
-
-  | V_TlsRecord r -> Tls.string_of_record r
-  | V_Asn1 o -> Asn1.string_of_object "" opts o
-  | V_DN dn -> X509.string_of_dn "" (Some X509.name_directory) dn
-  | V_Certificate c -> X509.string_of_certificate true "" (Some X509.name_directory) c
-
-  | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-  | V_Lazy _ ->
-    raise (ContentError "String expected")
-
 let eval_as_int = function
   | V_Int i -> i
   | V_String s -> int_of_string s
@@ -125,6 +85,10 @@ let eval_as_list = function
   | V_List l -> l
   | _ -> raise (ContentError "List expected")
 
+let strict_eval_value = function
+  | V_Lazy lazyval -> Lazy.force lazyval
+  | v -> v
+
 let rec string_of_type = function
   | V_Unit -> "unit"
   | V_Bool _ -> "bool"
@@ -147,11 +111,75 @@ let rec string_of_type = function
   | V_DN _ -> "DN"
   | V_Certificate _ -> "certificate"
 
-let strict_eval_value = function
-  | V_Lazy lazyval -> Lazy.force lazyval
-  | v -> v
+and eval_as_string = function
+  | V_Bool b -> string_of_bool b
+  | V_Int i -> string_of_int i
+  | V_String s -> s
 
-let rec getv env name = match env with
+  | V_List _ | V_Set _ | V_Dict _ | V_ValueDict _
+  | V_TlsRecord _ | V_Asn1 _ | V_DN _ | V_Certificate _
+  | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
+  | V_Lazy _ ->
+    raise (ContentError "String expected")
+
+and eval_as_string_rec_i env current_indent v =
+  let get_things () =
+    let indent = getv_str env "_indent" "" in
+    let multiline = String.length indent > 0 in
+    if multiline then begin
+      let new_indent = current_indent ^ indent in
+      ((getv_str env "_separator" ",") ^ "\n" ^ new_indent),
+      ("\n" ^ new_indent), ("\n" ^ current_indent),
+      (eval_as_string_rec_i env new_indent)
+    end else ((getv_str env "_separator" ", "), "", "", eval_as_string_rec_i env "")
+  in
+
+  match v with
+    | V_Bool b -> string_of_bool b
+    | V_Int i -> string_of_int i
+    | V_String s -> s
+
+    | V_List [] -> "[]"
+    | V_Set s when (StringSet.is_empty s) -> "{}"
+    | V_Dict d when (Hashtbl.length d = 0) -> "{}"
+    | V_ValueDict d when (Hashtbl.length d = 0) -> "{}"
+
+    | V_List l ->
+      let separator, after_opening, before_closing, new_eval = get_things () in
+      "[" ^ after_opening ^
+	(String.concat separator (List.map new_eval l)) ^
+	before_closing ^ "]"
+    | V_Set s ->
+      let separator, after_opening, before_closing, new_eval = get_things () in
+      "{" ^ after_opening ^
+	(String.concat separator (StringSet.elements s)) ^
+	before_closing ^ "}"
+    | V_Dict d ->
+      let separator, after_opening, before_closing, new_eval = get_things () in
+      let hash_aux k v accu =
+	(k ^ " -> " ^ (new_eval v))::accu
+      in
+      "{" ^ after_opening ^
+	(String.concat separator (Hashtbl.fold hash_aux d [])) ^
+	before_closing ^ "}"
+    | V_ValueDict d ->
+      let separator, after_opening, before_closing, new_eval = get_things () in
+      let hash_aux k v accu =
+	((new_eval k) ^ " -> " ^ (new_eval v))::accu
+      in
+      "{" ^ after_opening ^
+	(String.concat separator (Hashtbl.fold hash_aux d [])) ^
+	before_closing ^ "}"
+
+    | V_TlsRecord r -> Tls.string_of_record r
+    | V_Asn1 o -> Asn1.string_of_object "" opts o
+    | V_DN dn -> X509.string_of_dn "" (Some X509.name_directory) dn
+    | V_Certificate c -> X509.string_of_certificate true "" (Some X509.name_directory) c
+
+    | (V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
+	  | V_Lazy _) as v -> "<" ^ (string_of_type v) ^ ">"
+
+and getv env name = match env with
   | [] -> raise Not_found
   | e::r -> begin
     try
@@ -159,6 +187,13 @@ let rec getv env name = match env with
     with
       | Not_found -> getv r name
   end
+
+and getv_str env name default =
+  try
+    eval_as_string (getv env name)
+  with
+    | Not_found -> default
+    | ContentError _ -> default
 
 let rec setv env name v = match env with
   | [] -> raise Not_found
@@ -168,20 +203,22 @@ let rec setv env name v = match env with
     then Hashtbl.replace e name v
     else setv r name v
 
-let getv_str env name default =
-  try
-    eval_as_string (getv env name)
-  with
-    | Not_found -> default
-    | ContentError _ -> default
+let rec unsetv env name = match env with
+  | [] -> raise Not_found
+  | e::r ->
+    if Hashtbl.mem e name
+    then Hashtbl.remove e name
+    else unsetv r name
+
+let eval_as_string_rec env v = eval_as_string_rec_i env "" v
 
 
 (* Interpretation *)
 
 let rec  eval_string_token env = function
   | ST_String s -> s
-  | ST_Var s -> eval_as_string_rec (getv env s)
-  | ST_Expr s -> eval_as_string_rec (interpret_string env s)
+  | ST_Var s -> eval_as_string (getv env s)
+  | ST_Expr s -> eval_as_string (interpret_string env s)
 
 and eval_exp env exp =
   let eval = eval_exp env in
@@ -270,6 +307,9 @@ and eval_exp env exp =
 
     | E_Assign (var, e) ->
       setv env var (eval e);
+      V_Unit
+    | E_Unset (var) ->
+      unsetv env var;
       V_Unit
     | E_IfThenElse (i, t, e) ->
       eval_exps env (if (eval_as_bool (eval i)) then t else e)
