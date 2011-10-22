@@ -5,7 +5,7 @@ foreach_answer := function (f, path) {
     answer_stream := open (path);
     while answer_stream do
         local answer;
-        answer := parse ("answer", answer_stream);
+        answer := parse ("answer_dump", answer_stream);
 	if answer then f (answer) fi;
     done
 };

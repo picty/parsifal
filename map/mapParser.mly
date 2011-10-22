@@ -76,11 +76,11 @@ expr:
 
     | T_Ident T_Assign expr  { MapLang.E_Assign ($1, $3) }
     | T_Unset T_Ident { MapLang.E_Unset $2 }
-    | T_If expr T_Then exprs T_Else exprs T_Fi
+    | T_If expr T_Then function_exprs T_Else function_exprs T_Fi
 	{ MapLang.E_IfThenElse ($2, $4, $6) }
-    | T_If expr T_Then exprs T_Fi
+    | T_If expr T_Then function_exprs T_Fi
 	{ MapLang.E_IfThenElse ($2, $4, []) }
-    | T_While expr T_Do exprs T_Done
+    | T_While expr T_Do function_exprs T_Done
 	{ MapLang.E_While ($2, $4) }
     | T_Break    { MapLang.E_Break }
     | T_Continue { MapLang.E_Continue }
@@ -95,10 +95,6 @@ expr:
     | expr T_Cons expr   { MapLang.E_Cons ($1, $3) }
     | expr T_Period T_Ident { MapLang.E_GetField ($1, $3) }
     | expr T_Period T_Ident T_FieldAssign expr { MapLang.E_SetField ($1, $3, $5) }
-
-function_expr:
-    | expr { $1 }
-    | T_Local args { MapLang.E_Local $2 }
 
 args:
     | /* empty */          { [] }
@@ -116,6 +112,10 @@ exprs:
     | expr T_Eof  { [$1] }
     | expr        { [$1] }
     | expr T_SemiColumn exprs { $1::$3 }
+
+function_expr:
+    | expr { $1 }
+    | T_Local args { MapLang.E_Local $2 }
 
 function_exprs:
     | /* empty */ { [] }
