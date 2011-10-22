@@ -38,8 +38,9 @@ rule main_token = parse
   | '%' { T_Mod }
 
   | ":=" { T_Assign }
+  | "<-" {T_FieldAssign }
   | "==" { T_Equal }
-  | "=" { T_Equal }
+  | "="  { T_Equal }
   | "!=" { T_Neq }
   | "<=" { T_Le }
   | '<'  { T_Lt }

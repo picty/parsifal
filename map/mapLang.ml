@@ -46,7 +46,8 @@ type expression =
 
   | E_List of expression list
   | E_Cons of (expression * expression)
-  | E_Field of expression * string
+  | E_GetField of expression * string
+  | E_SetField of expression * string * expression
 
   | E_Assign of (string * expression)
   | E_IfThenElse of (expression * expression list * expression list)
@@ -100,7 +101,8 @@ let rec string_of_exp indent exp =
 
     | E_List e -> "[" ^ (String.concat ", " (List.map soe e)) ^ "]b"
     | E_Cons (e1, e2) -> (soe e1) ^ "::" ^ (soe e2)
-    | E_Field (e, f) -> (soe e) ^ "." ^ f
+    | E_GetField (e, f) -> (soe e) ^ "." ^ f
+    | E_SetField (e, f, v) -> (soe e) ^ "." ^ f ^ " <- " ^ (soe v)
 
     | E_Assign (s, e) -> s ^ " := " ^ (soe e)
     | E_IfThenElse (i, t, []) ->

@@ -28,11 +28,7 @@
  *  http://www.itl.nist.gov/fipspubs/fip180-1.htm
  */
 
-#include "polarssl/config.h"
-
-#if defined(POLARSSL_SHA1_C)
-
-#include "polarssl/sha1.h"
+#include "sha1.h"
 
 #if defined(POLARSSL_FS_IO) || defined(POLARSSL_SELF_TEST)
 #include <stdio.h>
@@ -618,7 +614,5 @@ int sha1_self_test( int verbose )
 
     return( 0 );
 }
-
-#endif
 
 #endif

@@ -25,7 +25,6 @@ Language extension
  - V_Other of string * string (module_name, binary)
  - Each type should contain some functions (parse, print, dump, equals) and a generic accessor
  - Each type could be represented by a new value (V_Module) which should implement options and optionnaly functions
- - A standard object could be enriched magically (Python like) with a magic functor and the <- notation
  - print should call module.print / dump and parse too.
  - A chaque utilisation, on appelle parse du module module_name. Celui-ci peut être un module créé à l'aide d'un foncteur utilisant la mémoisation (weak pointers / module Weak ou tables de hachage avec un roulement pour effacer les donnees non utilisees) pour rendre la chose efficace.
     -> une extension enregistre un ensemble de fonctions (print, access) et les associe à un nom

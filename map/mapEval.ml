@@ -249,7 +249,7 @@ and eval_exp env exp =
 
     | E_List e -> V_List (List.map eval e)
     | E_Cons (e1, e2) -> V_List ((eval e1)::(eval_as_list (eval e2)))
-    | E_Field (e, f) -> strict_eval_value (match eval e with
+    | E_GetField (e, f) -> strict_eval_value (match eval e with
 	| V_Dict d -> (Hashtbl.find d f)
 	| V_ValueDict d -> (Hashtbl.find d (V_String f))
 	| V_Asn1 a -> (Hashtbl.find asn1_field_access f) a
@@ -258,6 +258,15 @@ and eval_exp env exp =
 	| V_TlsRecord r -> (Hashtbl.find tls_field_access f) r
 	| _ -> raise (ContentError ("Object with fields expected"))
     )
+
+    | E_SetField (e, f, v) ->
+      begin
+	match eval e with
+	  | V_Dict d -> (Hashtbl.replace d f (eval v))
+	  | V_ValueDict d -> (Hashtbl.replace d (V_String f) (eval v))
+	  | _ -> raise (ContentError ("Object with mutable fields expected"))
+      end;
+      V_Unit
 
     | E_Assign (var, e) ->
       setv env var (eval e);

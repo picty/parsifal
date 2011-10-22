@@ -6,7 +6,7 @@
 %token T_BAnd T_BOr T_BNot T_BXor
 %token T_If T_Then T_Else T_Fi
 %token T_While T_Do T_Done T_Break T_Continue
-%token T_Assign
+%token T_Assign T_FieldAssign
 %token T_SemiColumn
 %token T_Eof
 %token T_Exists
@@ -16,7 +16,7 @@
 %token <string> T_Ident
 %token <MapLang.string_token list> T_String
 
-%right T_Exists T_Return T_Assign
+%right T_Exists T_Return T_Assign T_FieldAssign
 %left T_SemiColumn T_Comma
 %left T_LOr
 %left T_LAnd
@@ -84,16 +84,20 @@ expr:
     | T_Break    { MapLang.E_Break }
     | T_Continue { MapLang.E_Continue }
 
-    | T_Function T_LeftPar args T_RightPar T_LeftBrace exprs T_RightBrace
+    | T_Function T_LeftPar args T_RightPar T_LeftBrace function_exprs T_RightBrace
 	                 { MapLang.E_Function ($3, $6) }
     | expr T_LeftPar expr_list T_RightPar { MapLang.E_Apply ($1, $3) }
-    | T_Local args { MapLang.E_Local $2 }
     | T_Return expr { MapLang.E_Return $2 }
  
     | T_LeftBracket expr_list T_RightBracket { MapLang.E_List $2 }
 
     | expr T_Cons expr   { MapLang.E_Cons ($1, $3) }
-    | expr T_Period T_Ident { MapLang.E_Field ($1, $3) }
+    | expr T_Period T_Ident { MapLang.E_GetField ($1, $3) }
+    | expr T_Period T_Ident T_FieldAssign expr { MapLang.E_SetField ($1, $3, $5) }
+
+function_expr:
+    | expr { $1 }
+    | T_Local args { MapLang.E_Local $2 }
 
 args:
     | /* empty */          { [] }
@@ -111,3 +115,8 @@ exprs:
     | expr T_Eof  { [$1] }
     | expr        { [$1] }
     | expr T_SemiColumn exprs { $1::$3 }
+
+function_exprs:
+    | /* empty */ { [] }
+    | function_expr        { [$1] }
+    | function_expr T_SemiColumn function_exprs { $1::$3 }
