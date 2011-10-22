@@ -20,7 +20,7 @@ let _parse pstate =
       Hashtbl.replace answer_object "name" (V_String answer.name);
       Hashtbl.replace answer_object "client_hello_type" (V_Int answer.client_hello_type);
       Hashtbl.replace answer_object "msg_type" (V_Int answer.msg_type);
-      Hashtbl.replace answer_object "content" (V_String answer.content);
+      Hashtbl.replace answer_object "content" (V_BinaryString answer.content);
       V_Dict answer_object
   with
     | AnswerDump.Engine.ParsingError (err, sev, pstate) ->
