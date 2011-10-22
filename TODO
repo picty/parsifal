@@ -11,7 +11,6 @@ Language
  - Add encode/decode for base64
  - Custom output (global _output) for print function
  - Add a printenv function to show all the environment
- - Add a getenv function to take strings from the OS environment
  - Add crypto through external bindings
  - Add for loops, break n, continue n ?
  - concurrentmap (Nproc, OutputTemplate, fun (verif pas d'effet de bord hors la fonction))

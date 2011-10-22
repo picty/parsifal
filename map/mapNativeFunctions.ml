@@ -299,3 +299,6 @@ let _ =
   add_native_with_env "parse" (two_value_fun_with_env parse);
   add_native "stream" (two_value_fun stream_of_string);
   add_native "concat" (two_value_fun concat_strings);
+
+  (* OS interface *)
+  add_native "getenv" (one_value_fun (fun x -> V_String (Unix.getenv (eval_as_string x))))
