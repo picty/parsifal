@@ -58,6 +58,16 @@ let hexdump_int len x =
   aux x (len - 1);
   res
 
+let string_of_int_list l =
+  let n = List.length l in
+  let res = String.make n ' ' in
+  let rec aux pos = function
+    | [] -> res
+    | c::r ->
+      res.[pos] <- char_of_int (c);
+      aux (pos + 1) r
+  in aux 0 l
+
 let hexdump_int_list x =
   let len = List.length x in
   let res = String.make (len * 2) ' ' in

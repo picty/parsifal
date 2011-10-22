@@ -44,6 +44,7 @@ let _parse_string s =
   _parse pstate
 
 let parse_string = function
+  | V_BinaryString s
   | V_String s -> _parse_string s
   | _ -> raise (ContentError "String or stream expected")
 

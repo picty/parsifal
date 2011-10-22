@@ -317,7 +317,6 @@ let raw_der_to_int pstate =
   if negative
   then emit (NotImplemented "Negative integer") s_idempotencebreaker pstate;
   l
-(*  bigint_of_intlist l *)
 
 let der_to_int pstate = Integer (raw_der_to_int pstate)
 
@@ -578,7 +577,7 @@ and string_of_constructed indent popts l =
 let pstate_of_channel = Engine.pstate_of_channel
 let pstate_of_string = Engine.pstate_of_string
 
-(*
+
 (********************)
 (* Content DER dump *)
 (********************)
@@ -591,13 +590,13 @@ let dump_class c =
     | C_Private -> 0x40
     | C_Application -> 0x80
     | C_ContextSpecific -> 0xc0
-      
+
 let dump_isConstructed isC =
   if isC then 0x20 else 0
-    
+
 let dump_longtype t =
-  raisego "Long type not implemented"
-    
+  failwith "long type not implemented"
+
 let dump_header (c : asn1_class) (isC : bool) (t : int) : string =
   let t' = if t < 0x1f then t else 0x1f in
   let h = (dump_class c) lor (dump_isConstructed isC) lor t' in
@@ -605,95 +604,59 @@ let dump_header (c : asn1_class) (isC : bool) (t : int) : string =
   if t' = 0x1f
   then res ^ dump_longtype t
   else res
-    
+
 let dump_length l =
-  let rec aux accu lg = match lg with
+  let rec aux accu = function
     | 0 -> accu
-    | _ -> aux ((char_of_int (lg land 0xff))::accu) (lg lsr 8)
+    | lg -> aux ((lg land 0xff)::accu) (lg lsr 8)
   in
-  
   if l < 0x80
   then String.make 1 (char_of_int l)
   else begin
     let x = aux [] l in
-    let prefix = char_of_int ((List.length x) lor 0x80) in
-    string_of_charlist (prefix::x)
+    let prefix = ((List.length x) lor 0x80) in
+    Common.string_of_int_list (prefix::x)
   end
 
 
-
-(* Trivial useful functions *)
-
-let string_of_charlist il =
-  let res = String.create (List.length il) in
-  let rec aux offset l =
-    match l with
-      | [] -> res
-      | i::r ->
-	String.set res offset i;
-	aux (offset + 1) r
-  in aux 0 il*)
-
-
-
-  
-(*
-
-(* DER export functions *)
+(* object dump functions *)
     
 let boolean_to_der b =
   if b then "\xff" else "\x00"
-    
-let int_to_der i =
-  raisego "Not implemented yet"
-    
-let null_to_der = ""
-  
+
 let subid_to_charlist id =
   let rec aux x =
     let q = x lsr 7 in
-    let c = char_of_int (x land 0x7f) in
+    let c = x land 0x7f in
     match q with
       | 0 -> [c]
       | _ -> c::(aux q)
   in aux id
-  
+
 let oid_to_der idlist =
   let cll = List.map subid_to_charlist idlist in
-  string_of_charlist (List.flatten cll)
-    
+  Common.string_of_int_list (List.flatten cll)
+
 let bitstring_to_der nBits s =
   let prefix = String.make 1 (char_of_int nBits) in
   prefix ^ s
 
 
 
-let rec dump (c, t, o) =
-  let isC, contents = match o with
-    | EndOfContents | Null -> false, null_to_der
+let rec dump o =
+  let isC, contents = match o.a_content with
+    | EndOfContents | Null -> false, ""
     | Boolean b -> false, boolean_to_der b
-    | Integer i -> false, int_to_der i
+    | Integer i -> false, Common.string_of_int_list i
     | BitString (nb, s) -> false, bitstring_to_der nb s
     | OId id -> false, oid_to_der id
-    | String s | Unknown s -> false, s
+    | String (s, _) | Unknown s -> false, s
     | Constructed objects -> true, constructed_to_der objects
   in
-  let hdr = dump_header c isC t in
+  let hdr = dump_header o.a_class isC o.a_tag in
   let lg = dump_length (String.length contents) in
   hdr ^ lg ^ contents
-    
+
 and constructed_to_der objlist =
   let subdumps = List.map dump objlist in
   String.concat "" subdumps
-
-
-(* Useful functions *)
-    
-let decapsulate = function
-  | (_, _, Constructed l) -> l
-  | _ -> raisego "Cannot decapsulate a primitive type"
-    
-let encapsulate c t l =
-  (c, t, Constructed l)
-      
-*)
