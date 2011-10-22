@@ -2,19 +2,11 @@ open MapLang
 open MapEval
 
 let add_cert_field name f = Hashtbl.replace certificate_field_access name f
-let add_answer_field name f = Hashtbl.replace answer_field_access name f
 let add_tls_field name f = Hashtbl.replace tls_field_access name f
 let add_dn_field name f = Hashtbl.replace dn_field_access name f
 let add_asn1_field name f = Hashtbl.replace asn1_field_access name f
 
 let _ =
-  add_answer_field "ip" (fun x -> V_String (Common.string_of_ip x.AnswerDump.ip));
-  add_answer_field "port" (fun x -> V_Int x.AnswerDump.port);
-  add_answer_field "name" (fun x -> V_String x.AnswerDump.name);
-  add_answer_field "client_hello_type" (fun x -> V_Int x.AnswerDump.client_hello_type);
-  add_answer_field "msg_type" (fun x -> V_Int x.AnswerDump.msg_type);
-  add_answer_field "content" (fun x -> V_String x.AnswerDump.content);
-
   add_cert_field "version" (fun x -> match x.X509.tbs.X509.version with None -> raise Not_found | Some v -> V_Int v);
   add_cert_field "serial" (fun x -> V_String (Common.hexdump_int_list x.X509.tbs.X509.serial));
   add_cert_field "issuer" (fun x -> V_DN (x.X509.tbs.X509.issuer));

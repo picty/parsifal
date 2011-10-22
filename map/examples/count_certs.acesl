@@ -5,7 +5,7 @@ _separator := "\t";
 count_certs := function (path) {
     f := open (path);
     while f do
-        answer_str := parse ("answer", f);
+        answer_str := parse ("answer_dump", f);
 	if ! answer_str then break fi;
         answer := stream (answer_str.ip, answer_str.content);
         n_certs := 0;

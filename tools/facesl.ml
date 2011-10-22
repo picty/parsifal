@@ -3,7 +3,7 @@ open MapLang;;
 open MapEval;;
 open MapNativeFunctions;;
 open MapAccessFields;;
-open Asn1Module;;
+open AnswerModule;;
 
 let interactive () =
   setv [global_env] "PS1" (V_String "> ");
@@ -13,8 +13,9 @@ let interactive () =
       flush stdout;
       try
 	let res = match interpret_string [global_env] (input_line stdin) with
-	  | (V_Bool _ | V_Int _ | V_String _ | V_List _ | V_Set _ | V_Dict _) as value ->
-	    eval_as_string value
+	  | (V_Bool _ | V_Int _ | V_String _ | V_List _
+		| V_Set _ | V_Dict _ | V_ValueDict _) as value ->
+	    eval_as_string_rec value
 	  | V_Unit -> "OK."
 	  | v -> "<" ^ string_of_type (v) ^ ">"
 	in

@@ -18,14 +18,12 @@ and value =
 
   | V_List of value list
   | V_Set of StringSet.t
-  | V_Dict of (value, value) Hashtbl.t
+  | V_Dict of (string, value) Hashtbl.t
+  | V_ValueDict of (value, value) Hashtbl.t
   | V_Stream of string * char Stream.t
   | V_OutChannel of string * out_channel
+  | V_Lazy of value lazy_t
 
-  | V_Module of string
-  | V_Object of string * string
-
-  | V_AnswerRecord of AnswerDump.answer_record
   | V_TlsRecord of Tls.record
   | V_Asn1 of Asn1.asn1_object
   | V_DN of X509.dn
@@ -35,29 +33,14 @@ and environment = (string, value) Hashtbl.t list
 
 let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
 
-module type MapModule = sig
-  type encoded_object = string
-  val from_binary : value -> encoded_object
-  val to_binary : encoded_object -> string
-  val to_string : encoded_object -> string
+let add_module name dict = Hashtbl.replace global_env name (V_Dict dict)
 
-  val module_get : string -> value
-(*  val module_set : string -> value -> unit *)
-(*  val module_unset : string -> unit *)
-
-  val get : encoded_object -> string -> value
-  val equals : encoded_object -> encoded_object -> bool
-(*  val set : encoded_object -> string -> value -> unit *)
-(*  val set : encoded_object -> string -> unit *)
-end
-
-let module_table : (string, (module MapModule)) Hashtbl.t = Hashtbl.create 10
 
 let certificate_field_access : (string, X509.certificate -> value) Hashtbl.t = Hashtbl.create 40
 let tls_field_access : (string, Tls.record -> value) Hashtbl.t = Hashtbl.create 40
 let dn_field_access : (string, X509.dn -> value) Hashtbl.t = Hashtbl.create 40
 let asn1_field_access : (string, Asn1.asn1_object -> value) Hashtbl.t = Hashtbl.create 40
-let answer_field_access : (string, AnswerDump.answer_record -> value) Hashtbl.t = Hashtbl.create 10
+
 
 exception NotImplemented
 exception WrongNumberOfArguments
@@ -70,29 +53,34 @@ exception Break
 let opts = { Asn1.type_repr = Asn1.PrettyType; Asn1.data_repr = Asn1.PrettyData;
 	     Asn1.resolver = Some X509.name_directory; Asn1.indent_output = true };;
 
-let rec eval_as_string_non_recursive = function
+let eval_as_string = function
   | V_Bool b -> string_of_bool b
   | V_Int i -> string_of_int i
   | V_String s -> s
 
-  | V_List _ | V_Set _ | V_Dict _ | V_TlsRecord _
-  | V_Asn1 _ | V_DN _ | V_Certificate _
+  | V_List _ | V_Set _ | V_Dict _ | V_ValueDict _
+  | V_TlsRecord _ | V_Asn1 _ | V_DN _ | V_Certificate _
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-  | V_AnswerRecord _ | V_Object _ | V_Module _ ->
+  | V_Lazy _ ->
     raise (ContentError "String expected")
 
-let rec eval_as_string  = function
+let rec eval_as_string_rec = function
   | V_Bool b -> string_of_bool b
   | V_Int i -> string_of_int i
   | V_String s -> s
 
   | V_List l ->
-    "[" ^ (String.concat ", " (List.map eval_as_string l)) ^ "]"
+    "[" ^ (String.concat ", " (List.map eval_as_string_rec l)) ^ "]"
   | V_Set s ->
     "{" ^ (String.concat ", " (StringSet.elements s)) ^ "}"
   | V_Dict d ->
     let hash_aux k v accu =
-      ((eval_as_string k) ^ " -> " ^ (eval_as_string v))::accu
+      (k ^ " -> " ^ (eval_as_string_rec v))::accu
+    in
+    "{" ^ (String.concat ", " (Hashtbl.fold hash_aux d [])) ^ "}"
+  | V_ValueDict d ->
+    let hash_aux k v accu =
+      ((eval_as_string_rec k) ^ " -> " ^ (eval_as_string_rec v))::accu
     in
     "{" ^ (String.concat ", " (Hashtbl.fold hash_aux d [])) ^ "}"
 
@@ -102,7 +90,7 @@ let rec eval_as_string  = function
   | V_Certificate c -> X509.string_of_certificate true "" (Some X509.name_directory) c
 
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-  | V_AnswerRecord _ | V_Object _ | V_Module _ ->
+  | V_Lazy _ ->
     raise (ContentError "String expected")
 
 let eval_as_int = function
@@ -117,25 +105,27 @@ let eval_as_bool = function
   | V_Set s -> StringSet.is_empty s
   | V_String s -> (String.length s) <> 0
   | V_Stream (_, s) -> not (Common.eos s)
+  | V_Dict d -> (Hashtbl.length d) <> 0
+  | V_ValueDict d -> (Hashtbl.length d) <> 0
 
-  | V_Object _ | V_AnswerRecord _ | V_TlsRecord _
+  | V_TlsRecord _
   | V_Asn1 _ | V_DN _ | V_Certificate _ -> true
 
   | _ -> raise (ContentError "Boolean expected")
 
 let eval_as_function = function
-  | V_Function body -> body
+  | V_Function f -> f
+  | _ -> raise (ContentError "Function expected")
+
+let eval_as_stream = function
+  | V_Stream (n, s) -> n, s
   | _ -> raise (ContentError "Function expected")
 
 let eval_as_list = function
   | V_List l -> l
   | _ -> raise (ContentError "List expected")
 
-let eval_as_dict = function
-  | V_Dict d -> d
-  | _ -> raise (ContentError "Dictionary expected")
-
-let string_of_type = function
+let rec string_of_type = function
   | V_Unit -> "unit"
   | V_Bool _ -> "bool"
   | V_Int _ -> "int"
@@ -144,24 +134,28 @@ let string_of_type = function
 
   | V_List _ -> "list"
   | V_Set _ -> "set"
-  | V_Dict _ -> "dict"
+  | V_Dict d -> (try eval_as_string (Hashtbl.find d "dict_type") with Not_found -> "dict")
+  | V_ValueDict _ -> "dict"
   | V_Stream _ -> "stream"
   | V_OutChannel _ -> "outchannel"
+  | V_Lazy lazyval ->
+    if Lazy.lazy_is_val lazyval
+    then (string_of_type (Lazy.force lazyval)) else "lazy"
 
-  | V_Module _ -> "module"  (* TODO: module name *)
-  | V_Object _ -> "object"  (* TODO: module name *)
-
-  | V_AnswerRecord _ -> "answer"
   | V_TlsRecord _ -> "TLSrecord"
   | V_Asn1 _ -> "asn1object"
   | V_DN _ -> "DN"
   | V_Certificate _ -> "certificate"
 
+let strict_eval_value = function
+  | V_Lazy lazyval -> Lazy.force lazyval
+  | v -> v
+
 let rec getv env name = match env with
   | [] -> raise Not_found
   | e::r -> begin
     try
-      Hashtbl.find e name
+      strict_eval_value (Hashtbl.find e name)
     with
       | Not_found -> getv r name
   end
@@ -186,8 +180,8 @@ let getv_str env name default =
 
 let rec  eval_string_token env = function
   | ST_String s -> s
-  | ST_Var s -> eval_as_string (getv env s)
-  | ST_Expr s -> eval_as_string (interpret_string env s)
+  | ST_Var s -> eval_as_string_rec (getv env s)
+  | ST_Expr s -> eval_as_string_rec (interpret_string env s)
 
 and eval_exp env exp =
   let eval = eval_exp env in
@@ -255,20 +249,15 @@ and eval_exp env exp =
 
     | E_List e -> V_List (List.map eval e)
     | E_Cons (e1, e2) -> V_List ((eval e1)::(eval_as_list (eval e2)))
-    | E_Field (e, f) -> begin
-      match eval e with
-	| V_Dict d -> (Hashtbl.find d (V_String f))
+    | E_Field (e, f) -> strict_eval_value (match eval e with
+	| V_Dict d -> (Hashtbl.find d f)
+	| V_ValueDict d -> (Hashtbl.find d (V_String f))
 	| V_Asn1 a -> (Hashtbl.find asn1_field_access f) a
 	| V_Certificate c -> (Hashtbl.find certificate_field_access f) c
 	| V_DN dn -> (Hashtbl.find dn_field_access f) dn
 	| V_TlsRecord r -> (Hashtbl.find tls_field_access f) r
-	| V_AnswerRecord a -> (Hashtbl.find answer_field_access f) a
-	| V_Module name ->
-	  let m = Hashtbl.find module_table name in
-          let module M = (val m : MapModule) in
-	  M.module_get f
 	| _ -> raise (ContentError ("Object with fields expected"))
-    end
+    )
 
     | E_Assign (var, e) ->
       setv env var (eval e);
@@ -325,21 +314,16 @@ and eval_equality env a b =
     | V_List l1, V_List l2 -> equal_list (l1, l2)
     | V_Set s1, V_Set s2 -> StringSet.compare s1 s2 = 0
 
-    | V_Module m1, V_Module m2 -> m1 = m2
-    | V_Object (m1, o1), V_Object (m2, o2) ->
-      if m1 = m2 then begin
-	let m = Hashtbl.find module_table m1 in
-	let module M = (val m : MapModule) in
-	M.equals o1 o2
-      end else false
+    | V_Dict d1, V_Dict d2 -> raise NotImplemented
+    | V_ValueDict d1, V_ValueDict d2 -> raise NotImplemented
 
-    | V_AnswerRecord r1, V_AnswerRecord r2 -> r1 = r2
     | V_TlsRecord r1, V_TlsRecord r2 -> r1 = r2
     | V_Asn1 o1, V_Asn1 o2 -> o1 = o2
     | V_DN dn1, V_DN dn2 -> dn1 = dn2
     | V_Certificate c1, V_Certificate c2 -> c1 = c2
 
-    | v1, v2 -> eval_as_string v1 = eval_as_string v2
+    | v1, v2 ->
+      eval_as_string v1 = eval_as_string v2
 
 and eval_in env a b =
   let rec eval_in_list = function
