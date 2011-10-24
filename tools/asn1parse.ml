@@ -160,7 +160,6 @@ let content_string content =
   let v = match !data_repr, content with
     | _, Constructed _
     | NoData, _
-    | _, EndOfContents
     | _, Null -> None
 
     | _, Boolean true -> Some "0"
@@ -173,8 +172,7 @@ let content_string content =
     | _, OId oid -> Some (string_of_oid !resolver oid)
 
     | RawData, String (s, _)
-    | _, String (s, true)
-    | _, Unknown s -> Some ("[HEX DUMP]:" ^ (Common.hexdump s))
+    | _, String (s, true) -> Some ("[HEX DUMP]:" ^ (Common.hexdump s))
     | _, String (s, _) -> Some (s)
   in
   match v with

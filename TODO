@@ -1,4 +1,6 @@
 Language
+ - Write a simple compare function instead of all the equal/lt functions
+ - Add constructors/destructors to manipulate V_BitString / V_Bigint
  - Add options for the parser (asn1.tolerance <- 0, with a new value sort "module")
  - Add a lazy value type, and rewrite asn1 as a module + dictionary
  - So as the lazy thing is worth it, we need a efficient pstate on string (because we would extract the string from the stream and then replay it)

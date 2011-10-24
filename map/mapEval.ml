@@ -13,9 +13,10 @@ and value =
   | V_Unit
   | V_Bool of bool
   | V_Int of int
-  | V_Bigint of string
-  | V_BinaryString of string
   | V_String of string
+  | V_BinaryString of string
+  | V_BitString of int * string
+  | V_Bigint of string
   | V_Function of function_sort
 
   | V_List of value list
@@ -57,9 +58,9 @@ let opts = { Asn1.type_repr = Asn1.PrettyType; Asn1.data_repr = Asn1.PrettyData;
 
 let eval_as_int = function
   | V_Int i -> i
+  | V_String s
+  | V_BinaryString s -> int_of_string s
   | V_Bigint _ -> raise NotImplemented
-  | V_BinaryString s
-  | V_String s -> int_of_string s
   | _ -> raise (ContentError "Integer expected")
 
 let eval_as_bool = function
@@ -67,9 +68,10 @@ let eval_as_bool = function
   | V_Unit | V_Int 0 | V_List [] -> false
   | V_Int _ | V_List _ -> true
   | V_Set s -> StringSet.is_empty s
-  | V_Bigint s -> (String.length s) > 0 && s.[0] != '\x00'
+  | V_String s
   | V_BinaryString s
-  | V_String s -> (String.length s) <> 0
+  | V_BitString (_, s) -> (String.length s) <> 0
+  | V_Bigint s -> (String.length s) > 0 && s.[0] != '\x00'
   | V_Stream (_, s) -> not (Common.eos s)
   | V_Dict d -> (Hashtbl.length d) <> 0
   | V_ValueDict d -> (Hashtbl.length d) <> 0
@@ -99,9 +101,10 @@ let rec string_of_type = function
   | V_Unit -> "unit"
   | V_Bool _ -> "bool"
   | V_Int _ -> "int"
-  | V_Bigint _ -> "big_int"
-  | V_BinaryString _ -> "binary_string"
   | V_String _ -> "string"
+  | V_BinaryString _ -> "binary_string"
+  | V_BitString _ -> "bit_string"
+  | V_Bigint _ -> "big_int"
   | V_Function _ -> "function"  (* TODO: nature, arity? *)
 
   | V_List _ -> "list"
@@ -126,7 +129,7 @@ and eval_as_string = function
   | V_BinaryString s
   | V_String s -> s
 
-  | V_List _ | V_Set _ | V_Dict _ | V_ValueDict _
+  | V_BitString _ | V_List _ | V_Set _ | V_Dict _ | V_ValueDict _
   | V_TlsRecord _ | V_Asn1 _ | V_DN _ | V_Certificate _
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
   | V_Lazy _ ->
@@ -147,9 +150,10 @@ and eval_as_string_rec_i env current_indent v =
   match v with
     | V_Bool b -> string_of_bool b
     | V_Int i -> string_of_int i
-    | V_Bigint s -> "0x" ^ (Common.hexdump s)
-    | V_BinaryString s -> "\"" ^ (Common.hexdump s) ^ "\""
     | V_String s -> s
+    | V_BinaryString s -> "\"" ^ (Common.hexdump s) ^ "\""
+    | V_BitString (n, s) -> "\"[" ^ (string_of_int n) ^ "]" ^ (Common.hexdump s) ^ "\""
+    | V_Bigint s -> "0x" ^ (Common.hexdump s)
 
     | V_List [] -> "[]"
     | V_Set s when (StringSet.is_empty s) -> "{}"
@@ -375,6 +379,7 @@ and eval_equality env a b =
     | V_Unit, V_Unit -> true
     | V_Bool b1, V_Bool b2 -> b1 = b2
     | V_Int i1, V_Int i2 -> i1 = i2
+    | V_BitString (n1, s1), V_BitString (n2, s2) -> n1 = n2 && s1 = s2
 
     | V_List l1, V_List l2 -> equal_list (l1, l2)
     | V_Set s1, V_Set s2 -> StringSet.compare s1 s2 = 0

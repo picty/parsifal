@@ -63,7 +63,6 @@ type asn1_object = {
 }
 
 and asn1_content =
-  | EndOfContents
   | Boolean of bool
   | Integer of string
   | BitString of int * string
@@ -71,7 +70,6 @@ and asn1_content =
   | OId of int list
   | String of (string * bool)       (* bool : isBinary *)
   | Constructed of asn1_object list
-  | Unknown of string
 
 let mk_object name c t offset hlen len content =
   {a_class = c; a_tag = t; a_ohl = Some (offset, hlen, len);
@@ -393,9 +391,6 @@ let der_to_bitstring _type pstate =
 let der_to_octetstring binary pstate =
   String (pop_string pstate, binary)
 
-let der_to_unknown pstate =
-  Unknown (pop_string pstate)
-
 
 (* Constructed and global function *)
 
@@ -416,7 +411,6 @@ and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_func
 	| (T_Boolean, false) -> der_to_boolean
 	| (T_Integer, false) -> der_to_int
 	  
-	| (T_EndOfContents, false)
 	| (T_Null, false) -> der_to_null
 	  
 	| ( T_OId, false) -> der_to_oid
@@ -445,7 +439,7 @@ and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_func
 	  
 	| (_, false) ->
 	  emit (UnknownUniversal (false, t)) s_speclightlyviolated pstate;
-	  der_to_unknown
+	  der_to_octetstring true
 
 	| (_, true) ->
 	  emit (UnknownUniversal (true, t)) s_speclightlyviolated pstate;
@@ -454,9 +448,9 @@ and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_func
       
     | C_Universal ->
       emit (UnknownUniversal (isC, t)) s_speclightlyviolated pstate;
-      if isC then der_to_constructed else der_to_unknown
+      if isC then der_to_constructed else der_to_octetstring true
 
-    | _ -> if isC then der_to_constructed else der_to_unknown
+    | _ -> if isC then der_to_constructed else der_to_octetstring true
       
 and parse pstate : asn1_object =
   let offset = get_offset pstate in
@@ -547,7 +541,6 @@ let rec string_of_object indent popts o =
     | _, Constructed l -> [string_of_constructed indent popts l]
 
     | NoData, _
-    | _, EndOfContents
     | _, Null -> []
 
     | _, Boolean true -> ["true"]
@@ -559,8 +552,7 @@ let rec string_of_object indent popts o =
     | _, OId oid -> [string_of_oid popts.resolver oid]
 
     | RawData, String (s, _)
-    | _, String (s, true)
-    | _, Unknown s -> ["[HEX:]" ^ (Common.hexdump s)]  
+    | _, String (s, true) -> ["[HEX:]" ^ (Common.hexdump s)]  
     | _, String (s, _) -> [s]
   in
 
@@ -651,12 +643,12 @@ let bitstring_to_der nBits s =
 
 let rec dump o =
   let isC, contents = match o.a_content with
-    | EndOfContents | Null -> false, ""
+    | Null -> false, ""
     | Boolean b -> false, boolean_to_der b
     | Integer i -> false, i
     | BitString (nb, s) -> false, bitstring_to_der nb s
     | OId id -> false, oid_to_der id
-    | String (s, _) | Unknown s -> false, s
+    | String (s, _) -> false, s
     | Constructed objects -> true, constructed_to_der objects
   in
   let hdr = dump_header o.a_class isC o.a_tag in
