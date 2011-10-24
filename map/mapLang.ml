@@ -42,7 +42,7 @@ type expression =
   | E_Function of string list * expression list
   | E_Local of string list
   | E_Apply of expression * expression list
-  | E_Return of expression
+  | E_Return of expression option
 
   | E_List of expression list
   | E_Cons of (expression * expression)
@@ -98,7 +98,8 @@ let rec string_of_exp indent exp =
     | E_Local id -> "local " ^ (String.concat ", " id)
     | E_Apply (e, args) ->
       (soe e) ^ " (" ^ (String.concat ", " (List.map soe args)) ^ ")"
-    | E_Return e -> "return " ^ (soe e)
+    | E_Return (Some e) -> "return " ^ (soe e)
+    | E_Return None -> "return"
 
     | E_List e -> "[" ^ (String.concat ", " (List.map soe e)) ^ "]b"
     | E_Cons (e1, e2) -> (soe e1) ^ "::" ^ (soe e2)

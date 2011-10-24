@@ -1,4 +1,5 @@
 Language
+ - Modify NativeFunction so that they can also be partially applied.
  - Write a simple compare function instead of all the equal/lt functions
  - Add constructors/destructors to manipulate V_BitString / V_Bigint
  - Add options for the parser (asn1.tolerance <- 0, with a new value sort "module")
@@ -22,15 +23,6 @@ Lexer / Parser
  - Improve the error messages of the lexer/parser
  - Handle correctly multiply embedded () "" and ${} with a stack ?!
  - Catch parsing errors when they are due to an incomplete parse -> this way, we could wait for what is to come "> for if "-style
-
-Language extension
- - V_Other of string * string (module_name, binary)
- - Each type should contain some functions (parse, print, dump, equals) and a generic accessor
- - Each type could be represented by a new value (V_Module) which should implement options and optionnaly functions
- - print should call module.print / dump and parse too.
- - A chaque utilisation, on appelle parse du module module_name. Celui-ci peut être un module créé à l'aide d'un foncteur utilisant la mémoisation (weak pointers / module Weak ou tables de hachage avec un roulement pour effacer les donnees non utilisees) pour rendre la chose efficace.
-    -> une extension enregistre un ensemble de fonctions (print, access) et les associe à un nom
-    -> les objets sont abstraits et ne peuvent être manipulés que par print / les accesseurs et les opérations sur les listes
 
 typing
  - Add type constraints in the language, to help understanding errors.

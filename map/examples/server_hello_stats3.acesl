@@ -5,7 +5,7 @@ foreach := function (_init, _next, _process) {
     _resource := _init;
     while _resource do
         _object := _next (_resource);
-        if ! _object then break fi;
+        if ! _object then return fi;
         _process (_object);
     done;
 };

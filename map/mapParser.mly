@@ -88,7 +88,8 @@ expr:
     | T_Function T_LeftPar args T_RightPar T_LeftBrace function_exprs T_RightBrace
 	                 { MapLang.E_Function ($3, $6) }
     | expr T_LeftPar expr_list T_RightPar { MapLang.E_Apply ($1, $3) }
-    | T_Return expr { MapLang.E_Return $2 }
+    | T_Return expr { MapLang.E_Return (Some $2) }
+    | T_Return { MapLang.E_Return None }
  
     | T_LeftBracket expr_list T_RightBracket { MapLang.E_List $2 }
 

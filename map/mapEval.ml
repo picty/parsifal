@@ -324,7 +324,8 @@ and eval_exp env exp =
       let arg_values = List.map eval args in
       eval_function env f_value arg_values
     end
-    | E_Return e -> raise (ReturnValue (eval e))
+    | E_Return (Some e) -> raise (ReturnValue (eval e))
+    | E_Return None -> raise (ReturnValue V_Unit)
 
     | E_List e -> V_List (List.map eval e)
     | E_Cons (e1, e2) -> V_List ((eval e1)::(eval_as_list (eval e2)))
