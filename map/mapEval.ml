@@ -56,6 +56,14 @@ exception Break
 let opts = { Asn1.type_repr = Asn1.PrettyType; Asn1.data_repr = Asn1.PrettyData;
 	     Asn1.resolver = Some X509.name_directory; Asn1.indent_output = true };;
 
+type display_opts = {
+  raw_display : bool;
+  separator : string;
+  after_opening : string;
+  before_closing : string;
+  new_eval : value -> string
+}
+
 let eval_as_int = function
   | V_Int i -> i
   | V_String s
@@ -136,15 +144,21 @@ and eval_as_string = function
     raise (ContentError "String expected")
 
 and eval_as_string_rec_i env current_indent v =
-  let get_things () =
+  let get_dopts () =
+    let raw_display = getv_bool env "_raw_display" false in
     let indent = getv_str env "_indent" "" in
-    let multiline = String.length indent > 0 in
+    let multiline = (String.length indent) > 0 in
     if multiline then begin
       let new_indent = current_indent ^ indent in
-      ((getv_str env "_separator" ",") ^ "\n" ^ new_indent),
-      ("\n" ^ new_indent), ("\n" ^ current_indent),
-      (eval_as_string_rec_i env new_indent)
-    end else ((getv_str env "_separator" ", "), "", "", eval_as_string_rec_i env "")
+      { raw_display = raw_display;
+        separator = (getv_str env "_separator" ",") ^ "\n" ^ new_indent;
+	after_opening = "\n" ^ new_indent; before_closing = "\n" ^ current_indent;
+	new_eval = eval_as_string_rec_i env new_indent }
+    end else
+      { raw_display = raw_display;
+	separator = getv_str env "_separator" ", ";
+	after_opening = ""; before_closing = "";
+	new_eval = eval_as_string_rec_i env "" }
   in
 
   match v with
@@ -161,31 +175,33 @@ and eval_as_string_rec_i env current_indent v =
     | V_ValueDict d when (Hashtbl.length d = 0) -> "{}"
 
     | V_List l ->
-      let separator, after_opening, before_closing, new_eval = get_things () in
-      "[" ^ after_opening ^
-	(String.concat separator (List.map new_eval l)) ^
-	before_closing ^ "]"
+      let dopts = get_dopts () in
+      "[" ^ dopts.after_opening ^
+	(String.concat dopts.separator (List.map dopts.new_eval l)) ^
+	dopts.before_closing ^ "]"
     | V_Set s ->
-      let separator, after_opening, before_closing, new_eval = get_things () in
-      "{" ^ after_opening ^
-	(String.concat separator (StringSet.elements s)) ^
-	before_closing ^ "}"
+      let dopts = get_dopts () in
+      "{" ^ dopts.after_opening ^
+	(String.concat dopts.separator (StringSet.elements s)) ^
+	dopts.before_closing ^ "}"
     | V_Dict d ->
-      let separator, after_opening, before_closing, new_eval = get_things () in
+      let dopts = get_dopts () in
       let hash_aux k v accu =
-	(k ^ " -> " ^ (new_eval v))::accu
+	if dopts.raw_display || ((String.length k > 0) && (k.[0] != '_'))
+	then (k ^ " -> " ^ (dopts.new_eval v))::accu
+	else accu
       in
-      "{" ^ after_opening ^
-	(String.concat separator (Hashtbl.fold hash_aux d [])) ^
-	before_closing ^ "}"
+      "{" ^ dopts.after_opening ^
+	(String.concat dopts.separator (Hashtbl.fold hash_aux d [])) ^
+	dopts.before_closing ^ "}"
     | V_ValueDict d ->
-      let separator, after_opening, before_closing, new_eval = get_things () in
+      let dopts = get_dopts () in
       let hash_aux k v accu =
-	((new_eval k) ^ " -> " ^ (new_eval v))::accu
+	((dopts.new_eval k) ^ " -> " ^ (dopts.new_eval v))::accu
       in
-      "{" ^ after_opening ^
-	(String.concat separator (Hashtbl.fold hash_aux d [])) ^
-	before_closing ^ "}"
+      "{" ^ dopts.after_opening ^
+	(String.concat dopts.separator (Hashtbl.fold hash_aux d [])) ^
+	dopts.before_closing ^ "}"
 
     | V_TlsRecord r -> Tls.string_of_record r
     | V_Asn1 o -> Asn1.string_of_object "" opts o
@@ -208,8 +224,13 @@ and getv_str env name default =
   try
     eval_as_string (getv env name)
   with
-    | Not_found -> default
-    | ContentError _ -> default
+    | Not_found | ContentError _ -> default
+
+and getv_bool env name default =
+  try
+    eval_as_bool (getv env name)
+  with
+    | Not_found | ContentError _ -> default
 
 let rec setv env name v = match env with
   | [] -> raise Not_found
