@@ -8,12 +8,9 @@ end
 
 module ParsingEngine =
   functor (Params : ParsingParameters) -> struct
-    type plength = UndefLength | Length of int
-
+    type plength = int option
     type severity = int
-
     type error_handling_function = Params.parsing_error -> severity -> parsing_state -> unit
-
     and parsing_state = {
       ehf : error_handling_function;
       origin : string;        (* The origin of what we are parsing (a filename for example) *)
@@ -32,8 +29,8 @@ module ParsingEngine =
     let get_depth pstate = List.length pstate.position
     let get_offset pstate = Stream.count pstate.str
     let get_len pstate = match pstate.len with
-      | UndefLength -> -1
-      | Length n -> n
+      | None -> -1
+      | Some n -> n
 
     let string_of_pstate pstate =
       pstate.origin ^
@@ -59,7 +56,7 @@ module ParsingEngine =
 
     let pstate_of_stream ehfun orig contents =
       {ehf = ehfun; origin = orig; str = contents;
-       len = UndefLength; position = []; lengths = []}
+       len = None; position = []; lengths = []}
 
     let pstate_of_string ehfun orig contents =
       pstate_of_stream ehfun orig (Stream.of_string contents)
@@ -70,15 +67,15 @@ module ParsingEngine =
 
     let go_down pstate name l =
       let saved_len = match pstate.len with
-	| UndefLength -> UndefLength
-	| Length n ->
+	| None -> None
+	| Some n ->
 	  if l > n
 	  then raise (ParsingError (Params.out_of_bounds_error "go_down", fatal_severity, pstate))
-	  else Length (n - l)
+	  else Some (n - l)
       in
       pstate.lengths <- saved_len::(pstate.lengths);
       pstate.position <- name::(pstate.position);
-      pstate.len <- Length l
+      pstate.len <- Some l
 
     let go_up pstate =
       match pstate.lengths, pstate.position with
@@ -91,29 +88,29 @@ module ParsingEngine =
 
     let eos pstate = 
       match pstate.len with
-	| UndefLength -> begin
+	| None -> begin
 	  try
 	    Stream.empty pstate.str;
 	    true
 	  with Stream.Failure -> false
 	end
-	| Length 0 -> true
+	| Some 0 -> true
 	| _ -> false
 
     let pop_byte pstate =
       try
 	match pstate.len with
-	  | UndefLength -> int_of_char (Stream.next pstate.str)
-	  | Length 0 -> raise Stream.Failure
-	  | Length n ->
-	    pstate.len <- Length (n - 1);
+	  | None -> int_of_char (Stream.next pstate.str)
+	  | Some 0 -> raise Stream.Failure
+	  | Some n ->
+	    pstate.len <- Some (n - 1);
 	    int_of_char (Stream.next pstate.str)
       with
 	  Stream.Failure -> raise (ParsingError (Params.out_of_bounds_error "pop_byte", fatal_severity, pstate))
 
     let peek_byte pstate n =
       match pstate.len with
-	| Length l when l < n -> raise (ParsingError (Params.out_of_bounds_error "peek_bytes", fatal_severity, pstate))
+	| Some l when l < n -> raise (ParsingError (Params.out_of_bounds_error "peek_bytes", fatal_severity, pstate))
 	| _ ->
 	  let tmp = Stream.npeek (n+1) pstate.str in
 	  try
@@ -129,7 +126,7 @@ module ParsingEngine =
 	done;
         begin
           match pstate.len with
-            | Length l -> pstate.len <- Length (l - n)
+            | Some l -> pstate.len <- Some (l - n)
             | _ -> ()
         end;
       with
@@ -137,15 +134,15 @@ module ParsingEngine =
 
     let pop_string pstate =
       match pstate.len with
-	| UndefLength -> raise (ParsingError (Params.out_of_bounds_error "get_string(UndefLength)", fatal_severity, pstate))
-	| Length n ->
+	| None -> raise (ParsingError (Params.out_of_bounds_error "get_string(undefined length)", fatal_severity, pstate))
+	| Some n ->
 	  let res = String.make n ' ' in
 	  _pop_bytes pstate n (String.set res);
 	  res
 
     let pop_bytes pstate n =
       match pstate.len with
-	| Length l when l < n -> raise (ParsingError (Params.out_of_bounds_error "get_bytes", fatal_severity, pstate))
+	| Some l when l < n -> raise (ParsingError (Params.out_of_bounds_error "get_bytes", fatal_severity, pstate))
 	| _ ->
 	  let res = Array.make n 0 in
 	  _pop_bytes pstate n (fun i -> fun c -> Array.set res i (int_of_char c));
@@ -153,8 +150,8 @@ module ParsingEngine =
 
     let pop_list pstate =
       match pstate.len with
-	| UndefLength -> raise (ParsingError (Params.out_of_bounds_error "get_string(UndefLength)", fatal_severity, pstate))
-	| Length n ->
+	| None -> raise (ParsingError (Params.out_of_bounds_error "get_string(undefined length)", fatal_severity, pstate))
+	| Some n ->
 	  let res = Array.make n 0 in
 	  _pop_bytes pstate n (fun i -> fun c -> Array.set res i (int_of_char c));
 	  Array.to_list (res)

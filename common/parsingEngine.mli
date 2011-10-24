@@ -8,7 +8,7 @@ module type ParsingParameters =
 module ParsingEngine :
   functor (Params : ParsingParameters) ->
     sig
-      type plength = UndefLength | Length of int
+      type plength = int option
       type severity = int
       type error_handling_function
       type parsing_state
