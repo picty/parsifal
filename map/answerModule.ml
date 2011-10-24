@@ -14,7 +14,7 @@ let _parse pstate =
     try
       let answer = parse_answer_record pstate in
       let answer_object = Hashtbl.create 10 in
-      Hashtbl.replace answer_object "dict_type" (V_String module_name);
+      Hashtbl.replace answer_object "_dict_type" (V_String module_name);
       Hashtbl.replace answer_object "ip" (V_String (Common.string_of_ip answer.ip));
       Hashtbl.replace answer_object "port" (V_Int answer.port);
       Hashtbl.replace answer_object "name" (V_String answer.name);
@@ -31,8 +31,8 @@ let _parse pstate =
 
 
 let mk_ehf () =
-  let tolerance = eval_as_int (Hashtbl.find module_fields "tolerance")
-  and minDisplay = eval_as_int (Hashtbl.find module_fields "minDisplay") in
+  let tolerance = eval_as_int (Hashtbl.find module_fields "_tolerance")
+  and minDisplay = eval_as_int (Hashtbl.find module_fields "_minDisplay") in
   default_error_handling_function tolerance minDisplay
 
 let _parse_stream name stream =
@@ -64,8 +64,9 @@ let add_field field_name field_value =
 let ovf f = V_Function (NativeFun (one_value_fun f))
 
 let init_module () =
-  add_field "tolerance" (V_Int 1);
-  add_field "minDisplay" (V_Int 0);
+  add_field "_dict_type" (V_String "module");
+  add_field "_tolerance" (V_Int 1);
+  add_field "_minDisplay" (V_Int 0);
   add_field "of_string" (ovf parse_string);
   add_field "of_stream" (ovf parse_stream);
   add_field "parse" (ovf parse)

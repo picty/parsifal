@@ -117,7 +117,7 @@ let rec string_of_type = function
 
   | V_List _ -> "list"
   | V_Set _ -> "set"
-  | V_Dict d -> (try eval_as_string (Hashtbl.find d "dict_type") with Not_found -> "dict")
+  | V_Dict d -> (try eval_as_string (Hashtbl.find d "_dict_type") with Not_found -> "dict")
   | V_ValueDict _ -> "dict"
   | V_Stream _ -> "stream"
   | V_OutChannel _ -> "outchannel"
