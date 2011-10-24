@@ -13,6 +13,7 @@ and value =
   | V_Unit
   | V_Bool of bool
   | V_Int of int
+  | V_Bigint of string
   | V_BinaryString of string
   | V_String of string
   | V_Function of function_sort
@@ -56,6 +57,7 @@ let opts = { Asn1.type_repr = Asn1.PrettyType; Asn1.data_repr = Asn1.PrettyData;
 
 let eval_as_int = function
   | V_Int i -> i
+  | V_Bigint _ -> raise NotImplemented
   | V_BinaryString s
   | V_String s -> int_of_string s
   | _ -> raise (ContentError "Integer expected")
@@ -65,6 +67,7 @@ let eval_as_bool = function
   | V_Unit | V_Int 0 | V_List [] -> false
   | V_Int _ | V_List _ -> true
   | V_Set s -> StringSet.is_empty s
+  | V_Bigint s -> (String.length s) > 0 && s.[0] != '\x00'
   | V_BinaryString s
   | V_String s -> (String.length s) <> 0
   | V_Stream (_, s) -> not (Common.eos s)
@@ -96,6 +99,7 @@ let rec string_of_type = function
   | V_Unit -> "unit"
   | V_Bool _ -> "bool"
   | V_Int _ -> "int"
+  | V_Bigint _ -> "big_int"
   | V_BinaryString _ -> "binary_string"
   | V_String _ -> "string"
   | V_Function _ -> "function"  (* TODO: nature, arity? *)
@@ -118,6 +122,7 @@ let rec string_of_type = function
 and eval_as_string = function
   | V_Bool b -> string_of_bool b
   | V_Int i -> string_of_int i
+  | V_Bigint s
   | V_BinaryString s
   | V_String s -> s
 
@@ -142,6 +147,7 @@ and eval_as_string_rec_i env current_indent v =
   match v with
     | V_Bool b -> string_of_bool b
     | V_Int i -> string_of_int i
+    | V_Bigint s -> "0x" ^ (Common.hexdump s)
     | V_BinaryString s -> "\"" ^ (Common.hexdump s) ^ "\""
     | V_String s -> s
 
@@ -249,6 +255,7 @@ and eval_exp env exp =
     | E_Equal (a, b) -> V_Bool (eval_equality env (eval a) (eval b))
     | E_Lt (a, b) -> V_Bool (match eval a, eval b with
 	| V_Int i1, V_Int i2 -> i1 < i2
+	| V_Bigint _, V_Bigint _ -> raise NotImplemented
 	| v1, v2 -> eval_as_string v1 < eval_as_string v2
     )
     | E_In (a, b) -> V_Bool (eval_in env (eval a) (eval b))

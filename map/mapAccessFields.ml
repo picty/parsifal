@@ -8,7 +8,7 @@ let add_asn1_field name f = Hashtbl.replace asn1_field_access name f
 
 let _ =
   add_cert_field "version" (fun x -> match x.X509.tbs.X509.version with None -> raise Not_found | Some v -> V_Int v);
-  add_cert_field "serial" (fun x -> V_String (Common.hexdump_int_list x.X509.tbs.X509.serial));
+  add_cert_field "serial" (fun x -> V_Bigint x.X509.tbs.X509.serial);
   add_cert_field "issuer" (fun x -> V_DN (x.X509.tbs.X509.issuer));
   add_cert_field "notbefore" (fun x -> V_String (X509.string_of_datetime (x.X509.tbs.X509.validity.X509.not_before)));
   add_cert_field "notafter" (fun x -> V_String (X509.string_of_datetime (x.X509.tbs.X509.validity.X509.not_after)));
@@ -61,7 +61,7 @@ type tbs_certificate = {
     | Asn1.Null
     | Asn1.EndOfContents -> V_Unit
     | Asn1.Boolean b -> V_Bool b
-    | Asn1.Integer i -> V_String (Common.hexdump_int_list i)
+    | Asn1.Integer i -> V_Bigint i
     | Asn1.BitString (_, s) -> V_String (if raw then s else Common.hexdump s)
     | Asn1.OId oid -> V_List (List.map (fun x -> V_Int x) (Asn1.oid_expand oid))
     | Asn1.Unknown s

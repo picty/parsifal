@@ -65,7 +65,7 @@ type asn1_object = {
 and asn1_content =
   | EndOfContents
   | Boolean of bool
-  | Integer of int list
+  | Integer of string
   | BitString of int * string
   | Null
   | OId of int list
@@ -300,15 +300,21 @@ let der_to_boolean pstate = Boolean (raw_der_to_boolean pstate)
 (* Integer *)
 
 let raw_der_to_int pstate =
-  let l = pop_list pstate in
-  let negative = match l with
+  let l = pop_string pstate in
+  let two_first_chars =
+    let n = String.length l in
+    if n = 0 then []
+    else if n = 1 then [int_of_char l.[0]]
+    else [int_of_char l.[0] ; int_of_char l.[1]]
+  in
+  let negative = match two_first_chars with
     | [] ->
       emit (IncorrectLength "integer") s_idempotencebreaker pstate;
       false
-    | x::y::r when x = 0xff ->
+    | x::y::_ when x = 0xff ->
       emit (NotInNormalForm "integer") s_idempotencebreaker pstate;
       true
-    | x::y::r when (x = 0) && (y land 0x80) = 0 ->
+    | x::y::_ when (x = 0) && (y land 0x80) = 0 ->
       emit (NotInNormalForm "integer") s_idempotencebreaker pstate;
       false
     | x::r -> (x land 0x80) = 0x80
@@ -547,7 +553,7 @@ let rec string_of_object indent popts o =
     | _, Boolean true -> ["true"]
     | _, Boolean false -> ["false"]
 
-    | _, Integer i -> [Common.hexdump_int_list i]
+    | _, Integer i -> ["0x" ^ (Common.hexdump i)]
 
     | _, BitString (nBits, s) -> [string_of_bitstring (popts.data_repr = RawData) nBits s]
     | _, OId oid -> [string_of_oid popts.resolver oid]
@@ -647,7 +653,7 @@ let rec dump o =
   let isC, contents = match o.a_content with
     | EndOfContents | Null -> false, ""
     | Boolean b -> false, boolean_to_der b
-    | Integer i -> false, Common.string_of_int_list i
+    | Integer i -> false, i
     | BitString (nb, s) -> false, bitstring_to_der nb s
     | OId id -> false, oid_to_der id
     | String (s, _) | Unknown s -> false, s
