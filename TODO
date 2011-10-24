@@ -15,6 +15,9 @@ Language
  - Add for loops, break n, continue n ?
  - concurrentmap (Nproc, OutputTemplate, fun (verif pas d'effet de bord hors la fonction))
 
+X509
+ - Put the objects, constraints and registering functions for (PKInfo, Signature and Crypto algo) in a separate file
+
 Lexer / Parser
  - Improve the error messages of the lexer/parser
  - Handle correctly multiply embedded () "" and ${} with a stack ?!

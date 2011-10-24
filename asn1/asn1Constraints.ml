@@ -192,6 +192,8 @@ let validating_parser_complex_cons_from_list c isC t_list parse_fun =
 
 
 let null_obj_cons = validating_parser_simple_cons C_Universal false 5 "Null" der_to_null
+let int_obj_cons = validating_parser_simple_cons C_Universal false 2 "Integer" der_to_int
+
 let printablestring_cons =
   validating_parser_simple_cons C_Universal false 19 "Printable String" (der_to_octetstring false)
 let ia5string_cons =
@@ -199,3 +201,7 @@ let ia5string_cons =
 
 let directory_name_cons =
   validating_parser_complex_cons_from_list C_Universal false [12; 19; 20; 28; 30] (der_to_octetstring false)
+
+let seqOf_obj_cons name cons n =
+  validating_parser_simple_cons C_Universal true 16 name
+    (parse_sequenceof (fun l -> Constructed l) cons n)

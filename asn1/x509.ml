@@ -66,7 +66,7 @@ let string_of_oid_object indent resolver o =
 	let opts = { type_repr = PrettyType; data_repr = PrettyData;
 		     resolver = resolver; indent_output = true } in
 	let new_indent = indent ^ "  " in
-	oid_string ^ "Parameters:\n" ^ (string_of_object new_indent opts p)
+	oid_string ^ indent ^ "Parameters:\n" ^ (string_of_object new_indent opts p)
   end
 
 
@@ -213,8 +213,11 @@ let string_of_validity indent _ v =
 
 (* Public key *)
 
+type dsa_key = {dsa_p : string; dsa_q : string; dsa_g : string; dsa_Y : string}
+
 type public_key =
   | PK_WrongPKInfo
+(*  | PK_DSA of dsa_key *)
   | PK_Unparsed of string
 
 type public_key_info = {
@@ -240,9 +243,10 @@ let public_key_info_constraint dir : public_key_info asn1_constraint =
 let string_of_public_key_info indent resolver pki =
   let new_indent = indent ^ "  " in
   indent ^ "Public key algorithm:\n" ^ (string_of_oid_object new_indent resolver pki.pk_algo) ^
+    indent ^ "Public key:\n" ^
     (match pki.public_key with
-      | PK_WrongPKInfo -> "Wrong PK Info\n"
-      | PK_Unparsed s -> Common.hexdump (s) ^ "\n")
+      | PK_WrongPKInfo -> new_indent ^ "Wrong PK Info\n"
+      | PK_Unparsed s -> new_indent ^ "[HEX]" ^ Common.hexdump (s) ^ "\n")
 
 
 
@@ -352,20 +356,46 @@ let string_of_tbs_certificate indent resolver tbs =
 	indent ^ "Extensions:\n" ^ (string_of_object new_indent opts e))
 
 
+(* Signature *)
+
+type dsa_signature = {dsa_r : string; dsa_s : string}
+
+type signature =
+  | Sig_WrongSignature
+(*  | Sig_DSA of dsa_signature *)
+  | Sig_Unparsed of string
+
+let empty_signature = Sig_WrongSignature
+
+let extract_signature = function
+  | algo, (0, sig_val) -> Sig_Unparsed sig_val
+  | algo, _ -> Sig_WrongSignature
+
+
+let signature_constraint dir sigalgo : signature asn1_constraint =
+  Simple_cons (C_Universal, false, 3, "Bit String",
+	       fun pstate -> extract_signature (sigalgo, raw_der_to_bitstring "" pstate))
+
+
+let string_of_signature indent _resolver sign =
+  match sign with
+    | Sig_WrongSignature -> indent ^ "Wrong Signature\n"
+    | Sig_Unparsed s -> indent ^ "[HEX]" ^ (Common.hexdump s) ^ "\n"
+
+
 (* Certificate *)
  
 type certificate = {
   tbs : tbs_certificate;
   cert_sig_algo : oid_object;
-  signature : (int * string)
+  signature : signature
 }
 
 
 let parse_certificate dir pstate =
   let tbs = constrained_parse_def (tbs_certificate_constraint dir) s_specfatallyviolated empty_tbs_certificate pstate in
   let sig_algo = constrained_parse_def (sigalgo_constraint dir) s_specfatallyviolated empty_oid_object pstate in
-  let signature = constrained_parse_def (Simple_cons (C_Universal, false, 3, "Signature",
-					raw_der_to_bitstring 54)) s_ok (0, "") pstate in
+  let signature = constrained_parse_def (signature_constraint dir sig_algo) s_specfatallyviolated empty_signature pstate in
 
   { tbs = tbs; cert_sig_algo = sig_algo; signature = signature }
 
@@ -380,7 +410,7 @@ let rec string_of_certificate print_title indent resolver c =
   then indent ^ "Certificate:\n" ^ (string_of_certificate false new_indent resolver c)
   else indent ^ "tbsCertificate:\n" ^ (string_of_tbs_certificate new_indent resolver c.tbs) ^
     indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent resolver c.cert_sig_algo) ^
-    indent ^ "Signature: " ^ (string_of_bitstring false (fst c.signature) (snd c.signature)) ^
+    indent ^ "Signature:\n" ^ (string_of_signature new_indent resolver c.signature) ^
     "\n"
 		 
 

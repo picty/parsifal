@@ -13,7 +13,24 @@ let add_rsa_stuff () =
 
   Hashtbl.add name_directory rsaEncryption_oid "rsaEncryption";
   Hashtbl.add object_directory (PubKeyAlgo, rsaEncryption_oid) (null_obj_cons, s_benign);;
+  (* TODO: Add Signature / Public Key *)
 
+
+(* DSA *)
+
+let dSA_oid = [42;840;10040;4;1]
+(* let dSAAlgorithm_oid = [43;14;3;2;12] *)
+let dsaWithSha1_oid = [42;840;10040;4;3]
+
+let add_dsa_stuff () =
+  Hashtbl.add name_directory dSA_oid "dSA";
+  Hashtbl.add object_directory (PubKeyAlgo, dSA_oid)
+    (seqOf_obj_cons "DSS Params" int_obj_cons (Exactly (3, s_specfatallyviolated)),
+     s_specfatallyviolated);
+
+  Hashtbl.add name_directory dsaWithSha1_oid "dsaWithSha1";
+  Hashtbl.add object_directory (PubKeyAlgo, dsaWithSha1_oid) (null_obj_cons, s_benign);;
+  (* TODO: Add Signature / Public Key *)
 
 
 (* DN and ATVs *)
@@ -50,4 +67,5 @@ let add_standard_atv () =
 
 let _ =
   add_rsa_stuff ();
+  add_dsa_stuff ();
   add_standard_atv ();;
