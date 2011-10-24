@@ -20,14 +20,18 @@ let one_string_fun_with_env f env = function
 
 let two_value_fun f = function
   | [e1; e2] -> f e1 e2
+  | [e1] -> V_Function (NativeFun (one_value_fun (f e1)))
   | _ -> raise WrongNumberOfArguments
 
 let two_value_fun_with_env f env = function
   | [e1; e2] -> f env e1 e2
+  | [e1] -> V_Function (NativeFunWithEnv (one_value_fun_with_env (fun env -> f env e1)))
   | _ -> raise WrongNumberOfArguments
 
 let three_value_fun f = function
   | [e1; e2; e3] -> f e1 e2 e3
+  | [e1; e2] -> V_Function (NativeFun (one_value_fun (f e1 e2)))
+  | [e1] -> V_Function (NativeFun (two_value_fun (f e1)))
   | _ -> raise WrongNumberOfArguments
 
 

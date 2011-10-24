@@ -11,7 +11,7 @@ foreach := function (_init, _next, _process) {
 };
 
 foreach_answer := function (f, path) {
-    foreach (open (path), answer_dump.parse, f);
+    foreach (open (path), parse ("answer_dump"), f);
 };
 
 msgs_of_answer := function (answer) {

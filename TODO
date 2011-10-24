@@ -1,11 +1,13 @@
+X509
+ - Put the objects, constraints and registering functions for (PKInfo, Signature and Crypto algo) in a separate file
+ - Write code to parse PK, Sig, Extensions.
+
 Language
- - Modify NativeFunction so that they can also be partially applied.
  - Write a simple compare function instead of all the equal/lt functions
  - Add constructors/destructors to manipulate V_BitString / V_Bigint
  - Add options for the parser (asn1.tolerance <- 0, with a new value sort "module")
  - Add a lazy value type, and rewrite asn1 as a module + dictionary
  - So as the lazy thing is worth it, we need a efficient pstate on string (because we would extract the string from the stream and then replay it)
- - Add a expr.ident <- value expression, which will need to deal with left values (maybe it will be alright with Dicts ?)
  - Add a library to filter and extract certs, either in native or interpreted form
  - Add a way to import new functions (Dynlink for native)
  - socket
@@ -15,9 +17,6 @@ Language
  - Add crypto through external bindings
  - Add for loops, break n, continue n ?
  - concurrentmap (Nproc, OutputTemplate, fun (verif pas d'effet de bord hors la fonction))
-
-X509
- - Put the objects, constraints and registering functions for (PKInfo, Signature and Crypto algo) in a separate file
 
 Lexer / Parser
  - Improve the error messages of the lexer/parser
