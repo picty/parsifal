@@ -1,8 +1,11 @@
+Refactor some code in mapEval...
+
 X509
  - Put the objects, constraints and registering functions for (PKInfo, Signature and Crypto algo) in a separate file
  - Write code to parse PK, Sig, Extensions.
 
 Language
+ - Module : add a mk_object (directly from a type t value)
  - Write a simple compare function instead of all the equal/lt functions
  - Add constructors/destructors to manipulate V_BitString / V_Bigint
  - Add options for the parser (asn1.tolerance <- 0, with a new value sort "module")

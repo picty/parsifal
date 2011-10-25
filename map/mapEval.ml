@@ -4,6 +4,9 @@ open MapLang
 
 module StringSet = Set.Make (String);;
 
+type object_ref = ObjectRef of string * int;;
+
+
 type function_sort =
   | NativeFun of (value list -> value)
   | NativeFunWithEnv of (environment -> value list -> value)
@@ -27,6 +30,9 @@ and value =
   | V_OutChannel of string * out_channel
   | V_Lazy of value lazy_t
 
+  | V_Module of string * (string, value) Hashtbl.t
+  | V_Object of object_ref * (string, value) Hashtbl.t
+
   | V_TlsRecord of Tls.record
   | V_Asn1 of Asn1.asn1_object
   | V_DN of X509.dn
@@ -36,7 +42,27 @@ and environment = (string, value) Hashtbl.t list
 
 let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
 
-let add_module name dict = Hashtbl.replace global_env name (V_Dict dict)
+
+module type MapModule = sig
+  val name : string
+  val params : (string, value) Hashtbl.t
+
+  val init : unit -> unit
+  val parse : string -> char Stream.t -> object_ref
+  val enrich : object_ref -> (string, value) Hashtbl.t -> unit
+  val update : object_ref -> (string, value) Hashtbl.t -> unit
+  val dump : object_ref -> string
+  val to_string : object_ref -> string
+end
+
+let modules : (string, (module MapModule)) Hashtbl.t = Hashtbl.create 10
+
+let add_module m =
+  let module M = (val m : MapModule) in
+  M.init ();
+  Hashtbl.replace modules M.name m;
+  Hashtbl.replace global_env M.name (V_Module (M.name, M.params))
+
 
 
 let certificate_field_access : (string, X509.certificate -> value) Hashtbl.t = Hashtbl.create 40
@@ -83,6 +109,7 @@ let eval_as_bool = function
   | V_Stream (_, s) -> not (Common.eos s)
   | V_Dict d -> (Hashtbl.length d) <> 0
   | V_ValueDict d -> (Hashtbl.length d) <> 0
+  | V_Object _ -> true
 
   | V_TlsRecord _
   | V_Asn1 _ | V_DN _ | V_Certificate _ -> true
@@ -125,6 +152,9 @@ let rec string_of_type = function
     if Lazy.lazy_is_val lazyval
     then (string_of_type (Lazy.force lazyval)) else "lazy"
 
+  | V_Module _ -> "module"
+  | V_Object (ObjectRef (n, _), _) -> n ^ "_object"
+
   | V_TlsRecord _ -> "TLSrecord"
   | V_Asn1 _ -> "asn1object"
   | V_DN _ -> "DN"
@@ -140,7 +170,7 @@ and eval_as_string = function
   | V_BitString _ | V_List _ | V_Set _ | V_Dict _ | V_ValueDict _
   | V_TlsRecord _ | V_Asn1 _ | V_DN _ | V_Certificate _
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-  | V_Lazy _ ->
+  | V_Lazy _ | V_Module _ | V_Object _ ->
     raise (ContentError "String expected")
 
 and eval_as_string_rec_i env current_indent v =
@@ -208,8 +238,25 @@ and eval_as_string_rec_i env current_indent v =
     | V_DN dn -> X509.string_of_dn "" (Some X509.name_directory) dn
     | V_Certificate c -> X509.string_of_certificate true "" (Some X509.name_directory) c
 
+    | V_Object (ObjectRef (n, _) as obj_ref, d) ->
+      if getv_bool env "_raw_display" false then begin
+	if not (Hashtbl.mem d "@enriched") then begin
+	  let module M = (val (Hashtbl.find modules n) : MapModule) in
+	  M.enrich obj_ref d;
+	  Hashtbl.replace d "@enriched" V_Unit
+	end;
+	eval_as_string_rec_i env current_indent (V_Dict d)
+      end else begin
+	let module M = (val (Hashtbl.find modules n) : MapModule) in
+	if Hashtbl.mem d "@modified" then begin
+	  M.update obj_ref d;
+	  Hashtbl.remove d "@modified"
+	end;
+	M.to_string obj_ref
+      end
+
     | (V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-	  | V_Lazy _) as v -> "<" ^ (string_of_type v) ^ ">"
+	  | V_Lazy _ | V_Module _) as v -> "<" ^ (string_of_type v) ^ ">"
 
 and getv env name = match env with
   | [] -> raise Not_found
@@ -336,6 +383,16 @@ and eval_exp env exp =
 	| V_Certificate c -> (Hashtbl.find certificate_field_access f) c
 	| V_DN dn -> (Hashtbl.find dn_field_access f) dn
 	| V_TlsRecord r -> (Hashtbl.find tls_field_access f) r
+
+	| V_Module (_, d) -> (Hashtbl.find d f)
+	| V_Object (ObjectRef (n, _) as obj_ref, d) ->
+	  if not (Hashtbl.mem d "@enriched") then begin
+	    let module M = (val (Hashtbl.find modules n) : MapModule) in
+	    M.enrich obj_ref d;
+	    Hashtbl.replace d "@enriched" V_Unit
+	  end;
+	  Hashtbl.find d f
+
 	| _ -> raise (ContentError ("Object with fields expected"))
     )
 
@@ -344,6 +401,17 @@ and eval_exp env exp =
 	match eval e with
 	  | V_Dict d -> (Hashtbl.replace d f (eval v))
 	  | V_ValueDict d -> (Hashtbl.replace d (V_String f) (eval v))
+
+	  | V_Module (_, d) -> (Hashtbl.replace d f (eval v))
+	  | V_Object (ObjectRef (n, _) as obj_ref, d) ->
+	    if not (Hashtbl.mem d "@enriched") then begin
+	      let module M = (val (Hashtbl.find modules n) : MapModule) in
+	      M.enrich obj_ref d;
+	      Hashtbl.replace d "@enriched" V_Unit
+	    end;
+	    Hashtbl.replace d f (eval v);
+	    Hashtbl.replace d "@modified" V_Unit
+
 	  | _ -> raise (ContentError ("Object with mutable fields expected"))
       end;
       V_Unit
@@ -406,8 +474,10 @@ and eval_equality env a b =
     | V_List l1, V_List l2 -> equal_list (l1, l2)
     | V_Set s1, V_Set s2 -> StringSet.compare s1 s2 = 0
 
+    (* TODO *)
     | V_Dict d1, V_Dict d2 -> raise NotImplemented
     | V_ValueDict d1, V_ValueDict d2 -> raise NotImplemented
+    | V_Module _, V_Module _ | V_Object _, V_Object _ -> raise NotImplemented
 
     | V_TlsRecord r1, V_TlsRecord r2 -> r1 = r2
     | V_Asn1 o1, V_Asn1 o2 -> o1 = o2

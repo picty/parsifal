@@ -232,6 +232,11 @@ let parse_tls_record input =
   in
   V_TlsRecord (Tls.parse_record asn1_ehf pstate)
 
+let stream_of_input = function
+  | V_String s -> ("(inline)", Stream.of_string s)
+  | V_Stream (name, s) -> (name, s)
+  | _ -> raise (ContentError "String or stream expected")
+
 let parse env format input =
   try
     match format with
@@ -245,10 +250,15 @@ let parse env format input =
 	parse_tls_record input
       | V_String object_name ->
 	begin
-	  try 
-	    let d = getv env object_name in
-	    let real_f = eval_as_function (hash_get d (V_String "parse")) in
-	    eval_function env real_f [input]
+	  try
+	    match getv env object_name with
+	      | V_Module (name, _) ->
+		let stream_name, stream = stream_of_input input in
+		let module M = (val (Hashtbl.find modules name) : MapModule) in
+		let obj_ref = M.parse stream_name stream in
+		let dict = Hashtbl.create 10 in
+		V_Object (obj_ref, dict)
+	      | _ -> raise (ContentError ("Unknown format"))
 	  with
 	    | Not_found -> raise (ContentError ("Unknown format"))
 	end
