@@ -387,7 +387,6 @@ let der_to_bitstring _type pstate =
 (* Octet String *)
 
 (* TODO: Add constraints *)
-(* In particular, wether the octetstring is binary or not *)
 let der_to_octetstring binary pstate =
   String (pop_string pstate, binary)
 

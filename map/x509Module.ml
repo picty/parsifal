@@ -9,7 +9,7 @@ module DNParser = struct
   let params : (string, value) Hashtbl.t = Hashtbl.create 10
 
   let init () =
-    (* TODO: Should that be elsewhere? *)
+    (* TODO: Should that be elsewhere? In ASN.1 ?*)
     Hashtbl.replace params "_resolve_names" (V_Bool true)
 
   let get_name_resolver () =
@@ -154,7 +154,7 @@ module X509Parser = struct
 
   let update dict = raise NotImplemented
 
-  (* TODO *)
+  (* TODO : resolver *)
   let to_string cert = string_of_certificate true "" (Some name_directory) cert
 end
 

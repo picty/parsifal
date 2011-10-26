@@ -397,9 +397,8 @@ and eval_equality env a b =
     | V_BitString (n1, s1), V_BitString (n2, s2) -> n1 = n2 && s1 = s2
 
     | V_List l1, V_List l2 -> equal_list (l1, l2)
-
-    (* TODO *)
     | V_Dict d1, V_Dict d2 -> raise NotImplemented
+
     | V_Module (n1, d1), V_Module (n2, d2) -> n1 = n2 && d1 == d2
     | V_Object (ObjectRef (n1, _) as obj_ref1, d1),
       V_Object (ObjectRef (n2, _) as obj_ref2, d2) ->

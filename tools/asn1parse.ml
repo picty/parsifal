@@ -165,7 +165,6 @@ let content_string content =
     | _, Boolean true -> Some "0"
     | _, Boolean false -> Some "255"
 
-    (* TODO: I would like it to be in hexa *)
     | _, Integer i -> Some ("0x" ^ (Common.hexdump i))
 
     | _, BitString (nBits, s) -> Some (string_of_bitstring (!data_repr = RawData) nBits s)
