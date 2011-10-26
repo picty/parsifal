@@ -68,18 +68,6 @@ let string_of_int_list l =
       aux (pos + 1) r
   in aux 0 l
 
-let hexdump_int_list x =
-  let len = List.length x in
-  let res = String.make (len * 2) ' ' in
-  let rec aux pos = function
-    | [] -> ()
-    | i::r ->
-      res.[pos] <- hexa_char.((i lsr 4) land 0xf);
-      res.[pos + 1] <- hexa_char.(i land 0xf);
-      aux (pos + 2) r
-  in
-  aux 0 x;
-  res
 
 let pop_int s offset n =
   let content = String.sub s offset n in
@@ -93,6 +81,43 @@ let string_of_ip ip  =
   (string_of_int ip.(1)) ^ "." ^
   (string_of_int ip.(2)) ^ "." ^
   (string_of_int ip.(3))
+
+
+let string_split c s =
+  let rec aux offset =
+    try
+      let next_index = String.index_from s offset c in
+      (String.sub s offset (next_index - offset))::(aux (next_index + 1))
+    with Not_found ->
+      let len = String.length s in
+      if offset < len then [String.sub s offset (len - offset)] else []
+  in aux 0
+
+let ip_of_string s =
+  let res = Array.of_list (List.map int_of_string (string_split '.' s)) in
+  if Array.length res != 4 then failwith "Invalid IP";
+  res
+
+
+
+let dump_uint16 x =
+  if x > 65535 then failwith "Integer overflow";
+  string_of_int_list [x lsr 8; x land 0xff]
+
+let dump_uint8 x =
+  if x > 255 then failwith "Integer overflow";
+  String.make 1 (char_of_int x)
+
+let dump_int x =
+  string_of_int_list [(x lsr 24) land 0xff; (x lsr 16) land 0xff;
+		      (x lsr 8) land 0xff; x land 0xff]
+
+
+let dump_variable_length_string length_fun s =
+  let len = String.length s in
+  (length_fun len) ^ s
+
+
 
 
 (* Stream functions *)

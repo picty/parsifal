@@ -50,6 +50,10 @@ module Make = functor (Parser : ParserInterface) -> struct
 
   let count = ref 0
   let objects : (int, t) Hashtbl.t = Hashtbl.create 10
+  let object_count = function
+    | [] -> V_Int (Hashtbl.length objects)
+    | _ -> raise WrongNumberOfArguments
+
 
   let erase_obj = function
     | ObjectRef (n, i) ->
@@ -71,7 +75,9 @@ module Make = functor (Parser : ParserInterface) -> struct
 
   let init () =
     Hashtbl.replace params "_tolerance" (V_Int (Parser.default_tolerance));
-    Hashtbl.replace params "_minDisplay" (V_Int (Parser.default_minDisplay))
+    Hashtbl.replace params "_minDisplay" (V_Int (Parser.default_minDisplay));
+    Hashtbl.replace params "_dict" (V_Dict params);
+    Hashtbl.replace params "_object_count" (V_Function (NativeFun object_count))
 
   let parse stream_name stream =
     let tolerance = eval_as_int (Hashtbl.find params "_tolerance")

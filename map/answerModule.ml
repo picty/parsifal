@@ -18,7 +18,7 @@ module AnswerDumpParser = struct
     let pstate = AnswerDump.Engine.pstate_of_stream ehf name stream in
     AnswerDump.parse_answer_record pstate
 
-  let dump answer = raise NotImplemented
+  let dump = AnswerDump.dump_answer_record
 
   let enrich enricher answer dict =
     Hashtbl.replace dict "ip" (enricher.to_string (Common.string_of_ip answer.AnswerDump.ip));
@@ -28,9 +28,15 @@ module AnswerDumpParser = struct
     Hashtbl.replace dict "msg_type" (enricher.to_int answer.AnswerDump.msg_type);
     Hashtbl.replace dict "content" (enricher.to_binary_string answer.AnswerDump.content)
 
-  let update enricher dict = raise NotImplemented
+  let update enricher dict =
+    { AnswerDump.ip = Common.ip_of_string (enricher.of_string (Hashtbl.find dict "ip"));
+      AnswerDump.port = enricher.of_int (Hashtbl.find dict "port");
+      AnswerDump.name = enricher.of_string (Hashtbl.find dict "name");
+      AnswerDump.client_hello_type = enricher.of_int (Hashtbl.find dict "client_hello_type");
+      AnswerDump.msg_type = enricher.of_int (Hashtbl.find dict "msg_type");
+      AnswerDump.content = enricher.of_binary_string (Hashtbl.find dict "content"); }
 
-  let to_string answer = raise NotImplemented
+  let to_string = AnswerDump.string_of_answer_record
 end
 
 let _ =

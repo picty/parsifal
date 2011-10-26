@@ -2,6 +2,10 @@ open MapLang
 open MapEval
 
 
+let zero_value_fun f = function
+  | [] -> f ()
+  | _ -> raise WrongNumberOfArguments
+
 let zero_value_fun_with_env f env = function
   | [] -> f env
   | _ -> raise WrongNumberOfArguments
@@ -204,7 +208,7 @@ let encode format input = match (eval_as_string format) with
   | _ -> raise (ContentError ("Unknown format"))
 
 let decode format input = match (eval_as_string format) with
-  | "hex" -> V_String (Common.hexparse (eval_as_string input))
+  | "hex" -> V_BinaryString (Common.hexparse (eval_as_string input))
   | _ -> raise (ContentError ("Unknown format"))
 
 
@@ -214,7 +218,7 @@ let asn1_ehf = Asn1.Engine.default_error_handling_function
 
 let parse_constrained_asn1 cons input =
   let pstate = match input with
-    | V_String s ->
+    | V_BinaryString s | V_String s ->
       Asn1.Engine.pstate_of_string asn1_ehf "(inline)" s
     | V_Stream (filename, s) ->
       Asn1.Engine.pstate_of_stream asn1_ehf filename s
@@ -224,7 +228,7 @@ let parse_constrained_asn1 cons input =
 
 let parse_tls_record input =
   let pstate = match input with
-    | V_String s ->
+    | V_BinaryString s | V_String s ->
       Tls.pstate_of_string "(inline)" s
     | V_Stream (filename, s) ->
       Tls.pstate_of_stream filename s
@@ -233,7 +237,7 @@ let parse_tls_record input =
   V_TlsRecord (Tls.parse_record asn1_ehf pstate)
 
 let stream_of_input = function
-  | V_String s -> ("(inline)", Stream.of_string s)
+  | V_BinaryString s | V_String s -> ("(inline)", Stream.of_string s)
   | V_Stream (name, s) -> (name, s)
   | _ -> raise (ContentError "String or stream expected")
 
@@ -257,6 +261,7 @@ let parse env format input =
 		let module M = (val (Hashtbl.find modules name) : MapModule) in
 		let obj_ref = M.parse stream_name stream in
 		let dict = Hashtbl.create 10 in
+		Hashtbl.replace dict "_dict" (V_Dict dict);
 		V_Object (obj_ref, dict)
 	      | _ -> raise (ContentError ("Unknown format"))
 	  with
@@ -272,6 +277,19 @@ let parse env format input =
       output_string stderr ("Tls parsing error: " ^ (Tls.Engine.string_of_exception err sev pstate) ^ "\n");
       flush stderr;
       V_Unit;;
+
+
+let dump env input =
+  match input with
+    | V_Object ( ObjectRef (name, _) as obj_ref, dict) ->
+      let module M = (val (Hashtbl.find modules name) : MapModule) in
+      if Hashtbl.mem dict "@modified" then begin
+	M.update obj_ref dict;
+	Hashtbl.remove dict "@modified"
+      end;
+      V_BinaryString (M.dump obj_ref)
+    | _ -> raise (ContentError ("Object expected"))
+
 
 let stream_of_string n s =
   V_Stream (eval_as_string n, Stream.of_string (eval_as_string s))
@@ -324,6 +342,7 @@ let _ =
   add_native "encode" (two_value_fun encode);
   add_native "decode" (two_value_fun decode);
   add_native_with_env "parse" (two_value_fun_with_env parse);
+  add_native_with_env "dump" (one_value_fun_with_env dump);
   add_native "stream" (two_value_fun stream_of_string);
   add_native "concat" (two_value_fun concat_strings);
 
