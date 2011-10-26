@@ -1,6 +1,6 @@
 open MapEval
 open MapModule
-open X509;;
+open X509
 open X509Directory
 
 module DNParser = struct
@@ -9,9 +9,8 @@ module DNParser = struct
   let params : (string, value) Hashtbl.t = Hashtbl.create 10
 
   let init () =
-    Hashtbl.replace params "_resolve_names" (V_Bool true);
-    Hashtbl.replace params "_tolerance" (V_Int Asn1.Asn1EngineParams.s_specfatallyviolated);
-    Hashtbl.replace params "_minDisplay" (V_Int 0)
+    (* TODO: Should that be elsewhere? *)
+    Hashtbl.replace params "_resolve_names" (V_Bool true)
 
   let get_name_resolver () =
     if (eval_as_bool (Hashtbl.find params "_resolve_names"))
@@ -20,8 +19,8 @@ module DNParser = struct
 
 
   let parse name stream =
-    let tolerance = eval_as_int (Hashtbl.find params "_tolerance")
-    and minDisplay = eval_as_int (Hashtbl.find params "_minDisplay") in
+    let tolerance = eval_as_int (Hashtbl.find Asn1Module.Asn1Parser.params "_tolerance")
+    and minDisplay = eval_as_int (Hashtbl.find Asn1Module.Asn1Parser.params "_minDisplay") in
     let ehf = Asn1.Engine.default_error_handling_function tolerance minDisplay in
     let pstate = Asn1.Engine.pstate_of_stream ehf name stream in
     try
@@ -43,19 +42,9 @@ module DNParser = struct
       | atv::r ->
 	let oid = Asn1.string_of_oid (get_name_resolver ()) atv.oo_id in
 	let value =
-         (* TODO: Factor this shit in a asn1Module *)
 	  match atv.oo_content with
-	    | None
-	    | Some ({Asn1.a_content = Asn1.Null}) -> V_Unit
-	    | Some ({Asn1.a_content = Asn1.Boolean b}) -> V_Bool b
-	    | Some ({Asn1.a_content = Asn1.Integer i}) -> V_Bigint i
-	    | Some ({Asn1.a_content = Asn1.BitString (n, s)}) -> V_BitString (n, s)
-	    | Some ({Asn1.a_content = Asn1.OId _}) ->
-	      raise NotImplemented (* TODO: Find a suitable solution to be able to update *)
-	    | Some ({Asn1.a_content = Asn1.String (s, true)}) -> V_BinaryString s
-	    | Some ({Asn1.a_content = Asn1.String (s, false)}) -> V_String s
-	    | Some ({Asn1.a_content = Asn1.Constructed _}) ->
-	      raise NotImplemented (* Call List.map on asn1Module.make ? *)
+	    | None -> V_Unit
+	    | Some o -> Asn1Module.value_of_asn1_content o
 	in
         (* Add code to retain the order of the ATVs, and the asn1 class and tag of the objects -> needed for update *)
 	Hashtbl.add dict oid value;
@@ -64,15 +53,13 @@ module DNParser = struct
     handle_atv (List.flatten dn)
 
   let update dict = raise NotImplemented
-(*    { AnswerDump.ip = Common.ip_of_string (enricher.of_string (Hashtbl.find dict "ip"));
-      AnswerDump.port = enricher.of_int (Hashtbl.find dict "port");
-      AnswerDump.name = enricher.of_string (Hashtbl.find dict "name");
-      AnswerDump.client_hello_type = enricher.of_int (Hashtbl.find dict "client_hello_type");
-      AnswerDump.msg_type = enricher.of_int (Hashtbl.find dict "msg_type");
-      AnswerDump.content = enricher.of_binary_string (Hashtbl.find dict "content"); } *)
 
   let to_string dn = string_of_dn "" (get_name_resolver ()) dn
 end
 
-let _ =
-  add_module ((module (Make (DNParser)) : MapModule))
+module DNModule = Make (DNParser)
+let _ = add_module ((module DNModule : MapModule))
+
+
+
+

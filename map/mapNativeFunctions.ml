@@ -241,10 +241,6 @@ let parse env format input =
     match format with
       | V_String "x509" ->
 	V_Certificate (parse_constrained_asn1 (X509.certificate_constraint X509.object_directory) input)
-      | V_String "dn" ->
-	V_DN (parse_constrained_asn1 (X509.dn_constraint X509.object_directory "dn") input)
-      | V_String "asn1" ->
-	V_Asn1 (parse_constrained_asn1 (Asn1Constraints.Anything Common.identity) input)
       | V_String "tls" ->
 	parse_tls_record input
       | V_String object_name ->

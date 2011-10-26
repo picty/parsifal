@@ -4,6 +4,7 @@ open MapNativeFunctions;;
 open MapAccessFields;;
 
 open AnswerModule;;
+open Asn1Module;;
 open X509Module;;
 
 let interactive () =

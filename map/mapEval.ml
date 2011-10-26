@@ -34,8 +34,6 @@ and value =
   | V_Object of object_ref * (string, value) Hashtbl.t
 
   | V_TlsRecord of Tls.record
-  | V_Asn1 of Asn1.asn1_object
-  | V_DN of X509.dn
   | V_Certificate of X509.certificate
 
 and environment = (string, value) Hashtbl.t list
@@ -65,11 +63,8 @@ let add_module m =
   Hashtbl.replace global_env M.name (V_Module (M.name, M.params))
 
 
-
 let certificate_field_access : (string, X509.certificate -> value) Hashtbl.t = Hashtbl.create 40
 let tls_field_access : (string, Tls.record -> value) Hashtbl.t = Hashtbl.create 40
-let dn_field_access : (string, X509.dn -> value) Hashtbl.t = Hashtbl.create 40
-let asn1_field_access : (string, Asn1.asn1_object -> value) Hashtbl.t = Hashtbl.create 40
 
 
 exception NotImplemented
@@ -80,9 +75,6 @@ exception ReturnValue of value
 exception Continue
 exception Break
 
-(* TODO: Make asn1_display_options from config? *)
-let opts = { Asn1.type_repr = Asn1.PrettyType; Asn1.data_repr = Asn1.PrettyData;
-	     Asn1.resolver = Some X509.name_directory; Asn1.indent_output = true };;
 
 type display_opts = {
   raw_display : bool;
@@ -113,8 +105,7 @@ let eval_as_bool = function
   | V_ValueDict d -> (Hashtbl.length d) <> 0
   | V_Object _ -> true
 
-  | V_TlsRecord _
-  | V_Asn1 _ | V_DN _ | V_Certificate _ -> true
+  | V_TlsRecord _ | V_Certificate _ -> true
 
   | _ -> raise (ContentError "Boolean expected")
 
@@ -162,8 +153,6 @@ let rec string_of_type = function
   | V_Object (ObjectRef (n, _), _) -> n ^ "_object"
 
   | V_TlsRecord _ -> "TLSrecord"
-  | V_Asn1 _ -> "asn1object"
-  | V_DN _ -> "DN"
   | V_Certificate _ -> "certificate"
 
 and eval_as_string = function
@@ -174,7 +163,7 @@ and eval_as_string = function
   | V_String s -> s
 
   | V_BitString _ | V_List _ | V_Set _ | V_Dict _ | V_ValueDict _
-  | V_TlsRecord _ | V_Asn1 _ | V_DN _ | V_Certificate _
+  | V_TlsRecord _ | V_Certificate _
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
   | V_Lazy _ | V_Module _ | V_Object _ ->
     raise (ContentError "String expected")
@@ -241,8 +230,6 @@ and string_of_value_i env current_indent v =
 	dopts.before_closing ^ "}"
 
     | V_TlsRecord r -> Tls.string_of_record r
-    | V_Asn1 o -> Asn1.string_of_object "" opts o
-    | V_DN dn -> X509.string_of_dn "" (Some X509.name_directory) dn
     | V_Certificate c -> X509.string_of_certificate true "" (Some X509.name_directory) c
 
     | V_Object (ObjectRef (n, _) as obj_ref, d) ->
@@ -451,8 +438,6 @@ and eval_equality env a b =
     | V_Module _, V_Module _ | V_Object _, V_Object _ -> raise NotImplemented
 
     | V_TlsRecord r1, V_TlsRecord r2 -> r1 = r2
-    | V_Asn1 o1, V_Asn1 o2 -> o1 = o2
-    | V_DN dn1, V_DN dn2 -> dn1 = dn2
     | V_Certificate c1, V_Certificate c2 -> c1 = c2
 
     | v1, v2 ->
@@ -485,9 +470,7 @@ and get_field e f =
   strict_eval_value (match e with
     | V_Dict d -> (Hashtbl.find d f)
     | V_ValueDict d -> (Hashtbl.find d (V_String f))
-    | V_Asn1 a -> (Hashtbl.find asn1_field_access f) a
     | V_Certificate c -> (Hashtbl.find certificate_field_access f) c
-    | V_DN dn -> (Hashtbl.find dn_field_access f) dn
     | V_TlsRecord r -> (Hashtbl.find tls_field_access f) r
 
     | V_Module (_, d) ->
