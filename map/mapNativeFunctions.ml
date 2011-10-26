@@ -239,8 +239,6 @@ let stream_of_input = function
 let parse env format input =
   try
     match format with
-      | V_String "x509" ->
-	V_Certificate (parse_constrained_asn1 (X509.certificate_constraint X509.object_directory) input)
       | V_String "tls" ->
 	parse_tls_record input
       | V_String object_name ->

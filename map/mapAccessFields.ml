@@ -20,7 +20,7 @@ let _ =
   in add_tls_field "handshake_msg_type" hsmsgs_of_record;
   let certs_of_record r = match r.Tls.content with
     | Tls.Handshake (Tls.Certificate certs) ->
-      let aux cert = V_Certificate cert in
+      let aux cert = X509Module.X509Module.register cert in
       V_List (List.map aux certs)
     | _ -> raise Not_found
   in add_tls_field "certificates" certs_of_record;

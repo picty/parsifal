@@ -1,20 +1,19 @@
-Refactor some code in mapEval...
+???
+ - Remove the lazy part?
+ - Rewrite all with the value type as the common denominator of all the code?
 
 X509
  - Put the objects, constraints and registering functions for (PKInfo, Signature and Crypto algo) in a separate file
  - Write code to parse PK, Sig, Extensions.
 
 Language
- - Module : add a mk_object (directly from a type t value)
  - Write a simple compare function instead of all the equal/lt functions
  - Add constructors/destructors to manipulate V_BitString / V_Bigint
- - Add options for the parser (asn1.tolerance <- 0, with a new value sort "module")
  - Add a lazy value type, and rewrite asn1 as a module + dictionary
  - So as the lazy thing is worth it, we need a efficient pstate on string (because we would extract the string from the stream and then replay it)
  - Add a library to filter and extract certs, either in native or interpreted form
  - Add a way to import new functions (Dynlink for native)
  - socket
- - Add more field accessors (DN, X509, Tls) -> should be easy with a dict/object value type?
  - Add encode/decode for base64
  - Custom output (global _output) for print function
  - Add crypto through external bindings
