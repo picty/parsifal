@@ -1,4 +1,7 @@
-???
+Modules
+ - Write the missing update/dump functions
+
+Future
  - Rewrite all with the value type as the common denominator of all the code?
 
 X509
@@ -12,7 +15,7 @@ Language
  - Add a way to import new functions (Dynlink for native)
  - socket
  - Add encode/decode for base64 + gzip
- - Custom output (global _output) for print function
+ - Custom outputs (global _output, _error) for print/errors function
  - Add crypto through external bindings
  - Add for loops, break n, continue n ?
  - concurrentmap (Nproc, OutputTemplate, fun (verif pas d'effet de bord hors la fonction))
