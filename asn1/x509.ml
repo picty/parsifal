@@ -131,13 +131,10 @@ let string_of_dn indent resolver dn =
 
 type datetime_content = {
   year : int; month : int; day : int;
-  hour : int; minute : int; second : int
+  hour : int; minute : int; second : int option
 }
 
-type datetime =
-  | InvalidDateTime
-  | DateTime of datetime_content
-
+type datetime = datetime_content option
 
 let pop_datetime four_digit_year pstate =
   let s = pop_string pstate in
@@ -155,7 +152,7 @@ let pop_datetime four_digit_year pstate =
   let year_len = if four_digit_year then 4 else 2 in
   let expected_len = year_len + 8 in
   let n = String.length s in
-  if n < expected_len then InvalidDateTime else begin
+  if n < expected_len then None else begin
     let year = year_of_string () in
     let month = Common.pop_int s year_len 2 in
     let day = Common.pop_int s (2 + year_len) 2 in
@@ -164,15 +161,11 @@ let pop_datetime four_digit_year pstate =
     match year, month, day, hour, minute with
       | Some y, Some m, Some d, Some hh, Some mm ->
 	let ss = if (n < expected_len + 2)
-	  then 0
-	  else begin 
-	    match (Common.pop_int s (8 + year_len) 2) with
-	      | None -> 0
-	      | Some seconds -> seconds
-	  end
-	in DateTime { year = y; month = m; day = d;
-		      hour = hh; minute = mm; second = ss }
-      | _ -> InvalidDateTime
+	  then None
+	  else Common.pop_int s (8 + year_len) 2
+	in Some { year = y; month = m; day = d;
+		  hour = hh; minute = mm; second = ss }
+      | _ -> None
   (* TODO: Handle trailing bytes? *)
   end
 
@@ -189,21 +182,21 @@ let datetime_constraint : datetime asn1_constraint =
 
 type validity = { not_before : datetime; not_after : datetime }
 
-let empty_validity = { not_before = InvalidDateTime; not_after = InvalidDateTime }
+let empty_validity = { not_before = None; not_after = None }
 
 let extract_validity = function
   | [nb; na] -> { not_before = nb; not_after = na }
-  | _ -> { not_before = InvalidDateTime; not_after = InvalidDateTime }
+  | _ -> { not_before = None; not_after = None }
 
 let validity_constraint : validity asn1_constraint =
   seqOf_cons extract_validity "Validity" datetime_constraint (Exactly (2, s_specfatallyviolated))
 
 
 let string_of_datetime = function
-  | InvalidDateTime -> "Invalid date/time"
-  | DateTime dt ->
+  | None -> "Invalid date/time"
+  | Some dt ->
     Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d"
-      dt.year dt.month dt.day dt.hour dt.minute dt.second
+      dt.year dt.month dt.day dt.hour dt.minute (Common.pop_option dt.second 0)
 
 let string_of_validity indent _ v =
   indent ^ "Not before: " ^ (string_of_datetime v.not_before) ^ "\n" ^

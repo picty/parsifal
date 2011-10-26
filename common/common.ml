@@ -76,6 +76,12 @@ let pop_int s offset n =
   with
       Failure "int_of_string" -> None
 
+let pop_option x def =
+  match x with
+    | None -> def
+    | Some v -> v
+
+
 let string_of_ip ip  =
   (string_of_int ip.(0)) ^ "." ^
   (string_of_int ip.(1)) ^ "." ^
