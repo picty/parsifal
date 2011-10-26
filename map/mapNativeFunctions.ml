@@ -95,44 +95,35 @@ let rec import_list arg =
   in
   match arg with
     | V_List l -> V_List l
-    | V_Set s -> V_List (List.map (fun x -> V_String x) (StringSet.elements s))
     | V_Stream (_, s) -> import_aux_stream [] s
     | v -> V_List ([v])
 
 
 let rec import_set args =
-  let rec import_aux_list accu = function
-    | [] -> accu
-    | elt::r -> import_aux_list (StringSet.add (eval_as_string elt) accu) r
-  in
-  let rec import_aux_stream accu s =
-    if Common.eos s
-    then accu
-    else import_aux_stream (StringSet.add (Common.pop_line s) accu) s
-  in
-  let rec aux accu = function
-    | [] -> accu
-    | (V_List l)::r -> aux (import_aux_list accu l) r
-    | (V_Stream (_, s))::r -> aux (import_aux_stream accu s) r
-    | (V_Set s):: r -> aux (StringSet.union accu s) r
-    | v::r -> aux (StringSet.add (eval_as_string v) accu) r
-  in
-  V_Set (aux StringSet.empty args)
-
+  let res = Hashtbl.create 10 in
+  let add_string s = Hashtbl.replace res s V_Unit in
+  let add_value s = Hashtbl.replace res (eval_as_string s) V_Unit in
+  let rec aux = function
+    | [] -> V_Dict res
+    | (V_List l)::r -> List.iter add_value l; aux r
+    | (V_Stream (_, s))::r ->
+      while not (Common.eos s) do
+	add_string (Common.pop_line s)
+      done;
+      aux r
+    | v::r -> add_value v; aux r
+  in aux args
 
 
 (* Dict functions *)
 
 let hash_make args =
-  let size, value_dict = match args with
-    | [] -> 20, true
-    | [n] -> eval_as_int (n), true
-    | [n; b] -> eval_as_int (n), eval_as_bool (b)
+  let size = match args with
+    | [] -> 20
+    | [n] -> eval_as_int (n)
     | _ -> raise WrongNumberOfArguments
   in
-  if value_dict
-  then V_ValueDict (Hashtbl.create (size))
-  else V_Dict (Hashtbl.create (size))
+  V_Dict (Hashtbl.create (size))
 
 let check_ident id =
   let ident_regexp = Str.regexp "[a-zA-Z_][a-zA-Z_0-9]*" in
@@ -140,39 +131,29 @@ let check_ident id =
   then raise (ContentError "Invalid field identifier")
   else id
 
-let hash_get h f = match h with
-  | V_ValueDict d -> Hashtbl.find d f
-  | _ -> get_field h (check_ident (eval_as_string f))
-
+let hash_get h f = get_field h (check_ident (eval_as_string f))
 let hash_get_def h f v = try hash_get h f with Not_found -> v
-
-let hash_get_all h f = match h with
-  | V_ValueDict d -> V_List (Hashtbl.find_all d f)
-  | _ -> get_field_all h (check_ident (eval_as_string f))
-
-let hash_set append h f v = match h with
-  | V_ValueDict d ->
-    (if append then Hashtbl.add else Hashtbl.replace) d f v;
-    V_Unit
-  | _ -> set_field false h (check_ident (eval_as_string f)) v
-
-let hash_unset h f = match h with
-  | V_ValueDict d -> Hashtbl.remove d f;
-    V_Unit
-  | _ -> unset_field h (check_ident (eval_as_string f))
-
-
+let hash_get_all h f = get_field_all h (check_ident (eval_as_string f))
+let hash_set append h f v = set_field append h (check_ident (eval_as_string f)) v
+let hash_unset h f = unset_field h (check_ident (eval_as_string f))
 
 
 (* Iterable functions *)
 
 let filter env f arg =
   let real_f = eval_as_function f in
-  let filter_aux elt = eval_as_bool (eval_function env real_f [elt]) in
-  let filter_aux_set elt = filter_aux (V_String elt) in
   match arg with
-    | V_List l -> V_List (List.filter filter_aux l)
-    | V_Set s -> V_Set (StringSet.filter filter_aux_set s)
+    | V_List l ->
+      let filter_aux elt = eval_as_bool (eval_function env real_f [elt]) in
+      V_List (List.filter filter_aux l)
+    | V_Dict d ->
+      let res = Hashtbl.create (Hashtbl.length d) in
+      let add_elt k v =
+	if eval_as_bool (eval_function env real_f [V_String k])
+	then Hashtbl.replace res k v
+      in
+      Hashtbl.iter add_elt d;
+      V_Dict res
     | _ -> raise (ContentError "Iterable value expected")
 
 let map env f l =
@@ -183,14 +164,11 @@ let map env f l =
 let iter env f arg =
   let real_f = eval_as_function f in
   let iter_aux elt = ignore (eval_function env real_f [elt]) in
-  let iter_aux_set elt = iter_aux (V_String elt) in
   let iter_aux_dict preprocess k v = ignore (eval_function env real_f [preprocess k; v]) in
   begin
     match arg with
       | V_List l -> List.iter iter_aux l
-      | V_Set s -> StringSet.iter iter_aux_set s
       | V_Dict d -> Hashtbl.iter (iter_aux_dict (fun x -> V_String x)) d
-      | V_ValueDict d -> Hashtbl.iter (iter_aux_dict Common.identity) d
       | _ -> raise (ContentError "Iterable value expected")
   end;
   V_Unit

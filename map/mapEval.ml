@@ -2,10 +2,7 @@ open MapLang
 
 (* Value and environment handling *)
 
-module StringSet = Set.Make (String);;
-
 type object_ref = ObjectRef of string * int;;
-
 
 type function_sort =
   | NativeFun of (value list -> value)
@@ -23,12 +20,9 @@ and value =
   | V_Function of function_sort
 
   | V_List of value list
-  | V_Set of StringSet.t
   | V_Dict of (string, value) Hashtbl.t
-  | V_ValueDict of (value, value) Hashtbl.t
   | V_Stream of string * char Stream.t
   | V_OutChannel of string * out_channel
-  | V_Lazy of value lazy_t
 
   | V_Module of string * (string, value) Hashtbl.t
   | V_Object of object_ref * (string, value) Hashtbl.t
@@ -104,14 +98,12 @@ let eval_as_bool = function
   | V_Bool b -> b
   | V_Unit | V_Int 0 | V_List [] -> false
   | V_Int _ | V_List _ -> true
-  | V_Set s -> StringSet.is_empty s
   | V_String s
   | V_BinaryString s
   | V_BitString (_, s) -> (String.length s) <> 0
   | V_Bigint s -> (String.length s) > 0 && s.[0] != '\x00'
   | V_Stream (_, s) -> not (Common.eos s)
   | V_Dict d -> (Hashtbl.length d) <> 0
-  | V_ValueDict d -> (Hashtbl.length d) <> 0
   | V_Object _ -> true
 
   | _ -> raise (ContentError "Boolean expected")
@@ -132,10 +124,6 @@ let eval_as_list = function
   | V_List l -> l
   | _ -> raise (ContentError "List expected")
 
-let strict_eval_value = function
-  | V_Lazy lazyval -> Lazy.force lazyval
-  | v -> v
-
 let rec string_of_type = function
   | V_Unit -> "unit"
   | V_Bool _ -> "bool"
@@ -147,14 +135,9 @@ let rec string_of_type = function
   | V_Function _ -> "function"  (* TODO: nature, arity? *)
 
   | V_List _ -> "list"
-  | V_Set _ -> "set"
   | V_Dict d -> "dict"
-  | V_ValueDict _ -> "value_dict"
   | V_Stream _ -> "stream"
   | V_OutChannel _ -> "outchannel"
-  | V_Lazy lazyval ->
-    if Lazy.lazy_is_val lazyval
-    then (string_of_type (Lazy.force lazyval)) else "lazy"
 
   | V_Module _ -> "module"
   | V_Object (ObjectRef (n, _), _) -> n ^ "_object"
@@ -166,9 +149,9 @@ and eval_as_string = function
   | V_BinaryString s
   | V_String s -> s
 
-  | V_BitString _ | V_List _ | V_Set _ | V_Dict _ | V_ValueDict _
+  | V_BitString _ | V_List _ | V_Dict _
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-  | V_Lazy _ | V_Module _ | V_Object _ ->
+  | V_Module _ | V_Object _ ->
     raise (ContentError "String expected")
 
 
@@ -199,34 +182,20 @@ and string_of_value_i env current_indent v =
     | V_Bigint s -> "0x" ^ (Common.hexdump s)
 
     | V_List [] -> "[]"
-    | V_Set s when (StringSet.is_empty s) -> "{}"
     | V_Dict d when (Hashtbl.length d = 0) -> "{}"
-    | V_ValueDict d when (Hashtbl.length d = 0) -> "{}"
 
     | V_List l ->
       let dopts = get_dopts () in
       "[" ^ dopts.after_opening ^
 	(String.concat dopts.separator (List.map dopts.new_eval l)) ^
 	dopts.before_closing ^ "]"
-    | V_Set s ->
-      let dopts = get_dopts () in
-      "{" ^ dopts.after_opening ^
-	(String.concat dopts.separator (StringSet.elements s)) ^
-	dopts.before_closing ^ "}"
+
     | V_Dict d ->
       let dopts = get_dopts () in
       let hash_aux k v accu =
 	if dopts.raw_display || ((String.length k > 0) && (k.[0] != '_') && (k.[0] != '@'))
 	then (k ^ " -> " ^ (dopts.new_eval v))::accu
 	else accu
-      in
-      "{" ^ dopts.after_opening ^
-	(String.concat dopts.separator (Hashtbl.fold hash_aux d [])) ^
-	dopts.before_closing ^ "}"
-    | V_ValueDict d ->
-      let dopts = get_dopts () in
-      let hash_aux k v accu =
-	((dopts.new_eval k) ^ " -> " ^ (dopts.new_eval v))::accu
       in
       "{" ^ dopts.after_opening ^
 	(String.concat dopts.separator (Hashtbl.fold hash_aux d [])) ^
@@ -248,13 +217,13 @@ and string_of_value_i env current_indent v =
       end
 
     | (V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-	  | V_Lazy _ | V_Module _) as v -> "<" ^ (string_of_type v) ^ ">"
+	  | V_Module _) as v -> "<" ^ (string_of_type v) ^ ">"
 
 and getv env name = match env with
   | [] -> raise Not_found
   | e::r -> begin
     try
-      strict_eval_value (Hashtbl.find e name)
+      Hashtbl.find e name
     with
       | Not_found -> getv r name
   end
@@ -428,11 +397,9 @@ and eval_equality env a b =
     | V_BitString (n1, s1), V_BitString (n2, s2) -> n1 = n2 && s1 = s2
 
     | V_List l1, V_List l2 -> equal_list (l1, l2)
-    | V_Set s1, V_Set s2 -> StringSet.compare s1 s2 = 0
 
     (* TODO *)
     | V_Dict d1, V_Dict d2 -> raise NotImplemented
-    | V_ValueDict d1, V_ValueDict d2 -> raise NotImplemented
     | V_Module (n1, d1), V_Module (n2, d2) -> n1 = n2 && d1 == d2
     | V_Object (ObjectRef (n1, _) as obj_ref1, d1),
       V_Object (ObjectRef (n2, _) as obj_ref2, d2) ->
@@ -456,8 +423,8 @@ and eval_in env a b =
   in
   match b with
     | V_List l -> eval_in_list l
-    | V_Set s -> StringSet.mem (eval_as_string a) s
-    | _ -> raise (ContentError "List or set expected")
+    | V_Dict d -> Hashtbl.mem d (eval_as_string a)
+    | _ -> raise (ContentError "List or dict expected")
 
 
 and eval_exps env = function
@@ -473,9 +440,8 @@ and interpret_string env s =
   eval_exps env ast
 
 and get_field e f =
-  strict_eval_value (match e with
+  match e with
     | V_Dict d -> (Hashtbl.find d f)
-    | V_ValueDict d -> (Hashtbl.find d (V_String f))
 
     | V_Module (_, d) ->
       if f = "_dict" then V_Dict d else (Hashtbl.find d f)
@@ -489,12 +455,10 @@ and get_field e f =
       if f = "_dict" then V_Dict d else (Hashtbl.find d f)
 
     | _ -> raise (ContentError ("Object with fields expected"))
-  )
 
 and get_field_all e f =
-  strict_eval_value (match e with
+  match e with
     | V_Dict d -> V_List (Hashtbl.find_all d f)
-    | V_ValueDict d -> V_List (Hashtbl.find_all d (V_String f))
 
     | V_Module (_, d) ->
       if f = "_dict" then V_List ([V_Dict d]) else V_List (Hashtbl.find_all d f)
@@ -508,14 +472,12 @@ and get_field_all e f =
       if f = "_dict" then V_List ([V_Dict d]) else V_List (Hashtbl.find_all d f)
 
     | _ -> raise (ContentError ("Object with fields expected"))
-  )
 
 and set_field append e f v =
   let add_function = if append then Hashtbl.add else Hashtbl.replace in
   begin
     match e with
       | V_Dict d -> (add_function d f v)
-      | V_ValueDict d -> (add_function d (V_String f) v)
 
       | V_Module (_, d) ->
 	if f = "_dict" then raise (ContentError ("Read-only field"));
@@ -538,7 +500,6 @@ and unset_field e f =
   begin
     match e with
       | V_Dict d -> (Hashtbl.remove d f)
-      | V_ValueDict d -> (Hashtbl.remove d (V_String f))
 
       | V_Module (_, d) ->
 	if f = "_dict" then raise (ContentError ("Read-only field"));

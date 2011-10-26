@@ -1,5 +1,4 @@
 ???
- - Remove the lazy part?
  - Rewrite all with the value type as the common denominator of all the code?
 
 X509
@@ -9,12 +8,10 @@ X509
 Language
  - Write a simple compare function instead of all the equal/lt functions
  - Add constructors/destructors to manipulate V_BitString / V_Bigint
- - Add a lazy value type, and rewrite asn1 as a module + dictionary
- - So as the lazy thing is worth it, we need a efficient pstate on string (because we would extract the string from the stream and then replay it)
  - Add a library to filter and extract certs, either in native or interpreted form
  - Add a way to import new functions (Dynlink for native)
  - socket
- - Add encode/decode for base64
+ - Add encode/decode for base64 + gzip
  - Custom output (global _output) for print function
  - Add crypto through external bindings
  - Add for loops, break n, continue n ?
