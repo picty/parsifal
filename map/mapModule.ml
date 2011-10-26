@@ -79,15 +79,22 @@ module Make = functor (Parser : ParserInterface) -> struct
     Hashtbl.replace params "_dict" (V_Dict params);
     Hashtbl.replace params "_object_count" (V_Function (NativeFun object_count))
 
-  let parse stream_name stream =
-    let tolerance = eval_as_int (Hashtbl.find params "_tolerance")
-    and minDisplay = eval_as_int (Hashtbl.find params "_minDisplay") in
-    let obj = Parser.parse tolerance minDisplay stream_name stream in
+  let add_new_object obj =
     let obj_ref = ObjectRef (name, !count) in
     Hashtbl.replace objects (!count) obj;
     Gc.finalise erase_obj obj_ref;
     incr count;
     obj_ref
+
+  let parse stream_name stream =
+    let tolerance = eval_as_int (Hashtbl.find params "_tolerance")
+    and minDisplay = eval_as_int (Hashtbl.find params "_minDisplay") in
+    let obj = Parser.parse tolerance minDisplay stream_name stream in
+    add_new_object obj
+    
+  let make d =
+    let obj = Parser.update value_enricher d in
+    add_new_object obj
 
   let enrich o d = Parser.enrich value_enricher (find_obj o) d
 

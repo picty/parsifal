@@ -49,6 +49,7 @@ module type MapModule = sig
 
   val init : unit -> unit
   val parse : string -> char Stream.t -> object_ref
+  val make : (string, value) Hashtbl.t -> object_ref
   val enrich : object_ref -> (string, value) Hashtbl.t -> unit
   val update : object_ref -> (string, value) Hashtbl.t -> unit
   val dump : object_ref -> string
@@ -124,6 +125,10 @@ let eval_as_stream = function
   | V_Stream (n, s) -> n, s
   | _ -> raise (ContentError "Function expected")
 
+let eval_as_dict = function
+  | V_Dict d -> d
+  | _ -> raise (ContentError "Dictionary expected")
+
 let eval_as_list = function
   | V_List l -> l
   | _ -> raise (ContentError "List expected")
@@ -144,8 +149,8 @@ let rec string_of_type = function
 
   | V_List _ -> "list"
   | V_Set _ -> "set"
-  | V_Dict d -> (try eval_as_string (Hashtbl.find d "_dict_type") with Not_found -> "dict")
-  | V_ValueDict _ -> "dict"
+  | V_Dict d -> "dict"
+  | V_ValueDict _ -> "value_dict"
   | V_Stream _ -> "stream"
   | V_OutChannel _ -> "outchannel"
   | V_Lazy lazyval ->
@@ -173,7 +178,8 @@ and eval_as_string = function
   | V_Lazy _ | V_Module _ | V_Object _ ->
     raise (ContentError "String expected")
 
-and eval_as_string_rec_i env current_indent v =
+
+and string_of_value_i env current_indent v =
   let get_dopts () =
     let raw_display = getv_bool env "_raw_display" false in
     let indent = getv_str env "_indent" "" in
@@ -183,12 +189,12 @@ and eval_as_string_rec_i env current_indent v =
       { raw_display = raw_display;
         separator = (getv_str env "_separator" ",") ^ "\n" ^ new_indent;
 	after_opening = "\n" ^ new_indent; before_closing = "\n" ^ current_indent;
-	new_eval = eval_as_string_rec_i env new_indent }
+	new_eval = string_of_value_i env new_indent }
     end else
       { raw_display = raw_display;
 	separator = getv_str env "_separator" ", ";
 	after_opening = ""; before_closing = "";
-	new_eval = eval_as_string_rec_i env "" }
+	new_eval = string_of_value_i env "" }
   in
 
   match v with
@@ -245,7 +251,7 @@ and eval_as_string_rec_i env current_indent v =
 	  M.enrich obj_ref d;
 	  Hashtbl.replace d "@enriched" V_Unit
 	end;
-	eval_as_string_rec_i env current_indent (V_Dict d)
+	string_of_value_i env current_indent (V_Dict d)
       end else begin
 	let module M = (val (Hashtbl.find modules n) : MapModule) in
 	if Hashtbl.mem d "@modified" then begin
@@ -294,7 +300,7 @@ let rec unsetv env name = match env with
     then Hashtbl.remove e name
     else unsetv r name
 
-let eval_as_string_rec env v = eval_as_string_rec_i env "" v
+let string_of_value env v = string_of_value_i env "" v
 
 
 (* Interpretation *)

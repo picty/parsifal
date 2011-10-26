@@ -13,7 +13,7 @@ let interactive () =
       flush stdout;
       try
 	let res = interpret_string [global_env] (input_line stdin) in
-	print_endline (eval_as_string_rec [global_env] res);
+	print_endline (string_of_value [global_env] res);
 	flush stdout
       with
 	| NotImplemented -> output_string stderr "Not implemented\n"; flush stderr

@@ -47,7 +47,7 @@ let typeof v = V_String (string_of_type v)
 let print env args =
   let separator = getv_str env "_separator" "," in
   let endline = getv_str env "_endline" "\n" in
-  print_string ((String.concat separator (List.map (eval_as_string_rec env) args)) ^ endline);
+  print_string ((String.concat separator (List.map (string_of_value env) args)) ^ endline);
   V_Unit
 
 let length = function
@@ -116,10 +116,17 @@ let rec import_set args =
 
 (* Dict functions *)
 
-let hash_make = function
-  | [] -> V_ValueDict (Hashtbl.create (20))
-  | [n] -> V_ValueDict (Hashtbl.create (eval_as_int (n)))
-  | _ -> raise WrongNumberOfArguments
+let hash_make args =
+  let size, value_dict = match args with
+    | [] -> 20, true
+    | [n] -> eval_as_int (n), true
+    | [n; b] -> eval_as_int (n), eval_as_bool (b)
+    | _ -> raise WrongNumberOfArguments
+  in
+  if value_dict
+  then V_ValueDict (Hashtbl.create (size))
+  else V_Dict (Hashtbl.create (size))
+
 
 let hash_get h f = match h with
   | V_Dict d -> Hashtbl.find d (eval_as_string f)
@@ -279,6 +286,16 @@ let parse env format input =
       V_Unit;;
 
 
+let make_from_dict env format input =
+  let name = eval_as_string format in
+  let module M = (val (Hashtbl.find modules name) : MapModule) in
+  let d = eval_as_dict input in
+  let obj_ref = M.make d in
+  Hashtbl.replace d "_dict" (V_Dict d);
+  Hashtbl.replace d "@enriched" V_Unit;
+  V_Object (obj_ref, d)
+
+
 let dump env input =
   match input with
     | V_Object ( ObjectRef (name, _) as obj_ref, dict) ->
@@ -342,6 +359,7 @@ let _ =
   add_native "encode" (two_value_fun encode);
   add_native "decode" (two_value_fun decode);
   add_native_with_env "parse" (two_value_fun_with_env parse);
+  add_native_with_env "make" (two_value_fun_with_env make_from_dict);
   add_native_with_env "dump" (one_value_fun_with_env dump);
   add_native "stream" (two_value_fun stream_of_string);
   add_native "concat" (two_value_fun concat_strings);
