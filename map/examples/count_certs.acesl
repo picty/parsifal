@@ -1,5 +1,8 @@
 #!/home/yeye/dev/FAceSL/facesl.native
 
+tls._minDisplay <- 2;
+asn1._minDisplay <- 5;
+
 _separator := "\t";
 
 count_certs := function (path) {

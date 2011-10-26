@@ -1,11 +1,11 @@
-open MapLang;;
-open MapEval;;
-open MapNativeFunctions;;
-open MapAccessFields;;
+open MapLang
+open MapEval
+open MapNativeFunctions
 
-open AnswerModule;;
-open Asn1Module;;
-open X509Module;;
+open AnswerModule
+open Asn1Module
+open X509Module
+open TlsModule
 
 let interactive () =
   setv [global_env] "PS1" (V_String "> ");

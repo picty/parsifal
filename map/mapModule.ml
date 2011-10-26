@@ -6,7 +6,8 @@ module type ParserInterface = sig
   val params : (string, value) Hashtbl.t
 
   val init : unit -> unit
-  val parse : string -> char Stream.t -> t
+
+  val parse : string -> char Stream.t -> t option
   val dump : t -> string
   val enrich : t -> (string, value) Hashtbl.t -> unit
   val update : (string, value) Hashtbl.t -> t
@@ -45,9 +46,11 @@ module Make = functor (Parser : ParserInterface) -> struct
       if (name = n) && (Hashtbl.mem objects i)
       then i else raise Not_found
 
+
   let init () =
     Parser.init ();
     Hashtbl.replace params "_object_count" (V_Function (NativeFun object_count))
+
 
   let _register obj =
     let obj_ref = ObjectRef (name, !count) in
@@ -59,12 +62,19 @@ module Make = functor (Parser : ParserInterface) -> struct
   let register obj = V_Object (_register obj, Hashtbl.create 10)
 
   let parse stream_name stream =
-    let obj = Parser.parse stream_name stream in
-    register obj
+    match Parser.parse stream_name stream with
+      | None -> V_Unit
+      | Some obj -> register obj
     
   let make d =
     let obj = Parser.update d in
     _register obj
+
+
+  let equals o1 o2 =
+    let x1 = find_obj o1
+    and x2 = find_obj o2 in
+    x1 = x2
 
   let enrich o d = Parser.enrich (find_obj o) d
 

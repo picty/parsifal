@@ -1,5 +1,8 @@
 #!/home/yeye/dev/FAceSL/facesl.native
 
+tls._minDisplay <- 2;
+asn1._minDisplay <- 5;
+
 foreach_answer := function (f, path) {
     local answer_stream;
     answer_stream := open (path);
@@ -50,7 +53,7 @@ count_ciphers_answers := function (answer) {
     server_hello := extract_server_hello (answer);
     if (server_hello) then
       stat_incr (suites_stat, server_hello.ciphersuite);
-      stat_incr (compression_stat, server_hello.compression);
+      stat_incr (compression_stat, server_hello.compression_method);
       stat_incr (versions_stat, "${server_hello.version} - ${server_hello.sh_version}");
     fi
 };

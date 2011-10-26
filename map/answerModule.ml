@@ -11,16 +11,18 @@ module AnswerDumpParser = struct
     Hashtbl.replace params "_tolerance" (V_Int 0);
     Hashtbl.replace params "_minDisplay" (V_Int 0)
 
+
   let parse name stream =
     let tolerance = eval_as_int (Hashtbl.find params "_tolerance")
     and minDisplay = eval_as_int (Hashtbl.find params "_minDisplay") in
     let ehf = AnswerDump.Engine.default_error_handling_function tolerance minDisplay in
     let pstate = AnswerDump.Engine.pstate_of_stream ehf name stream in
     try
-      AnswerDump.parse_answer_record pstate
+      Some (AnswerDump.parse_answer_record pstate)
     with 
       | AnswerDump.Engine.ParsingError (err, sev, pstate) ->
-	raise (ContentError ("Parsing error: " ^ (AnswerDump.Engine.string_of_exception err sev pstate)))
+	output_string stderr ("Parsing error: " ^ (AnswerDump.Engine.string_of_exception err sev pstate) ^ "\n");
+	None
 
   let dump = AnswerDump.dump_answer_record
 

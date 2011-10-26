@@ -27,16 +27,19 @@ module Asn1Parser = struct
     Hashtbl.replace params "_tolerance" (V_Int Asn1.Asn1EngineParams.s_specfatallyviolated);
     Hashtbl.replace params "_minDisplay" (V_Int 0)
 
+
   let parse name stream =
     let tolerance = eval_as_int (Hashtbl.find params "_tolerance")
     and minDisplay = eval_as_int (Hashtbl.find params "_minDisplay") in
     let ehf = Asn1.Engine.default_error_handling_function tolerance minDisplay in
     let pstate = Asn1.Engine.pstate_of_stream ehf name stream in
     try
-      Asn1.parse pstate
-    with 
+      Some (Asn1.parse pstate)
+    with
       | Asn1.Engine.ParsingError (err, sev, pstate) ->
-	raise (ContentError ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate)))
+	output_string stderr ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ "\n");
+	None
+
 
   let dump = Asn1.dump
 

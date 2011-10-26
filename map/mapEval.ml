@@ -33,8 +33,6 @@ and value =
   | V_Module of string * (string, value) Hashtbl.t
   | V_Object of object_ref * (string, value) Hashtbl.t
 
-  | V_TlsRecord of Tls.record
-
 and environment = (string, value) Hashtbl.t list
 
 let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
@@ -46,9 +44,12 @@ module type MapModule = sig
   val params : (string, value) Hashtbl.t
 
   val init : unit -> unit
+
   val parse : string -> char Stream.t -> value
   val make : (string, value) Hashtbl.t -> object_ref
   val register : t -> value
+
+  val equals : object_ref -> object_ref -> bool
   val enrich : object_ref -> (string, value) Hashtbl.t -> unit
   val update : object_ref -> (string, value) Hashtbl.t -> unit
   val dump : object_ref -> string
@@ -62,6 +63,13 @@ let add_module m =
   M.init ();
   Hashtbl.replace modules M.name m;
   Hashtbl.replace global_env M.name (V_Module (M.name, M.params))
+
+let update_if_necessary m obj_ref d =
+  let module M = (val m : MapModule) in
+  if Hashtbl.mem d "@modified" then begin
+    M.update obj_ref d;
+    Hashtbl.remove d "@modified"
+  end
 
 
 let certificate_field_access : (string, X509.certificate -> value) Hashtbl.t = Hashtbl.create 40
@@ -105,8 +113,6 @@ let eval_as_bool = function
   | V_Dict d -> (Hashtbl.length d) <> 0
   | V_ValueDict d -> (Hashtbl.length d) <> 0
   | V_Object _ -> true
-
-  | V_TlsRecord _ -> true
 
   | _ -> raise (ContentError "Boolean expected")
 
@@ -153,8 +159,6 @@ let rec string_of_type = function
   | V_Module _ -> "module"
   | V_Object (ObjectRef (n, _), _) -> n ^ "_object"
 
-  | V_TlsRecord _ -> "TLSrecord"
-
 and eval_as_string = function
   | V_Bool b -> string_of_bool b
   | V_Int i -> string_of_int i
@@ -163,7 +167,6 @@ and eval_as_string = function
   | V_String s -> s
 
   | V_BitString _ | V_List _ | V_Set _ | V_Dict _ | V_ValueDict _
-  | V_TlsRecord _
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
   | V_Lazy _ | V_Module _ | V_Object _ ->
     raise (ContentError "String expected")
@@ -229,8 +232,6 @@ and string_of_value_i env current_indent v =
 	(String.concat dopts.separator (Hashtbl.fold hash_aux d [])) ^
 	dopts.before_closing ^ "}"
 
-    | V_TlsRecord r -> Tls.string_of_record r
-
     | V_Object (ObjectRef (n, _) as obj_ref, d) ->
       if getv_bool env "_raw_display" false then begin
 	if not (Hashtbl.mem d "@enriched") then begin
@@ -240,11 +241,9 @@ and string_of_value_i env current_indent v =
 	end;
 	string_of_value_i env current_indent (V_Dict d)
       end else begin
-	let module M = (val (Hashtbl.find modules n) : MapModule) in
-	if Hashtbl.mem d "@modified" then begin
-	  M.update obj_ref d;
-	  Hashtbl.remove d "@modified"
-	end;
+	let m = Hashtbl.find modules n in
+	update_if_necessary m obj_ref d;
+	let module M = (val m : MapModule) in
 	M.to_string obj_ref
       end
 
@@ -434,9 +433,18 @@ and eval_equality env a b =
     (* TODO *)
     | V_Dict d1, V_Dict d2 -> raise NotImplemented
     | V_ValueDict d1, V_ValueDict d2 -> raise NotImplemented
-    | V_Module _, V_Module _ | V_Object _, V_Object _ -> raise NotImplemented
-
-    | V_TlsRecord r1, V_TlsRecord r2 -> r1 = r2
+    | V_Module (n1, d1), V_Module (n2, d2) -> n1 = n2 && d1 == d2
+    | V_Object (ObjectRef (n1, _) as obj_ref1, d1),
+      V_Object (ObjectRef (n2, _) as obj_ref2, d2) ->
+      if n1 <> n2 then false else begin
+	if obj_ref1 == obj_ref2 then true else begin
+	  let m = Hashtbl.find modules n1 in
+	  update_if_necessary m obj_ref1 d1;
+	  update_if_necessary m obj_ref2 d2;
+	  let module M = (val m : MapModule) in
+	  M.equals obj_ref1 obj_ref2
+	end
+      end
 
     | v1, v2 ->
       eval_as_string v1 = eval_as_string v2
@@ -468,7 +476,6 @@ and get_field e f =
   strict_eval_value (match e with
     | V_Dict d -> (Hashtbl.find d f)
     | V_ValueDict d -> (Hashtbl.find d (V_String f))
-    | V_TlsRecord r -> (Hashtbl.find tls_field_access f) r
 
     | V_Module (_, d) ->
       if f = "_dict" then V_Dict d else (Hashtbl.find d f)

@@ -51,7 +51,14 @@ let print env args =
   V_Unit
 
 let length = function
+  | V_Bigint s ->
+    let n = String.length s in
+    if n > 1 && (s.[0] = '\x00' || s.[0] = '\xff')
+    then V_Int ((n-1) * 8)
+    else V_Int (n * 8)
+  | V_BinaryString s
   | V_String s -> V_Int (String.length s)
+  | V_BitString (n, s) -> V_Int ((String.length s) * 8 - n)
   | V_List l -> V_Int (List.length l)
   | _ -> raise (ContentError "String or list expected")
 
@@ -207,30 +214,6 @@ let decode format input = match (eval_as_string format) with
   | _ -> raise (ContentError ("Unknown format"))
 
 
-let asn1_ehf = Asn1.Engine.default_error_handling_function
-  Asn1.Asn1EngineParams.s_specfatallyviolated
-  Asn1.Asn1EngineParams.s_ok
-
-let parse_constrained_asn1 cons input =
-  let pstate = match input with
-    | V_BinaryString s | V_String s ->
-      Asn1.Engine.pstate_of_string asn1_ehf "(inline)" s
-    | V_Stream (filename, s) ->
-      Asn1.Engine.pstate_of_stream asn1_ehf filename s
-    | _ -> raise (ContentError "String or stream expected")
-  in
-  Asn1Constraints.constrained_parse cons pstate
-
-let parse_tls_record input =
-  let pstate = match input with
-    | V_BinaryString s | V_String s ->
-      Tls.pstate_of_string "(inline)" s
-    | V_Stream (filename, s) ->
-      Tls.pstate_of_stream filename s
-    | _ -> raise (ContentError "String or stream expected")
-  in
-  V_TlsRecord (Tls.parse_record asn1_ehf pstate)
-
 let stream_of_input = function
   | V_BinaryString s | V_String s -> ("(inline)", Stream.of_string s)
   | V_Stream (name, s) -> (name, s)
@@ -238,31 +221,15 @@ let stream_of_input = function
 
 let parse env format input =
   try
-    match format with
-      | V_String "tls" ->
-	parse_tls_record input
-      | V_String object_name ->
-	begin
-	  try
-	    match getv env object_name with
-	      | V_Module (name, _) ->
-		let stream_name, stream = stream_of_input input in
-		let module M = (val (Hashtbl.find modules name) : MapModule) in
-		M.parse stream_name stream
-	      | _ -> raise (ContentError ("Unknown format"))
-	  with
-	    | Not_found -> raise (ContentError ("Unknown format"))
-	end
-      | _ -> raise (ContentError ("Unknown format"))
+    let object_name = eval_as_string format in
+    match getv env object_name with
+      | V_Module (name, _) ->
+	let stream_name, stream = stream_of_input input in
+	let module M = (val (Hashtbl.find modules name) : MapModule) in
+	M.parse stream_name stream
+      | _ -> raise (ContentError (object_name ^ " is not a valid module."))
   with
-    | Asn1.Engine.ParsingError (err, sev, pstate) ->
-      output_string stderr ("Asn1 parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ "\n");
-      flush stderr;
-      V_Unit
-    | Tls.Engine.ParsingError (err, sev, pstate) ->
-      output_string stderr ("Tls parsing error: " ^ (Tls.Engine.string_of_exception err sev pstate) ^ "\n");
-      flush stderr;
-      V_Unit;;
+    | Not_found -> raise (ContentError ("Unknown format"))
 
 
 let make_from_dict env format input =
@@ -277,11 +244,9 @@ let make_from_dict env format input =
 let dump env input =
   match input with
     | V_Object ( ObjectRef (name, _) as obj_ref, dict) ->
-      let module M = (val (Hashtbl.find modules name) : MapModule) in
-      if Hashtbl.mem dict "@modified" then begin
-	M.update obj_ref dict;
-	Hashtbl.remove dict "@modified"
-      end;
+      let m = Hashtbl.find modules name in
+      let module M = (val m : MapModule) in
+      update_if_necessary m obj_ref dict;
       V_BinaryString (M.dump obj_ref)
     | _ -> raise (ContentError ("Object expected"))
 

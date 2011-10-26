@@ -24,15 +24,12 @@ module DNParser = struct
     let ehf = Asn1.Engine.default_error_handling_function tolerance minDisplay in
     let pstate = Asn1.Engine.pstate_of_stream ehf name stream in
     try
-      let res = Asn1Constraints.constrained_parse_opt (dn_constraint object_directory name)
+      Asn1Constraints.constrained_parse_opt (dn_constraint object_directory name)
 	Asn1.Asn1EngineParams.s_specfatallyviolated pstate
-      in
-      match res with
-	| None -> raise (ContentError ("Distinguished name expected"))
-	| Some dn -> dn
     with
       | Asn1.Engine.ParsingError (err, sev, pstate) ->
-	raise (ContentError ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate)))
+	output_string stderr ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ "\n");
+	None
 
   let dump dn = raise NotImplemented
 
@@ -95,7 +92,7 @@ let _ = add_module ((module DateTimeModule : MapModule))
 
 module X509Parser = struct
   type t = certificate
-  let name = "x509_ng"
+  let name = "x509"
   let params : (string, value) Hashtbl.t = Hashtbl.create 10
 
   let init () = ()
@@ -107,15 +104,12 @@ module X509Parser = struct
     let ehf = Asn1.Engine.default_error_handling_function tolerance minDisplay in
     let pstate = Asn1.Engine.pstate_of_stream ehf name stream in
     try
-      let res = Asn1Constraints.constrained_parse_opt (certificate_constraint object_directory)
+      Asn1Constraints.constrained_parse_opt (certificate_constraint object_directory)
 	Asn1.Asn1EngineParams.s_specfatallyviolated pstate
-      in
-      match res with
-	| None -> raise (ContentError ("Certificate expected"))
-	| Some dn -> dn
     with
       | Asn1.Engine.ParsingError (err, sev, pstate) ->
-	raise (ContentError ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate)))
+	output_string stderr ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ "\n");
+	None
 
   let dump cert = raise NotImplemented
 
