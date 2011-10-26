@@ -49,20 +49,22 @@ module Make = functor (Parser : ParserInterface) -> struct
     Parser.init ();
     Hashtbl.replace params "_object_count" (V_Function (NativeFun object_count))
 
-  let add_new_object obj =
+  let _register obj =
     let obj_ref = ObjectRef (name, !count) in
     Hashtbl.replace objects (!count) obj;
     Gc.finalise erase_obj obj_ref;
     incr count;
     obj_ref
 
+  let register obj = V_Object (_register obj, Hashtbl.create 10)
+
   let parse stream_name stream =
     let obj = Parser.parse stream_name stream in
-    add_new_object obj
+    register obj
     
   let make d =
     let obj = Parser.update d in
-    add_new_object obj
+    _register obj
 
   let enrich o d = Parser.enrich (find_obj o) d
 

@@ -7,19 +7,10 @@ let add_tls_field name f = Hashtbl.replace tls_field_access name f
 let _ =
   add_cert_field "version" (fun x -> match x.X509.tbs.X509.version with None -> raise Not_found | Some v -> V_Int v);
   add_cert_field "serial" (fun x -> V_Bigint x.X509.tbs.X509.serial);
-(*  add_cert_field "issuer" (fun x -> V_DN (x.X509.tbs.X509.issuer)); *)
+  add_cert_field "issuer" (fun x -> X509Module.DNModule.register (x.X509.tbs.X509.issuer));
   add_cert_field "notbefore" (fun x -> V_String (X509.string_of_datetime (x.X509.tbs.X509.validity.X509.not_before)));
   add_cert_field "notafter" (fun x -> V_String (X509.string_of_datetime (x.X509.tbs.X509.validity.X509.not_after)));
-(*   add_cert_field "subject" (fun x -> V_DN (x.X509.tbs.X509.subject)); *)
-(* TODO:
-type tbs_certificate = {
-  sig_algo : oid_object;
-  pk_info : public_key_info;
-  issuer_unique_id : (int * string) option;
-  subject_unique_id : (int * string) option;
-  extensions : asn1_object option
-}
-*)
+  add_cert_field "subject" (fun x -> X509Module.DNModule.register (x.X509.tbs.X509.subject));
 
   add_tls_field "version" (fun x -> V_String (Tls.string_of_protocol_version x.Tls.version));
   add_tls_field "content_type" (fun x -> V_String (Tls.string_of_content_type (Tls.type_of_record_content x.Tls.content)));

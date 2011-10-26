@@ -250,9 +250,7 @@ let parse env format input =
 	      | V_Module (name, _) ->
 		let stream_name, stream = stream_of_input input in
 		let module M = (val (Hashtbl.find modules name) : MapModule) in
-		let obj_ref = M.parse stream_name stream in
-		let dict = Hashtbl.create 10 in
-		V_Object (obj_ref, dict)
+		M.parse stream_name stream
 	      | _ -> raise (ContentError ("Unknown format"))
 	  with
 	    | Not_found -> raise (ContentError ("Unknown format"))

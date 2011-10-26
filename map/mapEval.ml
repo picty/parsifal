@@ -42,12 +42,14 @@ let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
 
 
 module type MapModule = sig
+  type t
   val name : string
   val params : (string, value) Hashtbl.t
 
   val init : unit -> unit
-  val parse : string -> char Stream.t -> object_ref
+  val parse : string -> char Stream.t -> value
   val make : (string, value) Hashtbl.t -> object_ref
+  val register : t -> value
   val enrich : object_ref -> (string, value) Hashtbl.t -> unit
   val update : object_ref -> (string, value) Hashtbl.t -> unit
   val dump : object_ref -> string
@@ -213,7 +215,7 @@ and string_of_value_i env current_indent v =
     | V_Dict d ->
       let dopts = get_dopts () in
       let hash_aux k v accu =
-	if dopts.raw_display || ((String.length k > 0) && (k.[0] != '_'))
+	if dopts.raw_display || ((String.length k > 0) && (k.[0] != '_') && (k.[0] != '@'))
 	then (k ^ " -> " ^ (dopts.new_eval v))::accu
 	else accu
       in
