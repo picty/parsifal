@@ -1,9 +1,10 @@
-open X509Directory;;
 open MapLang;;
 open MapEval;;
 open MapNativeFunctions;;
 open MapAccessFields;;
+
 open AnswerModule;;
+open X509Module;;
 
 let interactive () =
   setv [global_env] "PS1" (V_String "> ");

@@ -63,7 +63,7 @@ type tbs_certificate = {
     | Asn1.Integer i -> V_Bigint i
     | Asn1.BitString (n, s) -> V_BitString (n, s)
     | Asn1.OId oid -> V_List (List.map (fun x -> V_Int x) (Asn1.oid_expand oid))
-    | Asn1.String (s, true) -> V_String (if raw then s else Common.hexdump s)
+    | Asn1.String (s, true) -> V_BinaryString s
     | Asn1.String (s, false) -> V_String s
     | Asn1.Constructed objs -> V_List (List.map (fun x -> V_Asn1 x) objs)
   in

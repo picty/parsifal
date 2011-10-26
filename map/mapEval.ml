@@ -75,6 +75,7 @@ let asn1_field_access : (string, Asn1.asn1_object -> value) Hashtbl.t = Hashtbl.
 exception NotImplemented
 exception WrongNumberOfArguments
 exception ContentError of string
+
 exception ReturnValue of value
 exception Continue
 exception Break
@@ -382,45 +383,9 @@ and eval_exp env exp =
 
     | E_List e -> V_List (List.map eval e)
     | E_Cons (e1, e2) -> V_List ((eval e1)::(eval_as_list (eval e2)))
-    | E_GetField (e, f) -> strict_eval_value (match eval e with
-	| V_Dict d -> (Hashtbl.find d f)
-	| V_ValueDict d -> (Hashtbl.find d (V_String f))
-	| V_Asn1 a -> (Hashtbl.find asn1_field_access f) a
-	| V_Certificate c -> (Hashtbl.find certificate_field_access f) c
-	| V_DN dn -> (Hashtbl.find dn_field_access f) dn
-	| V_TlsRecord r -> (Hashtbl.find tls_field_access f) r
 
-	| V_Module (_, d) -> (Hashtbl.find d f)
-	| V_Object (ObjectRef (n, _) as obj_ref, d) ->
-	  if not (Hashtbl.mem d "@enriched") then begin
-	    let module M = (val (Hashtbl.find modules n) : MapModule) in
-	    M.enrich obj_ref d;
-	    Hashtbl.replace d "@enriched" V_Unit
-	  end;
-	  Hashtbl.find d f
-
-	| _ -> raise (ContentError ("Object with fields expected"))
-    )
-
-    | E_SetField (e, f, v) ->
-      begin
-	match eval e with
-	  | V_Dict d -> (Hashtbl.replace d f (eval v))
-	  | V_ValueDict d -> (Hashtbl.replace d (V_String f) (eval v))
-
-	  | V_Module (_, d) -> (Hashtbl.replace d f (eval v))
-	  | V_Object (ObjectRef (n, _) as obj_ref, d) ->
-	    if not (Hashtbl.mem d "@enriched") then begin
-	      let module M = (val (Hashtbl.find modules n) : MapModule) in
-	      M.enrich obj_ref d;
-	      Hashtbl.replace d "@enriched" V_Unit
-	    end;
-	    Hashtbl.replace d f (eval v);
-	    Hashtbl.replace d "@modified" V_Unit
-
-	  | _ -> raise (ContentError ("Object with mutable fields expected"))
-      end;
-      V_Unit
+    | E_GetField (e, f) -> get_field (eval e) f
+    | E_SetField (e, f, v) -> set_field false (eval e) f (eval v)
 
     | E_Assign (var, e) ->
       setv env var (eval e);
@@ -515,3 +480,92 @@ and interpret_string env s =
   let lexbuf = Lexing.from_string s in
   let ast = MapParser.exprs MapLexer.main_token lexbuf in
   eval_exps env ast
+
+and get_field e f =
+  strict_eval_value (match e with
+    | V_Dict d -> (Hashtbl.find d f)
+    | V_ValueDict d -> (Hashtbl.find d (V_String f))
+    | V_Asn1 a -> (Hashtbl.find asn1_field_access f) a
+    | V_Certificate c -> (Hashtbl.find certificate_field_access f) c
+    | V_DN dn -> (Hashtbl.find dn_field_access f) dn
+    | V_TlsRecord r -> (Hashtbl.find tls_field_access f) r
+
+    | V_Module (_, d) ->
+      if f = "_dict" then V_Dict d else (Hashtbl.find d f)
+
+    | V_Object (ObjectRef (n, _) as obj_ref, d) ->
+      if not (Hashtbl.mem d "@enriched") then begin
+	let module M = (val (Hashtbl.find modules n) : MapModule) in
+	M.enrich obj_ref d;
+	Hashtbl.replace d "@enriched" V_Unit
+      end;
+      if f = "_dict" then V_Dict d else (Hashtbl.find d f)
+
+    | _ -> raise (ContentError ("Object with fields expected"))
+  )
+
+and get_field_all e f =
+  strict_eval_value (match e with
+    | V_Dict d -> V_List (Hashtbl.find_all d f)
+    | V_ValueDict d -> V_List (Hashtbl.find_all d (V_String f))
+
+    | V_Module (_, d) ->
+      if f = "_dict" then V_List ([V_Dict d]) else V_List (Hashtbl.find_all d f)
+
+    | V_Object (ObjectRef (n, _) as obj_ref, d) ->
+      if not (Hashtbl.mem d "@enriched") then begin
+	let module M = (val (Hashtbl.find modules n) : MapModule) in
+	M.enrich obj_ref d;
+	Hashtbl.replace d "@enriched" V_Unit
+      end;
+      if f = "_dict" then V_List ([V_Dict d]) else V_List (Hashtbl.find_all d f)
+
+    | _ -> raise (ContentError ("Object with fields expected"))
+  )
+
+and set_field append e f v =
+  let add_function = if append then Hashtbl.add else Hashtbl.replace in
+  begin
+    match e with
+      | V_Dict d -> (add_function d f v)
+      | V_ValueDict d -> (add_function d (V_String f) v)
+
+      | V_Module (_, d) ->
+	if f = "_dict" then raise (ContentError ("Read-only field"));
+	(add_function d f v)
+      | V_Object (ObjectRef (n, _) as obj_ref, d) ->
+	if f = "_dict" then raise (ContentError ("Read-only field"));
+	if not (Hashtbl.mem d "@enriched") then begin
+	  let module M = (val (Hashtbl.find modules n) : MapModule) in
+	  M.enrich obj_ref d;
+	  Hashtbl.replace d "@enriched" V_Unit
+	end;
+	add_function d f v;
+	Hashtbl.replace d "@modified" V_Unit
+
+      | _ -> raise (ContentError ("Object with mutable fields expected"))
+  end;
+  V_Unit
+
+and unset_field e f =
+  begin
+    match e with
+      | V_Dict d -> (Hashtbl.remove d f)
+      | V_ValueDict d -> (Hashtbl.remove d (V_String f))
+
+      | V_Module (_, d) ->
+	if f = "_dict" then raise (ContentError ("Read-only field"));
+	(Hashtbl.remove d f)
+      | V_Object (ObjectRef (n, _) as obj_ref, d) ->
+	if f = "_dict" then raise (ContentError ("Read-only field"));
+	if not (Hashtbl.mem d "@enriched") then begin
+	  let module M = (val (Hashtbl.find modules n) : MapModule) in
+	  M.enrich obj_ref d;
+	  Hashtbl.replace d "@enriched" V_Unit
+	end;
+	Hashtbl.remove d f;
+	Hashtbl.replace d "@modified" V_Unit
+
+      | _ -> raise (ContentError ("Object with mutable fields expected"))
+  end;
+  V_Unit

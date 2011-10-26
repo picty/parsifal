@@ -127,45 +127,33 @@ let hash_make args =
   then V_ValueDict (Hashtbl.create (size))
   else V_Dict (Hashtbl.create (size))
 
+let check_ident id =
+  let ident_regexp = Str.regexp "[a-zA-Z_][a-zA-Z_0-9]*" in
+  if not (Str.string_match ident_regexp id 0)
+  then raise (ContentError "Invalid field identifier")
+  else id
 
 let hash_get h f = match h with
-  | V_Dict d -> Hashtbl.find d (eval_as_string f)
   | V_ValueDict d -> Hashtbl.find d f
-  | _ -> raise (ContentError "Dictionary expected")
+  | _ -> get_field h (check_ident (eval_as_string f))
 
 let hash_get_def h f v = try hash_get h f with Not_found -> v
 
 let hash_get_all h f = match h with
-  | V_Dict d -> V_List (Hashtbl.find_all d (eval_as_string f))
   | V_ValueDict d -> V_List (Hashtbl.find_all d f)
-  | _ -> raise (ContentError "Dictionary expected")
+  | _ -> get_field_all h (check_ident (eval_as_string f))
 
-let hash_set h f v =
-  begin
-    match h with
-      | V_Dict d -> Hashtbl.replace d (eval_as_string f) v
-      | V_ValueDict d -> Hashtbl.replace d f v
-      | _ -> raise (ContentError "Dictionary expected")
-  end;
-  V_Unit
+let hash_set append h f v = match h with
+  | V_ValueDict d ->
+    (if append then Hashtbl.add else Hashtbl.replace) d f v;
+    V_Unit
+  | _ -> set_field false h (check_ident (eval_as_string f)) v
 
-let hash_add h f v =
-  begin
-    match h with
-      | V_Dict d -> Hashtbl.add d (eval_as_string f) v
-      | V_ValueDict d -> Hashtbl.add d f v
-      | _ -> raise (ContentError "Dictionary expected")
-  end;
-  V_Unit
+let hash_unset h f = match h with
+  | V_ValueDict d -> Hashtbl.remove d f;
+    V_Unit
+  | _ -> unset_field h (check_ident (eval_as_string f))
 
-let hash_unset h f =
-  begin
-    match h with
-      | V_Dict d -> Hashtbl.remove d (eval_as_string f)
-      | V_ValueDict d -> Hashtbl.remove d f
-      | _ -> raise (ContentError "Dictionary expected")
-  end;
-  V_Unit
 
 
 
@@ -268,7 +256,6 @@ let parse env format input =
 		let module M = (val (Hashtbl.find modules name) : MapModule) in
 		let obj_ref = M.parse stream_name stream in
 		let dict = Hashtbl.create 10 in
-		Hashtbl.replace dict "_dict" (V_Dict dict);
 		V_Object (obj_ref, dict)
 	      | _ -> raise (ContentError ("Unknown format"))
 	  with
@@ -291,7 +278,6 @@ let make_from_dict env format input =
   let module M = (val (Hashtbl.find modules name) : MapModule) in
   let d = eval_as_dict input in
   let obj_ref = M.make d in
-  Hashtbl.replace d "_dict" (V_Dict d);
   Hashtbl.replace d "@enriched" V_Unit;
   V_Object (obj_ref, d)
 
@@ -345,8 +331,8 @@ let _ =
   add_native "dget" (two_value_fun hash_get);
   add_native "dget_def" (three_value_fun hash_get_def);
   add_native "dget_all" (two_value_fun hash_get_all);
-  add_native "dadd" (three_value_fun hash_add);
-  add_native "dset" (three_value_fun hash_set);
+  add_native "dadd" (three_value_fun (hash_set true));
+  add_native "dset" (three_value_fun (hash_set false));
   add_native "dunset" (two_value_fun hash_unset);
 
   (* Iterable functions *)
