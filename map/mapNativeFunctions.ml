@@ -48,6 +48,7 @@ let three_value_fun_with_env f env = function
 (* Generic functions *)
 
 let typeof v = V_String (string_of_type v)
+let to_string env input = V_String (string_of_value env input)
 
 let print env args =
   let separator = getv_str env "_separator" "," in
@@ -310,6 +311,7 @@ let add_native_with_env name f =
 let _ =
   (* Generic functions *)
   add_native "typeof" (one_value_fun typeof);
+  add_native_with_env "to_string" (one_value_fun_with_env to_string);
   add_native_with_env "print" print;
   add_native "length" (one_value_fun length);
   add_native_with_env "eval" (one_string_fun_with_env interpret_string);
