@@ -1,7 +1,6 @@
 #!/home/yeye/dev/FAceSL/facesl.native
 
 tls._minDisplay <- 2;
-asn1._minDisplay <- 5;
 
 foreach := function (_init, _next, _process) {
     local _resource, _object;
@@ -17,6 +16,7 @@ foreach_answer := function (f, path) {
     foreach (open (path), parse ("answer_dump"), f);
 };
 
+
 extract_server_hello := function (answer) {
     local msg;
 
@@ -31,9 +31,22 @@ stat_incr := function (dict, val) {
     dset (dict, val, dget_def (dict, val, 0) + 1);
 };
 
-stat_print := function (dict) {
-    _separator := "\t -> ";
-    iter (print, dict);
+stat_print := function (title, dict, preprocess, lookup) {
+    local aux;
+
+    print (title);
+    aux := function (k, v) {
+        if lookup then
+            local key, key_string;
+            key := if typeof (preprocess) = "function" then preprocess (k) else k fi;
+            key_string := dget_def (lookup, key, "Unknown") ++ " ($key)";
+            print (v, key_string)
+        else
+            print (v, k) 
+        fi
+    };
+    iter (aux, dict);
+    print ();
 };
 
 
@@ -45,20 +58,19 @@ count_ciphers_answers := function (answer) {
       stat_incr (suites_stat, server_hello.ciphersuite);
       stat_incr (compression_stat, server_hello.compression_method);
       stat_incr (versions_stat, "${server_hello.version} - ${server_hello.sh_version}");
+      stat_incr (session_id_stat, length (server_hello.session_id));
     fi
 };
 
 suites_stat := dict (30);
 compression_stat := dict (2);
 versions_stat := dict (10);
+session_id_stat := dict (10);
 
 map (foreach_answer (count_ciphers_answers), args);
 
-print ("Cipher suites:");
-stat_print (suites_stat);
-
-print ("\nCompression:");
-stat_print (compression_stat);
-
-print ("\nVersions:");
-stat_print (versions_stat);
+_separator := "\t";
+stat_print ("Versions (Record version - Server Hello version):", versions_stat, 0, 0);
+stat_print ("Cipher suites:", suites_stat, as_hexa_int (4), make_lookup (open ("ciphersuites.lookup")));
+stat_print ("Compression methods", compression_stat, as_hexa_int (2), make_lookup (open ("compression.lookup")));
+stat_print ("Session Id length", session_id_stat, 0, 0);

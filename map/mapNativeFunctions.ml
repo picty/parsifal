@@ -62,6 +62,8 @@ let length = function
   | V_List l -> V_Int (List.length l)
   | _ -> raise (ContentError "String or list expected")
 
+let as_hexa_int n_digits i =
+  V_String (Common.hexdump_int (eval_as_int n_digits) (eval_as_int i))
 
 
 (* Environment handling *)
@@ -87,7 +89,7 @@ let nth n l =
   in nth_aux (eval_as_int n) (eval_as_list l)
 
 
-let rec import_list arg =
+let import_list arg =
   let rec import_aux_stream accu s =
     if Common.eos s
     then V_List (List.rev accu)
@@ -99,7 +101,7 @@ let rec import_list arg =
     | v -> V_List ([v])
 
 
-let rec import_set args =
+let import_set args =
   let res = Hashtbl.create 10 in
   let add_string s = Hashtbl.replace res s V_Unit in
   let add_value s = Hashtbl.replace res (eval_as_string s) V_Unit in
@@ -126,9 +128,10 @@ let hash_make args =
   V_Dict (Hashtbl.create (size))
 
 let check_ident id =
-  let ident_regexp = Str.regexp "[a-zA-Z_][a-zA-Z_0-9]*" in
+  (* Here we tolerate an ident to begin with a digit. Is it a problem? *)
+  let ident_regexp = Str.regexp "[a-zA-Z_0-9]+" in
   if not (Str.string_match ident_regexp id 0)
-  then raise (ContentError "Invalid field identifier")
+  then raise (ContentError ("Invalid field identifier: \"" ^ id ^ "\""))
   else id
 
 let hash_get h f = get_field h (check_ident (eval_as_string f))
@@ -136,6 +139,23 @@ let hash_get_def h f v = try hash_get h f with Not_found -> v
 let hash_get_all h f = get_field_all h (check_ident (eval_as_string f))
 let hash_set append h f v = set_field append h (check_ident (eval_as_string f)) v
 let hash_unset h f = unset_field h (check_ident (eval_as_string f))
+
+let make_lookup input =
+  let res = Hashtbl.create 10 in
+  let n, s = eval_as_stream input in
+  while not (Common.eos s) do
+    let line = Common.pop_line s in
+    let key, value = 
+      try
+	let index = String.index line ',' in
+	String.sub line 0 index,
+	String.sub line (index + 1) ((String.length line) - index - 1)
+      with Not_found -> line, ""
+    in
+    if (String.length key) <> 0
+    then Hashtbl.add res key (V_String value)
+  done;
+  V_Dict (res)
 
 
 (* Iterable functions *)
@@ -250,6 +270,7 @@ let _ =
   add_native_with_env "print" print;
   add_native "length" (one_value_fun length);
   add_native_with_env "eval" (one_string_fun_with_env interpret_string);
+  add_native "as_hexa_int" (two_value_fun as_hexa_int);
 
   (* Environment handling *)
   add_native_with_env "current_environment" (zero_value_fun_with_env current_environment);
@@ -269,6 +290,7 @@ let _ =
   add_native "dadd" (three_value_fun (hash_set true));
   add_native "dset" (three_value_fun (hash_set false));
   add_native "dunset" (two_value_fun hash_unset);
+  add_native "make_lookup" (one_value_fun (make_lookup));
 
   (* Iterable functions *)
   add_native_with_env "filter" (two_value_fun_with_env filter);

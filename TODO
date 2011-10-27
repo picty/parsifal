@@ -1,3 +1,10 @@
+Add a sort function
+
+TLS
+ - Rewrite alert types/levels as simple ints, and provide lookup tables to the code.
+ - Enrich TLS parser.
+ - Add parser for SSLv2.
+
 Modules
  - Write the missing update/dump functions
 
@@ -33,7 +40,3 @@ asn1
 
 map tool
  - Add a late interactive mode (first we load files, then we can use them)
-
-Other
- - Enrich TLS parser.
- - Add parser for SSLv2.

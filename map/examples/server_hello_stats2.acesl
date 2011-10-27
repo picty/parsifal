@@ -13,20 +13,6 @@ foreach_answer := function (f, path) {
     done
 };
 
-msgs_of_answer := function (answer) {
-    extract_aux := function (flux) {
-        if ! flux then return [] fi;
-        local msg;
-        msg := parse ("tls", flux);
-        if msg
-        then msg::(extract_aux (flux))
-        else []
-        fi
-    };
-    extract_aux (stream (answer.ip, answer.content));
-};
-
-
 extract_server_hello := function (answer) {
     local msg;
 

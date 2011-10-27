@@ -114,7 +114,7 @@ let eval_as_function = function
 
 let eval_as_stream = function
   | V_Stream (n, s) -> n, s
-  | _ -> raise (ContentError "Function expected")
+  | _ -> raise (ContentError "Stream expected")
 
 let eval_as_dict = function
   | V_Dict d -> d
