@@ -22,6 +22,7 @@ module AnswerDumpParser = struct
     with 
       | AnswerDump.Engine.ParsingError (err, sev, pstate) ->
 	output_string stderr ("Parsing error: " ^ (AnswerDump.Engine.string_of_exception err sev pstate) ^ "\n");
+	flush stderr;
 	None
 
   let dump = AnswerDump.dump_answer_record

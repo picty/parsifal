@@ -25,6 +25,7 @@ module TlsParser = struct
     with 
       | Engine.ParsingError (err, sev, pstate) ->
 	output_string stderr ("Parsing error: " ^ (Engine.string_of_exception err sev pstate) ^ "\n");
+	flush stderr;
 	None
 
   let dump r = raise NotImplemented

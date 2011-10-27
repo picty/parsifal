@@ -38,6 +38,7 @@ module Asn1Parser = struct
     with
       | Asn1.Engine.ParsingError (err, sev, pstate) ->
 	output_string stderr ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ "\n");
+	flush stderr;
 	None
 
 

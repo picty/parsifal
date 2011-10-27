@@ -132,7 +132,7 @@ module TlsEngineParams = struct
     | UnexpectedAlertLevel of int
     | UnexpectedAlertType of int
     | UnexpectedHandshakeMsgType of int
-    | ASN1ParsingError of Asn1.Asn1EngineParams.parsing_error
+    | ASN1ParsingError of string
     | NotImplemented of string
 
   let out_of_bounds_error s = OutOfBounds s
@@ -146,7 +146,7 @@ module TlsEngineParams = struct
     | UnexpectedAlertLevel x -> "Unknown alert level " ^ (string_of_int x)
     | UnexpectedAlertType x -> "Unknown alert type " ^ (string_of_int x)
     | UnexpectedHandshakeMsgType x -> "Unknown handshake message type " ^ (string_of_int x)
-    | ASN1ParsingError e -> "ASN1 parsing error (" ^ (Asn1.Asn1EngineParams.string_of_perror e) ^ ")"
+    | ASN1ParsingError s -> "ASN1 parsing error (" ^ s ^ ")"
     | NotImplemented s -> "Not implemented (" ^ s ^  ")"
 
   let severities = [| "OK"; "Benign"; "Fatal" |]
@@ -395,17 +395,19 @@ let asn1_opts = { Asn1.type_repr = Asn1.NoType; Asn1.data_repr = Asn1.NoData;
 
 let parse_one_certificate asn1_ehf pstate =
   let s = extract_variable_length_string "Certificate" extract_uint24 pstate in
-  try
-    let asn1_pstate = Asn1.Engine.pstate_of_string asn1_ehf (string_of_pstate pstate) s in
-    let res = Asn1Constraints.constrained_parse (X509.certificate_constraint X509.object_directory) asn1_pstate in
-    if not (Asn1.Engine.eos asn1_pstate) then emit UnexpectedJunk s_benign pstate;
-    res
-  with
-      (* TODO: Handle things better? *)
-      e -> raise e
+  let asn1_pstate = Asn1.Engine.pstate_of_string asn1_ehf (string_of_pstate pstate) s in
+  let res = Asn1Constraints.constrained_parse (X509.certificate_constraint X509.object_directory) asn1_pstate in
+  if not (Asn1.Engine.eos asn1_pstate) then emit UnexpectedJunk s_benign pstate;
+  res
 
 let parse_certificates asn1_ehf pstate =
-  Certificate (extract_list "Certificates" extract_uint24 (parse_one_certificate asn1_ehf) pstate)
+  try
+    Certificate (extract_list "Certificates" extract_uint24 (parse_one_certificate asn1_ehf) pstate)
+  with Asn1.Engine.ParsingError (e, s, p) ->
+    emit (ASN1ParsingError (Asn1.Engine.string_of_exception e s p)) s_fatal pstate;
+    UnparsedHandshakeMsg (H_Certificate, "")
+    
+      
 
 
 let string_of_handshake_msg = function
