@@ -10,18 +10,20 @@ module TlsParser = struct
 
   let init () =
     Hashtbl.replace params "_tolerance" (V_Int TlsEngineParams.s_fatal);
-    Hashtbl.replace params "_minDisplay" (V_Int 0)
+    Hashtbl.replace params "_minDisplay" (V_Int 0);
+    Hashtbl.replace params "_parse_extensions" (V_Bool true)
 
   let parse name stream =
     let asn1_tolerance = eval_as_int (Hashtbl.find Asn1Module.Asn1Parser.params "_tolerance")
     and asn1_minDisplay = eval_as_int (Hashtbl.find Asn1Module.Asn1Parser.params "_minDisplay") in
     let asn1_ehf = Asn1.Engine.default_error_handling_function asn1_tolerance asn1_minDisplay in
     let tolerance = eval_as_int (Hashtbl.find params "_tolerance")
-    and minDisplay = eval_as_int (Hashtbl.find params "_minDisplay") in
+    and minDisplay = eval_as_int (Hashtbl.find params "_minDisplay")
+    and parse_exts = eval_as_bool (Hashtbl.find params "_parse_extensions") in
     let ehf = Engine.default_error_handling_function tolerance minDisplay in
     let pstate = Engine.pstate_of_stream ehf name stream in
     try
-      Some (parse_record asn1_ehf pstate)
+      Some (parse_record asn1_ehf parse_exts pstate)
     with 
       | Engine.ParsingError (err, sev, pstate) ->
 	output_string stderr ("Parsing error: " ^ (Engine.string_of_exception err sev pstate) ^ "\n");

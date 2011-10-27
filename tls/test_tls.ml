@@ -10,7 +10,7 @@ let record_string = "\x16\x03\x00\x00\x86\x01\x00\x00\x82\x03\x00\x4e\x97\x15\xc
 let pstate = pstate_of_string (default_error_handling_function 2 0) "ClientHello_openssl" record_string;;
 
 try
-  let record = parse_record asn1_ehf pstate in
+  let record = parse_record asn1_ehf true pstate in
   Printf.printf "%s\n" (string_of_record record)
 with
   | ParsingError (err, sev, pstate) ->
@@ -24,7 +24,7 @@ let pstate = pstate_of_string (default_error_handling_function 2 0) "Server answ
 
 try
   while not (eos pstate) do
-    let record = parse_record asn1_ehf pstate in
+    let record = parse_record asn1_ehf true pstate in
     Printf.printf "%s\n" (string_of_record record)
   done
 with

@@ -7,7 +7,7 @@ let get_name answer =
 let pstate = AnswerDump.pstate_of_channel "(stdin)" stdin;;
 
 let asn1_ehf = (Asn1.Engine.default_error_handling_function 4 4)
-let parse_record = Tls.parse_record asn1_ehf;;
+let parse_record = Tls.parse_record asn1_ehf true;;
 
 try
   while not (AnswerDump.Engine.eos pstate) do

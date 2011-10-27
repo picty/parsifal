@@ -370,14 +370,14 @@ let string_of_server_hello sh =
     (* Extensions ... *)
     "\n"
 
-let parse_server_hello pstate =
+let parse_server_hello parse_exts pstate =
   let maj = pop_byte pstate in
   let min = pop_byte pstate in
   let random = extract_string "Random" 32 pstate in
   let session_id = extract_variable_length_string "Session id" pop_byte pstate in
   let cipher_suite = extract_uint16 pstate in
   let compression_method = compression_method_of_int (pop_byte pstate) in
-  let extensions = if eos pstate then None else begin
+  let extensions = if not parse_exts || (eos pstate) then None else begin
     (* TODO *)
     Some (extract_list "Extensions" extract_uint16
 	    (extract_variable_length_string "Extension" extract_uint16) pstate)
@@ -441,13 +441,13 @@ let type_of_handshake_msg = function
   | Finished -> H_Finished
   | UnparsedHandshakeMsg (htype, _) -> htype
 
-let parse_handshake_content asn1_ehf htype pstate =
+let parse_handshake_content asn1_ehf parse_exts htype pstate =
   match htype with
     | H_HelloRequest ->
       assert_eos pstate;
       HelloRequest
     | H_ClientHello -> parse_client_hello pstate
-    | H_ServerHello -> parse_server_hello pstate
+    | H_ServerHello -> parse_server_hello parse_exts pstate
     | H_Certificate -> parse_certificates asn1_ehf pstate
     | H_ServerKeyExchange
     | H_CertificateRequest -> UnparsedHandshakeMsg (htype, pop_string pstate)
@@ -459,10 +459,10 @@ let parse_handshake_content asn1_ehf htype pstate =
     | H_Finished
     | H_Unknown _ -> UnparsedHandshakeMsg (htype, pop_string pstate)
 
-let parse_handshake asn1_ehf pstate =
+let parse_handshake asn1_ehf parse_exts pstate =
   let (htype, len) = extract_handshake_header pstate in
   go_down pstate (string_of_handshake_msg_type htype) len;
-  let content = parse_handshake_content asn1_ehf htype pstate in
+  let content = parse_handshake_content asn1_ehf parse_exts htype pstate in
   go_up pstate;
   Handshake (content)
 
@@ -521,13 +521,13 @@ let string_of_record r =
   "TLS Record (" ^ (string_of_protocol_version r.version) ^
     "): " ^ (string_of_record_content r.content)
 
-let parse_record asn1_ehf pstate =
+let parse_record asn1_ehf parse_exts pstate =
   let (ctype, version, len) = extract_record_header pstate in
   go_down pstate (string_of_content_type ctype) len;
   let content = match ctype with
     | CT_ChangeCipherSpec -> parse_change_cipher_spec pstate
     | CT_Alert -> parse_alert pstate
-    | CT_Handshake -> parse_handshake asn1_ehf pstate
+    | CT_Handshake -> parse_handshake asn1_ehf parse_exts pstate
     | CT_ApplicationData
     | CT_Unknown _ -> UnparsedRecord (ctype, pop_string pstate)
   in
