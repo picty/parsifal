@@ -157,6 +157,32 @@ let make_lookup input =
   done;
   V_Dict (res)
 
+let print_stats env args =
+  let prepare_aux preprocess k v accu = (eval_as_int v, preprocess k)::accu in
+  let preprocess f k = eval_function env (eval_as_function f) [V_String k] in
+  let lookup dict preprocess k =
+    let k' = preprocess k in
+    try
+      Hashtbl.find dict (eval_as_string k')
+    with Not_found -> k'
+  in
+  let list = match args with
+  | [dict] ->
+    Hashtbl.fold (prepare_aux (fun x -> V_String x)) (eval_as_dict dict) []
+  | [dict; preprocess_fun] ->
+    Hashtbl.fold (prepare_aux (preprocess preprocess_fun)) (eval_as_dict dict) []
+  | [dict; preprocess_fun; lookup_table] ->
+    let preprocess_aux = lookup (eval_as_dict lookup_table) (preprocess preprocess_fun) in
+    Hashtbl.fold (prepare_aux preprocess_aux) (eval_as_dict dict) []
+  | _ -> raise WrongNumberOfArguments
+  in
+  (* TODO Possibility to provide an order? *)
+  let sorted_list = List.sort (fun (a, _) -> fun (b, _) -> - (compare a b)) list in
+  let print_elt (n, k) = print_endline ((string_of_int n) ^ "\t" ^ (eval_as_string k)) in
+  List.iter print_elt sorted_list;
+  V_Unit
+
+
 
 (* Iterable functions *)
 
@@ -291,6 +317,7 @@ let _ =
   add_native "dset" (three_value_fun (hash_set false));
   add_native "dunset" (two_value_fun hash_unset);
   add_native "make_lookup" (one_value_fun (make_lookup));
+  add_native_with_env "print_stats" print_stats;
 
   (* Iterable functions *)
   add_native_with_env "filter" (two_value_fun_with_env filter);

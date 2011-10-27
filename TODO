@@ -1,5 +1,3 @@
-Add a sort function
-
 TLS
  - Rewrite alert types/levels as simple ints, and provide lookup tables to the code.
  - Enrich TLS parser.

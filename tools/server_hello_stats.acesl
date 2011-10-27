@@ -31,24 +31,6 @@ stat_incr := function (dict, val) {
     dset (dict, val, dget_def (dict, val, 0) + 1);
 };
 
-stat_print := function (title, dict, preprocess, lookup) {
-    local aux;
-
-    print (title);
-    aux := function (k, v) {
-        if lookup then
-            local key, key_string;
-            key := if typeof (preprocess) = "function" then preprocess (k) else k fi;
-            key_string := dget_def (lookup, key, "Unknown") ++ " ($key)";
-            print (v, key_string)
-        else
-            print (v, k) 
-        fi
-    };
-    iter (aux, dict);
-    print ();
-};
-
 
 count_ciphers_answers := function (answer) {
     local server_hello;
@@ -69,8 +51,14 @@ session_id_stat := dict (10);
 
 map (foreach_answer (count_ciphers_answers), args);
 
-_separator := "\t";
-stat_print ("Versions (Record version - Server Hello version):", versions_stat, 0, 0);
-stat_print ("Cipher suites:", suites_stat, as_hexa_int (4), make_lookup (open ("ciphersuites.lookup")));
-stat_print ("Compression methods", compression_stat, as_hexa_int (2), make_lookup (open ("compression.lookup")));
-stat_print ("Session Id length", session_id_stat, 0, 0);
+print ("Versions (Record version - Server Hello version):");
+print_stats (versions_stat);
+
+print ("\nCipher suites:");
+print_stats (suites_stat, as_hexa_int (4), make_lookup (open ("ciphersuites.lookup")));
+
+print ("\nCompression methods");
+print_stats (compression_stat, as_hexa_int (2), make_lookup (open ("compression.lookup")));
+
+print ("\nSession Id length");
+print_stats (session_id_stat);
