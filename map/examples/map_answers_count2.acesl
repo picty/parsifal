@@ -4,14 +4,8 @@ tls._minDisplay <- 2;
 asn1._minDisplay <- 5;
 
 foreach_answer := function (f, path) {
-    local answer_stream;
-    answer_stream := open (path);
-    while answer_stream do
-        local answer;
-        answer := parse ("answer_dump", answer_stream);
-	if answer then f (answer) fi;
-    done
-};
+    foreach (open (path), parse ("answer_dump"), f);
+};      
 
 msgs_of_answer := function (answer) {
     extract_aux := function (flux) {
@@ -27,10 +21,9 @@ msgs_of_answer := function (answer) {
 };
 
 
-//content_types := set ();
 count := 0;
 n_msgs := 0;
-content_types := set ();
+content_types := dict ();
 
 incr := function (answer) {
     local msgs;
@@ -39,11 +32,11 @@ incr := function (answer) {
     msgs := msgs_of_answer (answer);
     n_msgs := n_msgs + length (msgs);
 
-    content_types := set (content_types, map (function (x) {x.content_type}, msgs));
+    iter (function (x) { dset (content_types, x.content_type, true) }, msgs);
 };
 
 
 map (foreach_answer (incr), args);
 
 print (count, n_msgs);
-iter (print, content_types);
+iter (function (a, b) { print (a) }, content_types);

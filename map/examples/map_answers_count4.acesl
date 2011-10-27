@@ -4,14 +4,8 @@ tls._minDisplay <- 2;
 asn1._minDisplay <- 5;
 
 foreach_answer := function (f, path) {
-    local answer_stream;
-    answer_stream := open (path);
-    while answer_stream do
-        local answer;
-        answer := parse ("answer_dump", answer_stream);
-	if answer then f (answer) fi;
-    done
-};
+    foreach (open (path), parse ("answer_dump"), f);
+};      
 
 msgs_of_answer := function (answer) {
     extract_aux := function (flux) {
@@ -37,9 +31,10 @@ string_of_msg := function (record) {
     fi
 };
 
+
 count := 0;
 correct_count := 0;
-content_types := set ();
+content_types := dict ();
 
 count_correct_answers := function (answer) {
     local msgs, good, bad;
@@ -51,14 +46,13 @@ count_correct_answers := function (answer) {
     bad := filter (function (x) {x.content_type ~= "^Unknown content type"}, msgs);
     if good && !bad  then
         correct_count := correct_count + 1;
-
         local msg_types;
         msg_types := concat (" ", map (string_of_msg, msgs));
-	content_types := set (content_types, msg_types);
+        iter (function (x) { dset (content_types, x.content_type, true) }, msgs);
     fi;
 };
 
 map (foreach_answer (count_correct_answers), args);
 
 print (count, correct_count);
-iter (print, content_types);
+iter (function (a, b) { print (a) }, content_types);

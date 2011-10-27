@@ -38,6 +38,11 @@ let three_value_fun f = function
   | [e1] -> V_Function (NativeFun (two_value_fun (f e1)))
   | _ -> raise WrongNumberOfArguments
 
+let three_value_fun_with_env f env = function
+  | [e1; e2; e3] -> f env e1 e2 e3
+  | [e1; e2] -> V_Function (NativeFunWithEnv (one_value_fun_with_env (fun env -> f env e1 e2)))
+  | [e1] -> V_Function (NativeFunWithEnv (two_value_fun_with_env (fun env -> f env e1)))
+  | _ -> raise WrongNumberOfArguments
 
 
 (* Generic functions *)
@@ -220,6 +225,18 @@ let iter env f arg =
   V_Unit
 
 
+
+let foreach env resource next process =
+  let f_next = (eval_as_function next) in
+  let f_process = (eval_as_function process) in
+  while eval_as_bool (resource) do
+    let obj = eval_function env f_next [resource] in
+    ignore (eval_function env f_process [obj])
+  done;
+  V_Unit
+
+
+
 (* File and string functions *)
 
 let open_file filename_v =
@@ -323,6 +340,7 @@ let _ =
   add_native_with_env "filter" (two_value_fun_with_env filter);
   add_native_with_env "map" (two_value_fun_with_env map);
   add_native_with_env "iter" (two_value_fun_with_env iter);
+  add_native_with_env "foreach" (three_value_fun_with_env foreach);
 
   (* File and string functions *)
   add_native "open" (one_value_fun open_file);

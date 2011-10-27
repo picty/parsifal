@@ -1,14 +1,8 @@
 #!/home/yeye/dev/FAceSL/facesl.native
 
 foreach_answer := function (f, path) {
-    local answer_stream;
-    answer_stream := open (path);
-    while answer_stream do
-        local answer;
-        answer := parse ("answer_dump", answer_stream);
-	if answer then f (answer) fi;
-    done
-};
+    foreach (open (path), parse ("answer_dump"), f);
+};      
 
 count := 0;
 

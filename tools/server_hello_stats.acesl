@@ -2,16 +2,6 @@
 
 tls._minDisplay <- 2;
 
-foreach := function (_init, _next, _process) {
-    local _resource, _object;
-    _resource := _init;
-    while _resource do
-        _object := _next (_resource);
-        if ! _object then return fi;
-        _process (_object);
-    done;
-};
-
 foreach_answer := function (f, path) {
     foreach (open (path), parse ("answer_dump"), f);
 };
