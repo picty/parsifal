@@ -3,9 +3,7 @@ open MapEval
 module type ParserInterface = sig
   type t
   val name : string
-  val params : (string, value) Hashtbl.t
-
-  val init : unit -> unit
+  val params : (string * getter option * setter option) list
 
   val parse : string -> char Stream.t -> t option
   val dump : t -> string
@@ -15,17 +13,25 @@ module type ParserInterface = sig
 end;;
 
 
+let param_from_bool_ref name reference =
+  (name,
+   Some (fun () -> V_Bool !reference),
+   Some (fun x -> reference := eval_as_bool (x)))
+
+let param_from_int_ref name reference =
+  (name,
+   Some (fun () -> V_Int !reference),
+   Some (fun x -> reference := eval_as_int (x)))
 
 module Make = functor (Parser : ParserInterface) -> struct
   type t = Parser.t
   let name = Parser.name
-  let params = Parser.params
+  let param_getters = Hashtbl.create 10
+  let param_setters = Hashtbl.create 10
 
   let count = ref 0
   let objects : (int, t) Hashtbl.t = Hashtbl.create 10
-  let object_count = function
-    | [] -> V_Int (Hashtbl.length objects)
-    | _ -> raise WrongNumberOfArguments
+  let object_count () = V_Int (Hashtbl.length objects)
 
 
   let erase_obj = function
@@ -48,8 +54,16 @@ module Make = functor (Parser : ParserInterface) -> struct
 
 
   let init () =
-    Parser.init ();
-    Hashtbl.replace params "_object_count" (V_Function (NativeFun object_count))
+    let no_getter () = raise Not_found in
+    let no_setter _ = raise (ContentError ("Read-only field")) in
+    let populate_param (param_name, getter, setter) =
+      Hashtbl.replace param_getters param_name (Common.pop_option getter no_getter);
+      Hashtbl.replace param_setters param_name (Common.pop_option setter no_setter);
+    in
+    List.iter populate_param Parser.params;
+    populate_param ("_name", Some (fun () -> V_String name), None);
+    populate_param ("_object_count", Some object_count, None)
+    (* TODO: Add a _dict or _params magic objects ? Remove all _ ? *)
 
 
   let _register obj =

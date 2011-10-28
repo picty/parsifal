@@ -154,10 +154,11 @@ let string_of_header_pretty c isC t =
 (* Parsing engine *)
 (******************)
 
+open ParsingEngine;;
+
 module Asn1EngineParams = struct
   type parsing_error =
     | InternalMayhem
-    | OutOfBounds of string
     | NotImplemented of string
     | IncorrectLength of string
     | NotInNormalForm of string
@@ -169,11 +170,8 @@ module Asn1EngineParams = struct
     | UnexpectedJunk
     | UnexpectedObject of string
 
-  let out_of_bounds_error s = OutOfBounds s
-
   let string_of_perror = function
     | InternalMayhem -> "Internal mayhem"
-    | OutOfBounds s -> "Out of bounds (" ^ s ^ ")"
     | NotImplemented s -> "Not implemented (" ^ s ^  ")"
     | IncorrectLength t -> "Incorrect length for a " ^ t
     | NotInNormalForm t -> t ^ " not in normal form"
@@ -202,16 +200,12 @@ module Asn1EngineParams = struct
     | UnexpectedJunk -> "Unexpected junk"
     | UnexpectedObject s -> "Unexpected object " ^ s
 
-  let severities = [| "OK"; "Benign"; "IdempotenceBreaker";
-		      "SpecLightlyViolated"; "SpecFatallyViolated";
-		      "Fatal" |]
-  let s_ok = 0 and s_benign = 1 and s_idempotencebreaker = 2 and
-      s_speclightlyviolated = 3 and s_specfatallyviolated = 4 and
-      s_fatal = 5
+  let default_tolerance = s_specfatallyviolated
+  let default_minDisplay = s_ok
 end
 
 open Asn1EngineParams;;
-module Engine = ParsingEngine.ParsingEngine (Asn1EngineParams);;
+module Engine = ParsingEngine.Make (Asn1EngineParams);;
 open Engine;;
 
 
@@ -367,8 +361,8 @@ let raw_der_to_oid pstate =
       try
 	let next = der_to_subid pstate in
 	next::(aux ())
-      with ParsingError (OutOfBounds _, _, _) ->
-	emit (IncorrectLength "null") s_idempotencebreaker pstate;
+      with OutOfBounds _ ->
+	emit (IncorrectLength "oid") s_idempotencebreaker pstate;
 	[]
     end
   in
@@ -479,8 +473,8 @@ and parse pstate : asn1_object =
   res
 
 
-let exact_parse ehf orig str : asn1_object =
-  let pstate = pstate_of_string ehf orig str in
+let exact_parse orig str : asn1_object =
+  let pstate = pstate_of_string orig str in
   let res = parse pstate in
   if not (eos pstate)
   then failwith "Trailing bytes at the end of the string"

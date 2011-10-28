@@ -6,27 +6,29 @@ open X509Directory
 module DNParser = struct
   type t = dn
   let name = "distinguished_name"
-  let params : (string, value) Hashtbl.t = Hashtbl.create 10
 
-  let init () =
-    (* TODO: Should that be elsewhere? In ASN.1 ?*)
-    Hashtbl.replace params "_resolve_names" (V_Bool true)
+  let resolve_names = ref true
+  let params = [
+    param_from_bool_ref "_resolve_names" resolve_names
+  ]
+
 
   let get_name_resolver () =
-    if (eval_as_bool (Hashtbl.find params "_resolve_names"))
+    if !resolve_names
     then Some name_directory
     else None
 
 
   let parse name stream =
-    let tolerance = eval_as_int (Hashtbl.find Asn1Module.Asn1Parser.params "_tolerance")
-    and minDisplay = eval_as_int (Hashtbl.find Asn1Module.Asn1Parser.params "_minDisplay") in
-    let ehf = Asn1.Engine.default_error_handling_function tolerance minDisplay in
-    let pstate = Asn1.Engine.pstate_of_stream ehf name stream in
+    let pstate = Asn1.Engine.pstate_of_stream name stream in
     try
       Asn1Constraints.constrained_parse_opt (dn_constraint object_directory name)
-	Asn1.Asn1EngineParams.s_specfatallyviolated pstate
+	ParsingEngine.s_specfatallyviolated pstate
     with
+      | ParsingEngine.OutOfBounds s ->
+	output_string stderr ("Out of bounds in " ^ s ^ ")");
+	flush stderr;
+	None
       | Asn1.Engine.ParsingError (err, sev, pstate) ->
 	output_string stderr ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ "\n");
 	flush stderr;
@@ -64,9 +66,7 @@ let _ = add_module ((module DNModule : MapModule))
 module DateTimeParser = struct
   type t = datetime_content
   let name = "date_time"
-  let params : (string, value) Hashtbl.t = Hashtbl.create 10
-
-  let init () = ()
+  let params = []
 
   let parse _ _ = raise NotImplemented
   let dump _ = raise NotImplemented
@@ -94,20 +94,18 @@ let _ = add_module ((module DateTimeModule : MapModule))
 module X509Parser = struct
   type t = certificate
   let name = "x509"
-  let params : (string, value) Hashtbl.t = Hashtbl.create 10
-
-  let init () = ()
-
+  let params = []
 
   let parse name stream =
-    let tolerance = eval_as_int (Hashtbl.find Asn1Module.Asn1Parser.params "_tolerance")
-    and minDisplay = eval_as_int (Hashtbl.find Asn1Module.Asn1Parser.params "_minDisplay") in
-    let ehf = Asn1.Engine.default_error_handling_function tolerance minDisplay in
-    let pstate = Asn1.Engine.pstate_of_stream ehf name stream in
+    let pstate = Asn1.Engine.pstate_of_stream name stream in
     try
       Asn1Constraints.constrained_parse_opt (certificate_constraint object_directory)
-	Asn1.Asn1EngineParams.s_specfatallyviolated pstate
+	ParsingEngine.s_specfatallyviolated pstate
     with
+      | ParsingEngine.OutOfBounds s ->
+	output_string stderr ("Out of bounds in " ^ s ^ ")");
+	flush stderr;
+	None
       | Asn1.Engine.ParsingError (err, sev, pstate) ->
 	output_string stderr ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ "\n");
 	flush stderr;

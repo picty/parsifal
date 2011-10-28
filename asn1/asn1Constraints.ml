@@ -1,5 +1,6 @@
 (* Constrained parsing *)
 
+open ParsingEngine
 open Asn1
 open Asn1.Asn1EngineParams
 open Asn1.Engine

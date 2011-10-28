@@ -5,21 +5,21 @@ open MapModule
 module AnswerDumpParser = struct
   type t = AnswerDump.answer_record
   let name = "answer_dump"
-  let params : (string, value) Hashtbl.t = Hashtbl.create 10
-
-  let init () =
-    Hashtbl.replace params "_tolerance" (V_Int 0);
-    Hashtbl.replace params "_minDisplay" (V_Int 0)
+  let params = [
+    param_from_int_ref "_tolerance" AnswerDump.Engine.tolerance;
+    param_from_int_ref "_minDisplay" AnswerDump.Engine.minDisplay;
+  ]
 
 
   let parse name stream =
-    let tolerance = eval_as_int (Hashtbl.find params "_tolerance")
-    and minDisplay = eval_as_int (Hashtbl.find params "_minDisplay") in
-    let ehf = AnswerDump.Engine.default_error_handling_function tolerance minDisplay in
-    let pstate = AnswerDump.Engine.pstate_of_stream ehf name stream in
+    let pstate = AnswerDump.Engine.pstate_of_stream name stream in
     try
       Some (AnswerDump.parse_answer_record pstate)
     with 
+      | ParsingEngine.OutOfBounds s ->
+	output_string stderr ("Out of bounds in " ^ s ^ ")");
+	flush stderr;
+	None
       | AnswerDump.Engine.ParsingError (err, sev, pstate) ->
 	output_string stderr ("Parsing error: " ^ (AnswerDump.Engine.string_of_exception err sev pstate) ^ "\n");
 	flush stderr;

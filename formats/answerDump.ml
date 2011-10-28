@@ -1,19 +1,16 @@
 module AnswerDumpEngineParams = struct
   type parsing_error =
-    | OutOfBounds of string
     | NotImplemented of string
 
-  let out_of_bounds_error s = OutOfBounds s
-
   let string_of_perror = function
-    | OutOfBounds s -> "Out of bounds (" ^ s ^ ")"
     | NotImplemented s -> "Not implemented (" ^ s ^  ")"
 
-  let severities = [| "OK"; "Fatal" |]
+  let default_tolerance = ParsingEngine.s_ok
+  let default_minDisplay = ParsingEngine.s_ok
 end
 
 open AnswerDumpEngineParams;;
-module Engine = ParsingEngine.ParsingEngine (AnswerDumpEngineParams);;
+module Engine = ParsingEngine.Make (AnswerDumpEngineParams);;
 open Engine;;
 
 
@@ -58,8 +55,3 @@ let string_of_answer_record answer =
   let msgtype = "Message type: " ^ (string_of_int answer.msg_type) in
   let contents = "Content: " ^ (Common.hexdump answer.content) in
   String.concat "\n" [named_host; chtype; msgtype; contents]
-
-
-let pstate_of_channel = Engine.pstate_of_channel (default_error_handling_function 1 0)
-let pstate_of_string = Engine.pstate_of_string (default_error_handling_function 1 0)
-let pstate_of_stream = Engine.pstate_of_stream (default_error_handling_function 1 0)

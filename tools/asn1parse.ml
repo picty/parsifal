@@ -1,8 +1,9 @@
-open Asn1;;
-open Asn1.Asn1EngineParams
+open ParsingEngine
+open Asn1
 open Asn1.Engine
-open Asn1Constraints;;
-open X509Directory;;
+open Asn1Constraints
+open X509Directory
+;;
 
 (* display type *)
 
@@ -21,8 +22,6 @@ let data_repr = ref PrettyData
 let resolver = ref (Some (X509.name_directory))
 let indent = ref true
 
-let tolerance = ref s_specfatallyviolated
-let minDisplay = ref s_ok
 let files = ref []
 
 
@@ -39,13 +38,18 @@ let assign r v = Arg.Unit (fun () -> r:=v)
 
 let update_sev r arg =
   let v = match String.lowercase arg with
-    | "ok" | "0" -> s_ok
-    | "benign" | "1" -> s_benign
-    | "idempotence" | "2" -> s_idempotencebreaker
-    | "speclightly" | "3" -> s_speclightlyviolated
-    | "spcefatally" | "4" -> s_specfatallyviolated
-    | _ -> raise (Arg.Bad "Invalid severity (should be one of OK, Benign, Idempotence, SpecLightly, SpecFatally)")
-  in r := v
+    | "ok" -> s_ok
+    | "benign" -> s_benign
+    | "idempotence" -> s_idempotencebreaker
+    | "speclightly" -> s_speclightlyviolated
+    | "spcefatally" -> s_specfatallyviolated
+    | _ -> begin
+      try
+	int_of_string (arg)
+      with Failure ("int_of_string")
+	  -> raise (Arg.Bad "Invalid severity (should be one of OK, Benign, Idempotence, SpecLightly, SpecFatally)")
+    end in
+  r := v
 
 let set_dtype arg =
   let v = match String.lowercase arg with
@@ -60,8 +64,8 @@ let options = [
   ("-display", Arg.String set_dtype, "Set display type (asn1, asn1parse or x509)");
 
   (* General options *)
-  ("-tolerance", Arg.String (update_sev tolerance), "Adjust the maximum severity acceptable while parsing");
-  ("-minDisplay", Arg.String (update_sev minDisplay), "Adjust the minimum severity to be displayed");
+  ("-tolerance", Arg.String (update_sev Engine.tolerance), "Adjust the maximum severity acceptable while parsing");
+  ("-minDisplay", Arg.String (update_sev Engine.minDisplay), "Adjust the minimum severity to be displayed");
 
   ("-notype", assign type_repr NoType, "Do not print types");
   ("-rawtype", assign type_repr RawType, "Print raw types");
@@ -91,10 +95,9 @@ Arg.parse options add_input "asn1parse [options]";;
 
 
 let opts = { type_repr = !type_repr; data_repr = !data_repr; resolver = !resolver; indent_output = !indent }
-let ehf = default_error_handling_function !tolerance !minDisplay
 let inputs = match !files with
-  | [] -> [pstate_of_channel ehf "(stdin)" stdin]
-  | _ -> List.map (fun s -> pstate_of_channel ehf s (open_in s)) !files;;
+  | [] -> [pstate_of_channel "(stdin)" stdin]
+  | _ -> List.map (fun s -> pstate_of_channel s (open_in s)) !files;;
 
 
 
@@ -218,7 +221,7 @@ let rec asn1parse_input depth pstate =
     end;
 
     if not (eos pstate) then begin
-      emit UnexpectedJunk s_idempotencebreaker pstate;
+      emit Asn1EngineParams.UnexpectedJunk s_idempotencebreaker pstate;
       ignore (pop_string pstate)
     end;
 
@@ -242,5 +245,7 @@ try
       | X509 -> List.iter (parse_and_validate_cert (X509.certificate_constraint X509.object_directory)) inputs
   end
 with
+  | OutOfBounds s ->
+    output_string stderr ("Fatal (out of bounds in " ^ s ^ ")")
   | ParsingError (err, sev, pstate) ->
-    output_string stderr ("Fatal (" ^ (string_of_exception err sev pstate) ^ "\n");;
+    output_string stderr ("Fatal " ^ (string_of_exception err sev pstate) ^ "\n");;

@@ -2,29 +2,27 @@ open MapEval
 open MapModule
 open Tls
 
-
 module TlsParser = struct
   type t = record
   let name = "tls"
-  let params : (string, value) Hashtbl.t = Hashtbl.create 10
 
-  let init () =
-    Hashtbl.replace params "_tolerance" (V_Int TlsEngineParams.s_fatal);
-    Hashtbl.replace params "_minDisplay" (V_Int 0);
-    Hashtbl.replace params "_parse_extensions" (V_Bool true)
+  let parse_extensions  = ref true
+  let params = [
+    param_from_int_ref "_tolerance" Engine.tolerance;
+    param_from_int_ref "_minDisplay" Engine.minDisplay;
+    param_from_bool_ref "_parse_extensions" parse_extensions;
+  ]
+
 
   let parse name stream =
-    let asn1_tolerance = eval_as_int (Hashtbl.find Asn1Module.Asn1Parser.params "_tolerance")
-    and asn1_minDisplay = eval_as_int (Hashtbl.find Asn1Module.Asn1Parser.params "_minDisplay") in
-    let asn1_ehf = Asn1.Engine.default_error_handling_function asn1_tolerance asn1_minDisplay in
-    let tolerance = eval_as_int (Hashtbl.find params "_tolerance")
-    and minDisplay = eval_as_int (Hashtbl.find params "_minDisplay")
-    and parse_exts = eval_as_bool (Hashtbl.find params "_parse_extensions") in
-    let ehf = Engine.default_error_handling_function tolerance minDisplay in
-    let pstate = Engine.pstate_of_stream ehf name stream in
+    let pstate = Engine.pstate_of_stream name stream in
     try
-      Some (parse_record asn1_ehf parse_exts pstate)
+      Some (parse_record !parse_extensions pstate)
     with 
+      | ParsingEngine.OutOfBounds s ->
+	output_string stderr ("Out of bounds in " ^ s ^ ")");
+	flush stderr;
+	None
       | Engine.ParsingError (err, sev, pstate) ->
 	output_string stderr ("Parsing error: " ^ (Engine.string_of_exception err sev pstate) ^ "\n");
 	flush stderr;

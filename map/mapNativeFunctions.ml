@@ -265,7 +265,7 @@ let parse env format input =
   try
     let object_name = eval_as_string format in
     match getv env object_name with
-      | V_Module (name, _) ->
+      | V_Module (name) ->
 	let stream_name, stream = stream_of_input input in
 	let module M = (val (Hashtbl.find modules name) : MapModule) in
 	M.parse stream_name stream

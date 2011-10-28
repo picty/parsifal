@@ -1,13 +1,16 @@
 TLS
  - Rewrite alert types/levels as simple ints, and provide lookup tables to the code.
+ - Add native lookup_tables
  - Enrich TLS parser.
  - Add parser for SSLv2.
 
 Modules
+ - MapModule: Add a _dict or _params magic objects ? Remove all _ ?
  - Write the missing update/dump functions
 
 Future
  - Rewrite all with the value type as the common denominator of all the code?
+ - Merge ParserEngine and MapModule??
 
 X509
  - Put the objects, constraints and registering functions for (PKInfo, Signature and Crypto algo) in a separate file

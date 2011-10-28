@@ -1,15 +1,36 @@
-module type ParsingParameters = sig
-  type parsing_error
-  val out_of_bounds_error : string -> parsing_error
-  val string_of_perror : parsing_error -> string
+type severity = int
 
-  val severities : string array
+let severities = [| "OK"; "Benign"; "IdempotenceBreaker";
+		    "SpecLightlyViolated"; "SpecFatallyViolated";
+		    "Fatal" |]
+let string_of_severity sev =
+  if sev >= 0 && sev < (Array.length severities)
+  then severities.(sev)
+  else "Wrong severity"
+
+let s_ok = 0
+let s_benign = 1
+let s_idempotencebreaker = 2
+let s_speclightlyviolated = 3
+let s_specfatallyviolated = 4
+let s_fatal = 5
+
+exception OutOfBounds of string
+
+
+
+module type ParsingParameters = sig
+  val default_tolerance : severity
+  val default_minDisplay : severity
+
+  type parsing_error
+  val string_of_perror : parsing_error -> string
 end
 
-module ParsingEngine =
+
+module Make =
   functor (Params : ParsingParameters) -> struct
     type plength = int option
-    type severity = int
     type error_handling_function = Params.parsing_error -> severity -> parsing_state -> unit
     and parsing_state = {
       ehf : error_handling_function;
@@ -24,8 +45,6 @@ module ParsingEngine =
 
     let emit err sev pstate =  pstate.ehf err sev pstate
 
-    let fatal_severity = (Array.length Params.severities) - 1
-
     let get_depth pstate = List.length pstate.position
     let get_offset pstate = Stream.count pstate.str
     let get_len pstate = match pstate.len with
@@ -38,31 +57,35 @@ module ParsingEngine =
 	" (len = " ^ (string_of_int (get_len pstate)) ^ ")" ^
 	" inside [" ^ (String.concat ", " (List.rev pstate.position)) ^ "]"
 
-    let string_of_severity sev =
-      if sev >= 0 && sev < (Array.length Params.severities)
-      then Params.severities.(sev)
-      else "Wrong severity"
-
     let string_of_exception err sev pstate =
       "(" ^ (string_of_severity sev) ^ "): " ^ (Params.string_of_perror err) ^ " in " ^ (string_of_pstate pstate)
 
 
 
     let default_error_handling_function tolerance minDisplay err sev pstate =
-      if sev >= tolerance || sev >= fatal_severity
+      if sev >= tolerance || sev >= s_fatal
       then raise (ParsingError (err, sev, pstate))
       else if minDisplay <= sev
-      then output_string stderr ("Warning (" ^ (string_of_exception err sev pstate) ^ "\n")
+      then output_string stderr ("Warning " ^ (string_of_exception err sev pstate) ^ "\n")
 
-    let pstate_of_stream ehfun orig contents =
-      {ehf = ehfun; origin = orig; str = contents;
+    let tolerance = ref Params.default_tolerance
+    let minDisplay = ref Params.default_minDisplay
+
+    let pstate_of_stream orig contents =
+      {ehf = default_error_handling_function !tolerance !minDisplay;
+       origin = orig; str = contents;
        len = None; position = []; lengths = []}
 
-    let pstate_of_string ehfun orig contents =
-      pstate_of_stream ehfun orig (Stream.of_string contents)
+    let pstate_of_string orig contents =
+      pstate_of_stream orig (Stream.of_string contents)
 
-    let pstate_of_channel ehfun orig contents =
-      pstate_of_stream ehfun orig (Stream.of_channel contents)
+    let pstate_of_channel orig contents =
+      pstate_of_stream orig (Stream.of_channel contents)
+
+    let pstate_of_pstate pstate new_content =
+      { pstate with
+	str = Stream.of_string new_content;
+	len = Some (String.length new_content) }
 
 
     let go_down pstate name l =
@@ -70,7 +93,7 @@ module ParsingEngine =
 	| None -> None
 	| Some n ->
 	  if l > n
-	  then raise (ParsingError (Params.out_of_bounds_error "go_down", fatal_severity, pstate))
+	  then raise (OutOfBounds (string_of_pstate pstate))
 	  else Some (n - l)
       in
       pstate.lengths <- saved_len::(pstate.lengths);
@@ -78,12 +101,13 @@ module ParsingEngine =
       pstate.len <- Some l
 
     let go_up pstate =
+      (* TODO : check wether we have emptied the current data *)
       match pstate.lengths, pstate.position with
 	| l::lens, _::names ->
 	  pstate.len <- l;
 	  pstate.lengths <- lens;
 	  pstate.position <- names
-	| _ -> raise (ParsingError (Params.out_of_bounds_error "go_up", fatal_severity, pstate))
+	| _ -> raise (OutOfBounds (string_of_pstate pstate))
 
 
     let eos pstate = 
@@ -106,16 +130,16 @@ module ParsingEngine =
 	    pstate.len <- Some (n - 1);
 	    int_of_char (Stream.next pstate.str)
       with
-	  Stream.Failure -> raise (ParsingError (Params.out_of_bounds_error "pop_byte", fatal_severity, pstate))
+	  Stream.Failure -> raise (OutOfBounds (string_of_pstate pstate))
 
     let peek_byte pstate n =
       match pstate.len with
-	| Some l when l < n -> raise (ParsingError (Params.out_of_bounds_error "peek_bytes", fatal_severity, pstate))
+	| Some l when l < n -> raise (OutOfBounds (string_of_pstate pstate))
 	| _ ->
 	  let tmp = Stream.npeek (n+1) pstate.str in
 	  try
 	    int_of_char (List.nth tmp n)
-	  with Failure "nth" -> raise (ParsingError (Params.out_of_bounds_error "peek_bytes", fatal_severity, pstate))
+	  with Failure "nth" -> raise (OutOfBounds (string_of_pstate pstate))
 
 
 
@@ -130,11 +154,11 @@ module ParsingEngine =
             | _ -> ()
         end;
       with
-	  Stream.Failure -> raise (ParsingError (Params.out_of_bounds_error "get_string", fatal_severity, pstate))
+	  Stream.Failure -> raise (OutOfBounds (string_of_pstate pstate))
 
     let pop_string pstate =
       match pstate.len with
-	| None -> raise (ParsingError (Params.out_of_bounds_error "get_string(undefined length)", fatal_severity, pstate))
+	| None -> raise (OutOfBounds (string_of_pstate pstate))
 	| Some n ->
 	  let res = String.make n ' ' in
 	  _pop_bytes pstate n (String.set res);
@@ -142,7 +166,7 @@ module ParsingEngine =
 
     let pop_bytes pstate n =
       match pstate.len with
-	| Some l when l < n -> raise (ParsingError (Params.out_of_bounds_error "get_bytes", fatal_severity, pstate))
+	| Some l when l < n -> raise (OutOfBounds (string_of_pstate pstate))
 	| _ ->
 	  let res = Array.make n 0 in
 	  _pop_bytes pstate n (fun i -> fun c -> Array.set res i (int_of_char c));
@@ -150,7 +174,7 @@ module ParsingEngine =
 
     let pop_list pstate =
       match pstate.len with
-	| None -> raise (ParsingError (Params.out_of_bounds_error "get_string(undefined length)", fatal_severity, pstate))
+	| None -> raise (OutOfBounds (string_of_pstate pstate))
 	| Some n ->
 	  let res = Array.make n 0 in
 	  _pop_bytes pstate n (fun i -> fun c -> Array.set res i (int_of_char c));

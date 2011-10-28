@@ -1,15 +1,30 @@
+type severity = int
+val severities : string array
+val string_of_severity : severity -> string
+
+val s_ok : severity
+val s_benign : severity
+val s_idempotencebreaker : severity
+val s_speclightlyviolated : severity
+val s_specfatallyviolated : severity
+val s_fatal : severity
+
+exception OutOfBounds of string
+
+
 module type ParsingParameters =
   sig
+    val default_tolerance : severity
+    val default_minDisplay : severity
+
     type parsing_error
-    val out_of_bounds_error : string -> parsing_error
     val string_of_perror : parsing_error -> string
-    val severities : string array
   end
-module ParsingEngine :
+
+module Make :
   functor (Params : ParsingParameters) ->
     sig
       type plength = int option
-      type severity = int
       type error_handling_function
       type parsing_state
       exception ParsingError of Params.parsing_error * severity * parsing_state
@@ -19,17 +34,17 @@ module ParsingEngine :
       val get_offset : parsing_state -> int
       val get_len : parsing_state -> int
       val string_of_pstate : parsing_state -> string
-      val string_of_severity : int -> string
       val string_of_exception : Params.parsing_error -> severity -> parsing_state -> string
 
       val default_error_handling_function :
         severity -> severity -> error_handling_function
-      val pstate_of_stream :
-        error_handling_function -> string -> char Stream.t -> parsing_state
-      val pstate_of_string :
-        error_handling_function -> string -> string -> parsing_state
-      val pstate_of_channel :
-        error_handling_function -> string -> in_channel -> parsing_state
+      val tolerance : severity ref
+      val minDisplay : severity ref
+
+      val pstate_of_stream : string -> char Stream.t -> parsing_state
+      val pstate_of_string : string -> string -> parsing_state
+      val pstate_of_channel : string -> in_channel -> parsing_state
+      val pstate_of_pstate : parsing_state -> string -> parsing_state
       val go_down : parsing_state -> string -> int -> unit
       val go_up : parsing_state -> unit
 

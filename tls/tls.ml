@@ -125,7 +125,6 @@ type record = {
 module TlsEngineParams = struct
   type parsing_error =
     | InternalMayhem
-    | OutOfBounds of string
     | UnexpectedJunk
     | UnexpectedContentType of int
     | UnexpectedChangeCipherSpecValue of int
@@ -135,11 +134,8 @@ module TlsEngineParams = struct
     | ASN1ParsingError of string
     | NotImplemented of string
 
-  let out_of_bounds_error s = OutOfBounds s
-
   let string_of_perror = function
     | InternalMayhem -> "Internal mayhem"
-    | OutOfBounds s -> "Out of bounds (" ^ s ^ ")"
     | UnexpectedJunk -> "Unexpected junk"
     | UnexpectedContentType x -> "Unknown content type " ^ (string_of_int x)
     | UnexpectedChangeCipherSpecValue x -> "Unknown ChangeCipherSpec value " ^ (string_of_int x)
@@ -149,12 +145,12 @@ module TlsEngineParams = struct
     | ASN1ParsingError s -> "ASN1 parsing error (" ^ s ^ ")"
     | NotImplemented s -> "Not implemented (" ^ s ^  ")"
 
-  let severities = [| "OK"; "Benign"; "Fatal" |]
-  let s_ok = 0 and s_benign = 1 and s_fatal = 2
+  let default_tolerance = ParsingEngine.s_benign
+  let default_minDisplay = ParsingEngine.s_ok
 end
 
 open TlsEngineParams;;
-module Engine = ParsingEngine.ParsingEngine (TlsEngineParams);;
+module Engine = ParsingEngine.Make (TlsEngineParams);;
 open Engine;;
 
 
@@ -178,7 +174,7 @@ let extract_list name length_fun extract_fun pstate =
 
 
 let assert_eos pstate =
-  if not (eos pstate) then emit UnexpectedJunk s_benign pstate
+  if not (eos pstate) then emit UnexpectedJunk ParsingEngine.s_benign pstate
 
 
 
@@ -186,7 +182,7 @@ let assert_eos pstate =
 
 let parse_change_cipher_spec pstate =
   let v = pop_byte pstate in
-  if v <> 1 then emit (UnexpectedChangeCipherSpecValue v) s_benign pstate;
+  if v <> 1 then emit (UnexpectedChangeCipherSpecValue v) ParsingEngine.s_benign pstate;
   assert_eos pstate;
   ChangeCipherSpec
 
@@ -231,7 +227,7 @@ let alert_level_of_int pstate = function
   | 1 -> AL_Warning
   | 2 -> AL_Fatal
   | x ->
-    emit (UnexpectedAlertLevel x) s_benign pstate;
+    emit (UnexpectedAlertLevel x) ParsingEngine.s_benign pstate;
     AL_Unknown x
 
 let alert_type_of_int pstate = function
@@ -261,7 +257,7 @@ let alert_type_of_int pstate = function
   | 100 -> NoRenegotiation
   | 110 -> UnsupportedExtension
   | x ->
-    emit (UnexpectedAlertType x) s_benign pstate;
+    emit (UnexpectedAlertType x) ParsingEngine.s_benign pstate;
     UnknownAlertType x
 
 let parse_alert pstate =
@@ -320,7 +316,7 @@ let handshake_msg_type_of_int pstate = function
   | 16 -> H_ClientKeyExchange
   | 20 -> H_Finished
   | x ->
-    emit (UnexpectedHandshakeMsgType x) s_benign pstate;
+    emit (UnexpectedHandshakeMsgType x) ParsingEngine.s_benign pstate;
     H_Unknown x
 
 let extract_handshake_header pstate =
@@ -339,31 +335,6 @@ let string_of_client_hello ch =
     (* Extensions ... *)
     "\n"
 
-let parse_client_hello parse_exts pstate =
-  let maj = pop_byte pstate in
-  let min = pop_byte pstate in
-  let random = extract_string "Random" 32 pstate in
-  let session_id = extract_variable_length_string "Session id" pop_byte pstate in
-  let cipher_suites = extract_list "Cipher suites" extract_uint16 extract_uint16 pstate in
-  let compression_methods = List.map compression_method_of_int
-    (extract_list "Compression methods" pop_byte pop_byte pstate) in
-  let extensions = if eos pstate then None else begin
-    if not parse_exts then begin
-      ignore (pop_string pstate);
-      None
-    end else
-    (* TODO *)
-      Some (extract_list "Extensions" extract_uint16
-	      (extract_variable_length_string "Extension" extract_uint16) pstate)
-  end in
-  ClientHello { c_version = {major = maj; minor = min};
-		c_random = random;
-		c_session_id = session_id;
-		c_cipher_suites = cipher_suites;
-		c_compression_methods = compression_methods;
-		c_extensions = extensions }
-
-
 let string_of_server_hello sh =
   "Server Hello:" ^
     "\n  protocol version: " ^ (string_of_protocol_version sh.s_version) ^
@@ -374,6 +345,38 @@ let string_of_server_hello sh =
     (* Extensions ... *)
     "\n"
 
+let parse_hello_extensions parse_exts pstate =
+  if eos pstate then None else begin
+    if not parse_exts then begin
+    ignore (pop_string pstate);
+    None
+  end else
+      let new_pstate = pstate_of_pstate pstate (pop_string pstate) in
+      try
+        (* TODO *)
+	Some (extract_list "Extensions" extract_uint16
+		(extract_variable_length_string "Extension" extract_uint16) new_pstate)
+      with ParsingEngine.OutOfBounds _ ->
+	emit UnexpectedJunk ParsingEngine.s_idempotencebreaker pstate;
+	None
+  end 
+
+let parse_client_hello parse_exts pstate =
+  let maj = pop_byte pstate in
+  let min = pop_byte pstate in
+  let random = extract_string "Random" 32 pstate in
+  let session_id = extract_variable_length_string "Session id" pop_byte pstate in
+  let cipher_suites = extract_list "Cipher suites" extract_uint16 extract_uint16 pstate in
+  let compression_methods = List.map compression_method_of_int
+    (extract_list "Compression methods" pop_byte pop_byte pstate) in
+  let extensions = parse_hello_extensions parse_exts pstate in
+  ClientHello { c_version = {major = maj; minor = min};
+		c_random = random;
+		c_session_id = session_id;
+		c_cipher_suites = cipher_suites;
+		c_compression_methods = compression_methods;
+		c_extensions = extensions }
+
 let parse_server_hello parse_exts pstate =
   let maj = pop_byte pstate in
   let min = pop_byte pstate in
@@ -381,15 +384,7 @@ let parse_server_hello parse_exts pstate =
   let session_id = extract_variable_length_string "Session id" pop_byte pstate in
   let cipher_suite = extract_uint16 pstate in
   let compression_method = compression_method_of_int (pop_byte pstate) in
-  let extensions = if eos pstate then None else begin
-    if not parse_exts then begin
-      ignore (pop_string pstate);
-      None
-    end else
-    (* TODO *)
-      Some (extract_list "Extensions" extract_uint16
-	      (extract_variable_length_string "Extension" extract_uint16) pstate)
-  end in
+  let extensions = parse_hello_extensions parse_exts pstate in
   ServerHello { s_version = {major = maj; minor = min};
 		s_random = random;
 		s_session_id = session_id;
@@ -401,19 +396,23 @@ let parse_server_hello parse_exts pstate =
 let asn1_opts = { Asn1.type_repr = Asn1.NoType; Asn1.data_repr = Asn1.NoData;
 		  Asn1.resolver = None; Asn1.indent_output = false }
 
-let parse_one_certificate asn1_ehf pstate =
+let parse_one_certificate pstate =
   let s = extract_variable_length_string "Certificate" extract_uint24 pstate in
-  let asn1_pstate = Asn1.Engine.pstate_of_string asn1_ehf (string_of_pstate pstate) s in
+  let asn1_pstate = Asn1.Engine.pstate_of_string (string_of_pstate pstate) s in
   let res = Asn1Constraints.constrained_parse (X509.certificate_constraint X509.object_directory) asn1_pstate in
-  if not (Asn1.Engine.eos asn1_pstate) then emit UnexpectedJunk s_benign pstate;
+  if not (Asn1.Engine.eos asn1_pstate) then emit UnexpectedJunk ParsingEngine.s_benign pstate;
   res
 
-let parse_certificates asn1_ehf pstate =
+let parse_certificates pstate =
   try
-    Certificate (extract_list "Certificates" extract_uint24 (parse_one_certificate asn1_ehf) pstate)
-  with Asn1.Engine.ParsingError (e, s, p) ->
-    emit (ASN1ParsingError (Asn1.Engine.string_of_exception e s p)) s_fatal pstate;
-    UnparsedHandshakeMsg (H_Certificate, "")
+    Certificate (extract_list "Certificates" extract_uint24 (parse_one_certificate) pstate)
+  with
+    | ParsingEngine.OutOfBounds s ->
+      emit (ASN1ParsingError ("Out of bounds in " ^ s)) ParsingEngine.s_speclightlyviolated pstate;
+      UnparsedHandshakeMsg (H_Certificate, "")
+   | Asn1.Engine.ParsingError (e, s, p) ->
+      emit (ASN1ParsingError (Asn1.Engine.string_of_exception e s p)) ParsingEngine.s_speclightlyviolated pstate;
+      UnparsedHandshakeMsg (H_Certificate, "")
     
       
 
@@ -449,14 +448,14 @@ let type_of_handshake_msg = function
   | Finished -> H_Finished
   | UnparsedHandshakeMsg (htype, _) -> htype
 
-let parse_handshake_content asn1_ehf parse_exts htype pstate =
+let parse_handshake_content parse_exts htype pstate =
   match htype with
     | H_HelloRequest ->
       assert_eos pstate;
       HelloRequest
     | H_ClientHello -> parse_client_hello parse_exts pstate
     | H_ServerHello -> parse_server_hello parse_exts pstate
-    | H_Certificate -> parse_certificates asn1_ehf pstate
+    | H_Certificate -> parse_certificates pstate
     | H_ServerKeyExchange
     | H_CertificateRequest -> UnparsedHandshakeMsg (htype, pop_string pstate)
     | H_ServerHelloDone ->
@@ -467,10 +466,10 @@ let parse_handshake_content asn1_ehf parse_exts htype pstate =
     | H_Finished
     | H_Unknown _ -> UnparsedHandshakeMsg (htype, pop_string pstate)
 
-let parse_handshake asn1_ehf parse_exts pstate =
+let parse_handshake parse_exts pstate =
   let (htype, len) = extract_handshake_header pstate in
   go_down pstate (string_of_handshake_msg_type htype) len;
-  let content = parse_handshake_content asn1_ehf parse_exts htype pstate in
+  let content = parse_handshake_content parse_exts htype pstate in
   go_up pstate;
   Handshake (content)
 
@@ -492,7 +491,7 @@ let content_type_of_int pstate = function
   | 22 -> CT_Handshake
   | 23 -> CT_ApplicationData
   | x ->
-    emit (UnexpectedContentType x) s_benign pstate;
+    emit (UnexpectedContentType x) ParsingEngine.s_benign pstate;
     CT_Unknown x
 
 let extract_record_header pstate =
@@ -529,20 +528,15 @@ let string_of_record r =
   "TLS Record (" ^ (string_of_protocol_version r.version) ^
     "): " ^ (string_of_record_content r.content)
 
-let parse_record asn1_ehf parse_exts pstate =
+let parse_record parse_exts pstate =
   let (ctype, version, len) = extract_record_header pstate in
   go_down pstate (string_of_content_type ctype) len;
   let content = match ctype with
     | CT_ChangeCipherSpec -> parse_change_cipher_spec pstate
     | CT_Alert -> parse_alert pstate
-    | CT_Handshake -> parse_handshake asn1_ehf parse_exts pstate
+    | CT_Handshake -> parse_handshake parse_exts pstate
     | CT_ApplicationData
     | CT_Unknown _ -> UnparsedRecord (ctype, pop_string pstate)
   in
   go_up pstate;
   { version = version; content = content}
-
-
-let pstate_of_channel = Engine.pstate_of_channel (default_error_handling_function 2 0)
-let pstate_of_string = Engine.pstate_of_string (default_error_handling_function 2 0)
-let pstate_of_stream = Engine.pstate_of_stream (default_error_handling_function 2 0)

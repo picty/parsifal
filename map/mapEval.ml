@@ -9,6 +9,9 @@ type function_sort =
   | NativeFunWithEnv of (environment -> value list -> value)
   | InterpretedFun of (environment * string list * expression list)
 
+and getter = unit -> value
+and setter = value -> unit
+
 and value =
   | V_Unit
   | V_Bool of bool
@@ -24,7 +27,7 @@ and value =
   | V_Stream of string * char Stream.t
   | V_OutChannel of string * out_channel
 
-  | V_Module of string * (string, value) Hashtbl.t
+  | V_Module of string
   | V_Object of object_ref * (string, value) Hashtbl.t
 
 and environment = (string, value) Hashtbl.t list
@@ -35,7 +38,8 @@ let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
 module type MapModule = sig
   type t
   val name : string
-  val params : (string, value) Hashtbl.t
+  val param_getters : (string, getter) Hashtbl.t
+  val param_setters : (string, setter) Hashtbl.t
 
   val init : unit -> unit
 
@@ -56,7 +60,7 @@ let add_module m =
   let module M = (val m : MapModule) in
   M.init ();
   Hashtbl.replace modules M.name m;
-  Hashtbl.replace global_env M.name (V_Module (M.name, M.params))
+  Hashtbl.replace global_env M.name (V_Module M.name)
 
 let update_if_necessary m obj_ref d =
   let module M = (val m : MapModule) in
@@ -399,7 +403,7 @@ and eval_equality env a b =
     | V_List l1, V_List l2 -> equal_list (l1, l2)
     | V_Dict d1, V_Dict d2 -> raise NotImplemented
 
-    | V_Module (n1, d1), V_Module (n2, d2) -> n1 = n2 && d1 == d2
+    | V_Module (n1), V_Module (n2) -> n1 = n2
     | V_Object (ObjectRef (n1, _) as obj_ref1, d1),
       V_Object (ObjectRef (n2, _) as obj_ref2, d2) ->
       if n1 <> n2 then false else begin
@@ -442,8 +446,9 @@ and get_field e f =
   match e with
     | V_Dict d -> (Hashtbl.find d f)
 
-    | V_Module (_, d) ->
-      if f = "_dict" then V_Dict d else (Hashtbl.find d f)
+    | V_Module n ->
+      let module M = (val (Hashtbl.find modules n) : MapModule) in
+      (Hashtbl.find M.param_getters f) ()
 
     | V_Object (ObjectRef (n, _) as obj_ref, d) ->
       if not (Hashtbl.mem d "@enriched") then begin
@@ -459,8 +464,9 @@ and get_field_all e f =
   match e with
     | V_Dict d -> V_List (Hashtbl.find_all d f)
 
-    | V_Module (_, d) ->
-      if f = "_dict" then V_List ([V_Dict d]) else V_List (Hashtbl.find_all d f)
+    | V_Module n ->
+      let module M = (val (Hashtbl.find modules n) : MapModule) in
+      V_List [(Hashtbl.find M.param_getters f) ()]
 
     | V_Object (ObjectRef (n, _) as obj_ref, d) ->
       if not (Hashtbl.mem d "@enriched") then begin
@@ -478,9 +484,11 @@ and set_field append e f v =
     match e with
       | V_Dict d -> (add_function d f v)
 
-      | V_Module (_, d) ->
-	if f = "_dict" then raise (ContentError ("Read-only field"));
-	(add_function d f v)
+      | V_Module n ->
+	if append then raise (ContentError ("Module params can not have multiple values"));
+	let module M = (val (Hashtbl.find modules n) : MapModule) in
+	(Hashtbl.find M.param_setters f) v
+
       | V_Object (ObjectRef (n, _) as obj_ref, d) ->
 	if f = "_dict" then raise (ContentError ("Read-only field"));
 	if not (Hashtbl.mem d "@enriched") then begin
@@ -500,9 +508,9 @@ and unset_field e f =
     match e with
       | V_Dict d -> (Hashtbl.remove d f)
 
-      | V_Module (_, d) ->
-	if f = "_dict" then raise (ContentError ("Read-only field"));
-	(Hashtbl.remove d f)
+      | V_Module n ->
+	raise (ContentError ("Module params can not be removed"));
+
       | V_Object (ObjectRef (n, _) as obj_ref, d) ->
 	if f = "_dict" then raise (ContentError ("Read-only field"));
 	if not (Hashtbl.mem d "@enriched") then begin

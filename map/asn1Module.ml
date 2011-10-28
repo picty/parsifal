@@ -17,25 +17,25 @@ let value_of_asn1_content o = match o.Asn1.a_content with
 module Asn1Parser = struct
   type t = Asn1.asn1_object
   let name = "asn1"
-  let params : (string, value) Hashtbl.t = Hashtbl.create 10
+  let params = [
+    param_from_int_ref "_tolerance" Asn1.Engine.tolerance;
+    param_from_int_ref "_minDisplay" Asn1.Engine.minDisplay;
+  ]
 
   (* TODO: Make these options mutable from the language ? *)
   let opts = { Asn1.type_repr = Asn1.PrettyType; Asn1.data_repr = Asn1.PrettyData;
 	       Asn1.resolver = Some X509.name_directory; Asn1.indent_output = true };;
 
-  let init () =
-    Hashtbl.replace params "_tolerance" (V_Int Asn1.Asn1EngineParams.s_specfatallyviolated);
-    Hashtbl.replace params "_minDisplay" (V_Int 0)
-
 
   let parse name stream =
-    let tolerance = eval_as_int (Hashtbl.find params "_tolerance")
-    and minDisplay = eval_as_int (Hashtbl.find params "_minDisplay") in
-    let ehf = Asn1.Engine.default_error_handling_function tolerance minDisplay in
-    let pstate = Asn1.Engine.pstate_of_stream ehf name stream in
+    let pstate = Asn1.Engine.pstate_of_stream name stream in
     try
       Some (Asn1.parse pstate)
     with
+      | ParsingEngine.OutOfBounds s ->
+	output_string stderr ("Out of bounds in " ^ s ^ ")");
+	flush stderr;
+	None
       | Asn1.Engine.ParsingError (err, sev, pstate) ->
 	output_string stderr ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ "\n");
 	flush stderr;
