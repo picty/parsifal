@@ -339,7 +339,7 @@ let string_of_client_hello ch =
     (* Extensions ... *)
     "\n"
 
-let parse_client_hello pstate =
+let parse_client_hello parse_exts pstate =
   let maj = pop_byte pstate in
   let min = pop_byte pstate in
   let random = extract_string "Random" 32 pstate in
@@ -348,9 +348,13 @@ let parse_client_hello pstate =
   let compression_methods = List.map compression_method_of_int
     (extract_list "Compression methods" pop_byte pop_byte pstate) in
   let extensions = if eos pstate then None else begin
+    if not parse_exts then begin
+      ignore (pop_string pstate);
+      None
+    end else
     (* TODO *)
-    Some (extract_list "Extensions" extract_uint16
-	    (extract_variable_length_string "Extension" extract_uint16) pstate)
+      Some (extract_list "Extensions" extract_uint16
+	      (extract_variable_length_string "Extension" extract_uint16) pstate)
   end in
   ClientHello { c_version = {major = maj; minor = min};
 		c_random = random;
@@ -377,10 +381,14 @@ let parse_server_hello parse_exts pstate =
   let session_id = extract_variable_length_string "Session id" pop_byte pstate in
   let cipher_suite = extract_uint16 pstate in
   let compression_method = compression_method_of_int (pop_byte pstate) in
-  let extensions = if not parse_exts || (eos pstate) then None else begin
+  let extensions = if eos pstate then None else begin
+    if not parse_exts then begin
+      ignore (pop_string pstate);
+      None
+    end else
     (* TODO *)
-    Some (extract_list "Extensions" extract_uint16
-	    (extract_variable_length_string "Extension" extract_uint16) pstate)
+      Some (extract_list "Extensions" extract_uint16
+	      (extract_variable_length_string "Extension" extract_uint16) pstate)
   end in
   ServerHello { s_version = {major = maj; minor = min};
 		s_random = random;
@@ -446,7 +454,7 @@ let parse_handshake_content asn1_ehf parse_exts htype pstate =
     | H_HelloRequest ->
       assert_eos pstate;
       HelloRequest
-    | H_ClientHello -> parse_client_hello pstate
+    | H_ClientHello -> parse_client_hello parse_exts pstate
     | H_ServerHello -> parse_server_hello parse_exts pstate
     | H_Certificate -> parse_certificates asn1_ehf pstate
     | H_ServerKeyExchange
