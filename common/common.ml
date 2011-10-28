@@ -6,10 +6,7 @@ let identity x = x
 
 (* String functions *)
 
-let hexa_char = [| '0'; '1'; '2'; '3';
-		   '4'; '5'; '6'; '7';
-		   '8'; '9'; 'a'; 'b';
-		   'c'; 'd'; 'e'; 'f' |]
+let hexa_char = "0123456789abcdef"
 
 let only_ascii s =
   let len = String.length s in
@@ -27,8 +24,8 @@ let hexdump s =
   let res = String.make (len * 2) ' ' in
   for i = 0 to (len - 1) do
     let x = int_of_char (String.get s i) in
-    res.[i * 2] <- hexa_char.((x lsr 4) land 0xf);
-    res.[i * 2 + 1] <- hexa_char.(x land 0xf);
+    res.[i * 2] <- hexa_char.[(x lsr 4) land 0xf];
+    res.[i * 2 + 1] <- hexa_char.[x land 0xf];
   done;
   res
 
@@ -52,7 +49,7 @@ let hexdump_int len x =
       if i <> 0
       then raise IntegerOverflow
     | _ ->
-      res.[pos] <- hexa_char.(i land 0xf);
+      res.[pos] <- hexa_char.[i land 0xf];
       aux (i lsr 4) (pos - 1)
   in
   aux x (len - 1);
