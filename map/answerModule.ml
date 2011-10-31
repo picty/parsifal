@@ -5,23 +5,20 @@ open Modules
 module AnswerDumpParser = struct
   type t = AnswerDump.answer_record
   let name = "answer_dump"
-  let params = [
-    param_from_int_ref "_tolerance" AnswerDump.Engine.tolerance;
-    param_from_int_ref "_minDisplay" AnswerDump.Engine.minDisplay;
-  ]
+  let params = []
 
 
   let parse name stream =
-    let pstate = AnswerDump.Engine.pstate_of_stream name stream in
+    let pstate = AnswerDump.pstate_of_stream name stream in
     try
       Some (AnswerDump.parse_answer_record pstate)
     with 
-      | ParsingEngine.OutOfBounds s ->
+      | NewParsingEngine.OutOfBounds s ->
 	output_string stderr ("Out of bounds in " ^ s ^ ")");
 	flush stderr;
 	None
-      | AnswerDump.Engine.ParsingError (err, sev, pstate) ->
-	output_string stderr ("Parsing error: " ^ (AnswerDump.Engine.string_of_exception err sev pstate) ^ "\n");
+      | NewParsingEngine.ParsingError (err, sev, pstate) ->
+	output_string stderr ((NewParsingEngine.string_of_parsing_error "Parsing error" None err sev pstate) ^ "\n");
 	flush stderr;
 	None
 

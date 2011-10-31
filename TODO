@@ -1,9 +1,3 @@
-ParsingEngine
- - module input:
-     pop_string len
-     pop_byte
- - contexte : pile des conteneurs rencontrés
-
 TLS
  - Rewrite alert types/levels as simple ints, and provide lookup tables to the code.
  - Add native lookup_tables
@@ -15,7 +9,9 @@ Modules
  - Write the missing update/dump functions
 
 Future
- - Merge ParserEngine and MapModule??
+ - Merge ParserEngine and Module
+   * ParsingInterface should provide a mk_ehf
+   * MakeParsingModule could use efficiently pstate_of_string and pstate_of_stream
 
 X509
  - Put the objects, constraints and registering functions for (PKInfo, Signature and Crypto algo) in a separate file

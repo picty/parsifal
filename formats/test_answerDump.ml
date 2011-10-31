@@ -3,13 +3,13 @@ let get_name answer =
   then Common.string_of_ip answer.AnswerDump.ip
   else answer.AnswerDump.name;;
 
-
-let pstate = AnswerDump.Engine.pstate_of_channel "(stdin)" stdin;;
+let ehf = NewParsingEngine.default_error_handling_function None 0 0
+let pstate = NewParsingEngine.pstate_of_channel ehf "(stdin)" stdin;;
 
 let parse_record = Tls.parse_record true;;
 
 try
-  while not (AnswerDump.Engine.eos pstate) do
+  while not (NewParsingEngine.eos pstate) do
     let answer = AnswerDump.parse_answer_record pstate in
     let name = get_name answer in
     Printf.printf "%s:" name;
@@ -41,9 +41,12 @@ try
 	output_string stderr ("Tls.Error " ^ (Tls.Engine.string_of_exception err sev pstate) ^ ")\n");
   done
 with
-  | AnswerDump.Engine.ParsingError (err, sev, pstate) ->
+  | NewParsingEngine.OutOfBounds s ->
     print_newline ();
-    output_string stderr ("AnswerDump.Fatal " ^ (AnswerDump.Engine.string_of_exception err sev pstate) ^ ")\n")
+    output_string stderr ("Out of bounds in " ^ s ^ ")")
+  | NewParsingEngine.ParsingError (err, sev, pstate) ->
+    print_newline ();
+    output_string stderr ((NewParsingEngine.string_of_parsing_error "Parsing error" None err sev pstate) ^ "\n")
   | Asn1.Engine.ParsingError (err, sev, pstate) ->
     print_newline ();
     output_string stderr ("Asn1.Fatal " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ ")\n")

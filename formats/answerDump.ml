@@ -1,18 +1,5 @@
-module AnswerDumpEngineParams = struct
-  type parsing_error =
-    | NotImplemented of string
-
-  let string_of_perror = function
-    | NotImplemented s -> "Not implemented (" ^ s ^  ")"
-
-  let default_tolerance = ParsingEngine.s_ok
-  let default_minDisplay = ParsingEngine.s_ok
-end
-
-open AnswerDumpEngineParams;;
-module Engine = ParsingEngine.Make (AnswerDumpEngineParams);;
-open Engine;;
-
+let ehf = NewParsingEngine.default_error_handling_function None 0 0
+let pstate_of_stream name str = NewParsingEngine.pstate_of_stream ehf name str
 
 type answer_record = {
   ip : int array;
@@ -23,9 +10,10 @@ type answer_record = {
   content : string
 }
 
+open NewParsingEngine
 
 let parse_answer_record pstate =
-  let ip = pop_bytes pstate 4 in
+  let ip = Array.of_list (pop_bytes pstate 4) in
   let port = extract_uint16 pstate in
   let name = extract_variable_length_string "name" extract_uint16 pstate in
   let client_hello_type = pop_byte pstate in
