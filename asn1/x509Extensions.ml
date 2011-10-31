@@ -1,19 +1,31 @@
-(* Extensions *)
+open X509
+open ParsingEngine
+open Asn1
+open Asn1Constraints
 
-type aki =
-  | AKI_KeyIdentifier of string
-  | AKI_Unknown
 
-type ext_content =
-  | BasicConstraints of (bool option * int option)
-  | SubjectKeyIdentifier of string
-  | AuthorityKeyIdentifier of aki (* Not fully compliant *)
-  | CRLDistributionPoint of string (* Only partial implementation *)
-  | AuthorityInfoAccess_OCSP of string (* Only OCSP is supported for now *)
-  | OtherExt of (int list * string)
-  | KeyUsage of (int * string)
-  | ExtKeyUsage of int list list
 let basicConstraints_oid = [85;29;19]
+
+let bc_constraint = {
+  severity_if_too_many_objects = s_specfatallyviolated;
+  constraint_list = [
+    Simple_cons (C_Universal, false, 1, "CA", der_to_boolean), s_ok;
+    Simple_cons (C_Universal, false, 2, "PathLen", der_to_int), s_ok
+  ]
+}
+
+let extract_bc = function
+  | [Boolean b; Integer i] -> BasicConstraints (Some b, Some i)
+  | [Boolean b] -> BasicConstraints (Some b, None)
+  | [Integer i] -> BasicConstraints (None, Some i)
+  | [] -> BasicConstraints (None, None)
+  | _ -> InvalidExt
+
+let mkBasicConstraints = Simple_cons (C_Universal, true, 16, "basicConstraints",
+				      parse_constrained_sequence extract_bc bc_constraint)
+
+
+
 let subjectKeyIdentifier_oid = [85;29;14]
 let authorityKeyIdentifier_oid = [85;29;35]
 let crlDistributionPoint_oid = [85;29;31]
@@ -22,24 +34,9 @@ let keyUsage_oid = [85;29;15]
 let extKeyUsage_oid = [85;29;37]
 let ocsp_oid = [43;6;1;5;5;7;48;1]
 
-type ext = ext_content * bool option
 
-let mkBasicConstraints s =
-  let asn1struct = Asn1.exact_parse s in
-  let ca, rem = match asn1struct with
-    | (Asn1.C_Universal, 16, Asn1.Constructed 
-      ((Asn1.C_Universal, 1, Asn1.Boolean ca)::rem)) -> Some ca, rem
-    | (Asn1.C_Universal, 16, Asn1.Constructed rem) -> None, rem
-    | _ -> failwith "Invalid basic constraints"
-  in
-  let pathLenConstraint = match rem with
-    | [] -> None
-    | [(Asn1.C_Universal, 2, Asn1.Integer i)] -> Some (Big_int.int_of_big_int i)
-    | _ -> failwith "Invalid basic constraints"
-  in
-  BasicConstraints (ca, pathLenConstraint)
 
-let mkSKI s =
+(*let mkSKI s =
   let asn1struct = Asn1.exact_parse s in
   match asn1struct with
     | (Asn1.C_Universal, 4, Asn1.String ki) -> SubjectKeyIdentifier ki
@@ -89,33 +86,26 @@ let mkExtKeyUsage s =
   match asn1struct with
     | (Asn1.C_Universal, 16, Asn1.Constructed oidlist) ->
       ExtKeyUsage (List.map extractOid oidlist)
-    | _ -> failwith "Invalid extended key usage"
+    | _ -> failwith "Invalid extended key usage"*)
 
 
-let extension_map =
-  [ (basicConstraints_oid, mkBasicConstraints);
-    (subjectKeyIdentifier_oid, mkSKI);
-    (authorityKeyIdentifier_oid, mkAKI);
-    (crlDistributionPoint_oid, mkCRLDistributionPoint);
-    (authorityInfoAccess_oid, mkAuthorityInfoAccess);
-    (keyUsage_oid, mkKeyUsage);
-    (extKeyUsage_oid, mkExtKeyUsage) ]
+let add_extensions () =
+  Hashtbl.add name_directory basicConstraints_oid "basicConstraints";
+  Hashtbl.add extension_directory basicConstraints_oid mkBasicConstraints;
+  Hashtbl.add name_directory subjectKeyIdentifier_oid "subjectKeyIdentifier";
+(*  Hashtbl.add extension_directory subjectKeyIdentifier_oid mkSKI;*)
+  Hashtbl.add name_directory authorityKeyIdentifier_oid "authorityKeyIdentifier";
+(*  Hashtbl.add extension_directory authorityKeyIdentifier_oid mkAKI;*)
+  Hashtbl.add name_directory crlDistributionPoint_oid "crlDistributionPoint";
+(*  Hashtbl.add extension_directory crlDistributionPoint_oid mkCRLDistributionPoint;*)
+  Hashtbl.add name_directory authorityInfoAccess_oid "authorityInfoAccess";
+(*  Hashtbl.add extension_directory authorityInfoAccess_oid mkAuthorityInfoAccess;*)
+  Hashtbl.add name_directory keyUsage_oid "keyUsage";
+(*  Hashtbl.add extension_directory keyUsage_oid mkKeyUsage;*)
+  Hashtbl.add name_directory extKeyUsage_oid "extKeyUsage";
+(*  Hashtbl.add extension_directory extKeyUsage_oid mkExtKeyUsage; *)
+  ()
 
-let extract_extension e = 
-  let oid, s, critical = match e with
-    | (Asn1.C_Universal, 16, Asn1.Constructed
-      [(Asn1.C_Universal, 6, Asn1.OId oid);
-       (Asn1.C_Universal, 4, Asn1.String s)])
-      -> (oid, s, None)
-    | (Asn1.C_Universal, 16, Asn1.Constructed
-      [(Asn1.C_Universal, 6, Asn1.OId oid);
-       (Asn1.C_Universal, 1, Asn1.Boolean b);
-       (Asn1.C_Universal, 4, Asn1.String s)])
-      -> (oid, s, Some b)
-    | _ -> failwith "Invalid extension"
-  in
-  try
-    ((List.assoc oid extension_map) s, critical)
-  with
-      Not_found -> (OtherExt (oid, s), critical)
 
+let _ =
+  add_extensions ();;

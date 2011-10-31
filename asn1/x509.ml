@@ -11,16 +11,10 @@ type oid_type =
   | ATV
   | Extension
 
-type preparse_function = parsing_state -> parsing_state
-type predump_function = parsing_state -> parsing_state
-
 let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
 let (object_directory : ((oid_type * int list),
 			 (asn1_object asn1_constraint * severity)) Hashtbl.t) = Hashtbl.create 50
 let (initial_directory : (int list, string) Hashtbl.t) = Hashtbl.create 50
-let (pubkey_directory : (int list, asn1_object asn1_constraint) Hashtbl.t) = Hashtbl.create 10
-let (signature_directory : (int list, (asn1_object asn1_constraint *
-					 preparse_function * predump_function)) Hashtbl.t) = Hashtbl.create 10
 
 
 (* Generic code about objects (OId + ASN1_Object depending on the OId) *)
@@ -207,12 +201,17 @@ let string_of_validity indent _ v =
 
 (* Public key *)
 
-type dsa_key = {dsa_p : string; dsa_q : string; dsa_g : string; dsa_Y : string}
+type dsa_public_key = {dsa_p : string; dsa_q : string; dsa_g : string; dsa_Y : string}
+type rsa_public_key = {rsa_n : string; rsa_e : string}
 
 type public_key =
   | PK_WrongPKInfo
-(*  | PK_DSA of dsa_key *)
+  | PK_DSA of dsa_public_key
+  | PK_RSA of rsa_public_key
   | PK_Unparsed of string
+
+type pk_parse_fun = asn1_object option -> string -> public_key
+let (pubkey_directory : (int list, pk_parse_fun) Hashtbl.t) = Hashtbl.create 10
 
 type public_key_info = {
   pk_algo : oid_object;
@@ -222,7 +221,13 @@ type public_key_info = {
 let empty_public_key_info = { pk_algo = empty_oid_object; public_key = PK_WrongPKInfo }
 
 let extract_public_key_info = function
-  | Some algo, Some (0, pk) -> { pk_algo = algo; public_key = PK_Unparsed pk }
+  | Some algo, Some (0, pk) -> begin
+    try
+      (* TODO: This should be optional *)
+      let extract_aux = Hashtbl.find pubkey_directory algo.oo_id in
+      { pk_algo = algo; public_key = extract_aux algo.oo_content pk}
+    with Not_found -> { pk_algo = algo; public_key = PK_Unparsed pk }
+  end
   | Some algo, _ -> { pk_algo = algo; public_key = PK_WrongPKInfo }
   | _ -> empty_public_key_info
 
@@ -236,12 +241,115 @@ let public_key_info_constraint dir : public_key_info asn1_constraint =
 
 let string_of_public_key_info indent resolver pki =
   let new_indent = indent ^ "  " in
-  indent ^ "Public key algorithm:\n" ^ (string_of_oid_object new_indent resolver pki.pk_algo) ^
-    indent ^ "Public key:\n" ^
     (match pki.public_key with
-      | PK_WrongPKInfo -> new_indent ^ "Wrong PK Info\n"
-      | PK_Unparsed s -> new_indent ^ "[HEX]" ^ Common.hexdump (s) ^ "\n")
+      | PK_WrongPKInfo ->
+	indent ^ "Wrong Public Key Info:\n" ^
+	  new_indent ^ "Public key algorithm:\n" ^ (string_of_oid_object new_indent resolver pki.pk_algo)
+      | PK_DSA {dsa_p; dsa_q; dsa_g; dsa_Y} ->
+	indent ^ "DSA Public Key:\n" ^
+	  new_indent ^ "p: 0x" ^ (Common.hexdump dsa_p) ^ "\n" ^
+	  new_indent ^ "q: 0x" ^ (Common.hexdump dsa_q) ^ "\n" ^
+	  new_indent ^ "g: 0x" ^ (Common.hexdump dsa_g) ^ "\n" ^
+	  new_indent ^ "Y: 0x" ^ (Common.hexdump dsa_Y) ^ "\n"
+      | PK_RSA {rsa_n; rsa_e} ->
+	indent ^ "RSA Public Key:\n" ^
+	  new_indent ^ "n: 0x" ^ (Common.hexdump rsa_n) ^ "\n" ^
+	  new_indent ^ "e: 0x" ^ (Common.hexdump rsa_e) ^ "\n"
+      | PK_Unparsed s ->
+	indent ^ "Public key:\n" ^
+	  new_indent ^ "Public key algorithm:\n" ^ (string_of_oid_object new_indent resolver pki.pk_algo) ^
+	  new_indent ^ "Value: [HEX]" ^ Common.hexdump (s) ^ "\n")
 
+
+(* Extensions *)
+type aki =
+  | AKI_KeyIdentifier of string
+  | AKI_Unknown
+
+type ext_content =
+  | BasicConstraints of (bool option * string option)
+  | SubjectKeyIdentifier of string
+  | AuthorityKeyIdentifier of aki (* Not fully compliant *)
+  | CRLDistributionPoint of string (* Only partial implementation *)
+  | AuthorityInfoAccess_OCSP of string (* Only OCSP is supported for now *)
+  | KeyUsage of (int * string)
+  | ExtKeyUsage of int list list
+  | UnparsedExt of (int list * string)
+  | InvalidExt
+
+type ext_parse_fun = ext_content asn1_constraint
+let (extension_directory : (int list, ext_parse_fun) Hashtbl.t) = Hashtbl.create 15
+
+type extension = { e_critical : bool option; e_content : ext_content }
+let empty_extension = { e_critical = None; e_content = InvalidExt }
+
+
+
+let extension_content_constraint = {
+  severity_if_too_many_objects = s_specfatallyviolated;
+  constraint_list = [
+    Simple_cons (C_Universal, false, 6, "ExtensionId", der_to_oid), s_specfatallyviolated;
+    Simple_cons (C_Universal, false, 1, "Critical", der_to_boolean), s_ok;
+    Simple_cons (C_Universal, false, 4, "ExtensionValue", der_to_octetstring true), s_specfatallyviolated
+  ]
+}
+
+(* TODO: This should be optional *)
+let deep_parse_ext id s =
+  try
+    let ext_cons = Hashtbl.find extension_directory id in
+    let pstate = pstate_of_string (string_of_oid None id) s in
+    constrained_parse_def ext_cons s_speclightlyviolated (UnparsedExt (id, s)) pstate
+  with Not_found -> UnparsedExt (id, s)
+
+let extract_ext = function
+  | [OId id; Boolean b; String (s, true)] ->
+    { e_critical = Some b; e_content = deep_parse_ext id s }
+  | [OId id; String (s, true)] ->
+    { e_critical = None; e_content = deep_parse_ext id s }
+  | _ -> empty_extension
+
+    
+let extension_constraint = Simple_cons (C_Universal, true, 16, "Extension",
+					parse_constrained_sequence extract_ext extension_content_constraint)
+let extensions_constraint = seqOf_cons Common.identity "Extensions" extension_constraint (AtLeast (1, s_speclightlyviolated))
+
+
+let string_of_extension indent resolver e =
+  let critical_string = match e.e_critical with
+    | Some true -> "(critical)"
+    | _ -> ""
+  in
+  let oid_string, content_string = 
+    match e.e_content with
+      | BasicConstraints (flag, len) ->
+	let flag_string = match flag with
+	  | None -> []
+	  | Some b -> ["CA=" ^ (if b then "true" else "false")]
+	in
+	let len_string = match len with
+	  | None -> []
+	  | Some l -> ["PathLen=" ^ (Common.hexdump l)]
+	in
+	"basicConstraints", String.concat ", " (flag_string@len_string)
+      | SubjectKeyIdentifier ski ->
+	"subjectKeyIdentifier", Common.hexdump ski
+      | AuthorityKeyIdentifier AKI_Unknown ->
+	"authorityKeyIdentifier", ""
+      | AuthorityKeyIdentifier (AKI_KeyIdentifier aki) ->
+	"authorityKeyIdentifier", Common.hexdump aki
+      | CRLDistributionPoint s -> "cRLDistributionPoint", s
+      | AuthorityInfoAccess_OCSP s -> "authorityInfoAccess", "OCSP " ^ s
+      | KeyUsage (i, s) ->
+	"keyUsage", "[" ^ (string_of_int i) ^ "]" ^ (Common.hexdump s)
+      | ExtKeyUsage l ->
+	let new_indent = indent ^ "  " in
+	"extendedKeyUsage", "\n" ^ (String.concat "\n" (List.map (fun oid -> new_indent ^ string_of_oid resolver oid) l))
+      | UnparsedExt (oid, raw_content) ->
+	(string_of_oid resolver oid), "[HEX]" ^ (Common.hexdump raw_content)
+      | InvalidExt -> "InvalidExt", ""
+  in
+  indent ^ oid_string ^ critical_string ^ (if String.length content_string > 0 then ": " else "") ^ content_string ^ "\n"
 
 
 (* TBS Certificate *)
@@ -257,7 +365,7 @@ type tbs_certificate = {
   issuer_unique_id : (int * string) option;
   subject_unique_id : (int * string) option;
   (* TODO *)
-  extensions : asn1_object option
+  extensions : extension list option;
 }
 
 let empty_tbs_certificate =
@@ -287,7 +395,7 @@ let parse_tbs_certificate dir pstate =
   (* TODO *)
   let extensions =
     constrained_parse_opt (Simple_cons (C_ContextSpecific, true, 3, "Extensions container",
-					parse_sequenceof List.hd (Anything Common.identity)
+					parse_sequenceof List.hd extensions_constraint
 					  (Exactly (1, s_speclightlyviolated))))
       s_ok pstate in
 
@@ -344,10 +452,7 @@ let string_of_tbs_certificate indent resolver tbs =
     (match tbs.extensions with
       | None -> ""
       | Some e ->
-	(* TODO *)
-	let opts = { type_repr = PrettyType; data_repr = PrettyData;
-		     resolver = resolver; indent_output = true } in
-	indent ^ "Extensions:\n" ^ (string_of_object new_indent opts e))
+	indent ^ "Extensions:\n" ^ (String.concat "" (List.map (string_of_extension new_indent resolver) e)))
 
 
 (* Signature *)
@@ -356,15 +461,24 @@ type dsa_signature = {dsa_r : string; dsa_s : string}
 
 type signature =
   | Sig_WrongSignature
-(*  | Sig_DSA of dsa_signature *)
+  | Sig_DSA of dsa_signature
+  | Sig_RSA of string
   | Sig_Unparsed of string
+
+type sig_parse_fun = string -> signature
+let (signature_directory : (int list, sig_parse_fun) Hashtbl.t) = Hashtbl.create 10
 
 let empty_signature = Sig_WrongSignature
 
 let extract_signature = function
-  | algo, (0, sig_val) -> Sig_Unparsed sig_val
-  | algo, _ -> Sig_WrongSignature
-
+  | algo, (0, sig_val) -> begin
+    try
+      (* TODO: This should be optional *)
+      let extract_aux = Hashtbl.find signature_directory algo.oo_id in
+      extract_aux sig_val
+    with Not_found -> Sig_Unparsed sig_val
+  end
+  | _, _ -> Sig_WrongSignature
 
 let signature_constraint dir sigalgo : signature asn1_constraint =
   Simple_cons (C_Universal, false, 3, "Bit String",
@@ -374,6 +488,11 @@ let signature_constraint dir sigalgo : signature asn1_constraint =
 let string_of_signature indent _resolver sign =
   match sign with
     | Sig_WrongSignature -> indent ^ "Wrong Signature\n"
+    | Sig_DSA {dsa_r; dsa_s} ->
+      indent ^ "r: " ^ (Common.hexdump dsa_r) ^ "\n" ^
+	indent ^ "s: " ^ (Common.hexdump dsa_s) ^ "\n"
+    | Sig_RSA s ->
+      indent ^ "s: " ^ (Common.hexdump s) ^ "\n"
     | Sig_Unparsed s -> indent ^ "[HEX]" ^ (Common.hexdump s) ^ "\n"
 
 

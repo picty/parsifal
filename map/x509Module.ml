@@ -2,6 +2,7 @@ open MapEval
 open MapModule
 open X509
 open X509Directory
+open X509Extensions
 
 module DNParser = struct
   type t = dn
@@ -144,12 +145,43 @@ module X509Parser = struct
     let subject_value = DNModule.register cert.tbs.subject in
     Hashtbl.replace dict "subject" subject_value;
 
-    (* pk_info *)
+    (* cert.tbs.public_key_info.pk_algo *)
+    begin
+      match cert.tbs.pk_info.public_key with
+	| PK_DSA {dsa_p; dsa_q; dsa_g; dsa_Y} ->
+	  Hashtbl.replace dict "key_type" (V_String "DSA");
+	  Hashtbl.replace dict "p" (V_Bigint dsa_p);
+	  Hashtbl.replace dict "q" (V_Bigint dsa_q);
+	  Hashtbl.replace dict "g" (V_Bigint dsa_g);
+	  Hashtbl.replace dict "Y" (V_Bigint dsa_Y)
+	| PK_RSA {rsa_n; rsa_e} ->
+	  Hashtbl.replace dict "key_type" (V_String "RSA");
+	  Hashtbl.replace dict "n" (V_Bigint rsa_n);
+	  Hashtbl.replace dict "e" (V_Bigint rsa_e)
+	| PK_WrongPKInfo ->
+	  Hashtbl.replace dict "key_type" (V_String "WrongPKInfo");
+	| PK_Unparsed _ ->
+	  Hashtbl.replace dict "key_type" (V_String "UnparsedPKInfo");
+    end;
+
     handle_unique_id "issuer_unique_id" cert.tbs.issuer_unique_id;
     handle_unique_id "subject_unique_id" cert.tbs.subject_unique_id;
     (* extensions *)
     (* cert_sig_algo *)
-    (* signature *)
+    begin
+      match cert.signature with
+	| Sig_DSA {dsa_r; dsa_s} ->
+	  Hashtbl.replace dict "sig_type" (V_String "DSA");
+	  Hashtbl.replace dict "r" (V_Bigint dsa_r);
+	  Hashtbl.replace dict "s" (V_Bigint dsa_s)
+	| Sig_RSA rsa_s ->
+	  Hashtbl.replace dict "sig_type" (V_String "RSA");
+	  Hashtbl.replace dict "s" (V_Bigint rsa_s)
+	| Sig_WrongSignature ->
+	  Hashtbl.replace dict "key_type" (V_String "WrongSignature");
+	| Sig_Unparsed _ ->
+	  Hashtbl.replace dict "key_type" (V_String "UnparsedSignature");
+    end	;
     ()
 
   let update dict = raise NotImplemented
