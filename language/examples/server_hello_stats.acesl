@@ -41,7 +41,7 @@ stat_incr := function (dict, val) {
 };
 
 stat_print := function (dict) {
-    _separator := "\t -> ";
+    printer.separator <- "\t -> ";
     iter (print, dict);
 };
 

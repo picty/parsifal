@@ -13,6 +13,11 @@ let param_from_int_ref name reference =
    Some (fun () -> V_Int !reference),
    Some (fun x -> reference := eval_as_int (x)))
 
+let param_from_string_ref name reference =
+  (name,
+   Some (fun () -> V_String !reference),
+   Some (fun x -> reference := eval_as_string (x)))
+
 
 (* ParserInterface and Module functor *)
 
@@ -27,9 +32,6 @@ module type ParserInterface = sig
   val update : (string, value) Hashtbl.t -> t
   val to_string : t -> string
 end;;
-
-
-
 
 module MakeParserModule = functor (Parser : ParserInterface) -> struct
   type t = Parser.t
@@ -150,4 +152,44 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
 
     (* TODO: Add a _dict or _params magic objects ? Remove all _ ? *)
 
+end
+
+
+
+
+
+(* Library Modules *)
+
+module type LibraryInterface = sig
+  val name : string
+  val params : (string * getter option * setter option) list
+  val functions : (string * function_sort) list
+end;;
+
+
+module MakeLibraryModule = functor (Library : LibraryInterface) -> struct
+  let name = Library.name
+  let param_getters = Hashtbl.create 10
+  let param_setters = Hashtbl.create 10
+
+  let init () =
+    let no_getter () = raise Not_found in
+    let no_setter _ = raise (ContentError ("Read-only field")) in
+    let populate_param (param_name, getter, setter) =
+      Hashtbl.replace param_getters param_name (Common.pop_option getter no_getter);
+      Hashtbl.replace param_setters param_name (Common.pop_option setter no_setter);
+    in
+    let populate_function (fun_name, fun_value) =
+      Hashtbl.replace param_getters fun_name (fun () -> V_Function fun_value)
+    in
+    List.iter populate_param Library.params;
+    populate_param ("name", Some (fun () -> V_String name), None);
+    List.iter populate_function Library.functions;
+    ()
+
+  type t = unit
+  let register _ = raise NotImplemented
+  let equals _ = raise NotImplemented
+  let enrich _ = raise NotImplemented
+  let update _ = raise NotImplemented
 end

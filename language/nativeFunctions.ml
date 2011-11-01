@@ -8,24 +8,10 @@ open Eval
 
 let typeof v = V_String (string_of_type v)
 
-(* TODO: Move that in a Printer module? *)
-let _to_string quote_strings env input =
-  let dopts = {
-    raw_display = getv_bool env "_raw_display" false;
-    quote_strings = quote_strings;
-    multiline = getv_bool env "_multiline" false;
-    indent = getv_str env "_indent" "  ";
-    cur_indent = "";
-    separator = getv_str env "_separator" ", " }
-  in string_of_value dopts input
+let to_string input = V_String (PrinterLib.string_of_value input)
 
-let to_string env input = V_String (_to_string false env input)
-
-
-let print env args =
-  let separator = getv_str env "separator" "," in
-  let endline = getv_str env "endline" "\n" in
-  print_string ((String.concat separator (List.map (_to_string false env) args)) ^ endline);
+let print args =
+  print_string ((String.concat !PrinterLib.separator (List.map (PrinterLib.string_of_value) args)) ^ !PrinterLib.endline);
   V_Unit
 
 let length = function
@@ -251,8 +237,8 @@ let add_native_with_env name f =
 let _ =
   (* Generic functions *)
   add_native "typeof" (one_value_fun typeof);
-  add_native_with_env "to_string" (one_value_fun_with_env to_string);
-  add_native_with_env "print" print;
+  add_native "to_string" (one_value_fun to_string);
+  add_native "print" print;
   add_native "length" (one_value_fun length);
   add_native_with_env "eval" (one_string_fun_with_env interpret_string);
   add_native "as_hexa_int" (two_value_fun as_hexa_int);
