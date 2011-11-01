@@ -1,5 +1,5 @@
-open MapEval
-open MapModule
+open Types
+open Modules
 
 
 let value_of_asn1_content o = match o.Asn1.a_content with
@@ -56,5 +56,5 @@ module Asn1Parser = struct
   let to_string o = Asn1.string_of_object "" opts o
 end
 
-module Asn1Module = Make (Asn1Parser)
-let _ = add_module ((module Asn1Module : MapModule))
+module Asn1Module = MakeParserModule (Asn1Parser)
+let _ = add_module ((module Asn1Module : Module))

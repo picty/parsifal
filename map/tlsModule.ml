@@ -1,5 +1,5 @@
-open MapEval
-open MapModule
+open Types
+open Modules
 open Tls
 
 module TlsParser = struct
@@ -72,5 +72,5 @@ module TlsParser = struct
   let to_string = string_of_record
 end
 
-module TlsModule = Make (TlsParser)
-let _ = add_module ((module TlsModule : MapModule))
+module TlsModule = MakeParserModule (TlsParser)
+let _ = add_module ((module TlsModule : Module))

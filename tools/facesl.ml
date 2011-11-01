@@ -1,4 +1,5 @@
-open MapLang
+open Language
+open Types
 open MapEval
 open MapNativeFunctions
 
@@ -15,7 +16,7 @@ let interactive () =
       flush stdout;
       try
 	let res = interpret_string [global_env] (input_line stdin) in
-	print_endline (string_of_value [global_env] res);
+	print_endline (_to_string [global_env] res);
 	flush stdout
       with
 	| NotImplemented -> output_string stderr "Not implemented\n"; flush stderr
@@ -28,7 +29,7 @@ let interactive () =
 let script_interpreter filename =
   try
     let lexbuf = Lexing.from_channel (open_in filename) in
-    let ast = MapParser.exprs MapLexer.main_token lexbuf in
+    let ast = Parser.exprs Lexer.main_token lexbuf in
     let res = match eval_exps [global_env] ast with
       | V_Unit
       | V_Bool true -> 0

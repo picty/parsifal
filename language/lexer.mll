@@ -1,5 +1,5 @@
 {
-open MapParser
+open Parser
   
 let string_of_list l =
   let len = List.length l in
@@ -12,7 +12,7 @@ let string_of_list l =
 
 let add_str l = function
   | [] -> l
-  | cl -> MapLang.ST_String (string_of_list (List.rev cl))::l
+  | cl -> Language.ST_String (string_of_list (List.rev cl))::l
 }
 
 
@@ -114,12 +114,12 @@ and string_token cur accu = parse
       }
   | '"' { T_String (List.rev (add_str accu cur)) }
   | '$' ( ['A'-'Z' 'a'-'z' '_'] ['A'-'Z' 'a'-'z' '_' '0'-'9']* as ident )
-      { string_token [] ((MapLang.ST_Var ident)::(add_str accu cur)) lexbuf }
+      { string_token [] ((Language.ST_Var ident)::(add_str accu cur)) lexbuf }
   | "${" ( [^ '}']* as e ) '}'
-      { string_token [] ((MapLang.ST_Expr e)::(add_str accu cur)) lexbuf }
+      { string_token [] ((Language.ST_Expr e)::(add_str accu cur)) lexbuf }
   | _ as c { string_token (c::cur) accu lexbuf }
 
 and uninterp_string_token cur = parse
   | '\\' ['\\' '\''] { uninterp_string_token ((Lexing.lexeme_char lexbuf 1)::cur) lexbuf }
-  | '\'' { T_String [MapLang.ST_String (string_of_list (List.rev cur))] }
+  | '\'' { T_String [Language.ST_String (string_of_list (List.rev cur))] }
   | _ as c { uninterp_string_token (c::cur) lexbuf }

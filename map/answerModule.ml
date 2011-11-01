@@ -1,5 +1,5 @@
-open MapEval
-open MapModule
+open Types
+open Modules
 
 
 module AnswerDumpParser = struct
@@ -47,4 +47,4 @@ module AnswerDumpParser = struct
 end
 
 let _ =
-  add_module ((module (Make (AnswerDumpParser)) : MapModule))
+  add_module ((module (MakeParserModule (AnswerDumpParser)) : Module))

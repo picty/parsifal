@@ -1,59 +1,32 @@
-open MapLang
+open Types
+open Printer
+open Modules
 open MapEval
 
 
-let zero_value_fun f = function
-  | [] -> f ()
-  | _ -> raise WrongNumberOfArguments
-
-let zero_value_fun_with_env f env = function
-  | [] -> f env
-  | _ -> raise WrongNumberOfArguments
-
-let one_value_fun f = function
-  | [e] -> f e
-  | _ -> raise WrongNumberOfArguments
-
-let one_value_fun_with_env f env = function
-  | [e] -> f env e
-  | _ -> raise WrongNumberOfArguments
-
-let one_string_fun_with_env f env = function
-  | [e] -> f env (eval_as_string e)
-  | _ -> raise WrongNumberOfArguments
-
-let two_value_fun f = function
-  | [e1; e2] -> f e1 e2
-  | [e1] -> V_Function (NativeFun (one_value_fun (f e1)))
-  | _ -> raise WrongNumberOfArguments
-
-let two_value_fun_with_env f env = function
-  | [e1; e2] -> f env e1 e2
-  | [e1] -> V_Function (NativeFunWithEnv (one_value_fun_with_env (fun env -> f env e1)))
-  | _ -> raise WrongNumberOfArguments
-
-let three_value_fun f = function
-  | [e1; e2; e3] -> f e1 e2 e3
-  | [e1; e2] -> V_Function (NativeFun (one_value_fun (f e1 e2)))
-  | [e1] -> V_Function (NativeFun (two_value_fun (f e1)))
-  | _ -> raise WrongNumberOfArguments
-
-let three_value_fun_with_env f env = function
-  | [e1; e2; e3] -> f env e1 e2 e3
-  | [e1; e2] -> V_Function (NativeFunWithEnv (one_value_fun_with_env (fun env -> f env e1 e2)))
-  | [e1] -> V_Function (NativeFunWithEnv (two_value_fun_with_env (fun env -> f env e1)))
-  | _ -> raise WrongNumberOfArguments
 
 
 (* Generic functions *)
 
 let typeof v = V_String (string_of_type v)
-let to_string env input = V_String (string_of_value env input)
+
+(* TODO: Move that in a Printer module? *)
+let _to_string env input =
+  let dopts = {
+    raw_display = getv_bool env "_raw_display" false;
+    multiline = getv_bool env "_multiline" false;
+    indent = getv_str env "_indent" "";
+    cur_indent = "";
+    separator = getv_str env "_separator" ", " }
+  in string_of_value dopts input
+
+let to_string env input = V_String (_to_string env input)
+
 
 let print env args =
-  let separator = getv_str env "_separator" "," in
-  let endline = getv_str env "_endline" "\n" in
-  print_string ((String.concat separator (List.map (string_of_value env) args)) ^ endline);
+  let separator = getv_str env "separator" "," in
+  let endline = getv_str env "endline" "\n" in
+  print_string ((String.concat separator (List.map (_to_string env) args)) ^ endline);
   V_Unit
 
 let length = function
@@ -256,41 +229,9 @@ let decode format input = match (eval_as_string format) with
   | _ -> raise (ContentError ("Unknown format"))
 
 
-let stream_of_input = function
-  | V_BinaryString s | V_String s -> ("(inline)", Stream.of_string s)
-  | V_Stream (name, s) -> (name, s)
-  | _ -> raise (ContentError "String or stream expected")
-
-let parse env format input =
-  try
-    let object_name = eval_as_string format in
-    match getv env object_name with
-      | V_Module (name) ->
-	let stream_name, stream = stream_of_input input in
-	let module M = (val (Hashtbl.find modules name) : MapModule) in
-	M.parse stream_name stream
-      | _ -> raise (ContentError (object_name ^ " is not a valid module."))
-  with
-    | Not_found -> raise (ContentError ("Unknown format"))
 
 
-let make_from_dict env format input =
-  let name = eval_as_string format in
-  let module M = (val (Hashtbl.find modules name) : MapModule) in
-  let d = eval_as_dict input in
-  let obj_ref = M.make d in
-  Hashtbl.replace d "@enriched" V_Unit;
-  V_Object (obj_ref, d)
 
-
-let dump env input =
-  match input with
-    | V_Object ( ObjectRef (name, _) as obj_ref, dict) ->
-      let m = Hashtbl.find modules name in
-      let module M = (val m : MapModule) in
-      update_if_necessary m obj_ref dict;
-      V_BinaryString (M.dump obj_ref)
-    | _ -> raise (ContentError ("Object expected"))
 
 
 let stream_of_string n s =
@@ -348,9 +289,6 @@ let _ =
   add_native "open" (one_value_fun open_file);
   add_native "encode" (two_value_fun encode);
   add_native "decode" (two_value_fun decode);
-  add_native_with_env "parse" (two_value_fun_with_env parse);
-  add_native_with_env "make" (two_value_fun_with_env make_from_dict);
-  add_native_with_env "dump" (one_value_fun_with_env dump);
   add_native "stream" (two_value_fun stream_of_string);
   add_native "concat" (two_value_fun concat_strings);
 

@@ -1,265 +1,12 @@
-open MapLang
+open Language
+open Types
+open Modules
 
-(* Value and environment handling *)
-
-type object_ref = ObjectRef of string * int;;
-
-type function_sort =
-  | NativeFun of (value list -> value)
-  | NativeFunWithEnv of (environment -> value list -> value)
-  | InterpretedFun of (environment * string list * expression list)
-
-and getter = unit -> value
-and setter = value -> unit
-
-and value =
-  | V_Unit
-  | V_Bool of bool
-  | V_Int of int
-  | V_String of string
-  | V_BinaryString of string
-  | V_BitString of int * string
-  | V_Bigint of string
-  | V_Function of function_sort
-
-  | V_List of value list
-  | V_Dict of (string, value) Hashtbl.t
-  | V_Stream of string * char Stream.t
-  | V_OutChannel of string * out_channel
-
-  | V_Module of string
-  | V_Object of object_ref * (string, value) Hashtbl.t
-
-and environment = (string, value) Hashtbl.t list
-
-let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
-
-
-module type MapModule = sig
-  type t
-  val name : string
-  val param_getters : (string, getter) Hashtbl.t
-  val param_setters : (string, setter) Hashtbl.t
-
-  val init : unit -> unit
-
-  val parse : string -> char Stream.t -> value
-  val make : (string, value) Hashtbl.t -> object_ref
-  val register : t -> value
-
-  val equals : object_ref -> object_ref -> bool
-  val enrich : object_ref -> (string, value) Hashtbl.t -> unit
-  val update : object_ref -> (string, value) Hashtbl.t -> unit
-  val dump : object_ref -> string
-  val to_string : object_ref -> string
-end
-
-let modules : (string, (module MapModule)) Hashtbl.t = Hashtbl.create 10
-
-let add_module m =
-  let module M = (val m : MapModule) in
-  M.init ();
-  Hashtbl.replace modules M.name m;
-  Hashtbl.replace global_env M.name (V_Module M.name)
-
-let update_if_necessary m obj_ref d =
-  let module M = (val m : MapModule) in
-  if Hashtbl.mem d "@modified" then begin
-    M.update obj_ref d;
-    Hashtbl.remove d "@modified"
-  end
-
-
-let certificate_field_access : (string, X509.certificate -> value) Hashtbl.t = Hashtbl.create 40
-let tls_field_access : (string, Tls.record -> value) Hashtbl.t = Hashtbl.create 40
-
-
-exception NotImplemented
-exception WrongNumberOfArguments
-exception ContentError of string
 
 exception ReturnValue of value
 exception Continue
 exception Break
 
-
-type display_opts = {
-  raw_display : bool;
-  separator : string;
-  after_opening : string;
-  before_closing : string;
-  new_eval : value -> string
-}
-
-let eval_as_int = function
-  | V_Int i -> i
-  | V_String s
-  | V_BinaryString s -> int_of_string s
-  | V_Bigint _ -> raise NotImplemented
-  | _ -> raise (ContentError "Integer expected")
-
-let eval_as_bool = function
-  | V_Bool b -> b
-  | V_Unit | V_Int 0 | V_List [] -> false
-  | V_Int _ | V_List _ -> true
-  | V_String s
-  | V_BinaryString s
-  | V_BitString (_, s) -> (String.length s) <> 0
-  | V_Bigint s -> (String.length s) > 0 && s.[0] != '\x00'
-  | V_Stream (_, s) -> not (Common.eos s)
-  | V_Dict d -> (Hashtbl.length d) <> 0
-  | V_Object _ -> true
-
-  | _ -> raise (ContentError "Boolean expected")
-
-let eval_as_function = function
-  | V_Function f -> f
-  | _ -> raise (ContentError "Function expected")
-
-let eval_as_stream = function
-  | V_Stream (n, s) -> n, s
-  | _ -> raise (ContentError "Stream expected")
-
-let eval_as_dict = function
-  | V_Dict d -> d
-  | _ -> raise (ContentError "Dictionary expected")
-
-let eval_as_list = function
-  | V_List l -> l
-  | _ -> raise (ContentError "List expected")
-
-let rec string_of_type = function
-  | V_Unit -> "unit"
-  | V_Bool _ -> "bool"
-  | V_Int _ -> "int"
-  | V_String _ -> "string"
-  | V_BinaryString _ -> "binary_string"
-  | V_BitString _ -> "bit_string"
-  | V_Bigint _ -> "big_int"
-  | V_Function _ -> "function"  (* TODO: nature, arity? *)
-
-  | V_List _ -> "list"
-  | V_Dict d -> "dict"
-  | V_Stream _ -> "stream"
-  | V_OutChannel _ -> "outchannel"
-
-  | V_Module _ -> "module"
-  | V_Object (ObjectRef (n, _), _) -> n ^ "_object"
-
-and eval_as_string = function
-  | V_Bool b -> string_of_bool b
-  | V_Int i -> string_of_int i
-  | V_Bigint s
-  | V_BinaryString s
-  | V_String s -> s
-
-  | V_BitString _ | V_List _ | V_Dict _
-  | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-  | V_Module _ | V_Object _ ->
-    raise (ContentError "String expected")
-
-
-and string_of_value_i env current_indent v =
-  let get_dopts () =
-    let raw_display = getv_bool env "_raw_display" false in
-    let indent = getv_str env "_indent" "" in
-    let multiline = (String.length indent) > 0 in
-    if multiline then begin
-      let new_indent = current_indent ^ indent in
-      { raw_display = raw_display;
-        separator = (getv_str env "_separator" ",") ^ "\n" ^ new_indent;
-	after_opening = "\n" ^ new_indent; before_closing = "\n" ^ current_indent;
-	new_eval = string_of_value_i env new_indent }
-    end else
-      { raw_display = raw_display;
-	separator = getv_str env "_separator" ", ";
-	after_opening = ""; before_closing = "";
-	new_eval = string_of_value_i env "" }
-  in
-
-  match v with
-    | V_Bool b -> string_of_bool b
-    | V_Int i -> string_of_int i
-    | V_String s -> s
-    | V_BinaryString s -> "\"" ^ (Common.hexdump s) ^ "\""
-    | V_BitString (n, s) -> "\"[" ^ (string_of_int n) ^ "]" ^ (Common.hexdump s) ^ "\""
-    | V_Bigint s -> "0x" ^ (Common.hexdump s)
-
-    | V_List [] -> "[]"
-    | V_Dict d when (Hashtbl.length d = 0) -> "{}"
-
-    | V_List l ->
-      let dopts = get_dopts () in
-      "[" ^ dopts.after_opening ^
-	(String.concat dopts.separator (List.map dopts.new_eval l)) ^
-	dopts.before_closing ^ "]"
-
-    | V_Dict d ->
-      let dopts = get_dopts () in
-      let hash_aux k v accu =
-	if dopts.raw_display || ((String.length k > 0) && (k.[0] != '_') && (k.[0] != '@'))
-	then (k ^ " -> " ^ (dopts.new_eval v))::accu
-	else accu
-      in
-      "{" ^ dopts.after_opening ^
-	(String.concat dopts.separator (Hashtbl.fold hash_aux d [])) ^
-	dopts.before_closing ^ "}"
-
-    | V_Object (ObjectRef (n, _) as obj_ref, d) ->
-      if getv_bool env "_raw_display" false then begin
-	if not (Hashtbl.mem d "@enriched") then begin
-	  let module M = (val (Hashtbl.find modules n) : MapModule) in
-	  M.enrich obj_ref d;
-	  Hashtbl.replace d "@enriched" V_Unit
-	end;
-	string_of_value_i env current_indent (V_Dict d)
-      end else begin
-	let m = Hashtbl.find modules n in
-	update_if_necessary m obj_ref d;
-	let module M = (val m : MapModule) in
-	M.to_string obj_ref
-      end
-
-    | (V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-	  | V_Module _) as v -> "<" ^ (string_of_type v) ^ ">"
-
-and getv env name = match env with
-  | [] -> raise Not_found
-  | e::r -> begin
-    try
-      Hashtbl.find e name
-    with
-      | Not_found -> getv r name
-  end
-
-and getv_str env name default =
-  try
-    eval_as_string (getv env name)
-  with
-    | Not_found | ContentError _ -> default
-
-and getv_bool env name default =
-  try
-    eval_as_bool (getv env name)
-  with
-    | Not_found | ContentError _ -> default
-
-let rec setv env name v = match env with
-  | [] -> raise Not_found
-  | [e] -> Hashtbl.replace e name v
-  | e::r ->
-    if Hashtbl.mem e name
-    then Hashtbl.replace e name v
-    else setv r name v
-
-let rec unsetv env name = match env with
-  | [] -> raise Not_found
-  | e::r ->
-    if Hashtbl.mem e name
-    then Hashtbl.remove e name
-    else unsetv r name
-
-let string_of_value env v = string_of_value_i env "" v
 
 
 (* Interpretation *)
@@ -404,15 +151,13 @@ and eval_equality env a b =
     | V_Dict d1, V_Dict d2 -> raise NotImplemented
 
     | V_Module (n1), V_Module (n2) -> n1 = n2
-    | V_Object (ObjectRef (n1, _) as obj_ref1, d1),
-      V_Object (ObjectRef (n2, _) as obj_ref2, d2) ->
+    | V_Object (n1, r1, d1), V_Object (n2, r2, d2) ->
       if n1 <> n2 then false else begin
-	if obj_ref1 == obj_ref2 then true else begin
+	if r1 = r2 then true
+	else begin
 	  let m = Hashtbl.find modules n1 in
-	  update_if_necessary m obj_ref1 d1;
-	  update_if_necessary m obj_ref2 d2;
-	  let module M = (val m : MapModule) in
-	  M.equals obj_ref1 obj_ref2
+	  let module M = (val m : Module) in
+	  M.equals (r1, d1) (r2, d2);
 	end
       end
 
@@ -439,7 +184,7 @@ and eval_exps env = function
 
 and interpret_string env s =
   let lexbuf = Lexing.from_string s in
-  let ast = MapParser.exprs MapLexer.main_token lexbuf in
+  let ast = Parser.exprs Lexer.main_token lexbuf in
   eval_exps env ast
 
 and get_field e f =
@@ -447,15 +192,12 @@ and get_field e f =
     | V_Dict d -> (Hashtbl.find d f)
 
     | V_Module n ->
-      let module M = (val (Hashtbl.find modules n) : MapModule) in
+      let module M = (val (Hashtbl.find modules n) : Module) in
       (Hashtbl.find M.param_getters f) ()
 
-    | V_Object (ObjectRef (n, _) as obj_ref, d) ->
-      if not (Hashtbl.mem d "@enriched") then begin
-	let module M = (val (Hashtbl.find modules n) : MapModule) in
-	M.enrich obj_ref d;
-	Hashtbl.replace d "@enriched" V_Unit
-      end;
+    | V_Object (n, obj_ref, d) ->
+      let module M = (val (Hashtbl.find modules n) : Module) in
+      M.enrich obj_ref d;
       if f = "_dict" then V_Dict d else (Hashtbl.find d f)
 
     | _ -> raise (ContentError ("Object with fields expected"))
@@ -465,15 +207,12 @@ and get_field_all e f =
     | V_Dict d -> V_List (Hashtbl.find_all d f)
 
     | V_Module n ->
-      let module M = (val (Hashtbl.find modules n) : MapModule) in
+      let module M = (val (Hashtbl.find modules n) : Module) in
       V_List [(Hashtbl.find M.param_getters f) ()]
 
-    | V_Object (ObjectRef (n, _) as obj_ref, d) ->
-      if not (Hashtbl.mem d "@enriched") then begin
-	let module M = (val (Hashtbl.find modules n) : MapModule) in
-	M.enrich obj_ref d;
-	Hashtbl.replace d "@enriched" V_Unit
-      end;
+    | V_Object (n, obj_ref, d) ->
+      let module M = (val (Hashtbl.find modules n) : Module) in
+      M.enrich obj_ref d;
       if f = "_dict" then V_List ([V_Dict d]) else V_List (Hashtbl.find_all d f)
 
     | _ -> raise (ContentError ("Object with fields expected"))
@@ -486,16 +225,13 @@ and set_field append e f v =
 
       | V_Module n ->
 	if append then raise (ContentError ("Module params can not have multiple values"));
-	let module M = (val (Hashtbl.find modules n) : MapModule) in
+	let module M = (val (Hashtbl.find modules n) : Module) in
 	(Hashtbl.find M.param_setters f) v
 
-      | V_Object (ObjectRef (n, _) as obj_ref, d) ->
+      | V_Object (n, obj_ref, d) ->
 	if f = "_dict" then raise (ContentError ("Read-only field"));
-	if not (Hashtbl.mem d "@enriched") then begin
-	  let module M = (val (Hashtbl.find modules n) : MapModule) in
-	  M.enrich obj_ref d;
-	  Hashtbl.replace d "@enriched" V_Unit
-	end;
+	let module M = (val (Hashtbl.find modules n) : Module) in
+	M.enrich obj_ref d;
 	add_function d f v;
 	Hashtbl.replace d "@modified" V_Unit
 
@@ -511,13 +247,10 @@ and unset_field e f =
       | V_Module n ->
 	raise (ContentError ("Module params can not be removed"));
 
-      | V_Object (ObjectRef (n, _) as obj_ref, d) ->
+      | V_Object (n, obj_ref, d) ->
 	if f = "_dict" then raise (ContentError ("Read-only field"));
-	if not (Hashtbl.mem d "@enriched") then begin
-	  let module M = (val (Hashtbl.find modules n) : MapModule) in
-	  M.enrich obj_ref d;
-	  Hashtbl.replace d "@enriched" V_Unit
-	end;
+	let module M = (val (Hashtbl.find modules n) : Module) in
+	M.enrich obj_ref d;
 	Hashtbl.remove d f;
 	Hashtbl.replace d "@modified" V_Unit
 

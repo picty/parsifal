@@ -1,4 +1,4 @@
-<common> or <asn1> or <tls> or <formats> or <tools> or <map> or <crypto>: include
+<common> or <language> or <asn1> or <tls> or <formats> or <tools> or <map> or <crypto>: include
 
 <tools/facesl.{byte,native}>: use_str, use_unix
 <map/test_socket.{byte,native}>: use_unix

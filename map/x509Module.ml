@@ -1,5 +1,5 @@
-open MapEval
-open MapModule
+open Types
+open Modules
 open X509
 open X509Directory
 open X509Extensions
@@ -58,8 +58,8 @@ module DNParser = struct
   let to_string dn = string_of_dn "" (get_name_resolver ()) dn
 end
 
-module DNModule = Make (DNParser)
-let _ = add_module ((module DNModule : MapModule))
+module DNModule = MakeParserModule (DNParser)
+let _ = add_module ((module DNModule : Module))
 
 
 
@@ -86,8 +86,8 @@ module DateTimeParser = struct
   let to_string o = string_of_datetime (Some o)
 end
 
-module DateTimeModule = Make (DateTimeParser)
-let _ = add_module ((module DateTimeModule : MapModule))
+module DateTimeModule = MakeParserModule (DateTimeParser)
+let _ = add_module ((module DateTimeModule : Module))
 
 
 
@@ -190,5 +190,5 @@ module X509Parser = struct
   let to_string cert = string_of_certificate true "" (Some name_directory) cert
 end
 
-module X509Module = Make (X509Parser)
-let _ = add_module ((module X509Module : MapModule))
+module X509Module = MakeParserModule (X509Parser)
+let _ = add_module ((module X509Module : Module))
