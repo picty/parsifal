@@ -15,7 +15,6 @@ Modules
  - Write the missing update/dump functions
 
 Future
- - Rewrite all with the value type as the common denominator of all the code?
  - Merge ParserEngine and MapModule??
 
 X509
