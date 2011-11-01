@@ -68,7 +68,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
   let register obj = V_Object (name, _register obj, Hashtbl.create 10)
 
   let enrich o d =
-    if Hashtbl.mem d "@enriched" then begin
+    if not (Hashtbl.mem d "@enriched") then begin
       Parser.enrich (find_obj o) d;
       Hashtbl.replace d "@enriched" V_Unit
     end

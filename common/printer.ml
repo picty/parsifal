@@ -3,6 +3,7 @@ open Types
 
 type display_opts = {
   raw_display : bool;   (* Display objects as dictionnaries *)
+  quote_strings : bool; (* Wether strings should be quoted or not *)
   multiline : bool;     (* Is it multiline? *)
   indent : string;      (* If we are multiline, here is the indent for each level *)
   cur_indent : string;  (* and the current indentation *)
@@ -26,9 +27,10 @@ let rec is_multiline raw v =
 let rec string_of_value dopts v =
   let constructed_aux o f mk_content content =
     if dopts.multiline then begin
-      let new_dopts = {dopts with cur_indent = dopts.cur_indent ^ dopts.indent} in
+      let new_indent = dopts.cur_indent ^ dopts.indent in
+      let new_dopts = {dopts with cur_indent = new_indent; quote_strings = true} in
       let content = mk_content new_dopts content in
-      o ^ "\n" ^ (String.concat ("\n" ^ new_dopts.cur_indent) content) ^ dopts.cur_indent ^ f ^ "\n"
+      o ^ "\n" ^ new_indent ^ (String.concat ("\n" ^ new_dopts.cur_indent) content) ^ "\n" ^ dopts.cur_indent ^ f
     end else begin
       let content = mk_content dopts content in
       o ^ (String.concat dopts.separator content) ^ f
@@ -37,7 +39,7 @@ let rec string_of_value dopts v =
   match v with
     | V_Bool b -> string_of_bool b
     | V_Int i -> string_of_int i
-    | V_String s -> "\"" ^ (Common.printable_string s) ^ "\""
+    | V_String s -> if (dopts.quote_strings) then "\"" ^ (Common.quote_string s) ^ "\"" else s
     | V_BinaryString s -> "\"" ^ (Common.hexdump s) ^ "\""
     | V_BitString (n, s) -> "\"[" ^ (string_of_int n) ^ "]" ^ (Common.hexdump s) ^ "\""
     | V_Bigint s -> "0x" ^ (Common.hexdump s)

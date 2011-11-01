@@ -1,7 +1,7 @@
 open Language
 open Types
-open MapEval
-open MapNativeFunctions
+open Eval
+open NativeFunctions
 
 open AnswerModule
 open Asn1Module
@@ -16,7 +16,7 @@ let interactive () =
       flush stdout;
       try
 	let res = interpret_string [global_env] (input_line stdin) in
-	print_endline (_to_string [global_env] res);
+	print_endline (_to_string true [global_env] res);
 	flush stdout
       with
 	| NotImplemented -> output_string stderr "Not implemented\n"; flush stderr

@@ -20,7 +20,7 @@ let only_ascii s =
   res
 
 
-let printable_string s =
+let quote_string s =
   let n = String.length s in
 
   let estimate_len_char c =

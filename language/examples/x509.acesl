@@ -3,7 +3,7 @@
 print_x509 := function (name) {
 	f := open (name);
 	while f do
-		c := parse ("x509", f);
+		c := x509.parse (f);
 		print (c);
 	done
 };

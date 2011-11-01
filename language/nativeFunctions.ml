@@ -1,9 +1,7 @@
 open Types
 open Printer
 open Modules
-open MapEval
-
-
+open Eval
 
 
 (* Generic functions *)
@@ -11,22 +9,23 @@ open MapEval
 let typeof v = V_String (string_of_type v)
 
 (* TODO: Move that in a Printer module? *)
-let _to_string env input =
+let _to_string quote_strings env input =
   let dopts = {
     raw_display = getv_bool env "_raw_display" false;
+    quote_strings = quote_strings;
     multiline = getv_bool env "_multiline" false;
-    indent = getv_str env "_indent" "";
+    indent = getv_str env "_indent" "  ";
     cur_indent = "";
     separator = getv_str env "_separator" ", " }
   in string_of_value dopts input
 
-let to_string env input = V_String (_to_string env input)
+let to_string env input = V_String (_to_string false env input)
 
 
 let print env args =
   let separator = getv_str env "separator" "," in
   let endline = getv_str env "endline" "\n" in
-  print_string ((String.concat separator (List.map (_to_string env) args)) ^ endline);
+  print_string ((String.concat separator (List.map (_to_string false env) args)) ^ endline);
   V_Unit
 
 let length = function
