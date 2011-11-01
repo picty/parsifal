@@ -8,14 +8,14 @@ _separator := "\t";
 count_certs := function (path) {
     f := open (path);
     while f do
-        answer_str := parse ("answer_dump", f);
+        answer_str := answer_dump.parse (f);
 	if ! answer_str then break fi;
         answer := stream (answer_str.ip, answer_str.content);
         n_certs := 0;
 	msgs := "";
 	self_signed := false;
         while answer do
-            record := parse ("tls", answer);	    
+            record := tls.parse (answer);	    
 	    if ! record then break fi;
 	    ct := record.content_type;
 	    if ct == "Handshake" then

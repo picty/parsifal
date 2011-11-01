@@ -4,14 +4,14 @@ tls._minDisplay <- 2;
 asn1._minDisplay <- 5;
 
 foreach_answer := function (f, path) {
-    foreach (open (path), parse ("answer_dump"), f);
+    foreach (open (path), answer_dump.parse, f);
 };      
 
 msgs_of_answer := function (answer) {
     extract_aux := function (flux) {
         if ! flux then return [] fi;
         local msg;
-        msg := parse ("tls", flux);
+        msg := tls.parse (flux);
         if msg
         then msg::(extract_aux (flux))
         else []

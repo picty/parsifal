@@ -1,7 +1,7 @@
 #!/home/yeye/dev/FAceSL/facesl.native
 
 foreach_answer := function (f, path) {
-    foreach (open (path), parse ("answer_dump"), f);
+    foreach (open (path), answer_dump.parse, f);
 };      
 
 count := 0;
