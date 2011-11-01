@@ -1,4 +1,5 @@
 open Types
+open NewParsingEngine
 
 
 (* Generic param helpers *)
@@ -23,10 +24,19 @@ let param_from_string_ref name reference =
 
 module type ParserInterface = sig
   type t
+
   val name : string
   val params : (string * getter option * setter option) list
 
-  val parse : string -> char Stream.t -> t option
+(* TODO: Must change when NewParsingEngine has replaced ParsingEngine *)
+(*  val mk_ehf : unit -> error_handling_function *)
+(*  val parse : pstate -> t option *)
+  type pstate
+  val pstate_of_string : string -> pstate
+  val pstate_of_stream : string -> char Stream.t -> pstate
+  val parse : pstate -> t option
+(* TODO: End of blob *)
+
   val dump : t -> string
   val enrich : t -> (string, value) Hashtbl.t -> unit
   val update : (string, value) Hashtbl.t -> t
@@ -97,14 +107,21 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
 
   (* Object constructions *)
 
-  let stream_of_input = function
-    | V_BinaryString s | V_String s -> ("(inline)", Stream.of_string s)
-    | V_Stream (name, s) -> (name, s)
-    | _ -> raise (ContentError "String or stream expected")
-
   let parse input =
-    let stream_name, stream = stream_of_input input in
-    match Parser.parse stream_name stream with
+(* TODO: Must change when NewParsingEngine has replaced ParsingEngine *)
+(*    let ehf = Parser.mk_ehf () in
+    let pstate = match input with
+      | V_BinaryString s | V_String s -> pstate_of_string ehf s
+      | V_Stream (name, s) -> pstate_of_stream ehf name s
+      | _ -> raise (ContentError "String or stream expected")
+    in *)
+    let pstate = match input with
+      | V_BinaryString s | V_String s -> Parser.pstate_of_string s
+      | V_Stream (name, s) -> Parser.pstate_of_stream name s
+      | _ -> raise (ContentError "String or stream expected")
+    in
+(* TODO: End of blob *)
+    match Parser.parse pstate with
       | None -> V_Unit
       | Some obj -> register obj
     

@@ -14,8 +14,13 @@ module TlsParser = struct
   ]
 
 
-  let parse name stream =
-    let pstate = Engine.pstate_of_stream name stream in
+  (* TODO: Should disappear soon... *)
+  type pstate = Engine.parsing_state
+  let pstate_of_string = Engine.pstate_of_string "(inline)"
+  let pstate_of_stream = Engine.pstate_of_stream
+  (* TODO: End of blob *)
+
+  let parse pstate =
     try
       Some (parse_record !parse_extensions pstate)
     with 

@@ -20,8 +20,13 @@ module DNParser = struct
     else None
 
 
-  let parse name stream =
-    let pstate = Asn1.Engine.pstate_of_stream name stream in
+  (* TODO: Should disappear soon... *)
+  type pstate = Asn1.Engine.parsing_state
+  let pstate_of_string = Asn1.Engine.pstate_of_string "(inline)"
+  let pstate_of_stream = Asn1.Engine.pstate_of_stream
+  (* TODO: End of blob *)
+
+  let parse pstate =
     try
       Asn1Constraints.constrained_parse_opt (dn_constraint object_directory name)
 	ParsingEngine.s_specfatallyviolated pstate
@@ -69,7 +74,10 @@ module DateTimeParser = struct
   let name = "date_time"
   let params = []
 
-  let parse _ _ = raise NotImplemented
+  type pstate = unit
+  let pstate_of_string _ = raise NotImplemented
+  let pstate_of_stream _ _ = raise NotImplemented
+  let parse _ = raise NotImplemented
   let dump _ = raise NotImplemented
   let update _ = raise NotImplemented
 
@@ -97,8 +105,13 @@ module X509Parser = struct
   let name = "x509"
   let params = []
 
-  let parse name stream =
-    let pstate = Asn1.Engine.pstate_of_stream name stream in
+  (* TODO: Should disappear soon... *)
+  type pstate = Asn1.Engine.parsing_state
+  let pstate_of_string = Asn1.Engine.pstate_of_string "(inline)"
+  let pstate_of_stream = Asn1.Engine.pstate_of_stream
+  (* TODO: End of blob *)
+
+  let parse pstate =
     try
       Asn1Constraints.constrained_parse_opt (certificate_constraint object_directory)
 	ParsingEngine.s_specfatallyviolated pstate

@@ -27,8 +27,13 @@ module Asn1Parser = struct
 	       Asn1.resolver = Some X509.name_directory; Asn1.indent_output = true };;
 
 
-  let parse name stream =
-    let pstate = Asn1.Engine.pstate_of_stream name stream in
+  (* TODO: Should disappear soon... *)
+  type pstate = Asn1.Engine.parsing_state
+  let pstate_of_string = Asn1.Engine.pstate_of_string "(inline)"
+  let pstate_of_stream = Asn1.Engine.pstate_of_stream
+  (* TODO: End of blob *)
+
+  let parse pstate =
     try
       Some (Asn1.parse pstate)
     with
