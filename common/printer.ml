@@ -47,7 +47,7 @@ module PrinterLib = struct
       | V_Bool b -> string_of_bool b
       | V_Int i -> string_of_int i
       | V_String s -> if (quote_strings) then "\"" ^ (Common.quote_string s) ^ "\"" else s
-      | V_BinaryString s -> "\"" ^ (Common.hexdump s) ^ "\""
+      | V_BinaryString s -> if (quote_strings) then "\"" ^ (Common.hexdump s) ^ "\"" else Common.hexdump s
       | V_BitString (n, s) -> "\"[" ^ (string_of_int n) ^ "]" ^ (Common.hexdump s) ^ "\""
       | V_Bigint s -> "0x" ^ (Common.hexdump s)
 
