@@ -28,21 +28,25 @@ let interactive () =
   with End_of_file -> ()
 
 let script_interpreter filename =
-  try
-    let lexbuf = Lexing.from_channel (open_in filename) in
-    let ast = Parser.exprs Lexer.main_token lexbuf in
-    let res = match eval_exps [global_env] ast with
-      | V_Unit
-      | V_Bool true -> 0
-      | V_Bool false -> -1
-      | V_Int i -> i
-      | _ -> 0
-    in exit (res)
-  with
-    | NotImplemented -> output_string stderr ("Not implemented\n"); exit (-2)
-    | Parsing.Parse_error ->
-      output_string stderr ("Syntax error\n"); exit (-2)
-    | e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); exit (-2);;
+  let retval =
+    try
+      let lexbuf = Lexing.from_channel (open_in filename) in
+      let ast = Parser.exprs Lexer.main_token lexbuf in
+      eval_exps [global_env] ast
+    with
+      | ReturnValue res -> res
+      | NotImplemented -> output_string stderr ("Not implemented\n"); V_Int (-2)
+      | Parsing.Parse_error -> output_string stderr ("Syntax error\n"); V_Int (-2)
+      | e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); V_Int (-2)
+  in 
+  let res = match retval with
+    | V_Unit
+    | V_Bool true -> 0
+    | V_Bool false -> -1
+    | V_Int i -> i
+    | _ -> 0
+  in exit (res)
+
 
 let _ =
   match Array.length (Sys.argv) with
