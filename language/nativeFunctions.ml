@@ -204,6 +204,23 @@ let open_file filename_v =
   Gc.finalise close_in_noerr f;
   V_Stream (filename, Stream.of_channel f)
 
+let open_out filename_v =
+  let filename = eval_as_string filename_v in
+  (* 0x1a4 = 420 = 0644 *)
+  let f = open_out_gen [Open_wronly; Open_creat; Open_excl; Open_binary] 0x1a4 filename in
+  Gc.finalise close_out_noerr f;
+  V_OutChannel (filename, f)
+
+let output out_v content_v =
+  let (_, out_channel) = eval_as_outchannel out_v in
+  let content = eval_as_string content_v in
+  output_string out_channel content;
+  V_Unit
+
+let outflush out_v =
+  let (_, out_channel) = eval_as_outchannel out_v in
+  flush out_channel;
+  V_Unit
 
 let encode format input = match (eval_as_string format) with
   | "hex" -> V_String (Common.hexdump (eval_as_string input))
@@ -272,6 +289,12 @@ let _ =
 
   (* File and string functions *)
   add_native "open" (one_value_fun open_file);
+  add_native "open_out" (one_value_fun open_out);
+  Hashtbl.replace global_env "stdout" (V_OutChannel ("(stdout)", stdout));
+  Hashtbl.replace global_env "stderr" (V_OutChannel ("(stderr)", stderr));
+  add_native "output" (two_value_fun output);
+  add_native "flush" (one_value_fun outflush);
+
   add_native "encode" (two_value_fun encode);
   add_native "decode" (two_value_fun decode);
   add_native "stream" (two_value_fun stream_of_string);

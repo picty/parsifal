@@ -109,6 +109,10 @@ let eval_as_stream = function
   | V_Stream (n, s) -> n, s
   | _ -> raise (ContentError "Stream expected")
 
+let eval_as_outchannel = function
+  | V_OutChannel (n, s) -> n, s
+  | _ -> raise (ContentError "Output channel expected")
+
 let eval_as_dict = function
   | V_Dict d -> d
   | _ -> raise (ContentError "Dictionary expected")

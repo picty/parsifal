@@ -1,0 +1,27 @@
+#!/home/yeye/dev/FAceSL/facesl.native
+
+if (length (args) != 2) then
+    output (stderr, "extract_answer <dump file> <ip>\n");
+    return 1;
+fi;
+
+filename := head (args);
+f := open (filename);
+ip:= nth (1, args);
+
+while f do
+    answer := answer_dump.parse (f);
+    if ! answer then
+        output (stderr, "invalid answer in $filename.\n");
+        return 2;
+    fi;
+    if answer.ip = ip then
+        out := open_out ("$ip.dump");
+        output (out, answer_dump.dump (answer));
+        flush (out);
+	return 0;
+    fi;
+done;
+
+output (stderr, "IP $ip not found in $filename.\n");
+return 3;
