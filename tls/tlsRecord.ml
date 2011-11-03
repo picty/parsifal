@@ -1,19 +1,16 @@
 open Types
 open Modules
 open NewParsingEngine
+open Tls
 
 
-(* Protocol version *)
+type tls_record_errors =
+  | UnexpectedContentType
 
-type protocol_version = { major : int; minor : int }
+let tls_alert_errors_strings =
+  [| (UnexpectedContentType, s_benign, "Unexpected content type") |]
 
-let string_of_protocol_version v = match (v.major, v.minor) with
-  | 2, 0 -> "SSLv2"
-  | 3, 0 -> "SSLv3"
-  | 3, 1 -> "TLSv1.0"
-  | 3, 2 -> "TLSv1.1"
-  | 3, 3 -> "TLSv1.2"
-  | maj, min -> "version" ^ (string_of_int maj) ^ "." ^ (string_of_int min)
+let tls_record_emit = register_module_errors_and_make_emit_function "tlsAlert" tls_alert_errors_strings
 
 
 
@@ -39,8 +36,11 @@ let content_type_of_int pstate = function
   | 22 -> CT_Handshake
   | 23 -> CT_ApplicationData
   | x ->
-    emit (* (UnexpectedContentType x) TODO *) (123, None) s_benign pstate;
+    tls_record_emit UnexpectedContentType (Some (string_of_int x)) pstate;
     CT_Unknown x
+
+
+
 
 
 (* Record type *)
@@ -57,12 +57,12 @@ module RecordParser = struct
   let name = "record"
   type t = record_type
 
-  let mk_ehf () = default_error_handling_function None 0 0
+  let mk_ehf () = default_error_handling_function !TlsLib.tolerance !TlsLib.minDisplay
 
   (* TODO: Should disappear soon... *)
   type pstate = NewParsingEngine.parsing_state
-  let pstate_of_string = NewParsingEngine.pstate_of_string (mk_ehf ())
-  let pstate_of_stream = NewParsingEngine.pstate_of_stream (mk_ehf ())
+  let pstate_of_string s = NewParsingEngine.pstate_of_string (mk_ehf ()) s
+  let pstate_of_stream n s = NewParsingEngine.pstate_of_stream (mk_ehf ()) n s
   (* TODO: End of blob *)
 
   let parse pstate =

@@ -1,10 +1,10 @@
 open Types
 open Modules
-open Tls
+open OldTls
 
 module TlsParser = struct
   type t = record
-  let name = "tls"
+  let name = "old_tls"
 
   let parse_extensions  = ref true
   let params = [

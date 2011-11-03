@@ -141,11 +141,11 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
       | Some obj -> register obj
     with
       | NewParsingEngine.OutOfBounds s ->
-	output_string stderr ("Out of bounds in " ^ s ^ ")");
+	output_string stderr ("Out of bounds in " ^ s ^ "\n");
 	flush stderr;
 	V_Unit
       | NewParsingEngine.ParsingError (err, sev, pstate) ->
-	output_string stderr ((NewParsingEngine.string_of_parsing_error "Parsing error" None err sev pstate) ^ "\n");
+	output_string stderr ((NewParsingEngine.string_of_parsing_error "Parsing error" err sev pstate));
 	flush stderr;
 	V_Unit
 

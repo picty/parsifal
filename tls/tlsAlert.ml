@@ -1,6 +1,20 @@
 open Types
 open Modules
 open NewParsingEngine
+open Tls
+
+
+type tls_alert_errors =
+  | UnexpectedAlertLevel
+  | UnexpectedAlertType
+
+let tls_alert_errors_strings =
+  [| (UnexpectedAlertLevel, s_benign, "Unexpected alert level");
+     (UnexpectedAlertType, s_benign, "Unexpected alert type") |]
+
+let tls_alert_emit = register_module_errors_and_make_emit_function "tlsAlert" tls_alert_errors_strings
+
+
 
 type alert_level =
   | AL_Warning
@@ -74,7 +88,7 @@ let alert_level_of_int pstate = function
   | 1 -> AL_Warning
   | 2 -> AL_Fatal
   | x ->
-    emit (124, None) (*TODO: (UnexpectedAlertLevel x)*) s_benign pstate;
+    tls_alert_emit UnexpectedAlertLevel (Some (string_of_int x)) pstate;
     AL_Unknown x
 
 let alert_type_of_int pstate = function
@@ -104,19 +118,20 @@ let alert_type_of_int pstate = function
   | 100 -> NoRenegotiation
   | 110 -> UnsupportedExtension
   | x ->
-    emit (124, None) (*TODO: (UnexpectedAlertType x)*) s_benign pstate;
+    tls_alert_emit UnexpectedAlertType (Some (string_of_int x)) pstate;
     UnknownAlertType x
 
 module AlertParser = struct
   let name = "alert"
   type t = alert_level * alert_type
 
-  let mk_ehf () = default_error_handling_function None 0 0
+  let mk_ehf () = default_error_handling_function !TlsLib.tolerance !TlsLib.minDisplay
+
 
   (* TODO: Should disappear soon... *)
   type pstate = NewParsingEngine.parsing_state
-  let pstate_of_string = NewParsingEngine.pstate_of_string (mk_ehf ())
-  let pstate_of_stream = NewParsingEngine.pstate_of_stream (mk_ehf ())
+  let pstate_of_string s = NewParsingEngine.pstate_of_string (mk_ehf ()) s
+  let pstate_of_stream n s = NewParsingEngine.pstate_of_stream (mk_ehf ()) n s
   (* TODO: End of blob *)
 
   let parse pstate =

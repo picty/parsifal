@@ -16,7 +16,7 @@ module AnswerDumpParser = struct
   let name = "answer_dump"
   let params = []
 
-  let mk_ehf () = NewParsingEngine.default_error_handling_function None 0 0
+  let mk_ehf () = NewParsingEngine.default_error_handling_function 0 0
 
   (* TODO: Should disappear soon... *)
   type pstate = NewParsingEngine.parsing_state

@@ -152,7 +152,8 @@ let s_fatal = 5
 (* Parsing state *)
 (*****************)
 
-type parsing_error = (int * string option)
+type parsing_error = (string * int * string option) (* module name, errno, details *)
+
 type parsing_history = (string * int * int option) list
 
 type parsing_state = {
@@ -185,23 +186,69 @@ let string_of_pstate pcontext =
   "{" ^ (String.concat ", " (List.rev positions)) ^ "}"
 
 
-let string_of_parsing_error title str_of_err err sev pstate =
-  title ^ "(" ^ (string_of_severity sev) ^ "): " ^
-    (match str_of_err with
-      | None -> begin
-	match err with
-	  | errno, None -> "error " ^ (string_of_int errno)
-	  | errno, Some errstring  -> "error " ^ (string_of_int errno) ^ " (" ^ errstring ^ ")"
-      end
-      | Some string_of_error -> string_of_error err) ^
-    " inside " ^ (string_of_pstate pstate)
+
+(******************)
+(* Parsing errors *)
+(******************)
+
+type module_error_strings = string array
+let error_strings : (string, module_error_strings) Hashtbl.t = Hashtbl.create 10
 
 
-let default_error_handling_function str_of_err tolerance minDisplay err sev pstate =
+let register_module_errors_and_make_emit_function (name : string) (assoc_array : ('a * severity * string) array)
+    : ('a -> string option -> parsing_state -> unit) =
+  let n = Array.length assoc_array in
+  let assoc_hash = Hashtbl.create n in
+  let table = Array.make n "" in
+  for i = 0 to n - 1 do
+    let x, sev, s = assoc_array.(i) in
+    Hashtbl.replace assoc_hash x (i, sev);
+    table.(i) <- s
+  done;
+  Hashtbl.replace error_strings name table;
+
+  let emit x details pstate =
+    let perror, sev =
+      try
+	let i, sev = Hashtbl.find assoc_hash x in
+	(name, i, details), sev
+      with Not_found -> (name, -1, details), s_fatal
+    in pstate.ehf perror sev pstate
+  in
+
+  emit
+
+
+let strerror (module_name, errno, details) =
+  let main_str =
+    try
+      let table = Hashtbl.find error_strings module_name in
+      table.(errno)
+    with _ -> "Unknown error " ^ module_name ^ "." ^ (string_of_int errno)
+  in
+  match details with
+    | None -> main_str
+    | Some details_str -> main_str ^ " (" ^ details_str ^ ")"
+
+
+
+(******************)
+(* Error handling *)
+(******************)
+
+let string_of_parsing_error title err sev pstate =
+  title ^ " (" ^ (string_of_severity sev) ^ "): " ^
+    (strerror err) ^ " inside " ^ (string_of_pstate pstate) ^ "\n"
+
+
+let default_error_handling_function tolerance minDisplay err sev pstate =
   if sev >= tolerance || sev >= s_fatal
   then raise (ParsingError (err, sev, pstate))
   else if minDisplay <= sev
-  then output_string stderr (string_of_parsing_error "Warning" str_of_err err sev pstate)
+  then begin
+    output_string stderr (string_of_parsing_error "Warning" err sev pstate);
+    flush stderr
+  end
 
 
 
@@ -214,9 +261,6 @@ let check_bounds pstate to_be_read =
   match pstate.cur_length with
     | None -> true
     | Some len -> pstate.cur_offset + to_be_read <= len
-
-let emit err sev pstate =  pstate.ehf err sev pstate
-
 
 let pstate_of_stream ehf orig content =
   mk_pstate ehf orig (mk_stream_input content) 0 None []
