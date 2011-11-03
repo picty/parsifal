@@ -5,7 +5,8 @@ open Eval
 open NativeFunctions
 
 open AnswerModule
-open Record
+open TlsRecord
+open TlsAlert
 
 open Asn1Module
 open X509Module

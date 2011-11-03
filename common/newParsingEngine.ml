@@ -295,3 +295,18 @@ let extract_variable_length_string name length_fun pstate =
   let res = pop_string new_pstate in
   go_up pstate len;
   res
+
+let extract_list name length_fun extract_fun pstate =
+  let len = length_fun pstate in
+  let new_pstate = go_down pstate name len in
+  let rec aux () =
+    if eos new_pstate
+    then []
+    else begin
+      let next = extract_fun new_pstate in
+      next::(aux ())
+    end
+  in
+  let res = aux () in
+  go_up pstate len;
+  res
