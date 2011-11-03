@@ -190,9 +190,12 @@ and get_field e f =
   match e with
     | V_Dict d -> (Hashtbl.find d f)
 
-    | V_Module n ->
+    | V_Module n -> begin
       let module M = (val (Hashtbl.find modules n) : Module) in
-      (Hashtbl.find M.param_getters f) ()
+      try
+	Hashtbl.find M.static_params f
+      with Not_found -> (Hashtbl.find M.param_getters f) ()
+    end
 
     | V_Object (n, obj_ref, d) ->
       let module M = (val (Hashtbl.find modules n) : Module) in
@@ -205,9 +208,12 @@ and get_field_all e f =
   match e with
     | V_Dict d -> V_List (Hashtbl.find_all d f)
 
-    | V_Module n ->
+    | V_Module n -> begin
       let module M = (val (Hashtbl.find modules n) : Module) in
-      V_List [(Hashtbl.find M.param_getters f) ()]
+      try
+	V_List [Hashtbl.find M.static_params f]
+      with Not_found -> V_List [(Hashtbl.find M.param_getters f) ()]
+    end
 
     | V_Object (n, obj_ref, d) ->
       let module M = (val (Hashtbl.find modules n) : Module) in

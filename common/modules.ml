@@ -19,6 +19,10 @@ let param_from_string_ref name reference =
    Some (fun () -> V_String !reference),
    Some (fun x -> reference := eval_as_string (x)))
 
+let no_getter () = raise Not_found
+let no_setter _ = raise (ContentError ("Read-only field"))
+
+
 
 (* ParserInterface and Module functor *)
 
@@ -48,6 +52,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
   let name = Parser.name
   let param_getters = Hashtbl.create 10
   let param_setters = Hashtbl.create 10
+  let static_params = Hashtbl.create 10
 
   (* Object handling *)
 
@@ -141,30 +146,29 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
     _update index d;
     f (Hashtbl.find objects index)
 
-  let dump =
-    let dump_aux obj = V_BinaryString (Parser.dump obj)
-    in apply dump_aux
-
-  let to_string =
-    let to_string_aux obj = V_String (Parser.to_string obj)
-    in apply to_string_aux
-
+  (* dump / to_string should be constructed with apply *)
+  let dump_aux obj = V_BinaryString (Parser.dump obj)
+  let to_string_aux obj = V_String (Parser.to_string obj)
 
   let init () =
-    let no_getter () = raise Not_found in
-    let no_setter _ = raise (ContentError ("Read-only field")) in
     let populate_param (param_name, getter, setter) =
       Hashtbl.replace param_getters param_name (Common.pop_option getter no_getter);
       Hashtbl.replace param_setters param_name (Common.pop_option setter no_setter);
     in
-    let mk_fun f = Some (fun () -> V_Function (NativeFun f)) in
+    let populate_static_param (param_name, v) =
+      Hashtbl.replace static_params param_name v
+    in
+    let populate_fun (fun_name, f) =
+      Hashtbl.replace static_params fun_name (V_Function (NativeFun (f)))
+    in
     List.iter populate_param Parser.params;
-    populate_param ("name", Some (fun () -> V_String name), None);
+    populate_static_param ("name", V_String name);
     populate_param ("object_count", Some object_count, None);
-    populate_param ("parse", mk_fun (one_value_fun parse), None);
-    populate_param ("make", mk_fun (one_value_fun parse), None);
-    populate_param ("dump", mk_fun (one_value_fun dump), None);
-    populate_param ("to_string", mk_fun (one_value_fun to_string), None);
+
+    populate_fun ("parse", one_value_fun parse);
+    populate_fun ("make", one_value_fun make);
+    populate_fun ("dump", one_value_fun (apply dump_aux));
+    populate_fun ("to_string", one_value_fun (apply to_string_aux));
     ()
 
     (* TODO: Add a _dict or _params magic objects ? Remove all _ ? *)
@@ -188,20 +192,23 @@ module MakeLibraryModule = functor (Library : LibraryInterface) -> struct
   let name = Library.name
   let param_getters = Hashtbl.create 10
   let param_setters = Hashtbl.create 10
+  let static_params = Hashtbl.create 10
 
   let init () =
-    let no_getter () = raise Not_found in
-    let no_setter _ = raise (ContentError ("Read-only field")) in
     let populate_param (param_name, getter, setter) =
       Hashtbl.replace param_getters param_name (Common.pop_option getter no_getter);
       Hashtbl.replace param_setters param_name (Common.pop_option setter no_setter);
     in
-    let populate_function (fun_name, fun_value) =
-      Hashtbl.replace param_getters fun_name (fun () -> V_Function fun_value)
+    let populate_static_param (param_name, v) =
+      Hashtbl.replace static_params param_name v
     in
+    let populate_fun (fun_name, f) =
+      Hashtbl.replace static_params fun_name (V_Function (f))
+    in
+
     List.iter populate_param Library.params;
-    populate_param ("name", Some (fun () -> V_String name), None);
-    List.iter populate_function Library.functions;
+    populate_static_param ("name", V_String name);
+    List.iter populate_fun Library.functions;
     ()
 
   type t = unit

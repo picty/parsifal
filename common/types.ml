@@ -55,6 +55,7 @@ module type Module = sig
   val name : string
   val param_getters : (string, getter) Hashtbl.t
   val param_setters : (string, setter) Hashtbl.t
+  val static_params : (string, value) Hashtbl.t
 
   val init : unit -> unit
 
