@@ -1,3 +1,8 @@
+(* TODO *)
+
+failwith "TODO: Rewrite!"
+
+(*
 open AnswerModule.AnswerDumpParser
 
 let get_name answer =
@@ -54,3 +59,4 @@ with
   | OldTls.Engine.ParsingError (err, sev, pstate) ->
     print_newline ();
     output_string stderr ("OldTls.Fatal " ^ (OldTls.Engine.string_of_exception err sev pstate) ^ ")\n");;
+*)

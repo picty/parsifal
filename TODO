@@ -1,4 +1,6 @@
 TLS
+ - Add an option to avoid certificate parsing when not necessary
+ - Clean up to_string code... with mandatory indent !
  - Rewrite alert types/levels as simple ints, and provide lookup tables to the code.
  - Add native lookup_tables
  - Enrich TLS parser.
@@ -7,12 +9,6 @@ TLS
 Modules
  - MapModule: Add a _dict or _params magic objects ? Remove all _ ?
  - Write the missing update/dump functions
-
-Future
- - Merge ParserEngine and Module
-   * ParsingInterface should provide a mk_ehf
-   * MakeParsingModule could use efficiently pstate_of_string and pstate_of_stream
-   * MakeParsingModule.parse should be the one to catch OOB and ParsingError exceptions
 
 X509
  - Put the objects, constraints and registering functions for (PKInfo, Signature and Crypto algo) in a separate file

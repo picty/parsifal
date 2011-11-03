@@ -22,6 +22,7 @@ module AnswerDumpParser = struct
   type pstate = NewParsingEngine.parsing_state
   let pstate_of_string = NewParsingEngine.pstate_of_string (mk_ehf ())
   let pstate_of_stream = NewParsingEngine.pstate_of_stream (mk_ehf ())
+  let eos = eos
   (* TODO: End of blob *)
 
   let parse pstate =

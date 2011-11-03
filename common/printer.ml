@@ -71,8 +71,8 @@ module PrinterLib = struct
       | V_Object (n, obj_ref, d) ->
 	let m = Hashtbl.find modules n in
 	let module M = (val m : Module) in
-	if not !raw_display && (Hashtbl.mem M.param_getters "to_string") then begin
-	  match (Hashtbl.find M.param_getters "to_string") () with
+	if not !raw_display && (Hashtbl.mem M.static_params "to_string") then begin
+	  match (Hashtbl.find M.static_params "to_string") with
 	    | V_Function (NativeFun f) -> eval_as_string (f [v])
 	    | _ -> raise NotImplemented
 	end else begin

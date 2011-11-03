@@ -24,7 +24,10 @@ module DNParser = struct
   type pstate = Asn1.Engine.parsing_state
   let pstate_of_string = Asn1.Engine.pstate_of_string "(inline)"
   let pstate_of_stream = Asn1.Engine.pstate_of_stream
+  let eos = Asn1.Engine.eos
   (* TODO: End of blob *)
+
+  let mk_ehf _ = raise NotImplemented
 
   let parse pstate =
     try
@@ -77,6 +80,8 @@ module DateTimeParser = struct
   type pstate = unit
   let pstate_of_string _ = raise NotImplemented
   let pstate_of_stream _ _ = raise NotImplemented
+  let eos _ = raise NotImplemented
+  let mk_ehf _ = raise NotImplemented
   let parse _ = raise NotImplemented
   let dump _ = raise NotImplemented
   let update _ = raise NotImplemented
@@ -108,8 +113,11 @@ module X509Parser = struct
   (* TODO: Should disappear soon... *)
   type pstate = Asn1.Engine.parsing_state
   let pstate_of_string = Asn1.Engine.pstate_of_string "(inline)"
+  let eos = Asn1.Engine.eos
   let pstate_of_stream = Asn1.Engine.pstate_of_stream
   (* TODO: End of blob *)
+
+  let mk_ehf _ = raise NotImplemented
 
   let parse pstate =
     try

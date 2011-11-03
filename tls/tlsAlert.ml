@@ -1,16 +1,19 @@
 open Types
 open Modules
 open NewParsingEngine
-open Tls
+open TlsCommon
 
 
 type tls_alert_errors =
   | UnexpectedAlertLevel
   | UnexpectedAlertType
+  | UnexpectedJunk
 
-let tls_alert_errors_strings =
-  [| (UnexpectedAlertLevel, s_benign, "Unexpected alert level");
-     (UnexpectedAlertType, s_benign, "Unexpected alert type") |]
+let tls_alert_errors_strings = [|
+  (UnexpectedAlertLevel, s_benign, "Unexpected alert level");
+  (UnexpectedAlertType, s_benign, "Unexpected alert type");
+  (UnexpectedJunk, s_idempotencebreaker, "Unexpected junk at the end of an alert");
+|]
 
 let tls_alert_emit = register_module_errors_and_make_emit_function "tlsAlert" tls_alert_errors_strings
 
@@ -125,19 +128,21 @@ module AlertParser = struct
   let name = "alert"
   type t = alert_level * alert_type
 
-  let mk_ehf () = default_error_handling_function !TlsLib.tolerance !TlsLib.minDisplay
+  let mk_ehf () = default_error_handling_function !tolerance !minDisplay
 
 
   (* TODO: Should disappear soon... *)
   type pstate = NewParsingEngine.parsing_state
   let pstate_of_string s = NewParsingEngine.pstate_of_string (mk_ehf ()) s
   let pstate_of_stream n s = NewParsingEngine.pstate_of_stream (mk_ehf ()) n s
+  let eos = eos
   (* TODO: End of blob *)
 
   let parse pstate =
     let level = pop_byte pstate in
     let t = pop_byte pstate in
-(* TODO:  assert_eos pstate; *)
+    if not (eos pstate)
+    then tls_alert_emit UnexpectedJunk (Some (Common.hexdump (pop_string pstate))) pstate;
     Some (alert_level_of_int pstate level, alert_type_of_int pstate t)
 
   let dump alert = raise NotImplemented
@@ -150,7 +155,7 @@ module AlertParser = struct
   let update dict = raise NotImplemented
 
   let to_string (alert_level, alert_type) =
-    "TLS Alert (" ^ (string_of_alert_level alert_level) ^ "): " ^ (string_of_alert_type alert_type) ^ "\n"
+    "TLS Alert (" ^ (string_of_alert_level alert_level) ^ "): " ^ (string_of_alert_type alert_type)
 
   let params = []
 end

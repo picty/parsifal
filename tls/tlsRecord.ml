@@ -1,7 +1,8 @@
 open Types
 open Modules
+open Printer
 open NewParsingEngine
-open Tls
+open TlsCommon
 
 
 type tls_record_errors =
@@ -48,7 +49,7 @@ let content_type_of_int pstate = function
 type record_type = {
   version : protocol_version;
   content_type : content_type;
-  content : string
+  content : value
 }
 
 
@@ -57,12 +58,13 @@ module RecordParser = struct
   let name = "record"
   type t = record_type
 
-  let mk_ehf () = default_error_handling_function !TlsLib.tolerance !TlsLib.minDisplay
+  let mk_ehf () = default_error_handling_function !tolerance !minDisplay
 
   (* TODO: Should disappear soon... *)
   type pstate = NewParsingEngine.parsing_state
   let pstate_of_string s = NewParsingEngine.pstate_of_string (mk_ehf ()) s
   let pstate_of_stream n s = NewParsingEngine.pstate_of_stream (mk_ehf ()) n s
+  let eos = eos
   (* TODO: End of blob *)
 
   let parse pstate =
@@ -73,14 +75,14 @@ module RecordParser = struct
     let content = extract_string (string_of_content_type ctype) len pstate in
     Some { version = {major = maj; minor = min};
 	   content_type = ctype;
-	   content = content }
+	   content = V_BinaryString content }
 
   let dump record = raise NotImplemented
 
   let enrich record dict =
     Hashtbl.replace dict "content_type" (V_String (string_of_content_type (record.content_type)));
     Hashtbl.replace dict "version" (V_String (string_of_protocol_version record.version));
-    Hashtbl.replace dict "content" (V_BinaryString record.content);
+    Hashtbl.replace dict "content" record.content;
     ()
 
   let update dict = raise NotImplemented
@@ -88,20 +90,28 @@ module RecordParser = struct
   let to_string r =
     "TLS Record (" ^ (string_of_protocol_version r.version) ^
       "): " ^ (string_of_content_type r.content_type) ^
-      "\n    Length:  " ^ (string_of_int (String.length r.content)) ^
-      "\n    Content: " ^ (Common.hexdump r.content) ^ "\n"
+      (match r.content with
+	| V_BinaryString s | V_String s ->
+	  "\n    Length:  " ^ (string_of_int (String.length s))
+	| _ -> "") ^
+      "\n    Content: " ^ (PrinterLib.string_of_value_aux "         " false r.content)
 
 
   let merge records =
     let rec merge_aux current accu records = match current, records with
       | None, [] -> []
       | Some r, [] -> List.rev (r::accu)
-      | None, r::rem -> merge_aux (Some r) accu rem
+      | None, r::rem ->
+	if r.content_type = CT_Handshake
+	then merge_aux (Some r) accu rem
+	else merge_aux None (r::accu) rem
       | Some r1, r2::rem ->
-	if (r1.version = r2.version && r1.content_type == r2.content_type)
+	if (r1.version = r2.version && r1.content_type = r2.content_type)
 	(* TODO: Here we might lose some info about the exact history... *)
-	then merge_aux (Some {r1 with content = r1.content ^ r2.content}) accu rem
-	else merge_aux (Some r2) (r1::accu) rem
+	then begin
+	  let new_content = V_BinaryString ((eval_as_string r1.content) ^ (eval_as_string r2.content)) in
+	  merge_aux (Some {r1 with content = new_content}) accu rem
+	end else merge_aux None (r1::accu) records
     in merge_aux None [] records
 
   let params = []

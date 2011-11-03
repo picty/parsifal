@@ -12,7 +12,7 @@ type input = {
   drop_bytes : int -> unit;
   eos : unit -> bool;
 
-  mk_subinput : input -> int -> input;
+  mk_subinput : int -> input;
 }
 
 exception RawOutOfBounds
@@ -50,23 +50,28 @@ let s_peek_byte str offset off =
   try int_of_char (str.[!offset + off])
   with Invalid_argument _ -> raise RawOutOfBounds
 
-let s_eos str offset () =
-  !offset >= String.length str
+let s_eos n offset () = !offset >= n
 
 let s_drop_bytes str offset n = offset := !offset + n
 
-let s_mk_subinput i _ = i
-
-let mk_string_input str initial_offset =
+let rec s_mk_subinput str old_offset local_len =
+  let initial_offset = match old_offset with
+    | None -> 0
+    | Some offset_ref ->
+      let tmp = !offset_ref in
+      offset_ref := !offset_ref + local_len;
+      tmp
+  in
   let offset = ref initial_offset in
-  let res = { pop_byte = s_pop_byte str offset;
-	      pop_string = s_pop_string str offset;
-	      pop_bytes = s_pop_bytes str offset;
-	      peek_byte = s_peek_byte str offset;
-	      drop_bytes = s_drop_bytes str offset;
-	      eos = s_eos str offset;
-	      mk_subinput = s_mk_subinput }
-  in res
+  { pop_byte = s_pop_byte str offset;
+    pop_string = s_pop_string str offset;
+    pop_bytes = s_pop_bytes str offset;
+    peek_byte = s_peek_byte str offset;
+    drop_bytes = s_drop_bytes str offset;
+    eos = s_eos local_len offset;
+    mk_subinput = s_mk_subinput str (Some offset) }
+
+let mk_string_input str = s_mk_subinput str None (String.length str)
 
 
 
@@ -109,9 +114,9 @@ let f_drop_bytes str off =
 
 let f_eos str () = Common.eos str
 
-let f_mk_subinput str _ l =
+let f_mk_subinput str l =
   let s = f_pop_string str l in
-  mk_string_input s 0
+  mk_string_input s
 
 let mk_stream_input str =
   { pop_byte = f_pop_byte str;
@@ -266,7 +271,7 @@ let pstate_of_stream ehf orig content =
   mk_pstate ehf orig (mk_stream_input content) 0 None []
 
 let pstate_of_string ehf content =
-  mk_pstate ehf "(inline string)" (mk_string_input content 0)
+  mk_pstate ehf "(inline string)" (mk_string_input content)
     0 (Some (String.length content)) []
 
 let pstate_of_channel ehf orig content =
@@ -275,12 +280,19 @@ let pstate_of_channel ehf orig content =
 let go_down pstate name l =
   try
     if not (check_bounds pstate l) then raise RawOutOfBounds;
-    let new_input = pstate.cur_input.mk_subinput pstate.cur_input l
-    in mk_pstate pstate.ehf name new_input 0 (Some l) (push_history pstate)
+    let new_input = pstate.cur_input.mk_subinput l in
+    let res = mk_pstate pstate.ehf name new_input 0 (Some l) (push_history pstate) in
+    pstate.cur_offset <- pstate.cur_offset + l;
+    res
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
 
-let go_up orig_pstate l =
-  orig_pstate.cur_offset <- orig_pstate.cur_offset + l
+let go_down_on_left_portion pstate name =
+  match pstate.cur_length with
+    | None -> raise (OutOfBounds (string_of_pstate pstate))
+    | Some l ->
+      let left_len = l - pstate.cur_offset in
+      go_down pstate name left_len
+
 
 let pop_byte pstate =
   try
@@ -300,20 +312,28 @@ let pop_string pstate =
   try
     match pstate.cur_length with
       | None -> raise RawOutOfBounds
-      | Some len -> pstate.cur_input.pop_string (len - pstate.cur_offset)
+      | Some len ->
+	let res = pstate.cur_input.pop_string (len - pstate.cur_offset) in
+	pstate.cur_offset <- len;
+	res
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
 
 let pop_bytes pstate n =
   try
     if not (check_bounds pstate n) then raise RawOutOfBounds;
-    pstate.cur_input.pop_bytes n
+    let res = pstate.cur_input.pop_bytes n in
+    pstate.cur_offset <- pstate.cur_offset + n;
+    res
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
 
 let pop_all_bytes pstate n =
   try
     match pstate.cur_length with
       | None -> raise RawOutOfBounds
-      | Some len -> pstate.cur_input.pop_bytes (len - pstate.cur_offset)
+      | Some len ->
+	let res = pstate.cur_input.pop_string (len - pstate.cur_offset) in
+	pstate.cur_offset <- len;
+	res
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
 
 let eos pstate = pstate.cur_input.eos ()
@@ -329,16 +349,12 @@ let extract_uint8 = pop_byte
 
 let extract_string name len pstate =
   let new_pstate = go_down pstate name len in
-  let res = pop_string new_pstate in
-  go_up pstate len;
-  res
+  pop_string new_pstate
 
 let extract_variable_length_string name length_fun pstate =
   let len = length_fun pstate in
   let new_pstate = go_down pstate name len in
-  let res = pop_string new_pstate in
-  go_up pstate len;
-  res
+  pop_string new_pstate
 
 let extract_list name length_fun extract_fun pstate =
   let len = length_fun pstate in
@@ -351,6 +367,4 @@ let extract_list name length_fun extract_fun pstate =
       next::(aux ())
     end
   in
-  let res = aux () in
-  go_up pstate len;
-  res
+  aux ()

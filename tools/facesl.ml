@@ -5,12 +5,11 @@ open Eval
 open NativeFunctions
 
 open AnswerModule
-open TlsRecord
-open TlsAlert
+open Tls
 
 open Asn1Module
 open X509Module
-open TlsModule
+
 
 let interactive () =
   setv [global_env] "PS1" (V_String "> ");
@@ -26,6 +25,15 @@ let interactive () =
 	| NotImplemented -> output_string stderr "Not implemented\n"; flush stderr
 	| Parsing.Parse_error -> output_string stderr ("Syntax error\n"); flush stderr
 	| End_of_file -> raise End_of_file
+
+	(* HACK *)
+	| NewParsingEngine.OutOfBounds s ->
+	  output_string stderr ("Out of bounds in " ^ s ^ "\n");
+	  flush stderr
+	| NewParsingEngine.ParsingError (err, sev, pstate) ->
+	  output_string stderr ((NewParsingEngine.string_of_parsing_error "Parsing error" err sev pstate));
+	  flush stderr
+
 	| e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); flush stderr
     done
   with End_of_file -> ()

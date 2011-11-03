@@ -31,7 +31,10 @@ module Asn1Parser = struct
   type pstate = Asn1.Engine.parsing_state
   let pstate_of_string = Asn1.Engine.pstate_of_string "(inline)"
   let pstate_of_stream = Asn1.Engine.pstate_of_stream
+  let eos = Asn1.Engine.eos
   (* TODO: End of blob *)
+
+  let mk_ehf _ = raise NotImplemented
 
   let parse pstate =
     try

@@ -1,7 +1,7 @@
-<common> or <language> or <asn1> or <tls> or <formats> or <tools> or <map> or <crypto>: include
+<common> or <language> or <asn1> or <tls> or <formats> or <tools> or <crypto>: include
 
 <tools/facesl.{byte,native}>: use_str, use_unix
-<map/test_socket.{byte,native}>: use_unix
+<tools/test_socket.{byte,native}>: use_unix
 
 "crypto/test_crypto.native": use_crypto
 <crypto/*.c>: crypto_implem
