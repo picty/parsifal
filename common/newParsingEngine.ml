@@ -153,13 +153,15 @@ let s_fatal = 5
 (*****************)
 
 type parsing_error = (int * string option)
+type parsing_history = (string * int * int option) list
+
 type parsing_state = {
   ehf : error_handling_function;
   cur_name : string;
   cur_input : input;
   mutable cur_offset : int;
   cur_length : int option;
-  history : (string * input * int * int option) list
+  history : parsing_history
 }
 and error_handling_function = parsing_error -> severity -> parsing_state -> unit
 
@@ -172,10 +174,10 @@ let mk_pstate ehf n i o l h =
     cur_length = l; history = h }
 
 let push_history pstate =
-  (pstate.cur_name, pstate.cur_input, pstate.cur_offset, pstate.cur_length)::pstate.history
+  (pstate.cur_name, pstate.cur_offset, pstate.cur_length)::pstate.history
 
 let string_of_pstate pcontext =
-  let string_of_elt (n, _, o, l) = match l with
+  let string_of_elt (n, o, l) = match l with
     | None -> n ^ "[" ^ (string_of_int o) ^ "]"
     | Some len -> n ^ "[" ^ (string_of_int o) ^ "/" ^ (string_of_int len) ^ "]"
   in
