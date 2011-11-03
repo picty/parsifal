@@ -170,17 +170,17 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
   let dump_aux obj = V_BinaryString (Parser.dump obj)
   let to_string_aux obj = V_String (Parser.to_string obj)
 
+  let populate_param (param_name, getter, setter) =
+    Hashtbl.replace param_getters param_name (Common.pop_option getter no_getter);
+    Hashtbl.replace param_setters param_name (Common.pop_option setter no_setter)
+
+  let populate_static_param (param_name, v) =
+    Hashtbl.replace static_params param_name v
+
+  let populate_fun (fun_name, f) =
+    Hashtbl.replace static_params fun_name (V_Function (NativeFun (f)))
+
   let init () =
-    let populate_param (param_name, getter, setter) =
-      Hashtbl.replace param_getters param_name (Common.pop_option getter no_getter);
-      Hashtbl.replace param_setters param_name (Common.pop_option setter no_setter);
-    in
-    let populate_static_param (param_name, v) =
-      Hashtbl.replace static_params param_name v
-    in
-    let populate_fun (fun_name, f) =
-      Hashtbl.replace static_params fun_name (V_Function (NativeFun (f)))
-    in
     List.iter populate_param Parser.params;
     populate_static_param ("name", V_String name);
     populate_param ("object_count", Some object_count, None);
@@ -214,18 +214,17 @@ module MakeLibraryModule = functor (Library : LibraryInterface) -> struct
   let param_setters = Hashtbl.create 10
   let static_params = Hashtbl.create 10
 
-  let init () =
-    let populate_param (param_name, getter, setter) =
-      Hashtbl.replace param_getters param_name (Common.pop_option getter no_getter);
-      Hashtbl.replace param_setters param_name (Common.pop_option setter no_setter);
-    in
-    let populate_static_param (param_name, v) =
-      Hashtbl.replace static_params param_name v
-    in
-    let populate_fun (fun_name, f) =
-      Hashtbl.replace static_params fun_name (V_Function (f))
-    in
+  let populate_param (param_name, getter, setter) =
+    Hashtbl.replace param_getters param_name (Common.pop_option getter no_getter);
+    Hashtbl.replace param_setters param_name (Common.pop_option setter no_setter)
 
+  let populate_static_param (param_name, v) =
+    Hashtbl.replace static_params param_name v
+
+  let populate_fun (fun_name, f) =
+    Hashtbl.replace static_params fun_name (V_Function (f))
+
+  let init () =
     List.iter populate_param Library.params;
     populate_static_param ("name", V_String name);
     List.iter populate_fun Library.functions;
