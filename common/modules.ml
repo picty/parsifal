@@ -113,7 +113,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
   (* Object constructions *)
 
   let parse input =
-(* TODO: Must change when NewParsingEngine has replaced ParsingEngine *)
+    (* TODO: Must change when NewParsingEngine has replaced ParsingEngine *)
 (*    let ehf = Parser.mk_ehf () in
     let pstate = match input with
       | V_BinaryString s | V_String s -> pstate_of_string ehf s
@@ -125,10 +125,22 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
       | V_Stream (name, s) -> Parser.pstate_of_stream name s
       | _ -> raise (ContentError "String or stream expected")
     in
-(* TODO: End of blob *)
-    match Parser.parse pstate with
+    (* TODO: End of blob *)
+    try
+      (* TODO: The match should disappear in the end *)
+      match Parser.parse pstate with
       | None -> V_Unit
       | Some obj -> register obj
+    with
+      | NewParsingEngine.OutOfBounds s ->
+	output_string stderr ("Out of bounds in " ^ s ^ ")");
+	flush stderr;
+	V_Unit
+      | NewParsingEngine.ParsingError (err, sev, pstate) ->
+	output_string stderr ((NewParsingEngine.string_of_parsing_error "Parsing error" None err sev pstate) ^ "\n");
+	flush stderr;
+	V_Unit
+
     
   let make d =
     let dict = eval_as_dict d in

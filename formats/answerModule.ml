@@ -25,26 +25,14 @@ module AnswerDumpParser = struct
   (* TODO: End of blob *)
 
   let parse pstate =
-    try
-
-	let ip = Array.of_list (pop_bytes pstate 4) in
-	let port = extract_uint16 pstate in
-	let name = extract_variable_length_string "name" extract_uint16 pstate in
-	let client_hello_type = pop_byte pstate in
-	let msg_type = pop_byte pstate in
-	let content = extract_variable_length_string "messages" extract_uint32 pstate in
-	Some { ip = ip; port = port; name = name; client_hello_type = client_hello_type;
-	       msg_type = msg_type; content = content }
-
-    with 
-      | NewParsingEngine.OutOfBounds s ->
-	output_string stderr ("Out of bounds in " ^ s ^ ")");
-	flush stderr;
-	None
-      | NewParsingEngine.ParsingError (err, sev, pstate) ->
-	output_string stderr ((NewParsingEngine.string_of_parsing_error "Parsing error" None err sev pstate) ^ "\n");
-	flush stderr;
-	None
+    let ip = Array.of_list (pop_bytes pstate 4) in
+    let port = extract_uint16 pstate in
+    let name = extract_variable_length_string "name" extract_uint16 pstate in
+    let client_hello_type = pop_byte pstate in
+    let msg_type = pop_byte pstate in
+    let content = extract_variable_length_string "messages" extract_uint32 pstate in
+    Some { ip = ip; port = port; name = name; client_hello_type = client_hello_type;
+	   msg_type = msg_type; content = content }
 
   let dump answer  =
     (Common.string_of_int_list (Array.to_list answer.ip)) ^
