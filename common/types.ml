@@ -62,6 +62,7 @@ module type Module = sig
   (* Only useful for parser modules *)
   type t
   val register : t -> value
+  val pop_object : value -> t
   val equals : (object_ref * (string, value) Hashtbl.t) ->
                (object_ref * (string, value) Hashtbl.t) -> bool
   val enrich : object_ref -> (string, value) Hashtbl.t -> unit

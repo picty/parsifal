@@ -47,6 +47,8 @@ module type ParserInterface = sig
   val to_string : t -> string
 end;;
 
+
+
 module MakeParserModule = functor (Parser : ParserInterface) -> struct
   type t = Parser.t
   let name = Parser.name
@@ -101,6 +103,12 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
     let index = find_index o in
     _update index d
 
+  let pop_object v =
+    let (n, r, d) = eval_as_object v in
+    if n <> name then raise (ContentError ("Foreign object"));
+    let index = find_index r in
+    _update index d;
+    Hashtbl.find objects index
 
   let equals (ref1, d1) (ref2, d2) =
     let i1 = find_index ref1
@@ -225,6 +233,7 @@ module MakeLibraryModule = functor (Library : LibraryInterface) -> struct
 
   type t = unit
   let register _ = raise NotImplemented
+  let pop_object _ = raise NotImplemented
   let equals _ = raise NotImplemented
   let enrich _ = raise NotImplemented
   let update _ = raise NotImplemented
