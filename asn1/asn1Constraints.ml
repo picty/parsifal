@@ -1,9 +1,6 @@
 (* Constrained parsing *)
-
-open ParsingEngine
+open NewParsingEngine
 open Asn1
-open Asn1.Asn1EngineParams
-open Asn1.Engine
 
 
 type 'a asn1_constraint =
@@ -28,45 +25,40 @@ type 'a sequence_constraint = {
 }
 
 let common_constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state)
-    : (parsing_error, 'a) alternative =
+    : (asn1_errors, 'a) alternative =
 
   let aux to_discard name f =
-    ignore (pop_bytes pstate to_discard);
-    extract_length pstate name;
-    let content = f pstate in
-    if not (eos pstate) then begin
-      emit UnexpectedJunk s_idempotencebreaker pstate;
-      ignore (pop_string pstate)
-    end;
-    go_up pstate;
+    drop_bytes pstate to_discard;
+    let new_pstate = extract_length pstate name in
+    let content = f new_pstate in
+    if not (eos new_pstate) then asn1_emit UnexpectedJunk None pstate;
     Right content
   in
 
-  if eos pstate then Left (TooFewObjects None) else begin
-    let offset = get_offset pstate in
+  (* TODO: Details ? *)
+  if eos pstate then Left TooFewObjects else begin
+    let offset = pstate.cur_offset in
     let (c, isC, t), to_discard = extract_header_rewindable pstate in
     match cons with
       | Anything postprocess ->
-	ignore (pop_bytes pstate to_discard);
-	extract_length pstate (string_of_header_pretty c isC t);
-	let len = get_len pstate in
-	let content = (choose_parse_fun pstate c isC t) pstate in
+	drop_bytes pstate to_discard;
+	let new_pstate = extract_length pstate (string_of_header_pretty c isC t) in
+	let len = Common.pop_option new_pstate.cur_length (-1) in
+	let content = (choose_parse_fun pstate c isC t) new_pstate in
 	let res = mk_object (string_of_header_pretty c isC t) c t offset to_discard len content in
-	if not (eos pstate) then begin
-	  emit UnexpectedJunk s_idempotencebreaker pstate;
-	  ignore (pop_string pstate)
-	end;
-	go_up pstate;
+	if not (eos new_pstate) then asn1_emit UnexpectedJunk None pstate;
 	Right (postprocess res)
 
       | Simple_cons (c', isC', t', name, f) when c = c' && isC = isC' && t = t' ->
 	aux to_discard name f
       | Simple_cons (c', isC', t', _, _) ->    
-	Left (UnexpectedHeader ((c, isC, t), Some (c', isC', t')))
+	(* TODO: Details ? *)
+	Left (UnexpectedHeader)
 
       | Complex_cons get_f ->
 	match get_f c isC t with
-	  | None -> Left (UnexpectedHeader ((c, isC, t), None))
+	  (* TODO: Details ? *)
+	  | None -> Left (UnexpectedHeader)
 	  | Some (name, f) -> aux to_discard name f
   end
 
@@ -75,7 +67,7 @@ let constrained_parse_opt (cons : 'a asn1_constraint) (sev : severity) (pstate :
   let res = common_constrained_parse cons pstate in
   match res with
     | Left err ->
-      if sev <> s_ok then emit err sev pstate;
+      if sev <> s_ok then asn1_emit err None pstate;
       None
     | Right x -> Some x
 
@@ -85,7 +77,7 @@ let constrained_parse_def (cons : 'a asn1_constraint) (sev : severity)
   let res = common_constrained_parse cons pstate in
   match res with
     | Left err ->
-      if sev <> s_ok then emit err sev pstate;
+      if sev <> s_ok then asn1_emit err None pstate;
       default_value
     | Right x -> x
 

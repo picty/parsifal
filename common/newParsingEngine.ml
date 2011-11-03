@@ -326,14 +326,21 @@ let pop_bytes pstate n =
     res
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
 
-let pop_all_bytes pstate n =
+let pop_all_bytes pstate =
   try
     match pstate.cur_length with
       | None -> raise RawOutOfBounds
       | Some len ->
-	let res = pstate.cur_input.pop_string (len - pstate.cur_offset) in
+	let res = pstate.cur_input.pop_bytes (len - pstate.cur_offset) in
 	pstate.cur_offset <- len;
 	res
+  with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
+
+let drop_bytes pstate n =
+  try
+    if not (check_bounds pstate n) then raise RawOutOfBounds;
+    pstate.cur_input.drop_bytes n;
+    pstate.cur_offset <- pstate.cur_offset + n
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
 
 let eos pstate = pstate.cur_input.eos ()

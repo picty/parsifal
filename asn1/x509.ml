@@ -1,8 +1,11 @@
-open ParsingEngine
-open Asn1
+open Types
+open Modules
+open NewParsingEngine
 open Asn1Constraints
-open Asn1.Asn1EngineParams
-open Asn1.Engine
+
+
+
+(* OId Objects (OId + ASN1_Object depending on the OId) *)
 
 type oid_type =
   | HashAlgo
@@ -11,13 +14,9 @@ type oid_type =
   | ATV
   | Extension
 
-let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
 let (object_directory : ((oid_type * int list),
 			 (asn1_object asn1_constraint * severity)) Hashtbl.t) = Hashtbl.create 50
-let (initial_directory : (int list, string) Hashtbl.t) = Hashtbl.create 50
 
-
-(* Generic code about objects (OId + ASN1_Object depending on the OId) *)
 
 type oid_object = {
   oo_id : int list;
@@ -63,6 +62,20 @@ let string_of_oid_object indent resolver o =
 	let new_indent = indent ^ "  " in
 	oid_string ^ indent ^ "Parameters:\n" ^ (string_of_object new_indent opts p)
   end
+
+(*
+
+
+open ParsingEngine
+open Asn1
+open Asn1Constraints
+
+
+
+let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
+let (initial_directory : (int list, string) Hashtbl.t) = Hashtbl.create 50
+
+
 
 
 (* Version *)
@@ -535,4 +548,5 @@ let rec string_of_certificate print_title indent resolver c =
 let pkcs1_RSA_private_key = seqOf_cons mk_object "RSA Private Key" int_cons (Exactly (9, s_specfatallyviolated))
 let pkcs1_RSA_public_key = seqOf_cons mk_object "RSA Public Key" int_cons (Exactly (2, s_specfatallyviolated))
 
+*)
 *)

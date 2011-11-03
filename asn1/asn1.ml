@@ -1,3 +1,60 @@
+open Types
+open Modules
+open Printer
+open NewParsingEngine
+
+
+
+type asn1_errors =
+  | NotInNormalForm
+  | UnknownPrimitiveUniversal
+  | UnknownConstructedUniversal
+  | UnexpectedJunk
+  | TooFewObjects
+  | TooManyObjects
+  | UnexpectedHeader
+
+let asn1_errors_strings = [|
+  (NotInNormalForm, s_idempotencebreaker, "Object is not in normal form");
+  (UnexpectedJunk, s_idempotencebreaker, "Trailing bytes in a parsed objects");
+  (UnknownPrimitiveUniversal, s_speclightlyviolated, "Unknown primitive universal type");
+  (UnknownConstructedUniversal, s_speclightlyviolated, "Unknown constructed universal type");
+(* TODO *)
+|]
+
+let asn1_emit = register_module_errors_and_make_emit_function "ASN.1" asn1_errors_strings
+
+let tolerance = ref s_specfatallyviolated
+let minDisplay = ref s_ok
+
+
+
+
+(*
+module Asn1EngineParams = struct
+  type parsing_error =
+    | InternalMayhem
+    | IncorrectLength of string
+    | UnexpectedHeader of (asn1_class * bool * int) * (asn1_class * bool * int) option
+    | WrongNumberOfObjects of int * int
+    | UnexpectedObject of string
+
+  let string_of_perror = function
+    | IncorrectLength t -> "Incorrect length for a " ^ t
+
+    | UnexpectedHeader ((c, isC, t), None) ->
+      "Unexpected header " ^ (string_of_header_pretty c isC t)
+    | UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t)) ->
+      "Unexpected header " ^ (string_of_header_pretty c isC t) ^
+	" (" ^ (string_of_header_pretty exp_c exp_isC exp_t) ^
+	" expected)"
+
+    | UnexpectedObject s -> "Unexpected object " ^ s
+
+end*)
+
+
+
 (*****************)
 (* General types *)
 (*****************)
@@ -150,65 +207,6 @@ let string_of_header_pretty c isC t =
 
 
 
-(******************)
-(* Parsing engine *)
-(******************)
-
-open ParsingEngine;;
-
-module Asn1EngineParams = struct
-  type parsing_error =
-    | InternalMayhem
-    | NotImplemented of string
-    | IncorrectLength of string
-    | NotInNormalForm of string
-    | UnknownUniversal of (bool * int)
-    | UnexpectedHeader of (asn1_class * bool * int) * (asn1_class * bool * int) option
-    | WrongNumberOfObjects of int * int
-    | TooManyObjects of (int * int) option
-    | TooFewObjects of (int * int) option
-    | UnexpectedJunk
-    | UnexpectedObject of string
-
-  let string_of_perror = function
-    | InternalMayhem -> "Internal mayhem"
-    | NotImplemented s -> "Not implemented (" ^ s ^  ")"
-    | IncorrectLength t -> "Incorrect length for a " ^ t
-    | NotInNormalForm t -> t ^ " not in normal form"
-    | UnknownUniversal (isC, t) ->
-      "Unknown " ^ (if isC then "constructed" else "primitive") ^
-	"universal type " ^ (string_of_int t)
-
-    | UnexpectedHeader ((c, isC, t), None) ->
-      "Unexpected header " ^ (string_of_header_pretty c isC t)
-    | UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t)) ->
-      "Unexpected header " ^ (string_of_header_pretty c isC t) ^
-	" (" ^ (string_of_header_pretty exp_c exp_isC exp_t) ^
-	" expected)"
-
-    | WrongNumberOfObjects (n, exp_n) ->
-      "Too many objects (" ^ (string_of_int n) ^ " read; " ^
-	(string_of_int exp_n) ^ " expected)"
-    | TooManyObjects (Some (n, exp_n)) ->
-      "Too many objects (" ^ (string_of_int n) ^ " read; at most " ^
-	(string_of_int exp_n) ^ " expected)"
-    | TooManyObjects None -> "Too many objects in sequence"
-    | TooFewObjects (Some (n, exp_n)) ->
-      "Too few objects (" ^ (string_of_int n) ^ " read; at least " ^
-	(string_of_int exp_n) ^ " expected)"
-    | TooFewObjects None -> "Too few objects in sequence"
-    | UnexpectedJunk -> "Unexpected junk"
-    | UnexpectedObject s -> "Unexpected object " ^ s
-
-  let default_tolerance = s_specfatallyviolated
-  let default_minDisplay = s_ok
-end
-
-open Asn1EngineParams;;
-module Engine = ParsingEngine.Make (Asn1EngineParams);;
-open Engine;;
-
-
 
 (*********************)
 (* Parsing functions *)
@@ -286,15 +284,15 @@ type parse_function = parsing_state -> asn1_content
 (* Boolean *)
 
 let raw_der_to_boolean pstate =
-  let value = pop_list pstate in
+  let value = pop_all_bytes pstate in
   match value with
     | [] ->
-      emit (IncorrectLength "boolean") s_idempotencebreaker pstate;
+      asn1_emit NotInNormalForm (Some "empty boolean") pstate;
       false
     | [0] -> false
     | [255] -> true
     | v::_ ->
-      emit (NotInNormalForm "boolean") s_idempotencebreaker pstate;
+      asn1_emit NotInNormalForm (Some "invalid value for a boolean") pstate;
       (v <> 0)
 
 let der_to_boolean pstate = Boolean (raw_der_to_boolean pstate)
@@ -310,21 +308,14 @@ let raw_der_to_int pstate =
     else if n = 1 then [int_of_char l.[0]]
     else [int_of_char l.[0] ; int_of_char l.[1]]
   in
-  let negative = match two_first_chars with
-    | [] ->
-      emit (IncorrectLength "integer") s_idempotencebreaker pstate;
-      false
-    | x::y::_ when x = 0xff ->
-      emit (NotInNormalForm "integer") s_idempotencebreaker pstate;
-      true
-    | x::y::_ when (x = 0) && (y land 0x80) = 0 ->
-      emit (NotInNormalForm "integer") s_idempotencebreaker pstate;
-      false
-    | x::r -> (x land 0x80) = 0x80
-  in
-  (* TODO *)
-  if negative
-  then emit (NotImplemented "Negative integer") s_idempotencebreaker pstate;
+  begin
+    match two_first_chars with
+      | [] -> asn1_emit NotInNormalForm (Some "empty integer") pstate
+      | x::y::_ ->
+	if (x = 0xff) || ((x = 0) && (y land 0x80) = 0)
+	then asn1_emit NotInNormalForm (Some "useless prefix byte") pstate
+      | _ -> ()
+  end;
   l
 
 let der_to_int pstate = Integer (raw_der_to_int pstate)
@@ -334,7 +325,7 @@ let der_to_int pstate = Integer (raw_der_to_int pstate)
 
 let raw_der_to_null pstate =
   if not (eos pstate)
-  then emit (IncorrectLength "null") s_idempotencebreaker pstate
+  then asn1_emit NotInNormalForm (Some "non-empty null object") pstate
 
 let der_to_null pstate =
   raw_der_to_null pstate;
@@ -362,7 +353,7 @@ let raw_der_to_oid pstate =
 	let next = der_to_subid pstate in
 	next::(aux ())
       with OutOfBounds _ ->
-	emit (IncorrectLength "oid") s_idempotencebreaker pstate;
+	asn1_emit NotInNormalForm (Some "OId contains a partial sub-id") pstate;
 	[]
     end
   in
@@ -376,7 +367,7 @@ let der_to_oid pstate = OId (raw_der_to_oid pstate)
 let raw_der_to_bitstring _type pstate =
   let nBits =
     if eos pstate then begin
-      emit (IncorrectLength "null") s_idempotencebreaker pstate;
+      asn1_emit NotInNormalForm (Some "empty bit string") pstate;
       0
     end else pop_byte pstate
   in
@@ -417,11 +408,11 @@ and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_func
 	  
 	| (T_Null, false) -> der_to_null
 	  
-	| ( T_OId, false) -> der_to_oid
+	| (T_OId, false) -> der_to_oid
 	  
 	| (T_BitString, false) -> der_to_bitstring None
 	  
-	| ( T_OctetString, false) -> der_to_octetstring true
+	| (T_OctetString, false) -> der_to_octetstring true
 
 	| ( T_UTF8String, false)
 	| ( T_NumericString, false)
@@ -442,34 +433,31 @@ and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_func
 	| (T_Set, true) -> der_to_constructed
 	  
 	| (_, false) ->
-	  emit (UnknownUniversal (false, t)) s_speclightlyviolated pstate;
+	  asn1_emit UnknownPrimitiveUniversal (Some (string_of_int t)) pstate;
 	  der_to_octetstring true
 
 	| (_, true) ->
-	  emit (UnknownUniversal (true, t)) s_speclightlyviolated pstate;
+	  asn1_emit UnknownConstructedUniversal (Some (string_of_int t)) pstate;
 	  der_to_constructed
     end
       
     | C_Universal ->
-      emit (UnknownUniversal (isC, t)) s_speclightlyviolated pstate;
+      asn1_emit (if isC then UnknownConstructedUniversal else UnknownPrimitiveUniversal)
+	(Some (string_of_int t)) pstate;
       if isC then der_to_constructed else der_to_octetstring true
 
     | _ -> if isC then der_to_constructed else der_to_octetstring true
       
 and parse pstate : asn1_object =
-  let offset = get_offset pstate in
+  let offset = pstate.cur_offset in
   let (c, isC, t) = extract_header pstate in
-  let hlen = (get_offset pstate) - offset in
-  extract_length pstate (string_of_header_pretty c isC t);
-  let len = get_len pstate in
+  let hlen = pstate.cur_offset - offset in
+  let new_pstate = extract_length pstate (string_of_header_pretty c isC t) in
+  let len = Common.pop_option new_pstate.cur_length (-1) in
   let parse_fun = choose_parse_fun pstate c isC t in
   let res = mk_object (string_of_header_pretty c isC t)
-    c t offset hlen len (parse_fun pstate) in
-  if not (eos pstate) then begin
-    emit UnexpectedJunk s_idempotencebreaker pstate;
-    ignore (pop_string pstate)
-  end;
-  go_up pstate;
+    c t offset hlen len (parse_fun new_pstate) in
+  if not (eos new_pstate) then asn1_emit UnexpectedJunk None pstate;
   res
 
 
@@ -576,8 +564,6 @@ and string_of_constructed indent popts l =
   else "{" ^ (String.concat "; " objects) ^ "}"
 
 
-let pstate_of_channel = Engine.pstate_of_channel
-let pstate_of_string = Engine.pstate_of_string
 
 
 (********************)

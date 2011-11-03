@@ -1,4 +1,4 @@
-open Types
+(*open Types
 open Modules
 
 
@@ -66,3 +66,4 @@ end
 
 module Asn1Module = MakeParserModule (Asn1Parser)
 let _ = add_module ((module Asn1Module : Module))
+*)
