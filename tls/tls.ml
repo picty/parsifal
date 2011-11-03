@@ -110,7 +110,7 @@ type content_type =
 type record_content =
   | ChangeCipherSpec
   | Alert of alert_level * alert_type
-  | Handshake of handshake_msg
+  | Handshake of handshake_msg list
   | ApplicationData of string
   | UnparsedRecord of content_type * string
 
@@ -467,11 +467,15 @@ let parse_handshake_content parse_exts htype pstate =
     | H_Unknown _ -> UnparsedHandshakeMsg (htype, pop_string pstate)
 
 let parse_handshake parse_exts pstate =
-  let (htype, len) = extract_handshake_header pstate in
-  go_down pstate (string_of_handshake_msg_type htype) len;
-  let content = parse_handshake_content parse_exts htype pstate in
-  go_up pstate;
-  Handshake (content)
+  let rec aux () =
+    if not (eos pstate) then begin
+      let (htype, len) = extract_handshake_header pstate in
+      go_down pstate (string_of_handshake_msg_type htype) len;
+      let msg = parse_handshake_content parse_exts htype pstate in
+      go_up pstate;
+      msg::(aux ())
+    end else []
+  in Handshake (aux())
 
 
 
@@ -508,7 +512,7 @@ let string_of_record_content = function
     "Alert (" ^ (string_of_alert_level level) ^ "): " ^
       (string_of_alert_type t)
   | Handshake hmsg ->
-    "Handshake: " ^ (string_of_handshake_msg hmsg)
+    "Handshake: " ^ (String.concat ", " (List.map string_of_handshake_msg hmsg))
   | ApplicationData s ->
     "Application Data: " ^ (Common.hexdump s)
   | UnparsedRecord (ct, s) ->

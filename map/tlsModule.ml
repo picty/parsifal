@@ -41,7 +41,7 @@ module TlsParser = struct
     Hashtbl.replace dict "version" (V_String (string_of_protocol_version record.version));
 
     match record.content with
-      | Handshake h ->
+      | Handshake [h] ->
 	Hashtbl.replace dict "handshake_msg_type"
 	  (V_String (string_of_handshake_msg_type (type_of_handshake_msg h)));
 	begin

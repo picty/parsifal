@@ -24,7 +24,9 @@ try
 		match record.Tls.content with
 		  | Tls.Alert _ | Tls.ChangeCipherSpec _ -> Printf.printf " %s" (Tls.string_of_record_content record.Tls.content)
 		  | Tls.ApplicationData _ -> Printf.printf " ApplicationData"
-		  | Tls.Handshake hm -> Printf.printf " Handshake (%s)" (Tls.string_of_handshake_msg_type (Tls.type_of_handshake_msg hm))
+		  | Tls.Handshake hm ->
+		    Printf.printf " Handshake (%s)"
+		      (String.concat (", ") (List.map (fun m -> Tls.string_of_handshake_msg_type (Tls.type_of_handshake_msg m)) hm))
 		  | Tls.UnparsedRecord (ct, _) ->
 		    Tls.Engine.emit (Tls.TlsEngineParams.NotImplemented "SSLv2 ?")
 		      ParsingEngine.s_fatal tls_pstate
