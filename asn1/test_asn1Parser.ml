@@ -1,10 +1,10 @@
-open Asn1
 open ParsingEngine
+open Asn1
 
 let _ =
   try
     let s = "\x30\x08\x01\x01\xff\x05\x00\x02\x01\x00" in
-    let pstate = pstate_of_string (Asn1Parser.mk_ehf ()) None s in
+    let pstate = pstate_of_string None s in
 
     let (c, isC, t) = extract_header pstate in
     let new_pstate = extract_length pstate (string_of_header_pretty c isC t) in

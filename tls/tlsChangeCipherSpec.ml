@@ -22,8 +22,6 @@ module ChangeCipherSpecParser = struct
   let name = "change_cipher_spec"
   type t = unit
 
-  let mk_ehf () = default_error_handling_function !tolerance !minDisplay
-
   let parse pstate =
     let ccs = pop_byte pstate in
     if ccs <> 1
@@ -32,13 +30,9 @@ module ChangeCipherSpecParser = struct
     then tls_change_cipher_spec_emit UnexpectedJunk None (Some (Common.hexdump (pop_string pstate))) pstate
 
   let dump _ = ""
-
   let enrich _ _ = ()
-
   let update _ = ()
-
-  let to_string _ =
-    "TLS Change_Cipher_Spec"
+  let to_string _ = "TLS Change_Cipher_Spec"
 
   let params = []
 end

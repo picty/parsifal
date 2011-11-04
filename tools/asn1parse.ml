@@ -1,4 +1,5 @@
 open ParsingEngine
+open Modules
 open Asn1
 open Asn1Constraints
 open X509Directory
@@ -96,8 +97,8 @@ Arg.parse options add_input "asn1parse [options]";;
 
 let opts = { type_repr = !type_repr; data_repr = !data_repr; resolver = !resolver; indent_output = !indent }
 let inputs = match !files with
-  | [] -> [pstate_of_stream (Asn1Parser.mk_ehf ()) "(stdin)" (Stream.of_channel stdin)]
-  | _ -> List.map (fun s -> pstate_of_stream (Asn1Parser.mk_ehf ()) s (Stream.of_channel (open_in s))) !files;;
+  | [] -> [pstate_of_stream "(stdin)" (Stream.of_channel stdin)]
+  | _ -> List.map (fun s -> pstate_of_channel s (open_in s)) !files;;
 
 
 

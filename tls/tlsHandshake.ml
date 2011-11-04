@@ -274,8 +274,6 @@ module HandshakeParser = struct
 
   let parse_extensions = ref true
 
-  let mk_ehf () = default_error_handling_function !tolerance !minDisplay
-
   let parse pstate =
     let (htype, len) = extract_handshake_header pstate in
     let new_pstate = go_down pstate (string_of_handshake_msg_type htype) len in

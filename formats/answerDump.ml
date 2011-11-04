@@ -17,8 +17,6 @@ module AnswerDumpParser = struct
   let name = "answer_dump"
   let params = []
 
-  let mk_ehf () = ParsingEngine.default_error_handling_function 0 0
-
   let parse pstate =
     let ip = Array.of_list (pop_bytes pstate 4) in
     let port = extract_uint16 pstate in

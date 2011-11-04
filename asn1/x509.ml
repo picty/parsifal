@@ -67,8 +67,6 @@ let string_of_oid_object indent resolver o =
   let name = "oid_object"
   type t = oid_object
 
-  let mk_ehf () = default_error_handling_function !tolerance !minDisplay
-
   let parse pstate = constrained_parse (object_constraint object_directory ) pstate 
 
   let dump oo = raise NotImplemented

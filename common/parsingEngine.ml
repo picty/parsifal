@@ -1,3 +1,5 @@
+open Types
+
 (*********)
 (* Input *)
 (*********)
@@ -260,27 +262,53 @@ let default_error_handling_function tolerance minDisplay err sev pstate =
 
 
 
-(*************)
-(* Functions *)
-(*************)
+(*********************)
+(* Support Functions *)
+(*********************)
 
 let check_bounds pstate to_be_read =
   match pstate.cur_length with
     | None -> true
     | Some len -> pstate.cur_offset + to_be_read <= len
 
-let pstate_of_stream ehf orig content =
+let _pstate_of_stream ehf orig content =
   mk_pstate ehf orig (mk_stream_input content) 0 0 None []
 
-let pstate_of_channel ehf orig content =
-  pstate_of_stream ehf orig (Stream.of_channel content)
-
-let pstate_of_string ehf name content =
+let _pstate_of_string ehf name content =
   mk_pstate ehf (Common.pop_option name "(inline string)") (mk_string_input content)
     0 0 (Some (String.length content)) []
 
-let pstate_of_channel ehf orig content =
-  pstate_of_stream ehf orig (Stream.of_channel content)
+
+
+
+(************************)
+(* High-level functions *)
+(************************)
+
+
+(* Generic params *)
+let tolerance = ref s_specfatallyviolated
+let minDisplay = ref s_ok
+
+
+
+let pstate_of_string n s =
+  let ehf = default_error_handling_function !tolerance !minDisplay in
+  _pstate_of_string ehf n s
+
+let pstate_of_stream n s =
+  let ehf = default_error_handling_function !tolerance !minDisplay in
+  _pstate_of_stream ehf n s
+
+let pstate_of_channel n s = pstate_of_stream n (Stream.of_channel s)
+
+let pstate_of_value input = 
+  let ehf = default_error_handling_function !tolerance !minDisplay in
+  match input with
+    | V_BinaryString s | V_String s -> _pstate_of_string ehf None s
+    | V_Stream (name, s) -> _pstate_of_stream ehf name s
+    | _ -> raise (ContentError "String or stream expected")
+
 
 let go_down pstate name l =
   try
@@ -368,6 +396,7 @@ let extract_variable_length_string name length_fun pstate =
   let len = length_fun pstate in
   let new_pstate = go_down pstate name len in
   pop_string new_pstate
+
 
 let extract_list name length_fun extract_fun pstate =
   let len = length_fun pstate in

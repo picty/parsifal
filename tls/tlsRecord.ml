@@ -58,8 +58,6 @@ module RecordParser = struct
   let name = "record"
   type t = record_type
 
-  let mk_ehf () = default_error_handling_function !tolerance !minDisplay
-
   let parse pstate =
     let ctype = content_type_of_int pstate (pop_byte pstate) in
     let maj = pop_byte pstate in

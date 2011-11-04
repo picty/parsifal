@@ -128,8 +128,6 @@ module AlertParser = struct
   let name = "alert"
   type t = alert_level * alert_type
 
-  let mk_ehf () = default_error_handling_function !tolerance !minDisplay
-
   let parse pstate =
     let level = pop_byte pstate in
     let t = pop_byte pstate in

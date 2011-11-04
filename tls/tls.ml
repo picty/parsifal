@@ -11,10 +11,7 @@ open TlsChangeCipherSpec
 module TlsLib = struct
   let name = "tls"
 
-  let params = [
-    param_from_int_ref "tolerance" tolerance;
-    param_from_int_ref "minDisplay" minDisplay;
-  ]
+  let params = []
 
   let rec shallow_parse_records pstate =
     if not (eos pstate) then
@@ -48,7 +45,7 @@ module TlsLib = struct
     parse_aux merged_records
 
   let parse input =
-    let pstate = RecordModule.mk_pstate input in
+    let pstate = pstate_of_value input in
     V_List (_parse pstate)
 
 

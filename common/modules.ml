@@ -32,7 +32,6 @@ module type ParserInterface = sig
   val name : string
   val params : (string * getter option * setter option) list
 
-  val mk_ehf : unit -> error_handling_function 
   val parse : parsing_state -> t
   val dump : t -> string
   val enrich : t -> (string, value) Hashtbl.t -> unit
@@ -113,15 +112,8 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
 
   (* Object constructions *)
 
-  let mk_pstate input = 
-    let ehf = Parser.mk_ehf () in
-    match input with
-      | V_BinaryString s | V_String s -> pstate_of_string ehf None s
-      | V_Stream (name, s) -> pstate_of_stream ehf name s
-      | _ -> raise (ContentError "String or stream expected")
-
   let parse input =
-    let pstate = mk_pstate input in
+    let pstate = pstate_of_value input in
     try
       register (Parser.parse pstate)
     with
@@ -135,7 +127,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
 	V_Unit
 
   let parse_all input =
-    let pstate = mk_pstate input in
+    let pstate = pstate_of_value input in
     let rec aux () =
       if eos pstate then []
       else
@@ -243,3 +235,19 @@ module MakeLibraryModule = functor (Library : LibraryInterface) -> struct
   let enrich _ = raise NotImplemented
   let update _ = raise NotImplemented
 end
+
+
+
+
+(* Parsing Lib *)
+module ParserLib = struct
+  let name = "parser"
+  let params = [
+    param_from_int_ref "tolerance" tolerance;
+    param_from_int_ref "minDisplay" minDisplay;
+  ]
+  let functions = []
+end
+
+module ParserModule = MakeLibraryModule (ParserLib)
+let _ = add_module ((module ParserModule : Module))

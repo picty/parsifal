@@ -27,10 +27,6 @@ let asn1_errors_strings = [|
 
 let asn1_emit = register_module_errors_and_make_emit_function "ASN.1" asn1_errors_strings
 
-let tolerance = ref s_specfatallyviolated
-let minDisplay = ref s_ok
-
-
 
 
 (*****************)
@@ -440,7 +436,7 @@ and parse pstate : asn1_object =
 
 
 let exact_parse name str : asn1_object =
-  let pstate = pstate_of_string (default_error_handling_function !tolerance !minDisplay) name str in
+  let pstate = pstate_of_string name str in
   let res = parse pstate in
   if not (eos pstate)
   then failwith "Trailing bytes at the end of the string"
@@ -648,20 +644,13 @@ let value_of_asn1_content o = match o.a_content with
 module Asn1Parser = struct
   type t = asn1_object
   let name = "asn1"
-  let params = [
-    param_from_int_ref "_tolerance" tolerance;
-    param_from_int_ref "_minDisplay" minDisplay;
-  ]
+  let params = []
 
   (* TODO: Make these options mutable from the language ? *)
   let opts = { type_repr = PrettyType; data_repr = PrettyData;
 	       resolver = Some name_directory; indent_output = true };;
 
-
-  let mk_ehf () = default_error_handling_function !tolerance !minDisplay
-
   let parse = parse
-
   let dump = dump
 
   let enrich o dict =
