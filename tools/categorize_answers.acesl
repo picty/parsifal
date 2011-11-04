@@ -1,42 +1,38 @@
 #!/home/yeye/dev/FAceSL/facesl.native
 
-tls._minDisplay <- 2;
-asn1._minDisplay <- 5;
+parser.tolerance <- 4;
+parser.minDisplay <- 4;
+printer.separator <- "\t";
+
 
 foreach_answer := function (f, path) {
     foreach (open (path), answer_dump.parse, f);
 };      
 
-msgs_of_answer := function (answer) {
-    extract_aux := function (flux) {
-        if ! flux then return [] fi;
-        local msg;
-        msg := tls.parse (flux);
-        if msg && (! (msg.content_type ~= "^Unknown content type"))
-        then msg::(extract_aux (flux))
-        else
-            local res;
-            res := dict ();
-            res.content_type <- "InvalidMessage";
-	    [res]
-        fi
-    };
-    extract_aux (stream (answer.ip, answer.content));
-};
 
-string_of_msg := function (record) {
-    local ct;
+string_of_msg := function (msg) {
+    local res;
 
-    ct := record.content_type;
-    if ct == "Handshake" then
-        "Handshake(${record.handshake_msg_type})"
-    else
-        if ct == "Alert" then
-            "Alert(${record.alert_level},${record.alert_type})"
+    if (! msg) || (! msg.content_type) || (msg.content_type ~= "Unknown content type")
+    then return "Invalid record"; fi;
+
+    if (msg.content_type == "Handshake") then
+        if exists msg.content.message_type then
+            return "Handshake (${msg.content.message_type})";
         else
-            ct
-        fi
-    fi
+            return "Handshake (Invalid message)";
+        fi;
+    fi;
+
+    if (msg.content_type == "Alert") then
+        if exists msg.content.type then
+            return "Alert (${msg.content.level}, ${msg.content.type})";
+        else
+            return "Alert (Invalid message)";
+        fi;
+    fi;
+
+    return msg.content_type;
 };
 
 
@@ -46,34 +42,47 @@ content_types := dict ();
 samples := dict ();
 
 add_sample := function (msg_types) {
-    msg_types ++ " (${dget_def (samples, msg_types, "???")})"
+    "(${dget_def (samples, msg_types, "???")})  \t" ++ msg_types
 };
 
-count_correct_answers := function (answer) {
-    local msgs, good, bad;
+
+handle_answer := function (answer) {
+    local msgs, strs, category, prev_count;
 
     count := count + 1;
 
-    msgs := msgs_of_answer (answer);
-    bad := filter (function (x) {x.content_type ~= "InvalidMessage"}, msgs);
-    if msgs && !bad  then
+    msgs := tls.parse (answer.ip, answer.content);
+    strs := map (string_of_msg, msgs);
+    category := concat (", ", strs);
+    if (length (category) = 0) then category := "EMPTY" fi;
+
+    if single then print (answer.ip, category) fi;
+
+    if (length (strs) > 0) && (! category ~= "Invalid") then
         correct_count := correct_count + 1;
     fi;
 
-    local msg_types, prev_count;
-    msg_types := "${answer.msg_type} - " ++ concat (" ", map (string_of_msg, msgs));
-    prev_count := dget_def (content_types, msg_types, 0);
-    if prev_count = 0 then dset (samples, msg_types, answer.client_hello_type ++ ":" ++ answer.ip) fi;
-    dset (content_types, msg_types, prev_count + 1);
+    prev_count := dget_def (content_types, category, 0);
+    if prev_count = 0 then dset (samples, category, answer.client_hello_type ++ ":" ++ answer.ip) fi;
+    dset (content_types, category, prev_count + 1);
 
-    if (count % 1000 = 0) then
+   if (freq && count % freq = 0) then
       print ();
       print (count, correct_count);
       print_stats (content_types, add_sample);
     fi
 };
 
-map (foreach_answer (count_correct_answers), args);
+
+single := exists getenv ("SINGLE");
+
+if exists getenv ("FREQ") then
+    freq := getenv ("FREQ");
+else
+    freq := 0;
+fi;
+
+map (foreach_answer (handle_answer), args);
 
 print ();
 print (count, correct_count);

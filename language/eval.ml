@@ -60,7 +60,7 @@ and eval_exp env exp =
       try
 	ignore (eval e);
 	V_Bool true
-      with Not_found -> V_Bool false
+      with Not_found | ContentError _ -> V_Bool false
     end
 
     | E_Function (arg_names, e) ->
