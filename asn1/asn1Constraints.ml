@@ -1,5 +1,6 @@
 (* Constrained parsing *)
 
+open Common
 open ParsingEngine
 open Asn1
 
@@ -21,10 +22,6 @@ type number_constraint =
   | AtLeast of int * severity
   | AtMost of int * severity
   | Between of int * int * severity
-
-type ('a, 'b) alternative =
-  | Left of 'a
-  | Right of 'b
 
 type 'a sequence_constraint = {
   severity_if_too_many_objects : severity;
@@ -50,7 +47,7 @@ let common_constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state
       | Anything postprocess ->
 	drop_bytes pstate to_discard;
 	let new_pstate = extract_length pstate (string_of_header_pretty c isC t) in
-	let len = Common.pop_option new_pstate.cur_length (-1) in
+	let len = pop_option new_pstate.cur_length (-1) in
 	let content = (choose_parse_fun pstate c isC t) new_pstate in
 	let res = mk_object (string_of_header_pretty c isC t) c t offset to_discard len content in
 	if not (eos new_pstate) then asn1_emit UnexpectedJunk None None pstate;

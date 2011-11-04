@@ -1,6 +1,13 @@
 exception IntegerOverflow
 exception FormatError
 
+
+type ('a, 'b) alternative =
+  | Left of 'a
+  | Right of 'b
+
+
+
 let identity x = x
 
 

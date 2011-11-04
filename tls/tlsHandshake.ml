@@ -1,3 +1,4 @@
+open Common
 open Types
 open Modules
 open ParsingEngine
@@ -76,7 +77,7 @@ type handshake_msg =
 
 let assert_eos pstate =
   if not (eos pstate)
-  then tls_handshake_emit UnexpectedJunk None (Some (Common.hexdump (pop_string pstate))) pstate
+  then tls_handshake_emit UnexpectedJunk None (Some (hexdump (pop_string pstate))) pstate
 
 
 let handshake_msg_type_of_int = function
@@ -128,20 +129,20 @@ let extract_handshake_header pstate =
 let string_of_client_hello ch =
   "Client Hello:" ^
     "\n  protocol version: " ^ (string_of_protocol_version ch.c_version) ^
-    "\n  random: " ^ (Common.hexdump ch.c_random) ^
-    "\n  session id: " ^ (Common.hexdump ch.c_session_id) ^
-    "\n  cipher suites: " ^ (String.concat ", " (List.map (Common.hexdump_int 4) ch.c_cipher_suites)) ^
-    "\n  compression methods: " ^ (String.concat ", " (List.map (Common.hexdump_int 2) ch.c_compression_methods)) ^
+    "\n  random: " ^ (hexdump ch.c_random) ^
+    "\n  session id: " ^ (hexdump ch.c_session_id) ^
+    "\n  cipher suites: " ^ (String.concat ", " (List.map (hexdump_int 4) ch.c_cipher_suites)) ^
+    "\n  compression methods: " ^ (String.concat ", " (List.map (hexdump_int 2) ch.c_compression_methods)) ^
     (* Extensions ... *)
     "\n"
 
 let string_of_server_hello sh =
   "Server Hello:" ^
     "\n  protocol version: " ^ (string_of_protocol_version sh.s_version) ^
-    "\n  random: " ^ (Common.hexdump sh.s_random) ^
-    "\n  session id: " ^ (Common.hexdump sh.s_session_id) ^
-    "\n  cipher suite: " ^ (Common.hexdump_int 4 sh.s_cipher_suite) ^
-    "\n  compression method: " ^ (Common.hexdump_int 2 sh.s_compression_method) ^
+    "\n  random: " ^ (hexdump sh.s_random) ^
+    "\n  session id: " ^ (hexdump sh.s_session_id) ^
+    "\n  cipher suite: " ^ (hexdump_int 4 sh.s_cipher_suite) ^
+    "\n  compression method: " ^ (hexdump_int 2 sh.s_compression_method) ^
     (* Extensions ... *)
     "\n"
 
@@ -232,7 +233,7 @@ let string_of_handshake_msg = function
   | UnparsedHandshakeMsg (htype, s) ->
     (string_of_handshake_msg_type htype) ^ " (len=" ^
       (string_of_int (String.length s)) ^ "): " ^
-      (Common.hexdump s)
+      (hexdump s)
 
 let type_of_handshake_msg = function
   | HelloRequest -> H_HelloRequest

@@ -1,3 +1,4 @@
+open Common
 open Types
 open Modules
 open ParsingEngine
@@ -30,14 +31,14 @@ let parse_oid_object dir oid_type oid_sev pstate =
   let oid = constrained_parse_def oid_cons oid_sev [] pstate in
   let content_cons, content_sev = if Hashtbl.mem dir (oid_type, oid)
     then Hashtbl.find dir (oid_type, oid)
-    else (Anything Common.identity), s_benign
+    else (Anything identity), s_benign
   in
   let content = match common_constrained_parse content_cons pstate with
     | Left (TooFewObjects _) -> None
     | Left err ->
       asn1_emit err (Some content_sev) None pstate;
       (* We try to get anything if the severity was not too much *)
-      constrained_parse_opt (Anything Common.identity) s_ok pstate
+      constrained_parse_opt (Anything identity) s_ok pstate
     | Right o -> Some o
   in
   if not (eos pstate) then asn1_emit UnexpectedJunk (Some s_speclightlyviolated) None pstate;
@@ -128,9 +129,9 @@ type dn = rdn list
 let atv_constraint dir : atv asn1_constraint =
   object_constraint dir ATV s_specfatallyviolated "ATV"
 let rdn_constraint dir : rdn asn1_constraint =
-  setOf_cons Common.identity "Relative DN" (atv_constraint dir) (AtLeast (1, s_specfatallyviolated))
+  setOf_cons identity "Relative DN" (atv_constraint dir) (AtLeast (1, s_specfatallyviolated))
 let dn_constraint dir name : dn asn1_constraint =
-  seqOf_cons Common.identity name (rdn_constraint dir) AlwaysOK
+  seqOf_cons identity name (rdn_constraint dir) AlwaysOK
 
 let string_of_atv indent resolver atv =
   let atv_opts = { type_repr = NoType; data_repr = PrettyData;
@@ -163,9 +164,9 @@ let pop_datetime four_digit_year pstate =
 
   let year_of_string () =
     if four_digit_year
-    then Common.pop_int s 0 4
+    then pop_int s 0 4
     else begin
-      match Common.pop_int s 0 2 with
+      match pop_int s 0 2 with
 	| None -> None
 	| Some x -> Some ((if x < 50 then 2000 else 1900) + x)
     end
@@ -176,15 +177,15 @@ let pop_datetime four_digit_year pstate =
   let n = String.length s in
   if n < expected_len then None else begin
     let year = year_of_string () in
-    let month = Common.pop_int s year_len 2 in
-    let day = Common.pop_int s (2 + year_len) 2 in
-    let hour = Common.pop_int s (4 + year_len) 2 in
-    let minute = Common.pop_int s (6 + year_len) 2 in
+    let month = pop_int s year_len 2 in
+    let day = pop_int s (2 + year_len) 2 in
+    let hour = pop_int s (4 + year_len) 2 in
+    let minute = pop_int s (6 + year_len) 2 in
     match year, month, day, hour, minute with
       | Some y, Some m, Some d, Some hh, Some mm ->
 	let ss = if (n < expected_len + 2)
 	  then None
-	  else Common.pop_int s (8 + year_len) 2
+	  else pop_int s (8 + year_len) 2
 	in Some { year = y; month = m; day = d;
 		  hour = hh; minute = mm; second = ss }
       | _ -> None
@@ -218,7 +219,7 @@ let string_of_datetime = function
   | None -> "Invalid date/time"
   | Some dt ->
     Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d"
-      dt.year dt.month dt.day dt.hour dt.minute (Common.pop_option dt.second 0)
+      dt.year dt.month dt.day dt.hour dt.minute (pop_option dt.second 0)
 
 let string_of_validity indent _ v =
   indent ^ "Not before: " ^ (string_of_datetime v.not_before) ^ "\n" ^
@@ -274,18 +275,18 @@ let string_of_public_key_info indent resolver pki =
 	  new_indent ^ "Public key algorithm:\n" ^ (string_of_oid_object new_indent resolver pki.pk_algo)
       | PK_DSA {dsa_p; dsa_q; dsa_g; dsa_Y} ->
 	indent ^ "DSA Public Key:\n" ^
-	  new_indent ^ "p: 0x" ^ (Common.hexdump dsa_p) ^ "\n" ^
-	  new_indent ^ "q: 0x" ^ (Common.hexdump dsa_q) ^ "\n" ^
-	  new_indent ^ "g: 0x" ^ (Common.hexdump dsa_g) ^ "\n" ^
-	  new_indent ^ "Y: 0x" ^ (Common.hexdump dsa_Y) ^ "\n"
+	  new_indent ^ "p: 0x" ^ (hexdump dsa_p) ^ "\n" ^
+	  new_indent ^ "q: 0x" ^ (hexdump dsa_q) ^ "\n" ^
+	  new_indent ^ "g: 0x" ^ (hexdump dsa_g) ^ "\n" ^
+	  new_indent ^ "Y: 0x" ^ (hexdump dsa_Y) ^ "\n"
       | PK_RSA {rsa_n; rsa_e} ->
 	indent ^ "RSA Public Key:\n" ^
-	  new_indent ^ "n: 0x" ^ (Common.hexdump rsa_n) ^ "\n" ^
-	  new_indent ^ "e: 0x" ^ (Common.hexdump rsa_e) ^ "\n"
+	  new_indent ^ "n: 0x" ^ (hexdump rsa_n) ^ "\n" ^
+	  new_indent ^ "e: 0x" ^ (hexdump rsa_e) ^ "\n"
       | PK_Unparsed s ->
 	indent ^ "Public key:\n" ^
 	  new_indent ^ "Public key algorithm:\n" ^ (string_of_oid_object new_indent resolver pki.pk_algo) ^
-	  new_indent ^ "Value: [HEX]" ^ Common.hexdump (s) ^ "\n")
+	  new_indent ^ "Value: [HEX]" ^ hexdump (s) ^ "\n")
 
 
 (* Extensions *)
@@ -339,7 +340,7 @@ let extract_ext = function
     
 let extension_constraint = Simple_cons (C_Universal, true, 16, "Extension",
 					parse_constrained_sequence extract_ext extension_content_constraint)
-let extensions_constraint = seqOf_cons Common.identity "Extensions" extension_constraint (AtLeast (1, s_speclightlyviolated))
+let extensions_constraint = seqOf_cons identity "Extensions" extension_constraint (AtLeast (1, s_speclightlyviolated))
 
 
 let string_of_extension indent resolver e =
@@ -356,24 +357,24 @@ let string_of_extension indent resolver e =
 	in
 	let len_string = match len with
 	  | None -> []
-	  | Some l -> ["PathLen=" ^ (Common.hexdump l)]
+	  | Some l -> ["PathLen=" ^ (hexdump l)]
 	in
 	"basicConstraints", String.concat ", " (flag_string@len_string)
       | SubjectKeyIdentifier ski ->
-	"subjectKeyIdentifier", Common.hexdump ski
+	"subjectKeyIdentifier", hexdump ski
       | AuthorityKeyIdentifier AKI_Unknown ->
 	"authorityKeyIdentifier", ""
       | AuthorityKeyIdentifier (AKI_KeyIdentifier aki) ->
-	"authorityKeyIdentifier", Common.hexdump aki
+	"authorityKeyIdentifier", hexdump aki
       | CRLDistributionPoint s -> "cRLDistributionPoint", s
       | AuthorityInfoAccess_OCSP s -> "authorityInfoAccess", "OCSP " ^ s
       | KeyUsage (i, s) ->
-	"keyUsage", "[" ^ (string_of_int i) ^ "]" ^ (Common.hexdump s)
+	"keyUsage", "[" ^ (string_of_int i) ^ "]" ^ (hexdump s)
       | ExtKeyUsage l ->
 	let new_indent = indent ^ "  " in
 	"extendedKeyUsage", "\n" ^ (String.concat "\n" (List.map (fun oid -> new_indent ^ string_of_oid resolver oid) l))
       | UnparsedExt (oid, raw_content) ->
-	(string_of_oid resolver oid), "[HEX]" ^ (Common.hexdump raw_content)
+	(string_of_oid resolver oid), "[HEX]" ^ (hexdump raw_content)
       | InvalidExt -> "InvalidExt", ""
   in
   indent ^ oid_string ^ critical_string ^ (if String.length content_string > 0 then ": " else "") ^ content_string ^ "\n"
@@ -462,7 +463,7 @@ let string_of_tbs_certificate indent resolver tbs =
   (match tbs.version with
     | None -> ""
     | Some i -> indent ^ "Version: " ^ (string_of_int i) ^ "\n") ^ 
-    indent ^ "Serial: " ^ (Common.hexdump tbs.serial) ^ "\n" ^
+    indent ^ "Serial: " ^ (hexdump tbs.serial) ^ "\n" ^
     indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent resolver tbs.sig_algo) ^
     indent ^ "Issuer:\n" ^ (string_of_dn new_indent resolver tbs.issuer) ^
     indent ^ "Validity:\n" ^ (string_of_validity new_indent resolver tbs.validity) ^
@@ -516,11 +517,11 @@ let string_of_signature indent _resolver sign =
   match sign with
     | Sig_WrongSignature -> indent ^ "Wrong Signature\n"
     | Sig_DSA {dsa_r; dsa_s} ->
-      indent ^ "r: " ^ (Common.hexdump dsa_r) ^ "\n" ^
-	indent ^ "s: " ^ (Common.hexdump dsa_s) ^ "\n"
+      indent ^ "r: " ^ (hexdump dsa_r) ^ "\n" ^
+	indent ^ "s: " ^ (hexdump dsa_s) ^ "\n"
     | Sig_RSA s ->
-      indent ^ "s: " ^ (Common.hexdump s) ^ "\n"
-    | Sig_Unparsed s -> indent ^ "[HEX]" ^ (Common.hexdump s) ^ "\n"
+      indent ^ "s: " ^ (hexdump s) ^ "\n"
+    | Sig_Unparsed s -> indent ^ "[HEX]" ^ (hexdump s) ^ "\n"
 
 
 (* Certificate *)
