@@ -305,8 +305,9 @@ let pstate_of_channel n s = pstate_of_stream n (Stream.of_channel s)
 let pstate_of_value input = 
   let ehf = default_error_handling_function !tolerance !minDisplay in
   match input with
-    | V_BinaryString s | V_String s -> _pstate_of_string ehf None s
-    | V_Stream (name, s) -> _pstate_of_stream ehf name s
+    | [name; V_BinaryString s | V_String s] -> _pstate_of_string ehf (Some (eval_as_string name)) s
+    | [V_BinaryString s | V_String s] -> _pstate_of_string ehf None s
+    | [V_Stream (name, s)] -> _pstate_of_stream ehf name s
     | _ -> raise (ContentError "String or stream expected")
 
 

@@ -17,39 +17,46 @@ module TlsLib = struct
     if not (eos pstate) then
       try
 	let record = RecordParser.parse pstate in
-	record::(shallow_parse_records pstate)
+	let next_recs, error = shallow_parse_records pstate in
+	record::(next_recs), error
       with 
-	| OutOfBounds _ | ParsingError _ -> []
-    else []
+	| OutOfBounds _ | ParsingError _ -> [], true
+    else [], false
 
   let _parse pstate =
-    let records = shallow_parse_records pstate in
+    let records, error = shallow_parse_records pstate in
     let merged_records = RecordParser.merge records in
 
     let rec parse_aux = function
       | [] -> []
       | msg::r ->
-	let parsed_content = match msg.content_type with
-	  | CT_ChangeCipherSpec ->
-	    [ChangeCipherSpecModule.parse msg.content]
-	  | CT_Alert ->
-	    [AlertModule.parse msg.content]
-	  | CT_Handshake ->
-	    HandshakeModule.parse_all msg.content
-	  | _ -> [msg.content]
+	let parsed_content =
+	  try
+	    match msg.content_type with
+	      | CT_ChangeCipherSpec ->
+		[ChangeCipherSpecModule.parse [V_String pstate.cur_name; msg.content]]
+	      | CT_Alert ->
+		[AlertModule.parse [V_String pstate.cur_name; msg.content]]
+	      | CT_Handshake ->
+		HandshakeModule.parse_all [V_String pstate.cur_name; msg.content]
+	      | _ -> [msg.content]
+	  with OutOfBounds _ | ParsingError _ -> [msg.content]
 	in
 	let mk_new_record x = RecordModule.register { msg with content = x }
 	in (List.map mk_new_record parsed_content)@(parse_aux r)
     in
 
-    parse_aux merged_records
+    if (error)
+    (* TODO: Improve perfs by removing those stupid @ ? *)
+    then (parse_aux merged_records)@[V_Unit]
+    else parse_aux merged_records
 
   let parse input =
     let pstate = pstate_of_value input in
     V_List (_parse pstate)
 
 
-  let functions = ["parse", NativeFun (one_value_fun parse)]
+  let functions = ["parse", NativeFun parse]
 end
 
 

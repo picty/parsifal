@@ -138,11 +138,11 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
 	  | OutOfBounds s ->
 	    output_string stderr ("Out of bounds in " ^ s ^ "\n");
 	    flush stderr;
-	    []
+	    [V_Unit]
 	  | ParsingError (err, sev, pstate) ->
 	    output_string stderr (string_of_parsing_error "Parsing error" err sev pstate);
 	    flush stderr;
-	    []
+	    [V_Unit]
     in aux ()
 	      
 
@@ -183,7 +183,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
     populate_static_param ("name", V_String name);
     populate_param ("object_count", Some object_count, None);
 
-    populate_fun ("parse", one_value_fun parse);
+    populate_fun ("parse", parse);
     populate_fun ("make", one_value_fun make);
     populate_fun ("dump", one_value_fun (apply dump_aux));
     populate_fun ("to_string", one_value_fun (apply to_string_aux));

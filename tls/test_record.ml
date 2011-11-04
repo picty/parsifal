@@ -13,7 +13,7 @@ let show_records title str =
   let pstate = pstate_of_string (Some title) str in
 
   print_endline title;
-  let records = TlsLib.shallow_parse_records pstate in
+  let records, _ = TlsLib.shallow_parse_records pstate in
   List.iter (fun r -> print_endline (RecordParser.to_string r)) records;
   let merged_records = RecordParser.merge records in
   if merged_records <> records then begin

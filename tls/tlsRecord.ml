@@ -90,7 +90,7 @@ module RecordParser = struct
 
   let merge records =
     let rec merge_aux current accu records = match current, records with
-      | None, [] -> []
+      | None, [] -> List.rev accu
       | Some r, [] -> List.rev (r::accu)
       | None, r::rem ->
 	if r.content_type = CT_Handshake
