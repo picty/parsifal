@@ -63,7 +63,7 @@ type handshake_msg =
   | HelloRequest
   | ClientHello of client_hello
   | ServerHello of server_hello
-  | Certificate of unit (*of X509.certificate list*)
+  | Certificate of (string list, unit (*X509.certificate list*)) alternative
   | ServerKeyExchange
   | CertificateRequest
   | ServerHelloDone
@@ -203,25 +203,21 @@ let parse_one_certificate pstate =
   let res = Asn1Constraints.constrained_parse (X509.certificate_constraint X509.object_directory) asn1_pstate in
   if not (Asn1.Engine.eos asn1_pstate) then emit UnexpectedJunk ParsingEngine.s_benign pstate;
   res
-
-let parse_certificates pstate =
-  try
-    Certificate (extract_list "Certificates" extract_uint24 (parse_one_certificate) pstate)
-  with
-    | ParsingEngine.OutOfBounds s ->
-      emit (ASN1ParsingError ("Out of bounds in " ^ s)) ParsingEngine.s_speclightlyviolated pstate;
-      UnparsedHandshakeMsg (H_Certificate, "")
-   | Asn1.Engine.ParsingError (e, s, p) ->
-      emit (ASN1ParsingError (Asn1.Engine.string_of_exception e s p)) ParsingEngine.s_speclightlyviolated pstate;
-      UnparsedHandshakeMsg (H_Certificate, "")
 *)
+
+let parse_certificates parse_certs pstate =
+  if (parse_certs)
+  then raise NotImplemented (*Certificate (extract_list "Certificates" extract_uint24 (parse_one_certificate) pstate)*)
+  else Certificate (Left (extract_list "Certificates" extract_uint24 (extract_variable_length_string "Extension" extract_uint24) pstate))
 
 
 let string_of_handshake_msg = function
   | HelloRequest -> "Hello Request"
   | ClientHello ch -> string_of_client_hello ch
   | ServerHello sh -> string_of_server_hello sh
-  | Certificate certs -> "Certificates"
+  | Certificate (Left raw_certs) ->
+    "Certificates:\n" ^ (String.concat "\n" (List.map hexdump raw_certs))
+  | Certificate (Right certs) -> raise NotImplemented
 (*    "Certificates:\n" ^
       (String.concat "\n" (List.map (X509.string_of_certificate true "  " (Some X509.name_directory)) certs)) *)
   | ServerKeyExchange -> "Server Key Exchange"
@@ -248,13 +244,12 @@ let type_of_handshake_msg = function
   | Finished -> H_Finished
   | UnparsedHandshakeMsg (htype, _) -> htype
 
-let parse_handshake parse_exts htype pstate =
+let parse_handshake parse_exts parse_certs htype pstate =
   let res = match htype with
     | H_HelloRequest -> HelloRequest
     | H_ClientHello -> parse_client_hello parse_exts pstate
     | H_ServerHello -> parse_server_hello parse_exts pstate
- (*   | H_Certificate -> parse_certificates pstate *)
-    | H_Certificate
+    | H_Certificate -> parse_certificates parse_certs pstate
     | H_ServerKeyExchange
     | H_CertificateRequest -> UnparsedHandshakeMsg (htype, pop_string pstate)
     | H_ServerHelloDone -> ServerHelloDone
@@ -274,11 +269,13 @@ module HandshakeParser = struct
   type t = handshake_msg
 
   let parse_extensions = ref true
+  (* TODO: Is this the good default? *)
+  let parse_certificates = ref false
 
   let parse pstate =
     let (htype, len) = extract_handshake_header pstate in
     let new_pstate = go_down pstate (string_of_handshake_msg_type htype) len in
-    parse_handshake !parse_extensions htype new_pstate
+    parse_handshake !parse_extensions !parse_certificates htype new_pstate
 
   let dump handshake = raise NotImplemented
 
@@ -301,9 +298,13 @@ module HandshakeParser = struct
 	Hashtbl.replace dict "ciphersuite" (V_Int sh.s_cipher_suite);
 	Hashtbl.replace dict "compression_method" (V_Int sh.s_compression_method);
 	()  (* TODO: Extensions *)
-(*      | Certificate certs ->
-	let certs = List.map X509Module.X509Module.register certs in
-	Hashtbl.replace dict "certificates" (V_List certs)*)
+      | Certificate (Left raw_certs) ->
+	let strs = List.map (fun x -> V_BinaryString x) raw_certs in
+	Hashtbl.replace dict "certificates" (V_List strs)
+      | Certificate (Right certs) ->
+	raise NotImplemented
+(*	let cert_objs = List.map X509Module.X509Module.register certs in
+	Hashtbl.replace dict "certificates" (V_List cert_objs)*)
       | _ -> ()
 
   let update dict = raise NotImplemented
@@ -312,6 +313,7 @@ module HandshakeParser = struct
 
   let params = [
     param_from_bool_ref "parse_extensions" parse_extensions;
+    param_from_bool_ref "parse_certificates" parse_extensions;
   ]
 end
 
