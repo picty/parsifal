@@ -22,7 +22,6 @@ let asn1_errors_strings = [|
   (TooFewObjects, s_speclightlyviolated, "Too few objects");
   (TooManyObjects, s_speclightlyviolated, "Too many objects");
   (UnexpectedHeader, s_speclightlyviolated, "Unexpected header");
-(* TODO *)
 |]
 
 let asn1_emit = register_module_errors_and_make_emit_function "ASN.1" asn1_errors_strings
@@ -449,6 +448,7 @@ let exact_parse name str : asn1_object =
 (* Content pretty printer *)
 (**************************)
 
+(* TODO: Rewrite this as options... *)
 type type_representation =
   | NoType
   | RawType
@@ -487,6 +487,14 @@ let oid_expand = function
       then 2, (x - 80)
       else (x / 40), (x mod 40)
     in a::b::r
+
+let oid_squash = function
+  | a::b::r ->
+    if ((a = 0 || a = 1) && (b < 40)) || (a = 2)
+    then (a * 40 + b)::r
+    else raise (ContentError ("Invalid OId"))
+  | _ -> raise (ContentError ("Invalid OId"))
+
 
 let string_of_oid diropt oid = match diropt with
   | Some dir when Hashtbl.mem dir oid ->
@@ -630,17 +638,6 @@ and constructed_to_der objlist =
 let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
 
 
-let value_of_asn1_content o = match o.a_content with
-  | Null -> V_Unit
-  | Boolean b -> V_Bool b
-  | Integer i -> V_Bigint i
-  | BitString (n, s) -> V_BitString (n, s)
-  | OId oid ->  (* TODO *) raise NotImplemented (* V_List (List.map (fun x -> V_Int x) (oid_expand oid)) *)
-  | String (s, true) -> V_BinaryString s
-  | String (s, false) -> V_String s
-  | Constructed objs -> (* TODO *) raise NotImplemented (*V_List (List.map (fun x -> V_Asn1 x) objs)*)
-
-
 module Asn1Parser = struct
   type t = asn1_object
   let name = "asn1"
@@ -653,14 +650,67 @@ module Asn1Parser = struct
   let parse = parse
   let dump = dump
 
-  let enrich o dict =
+  let class_of_string = function
+    | "Universal" -> C_Universal
+    | "Application" -> C_Application
+    | "Context Specific" -> C_ContextSpecific
+    | "Private" -> C_Private
+    | _ -> raise (ContentError ("Invalid ASN.1 class"))
+
+  let rec value_of_asn1_content o = match o.a_content with
+    | Null -> V_Unit
+    | Boolean b -> V_Bool b
+    | Integer i -> V_Bigint i
+    | BitString (n, s) -> V_BitString (n, s)
+    | OId oid ->  V_List (List.map (fun x -> V_Int x) (oid_expand oid))
+    | String (s, true) -> V_BinaryString s
+    | String (s, false) -> V_String s
+    | Constructed objs ->
+      let value_of_constructed sub_obj =
+	let d = Hashtbl.create 10 in
+	enrich sub_obj d;
+	V_Dict d
+      in
+      V_List (List.map value_of_constructed objs)
+
+  and enrich o dict =
+    Hashtbl.replace dict "name" (V_String o.a_name);
     Hashtbl.replace dict "class" (V_String (string_of_class o.a_class));
     Hashtbl.replace dict "tag" (V_Int (o.a_tag));
     Hashtbl.replace dict "tag_str" (V_String (string_of_tag o.a_class o.a_tag));
     Hashtbl.replace dict "is_constructed" (V_Bool (isConstructed o));
+    begin
+      match o.a_ohl with
+	| None -> ()
+	| Some (off, hlen, len) ->
+	  Hashtbl.replace dict "offset" (V_Int off);
+	  Hashtbl.replace dict "hlen" (V_Int hlen);
+	  Hashtbl.replace dict "len" (V_Int len);
+    end;
     Hashtbl.replace dict "content" (value_of_asn1_content o)
 
-  let update dict = (* TODO *) raise NotImplemented
+
+  let rec asn1_content_of_value = function
+    | false, V_Unit -> Null
+    | false, V_Bool b -> Boolean b
+    | false, V_Bigint i -> Integer i
+    | false, V_BitString (n, s) -> BitString (n, s)
+    | false, V_BinaryString s -> String (s, true)
+    | false, V_String s -> String (s, false)
+    | false, V_List l ->
+      OId (oid_squash (List.map eval_as_int l))
+    | true, V_List l ->
+      Constructed (List.map (fun x -> update (eval_as_dict x)) l)
+    | _ -> raise (ContentError ("Invalid value for an asn1 content"))
+
+  and update dict =
+    let name = eval_as_string (Hashtbl.find dict "name") in
+    let c = class_of_string (eval_as_string (Hashtbl.find dict "class")) in
+    let t = eval_as_int (Hashtbl.find dict "tag") in
+    let isC = eval_as_bool (Hashtbl.find dict "is_constructed") in
+    let content = asn1_content_of_value (isC, Hashtbl.find dict "content") in
+    mk_object' name c t content
+
 
   let to_string o = string_of_object "" opts o
 end

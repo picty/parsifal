@@ -13,6 +13,7 @@ Modules
  - MapModule: Add a _dict or _params magic objects ? Remove all _ ?
  - Write the missing update/dump functions
  - Normalize to_string so it accepts a indent param
+ - Problem with @enriched... it does not work if a sub-dictionary is modified...
 
 X509
  - Put the objects, constraints and registering functions for (PKInfo, Signature and Crypto algo) in a separate file
