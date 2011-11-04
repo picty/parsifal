@@ -20,6 +20,10 @@ let tls_handshake_errors_strings = [|
 
 let tls_handshake_emit = register_module_errors_and_make_emit_function "tlsHandshake" tls_handshake_errors_strings
 
+let parse_extensions = ref true
+(* TODO: Is this the good default? *)
+let parse_certificates = ref false
+
 
 
 type cipher_suite = int
@@ -147,9 +151,9 @@ let string_of_server_hello sh =
     "\n"
 
 
-let parse_hello_extensions parse_exts pstate =
+let parse_hello_extensions pstate =
   if eos pstate then None else begin
-    if not parse_exts then begin
+    if not (!parse_extensions) then begin
       tls_handshake_emit ExtensionsIgnored None None pstate;
       ignore (pop_string pstate);
       None
@@ -164,14 +168,14 @@ let parse_hello_extensions parse_exts pstate =
 	None
   end 
 
-let parse_client_hello parse_exts pstate =
+let parse_client_hello pstate =
   let maj = pop_byte pstate in
   let min = pop_byte pstate in
   let random = extract_string "Random" 32 pstate in
   let session_id = extract_variable_length_string "Session id" pop_byte pstate in
   let cipher_suites = extract_list "Cipher suites" extract_uint16 extract_uint16 pstate in
   let compression_methods = extract_list "Compression methods" pop_byte pop_byte pstate in
-  let extensions = parse_hello_extensions parse_exts pstate in
+  let extensions = parse_hello_extensions pstate in
   ClientHello { c_version = {major = maj; minor = min};
 		c_random = random;
 		c_session_id = session_id;
@@ -179,14 +183,14 @@ let parse_client_hello parse_exts pstate =
 		c_compression_methods = compression_methods;
 		c_extensions = extensions }
 
-let parse_server_hello parse_exts pstate =
+let parse_server_hello pstate =
   let maj = pop_byte pstate in
   let min = pop_byte pstate in
   let random = extract_string "Random" 32 pstate in
   let session_id = extract_variable_length_string "Session id" pop_byte pstate in
   let cipher_suite = extract_uint16 pstate in
   let compression_method = pop_byte pstate in
-  let extensions = parse_hello_extensions parse_exts pstate in
+  let extensions = parse_hello_extensions pstate in
   ServerHello { s_version = {major = maj; minor = min};
 		s_random = random;
 		s_session_id = session_id;
@@ -205,8 +209,8 @@ let parse_one_certificate pstate =
   res
 *)
 
-let parse_certificates parse_certs pstate =
-  if (parse_certs)
+let parse_certificate_msg pstate =
+  if (!parse_certificates)
   then raise NotImplemented (*Certificate (extract_list "Certificates" extract_uint24 (parse_one_certificate) pstate)*)
   else Certificate (Left (extract_list "Certificates" extract_uint24 (extract_variable_length_string "Extension" extract_uint24) pstate))
 
@@ -244,12 +248,12 @@ let type_of_handshake_msg = function
   | Finished -> H_Finished
   | UnparsedHandshakeMsg (htype, _) -> htype
 
-let parse_handshake parse_exts parse_certs htype pstate =
+let parse_handshake htype pstate =
   let res = match htype with
     | H_HelloRequest -> HelloRequest
-    | H_ClientHello -> parse_client_hello parse_exts pstate
-    | H_ServerHello -> parse_server_hello parse_exts pstate
-    | H_Certificate -> parse_certificates parse_certs pstate
+    | H_ClientHello -> parse_client_hello pstate
+    | H_ServerHello -> parse_server_hello pstate
+    | H_Certificate -> parse_certificate_msg pstate
     | H_ServerKeyExchange
     | H_CertificateRequest -> UnparsedHandshakeMsg (htype, pop_string pstate)
     | H_ServerHelloDone -> ServerHelloDone
@@ -268,14 +272,10 @@ module HandshakeParser = struct
   let name = "handshake"
   type t = handshake_msg
 
-  let parse_extensions = ref true
-  (* TODO: Is this the good default? *)
-  let parse_certificates = ref false
-
   let parse pstate =
     let (htype, len) = extract_handshake_header pstate in
     let new_pstate = go_down pstate (string_of_handshake_msg_type htype) len in
-    parse_handshake !parse_extensions !parse_certificates htype new_pstate
+    parse_handshake htype new_pstate
 
   let dump handshake = raise NotImplemented
 
