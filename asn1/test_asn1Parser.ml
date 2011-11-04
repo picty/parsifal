@@ -4,7 +4,7 @@ open ParsingEngine
 let _ =
   try
     let s = "\x30\x08\x01\x01\xff\x05\x00\x02\x01\x00" in
-    let pstate = pstate_of_string (Asn1Parser.mk_ehf ()) s in
+    let pstate = pstate_of_string (Asn1Parser.mk_ehf ()) None s in
 
     let (c, isC, t) = extract_header pstate in
     let new_pstate = extract_length pstate (string_of_header_pretty c isC t) in
@@ -12,7 +12,7 @@ let _ =
     Printf.printf "%s (%s) len=%d : %s \n" (string_of_header_pretty c isC t)
       (string_of_header_raw c isC t) (String.length remaining) (Common.hexdump remaining);
 
-    let o = exact_parse s in
+    let o = exact_parse None s in
     let opts = { type_repr = PrettyType; data_repr = PrettyData; resolver = None; indent_output = true } in
     Printf.printf "%s" (string_of_object "" opts o)
   with

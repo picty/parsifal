@@ -2,16 +2,17 @@ open Types
 open Modules
 open ParsingEngine
 
+type answer_dump = {
+  ip : int array;
+  port : int;
+  name : string;
+  client_hello_type : int;
+  msg_type : int;
+  content : string
+}
 
 module AnswerDumpParser = struct
-  type t = {
-    ip : int array;
-    port : int;
-    name : string;
-    client_hello_type : int;
-    msg_type : int;
-    content : string
-  }
+  type t = answer_dump
 
   let name = "answer_dump"
   let params = []

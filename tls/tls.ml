@@ -25,8 +25,7 @@ module TlsLib = struct
 	| OutOfBounds _ | ParsingError _ -> []
     else []
 
-  let parse input =
-    let pstate = RecordModule.mk_pstate input in
+  let _parse pstate =
     let records = shallow_parse_records pstate in
     let merged_records = RecordParser.merge records in
 
@@ -46,7 +45,11 @@ module TlsLib = struct
 	in (List.map mk_new_record parsed_content)@(parse_aux r)
     in
 
-    V_List (parse_aux merged_records)
+    parse_aux merged_records
+
+  let parse input =
+    let pstate = RecordModule.mk_pstate input in
+    V_List (_parse pstate)
 
 
   let functions = ["parse", NativeFun (one_value_fun parse)]

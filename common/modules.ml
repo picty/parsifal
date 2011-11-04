@@ -116,7 +116,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
   let mk_pstate input = 
     let ehf = Parser.mk_ehf () in
     match input with
-      | V_BinaryString s | V_String s -> pstate_of_string ehf s
+      | V_BinaryString s | V_String s -> pstate_of_string ehf None s
       | V_Stream (name, s) -> pstate_of_stream ehf name s
       | _ -> raise (ContentError "String or stream expected")
 
@@ -140,7 +140,8 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
       if eos pstate then []
       else
 	try
-	  (register (Parser.parse pstate))::(aux ())
+	  let next = register (Parser.parse pstate) in
+	  next::(aux ())
 	with
 	  | OutOfBounds s ->
 	    output_string stderr ("Out of bounds in " ^ s ^ "\n");

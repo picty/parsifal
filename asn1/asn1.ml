@@ -439,8 +439,8 @@ and parse pstate : asn1_object =
   res
 
 
-let exact_parse str : asn1_object =
-  let pstate = pstate_of_string (default_error_handling_function !tolerance !minDisplay) str in
+let exact_parse name str : asn1_object =
+  let pstate = pstate_of_string (default_error_handling_function !tolerance !minDisplay) name str in
   let res = parse pstate in
   if not (eos pstate)
   then failwith "Trailing bytes at the end of the string"

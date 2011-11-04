@@ -12,7 +12,7 @@ let ehf = default_error_handling_function 0 0;;
 
 
 let show_records title str =
-  let pstate = pstate_of_string ehf str in
+  let pstate = pstate_of_string ehf (Some title) str in
 
   print_endline title;
   let records = TlsLib.shallow_parse_records pstate in

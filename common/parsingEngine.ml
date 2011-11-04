@@ -272,8 +272,11 @@ let check_bounds pstate to_be_read =
 let pstate_of_stream ehf orig content =
   mk_pstate ehf orig (mk_stream_input content) 0 0 None []
 
-let pstate_of_string ehf content =
-  mk_pstate ehf "(inline string)" (mk_string_input content)
+let pstate_of_channel ehf orig content =
+  pstate_of_stream ehf orig (Stream.of_channel content)
+
+let pstate_of_string ehf name content =
+  mk_pstate ehf (Common.pop_option name "(inline string)") (mk_string_input content)
     0 0 (Some (String.length content)) []
 
 let pstate_of_channel ehf orig content =
