@@ -1,3 +1,6 @@
+NewParsingEngine
+ - Write down the invariants in string_input...
+
 TLS
  - Add an option to avoid certificate parsing when not necessary
  - Clean up to_string code... with mandatory indent !

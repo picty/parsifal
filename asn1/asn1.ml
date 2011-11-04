@@ -19,6 +19,9 @@ let asn1_errors_strings = [|
   (UnexpectedJunk, s_idempotencebreaker, "Trailing bytes in a parsed objects");
   (UnknownPrimitiveUniversal, s_speclightlyviolated, "Unknown primitive universal type");
   (UnknownConstructedUniversal, s_speclightlyviolated, "Unknown constructed universal type");
+  (TooFewObjects, s_speclightlyviolated, "Too few objects");
+  (TooManyObjects, s_speclightlyviolated, "Too many objects");
+  (UnexpectedHeader, s_speclightlyviolated, "Unexpected header");
 (* TODO *)
 |]
 
@@ -27,31 +30,6 @@ let asn1_emit = register_module_errors_and_make_emit_function "ASN.1" asn1_error
 let tolerance = ref s_specfatallyviolated
 let minDisplay = ref s_ok
 
-
-
-
-(*
-module Asn1EngineParams = struct
-  type parsing_error =
-    | InternalMayhem
-    | IncorrectLength of string
-    | UnexpectedHeader of (asn1_class * bool * int) * (asn1_class * bool * int) option
-    | WrongNumberOfObjects of int * int
-    | UnexpectedObject of string
-
-  let string_of_perror = function
-    | IncorrectLength t -> "Incorrect length for a " ^ t
-
-    | UnexpectedHeader ((c, isC, t), None) ->
-      "Unexpected header " ^ (string_of_header_pretty c isC t)
-    | UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t)) ->
-      "Unexpected header " ^ (string_of_header_pretty c isC t) ^
-	" (" ^ (string_of_header_pretty exp_c exp_isC exp_t) ^
-	" expected)"
-
-    | UnexpectedObject s -> "Unexpected object " ^ s
-
-end*)
 
 
 
@@ -287,12 +265,12 @@ let raw_der_to_boolean pstate =
   let value = pop_all_bytes pstate in
   match value with
     | [] ->
-      asn1_emit NotInNormalForm (Some "empty boolean") pstate;
+      asn1_emit NotInNormalForm None (Some "empty boolean") pstate;
       false
     | [0] -> false
     | [255] -> true
     | v::_ ->
-      asn1_emit NotInNormalForm (Some "invalid value for a boolean") pstate;
+      asn1_emit NotInNormalForm None (Some "invalid value for a boolean") pstate;
       (v <> 0)
 
 let der_to_boolean pstate = Boolean (raw_der_to_boolean pstate)
@@ -310,10 +288,10 @@ let raw_der_to_int pstate =
   in
   begin
     match two_first_chars with
-      | [] -> asn1_emit NotInNormalForm (Some "empty integer") pstate
+      | [] -> asn1_emit NotInNormalForm None (Some "empty integer") pstate
       | x::y::_ ->
 	if (x = 0xff) || ((x = 0) && (y land 0x80) = 0)
-	then asn1_emit NotInNormalForm (Some "useless prefix byte") pstate
+	then asn1_emit NotInNormalForm None (Some "useless prefix byte") pstate
       | _ -> ()
   end;
   l
@@ -325,7 +303,7 @@ let der_to_int pstate = Integer (raw_der_to_int pstate)
 
 let raw_der_to_null pstate =
   if not (eos pstate)
-  then asn1_emit NotInNormalForm (Some "non-empty null object") pstate
+  then asn1_emit NotInNormalForm None (Some "non-empty null object") pstate
 
 let der_to_null pstate =
   raw_der_to_null pstate;
@@ -353,7 +331,7 @@ let raw_der_to_oid pstate =
 	let next = der_to_subid pstate in
 	next::(aux ())
       with OutOfBounds _ ->
-	asn1_emit NotInNormalForm (Some "OId contains a partial sub-id") pstate;
+	asn1_emit NotInNormalForm None (Some "OId contains a partial sub-id") pstate;
 	[]
     end
   in
@@ -367,7 +345,7 @@ let der_to_oid pstate = OId (raw_der_to_oid pstate)
 let raw_der_to_bitstring _type pstate =
   let nBits =
     if eos pstate then begin
-      asn1_emit NotInNormalForm (Some "empty bit string") pstate;
+      asn1_emit NotInNormalForm None (Some "empty bit string") pstate;
       0
     end else pop_byte pstate
   in
@@ -433,36 +411,36 @@ and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_func
 	| (T_Set, true) -> der_to_constructed
 	  
 	| (_, false) ->
-	  asn1_emit UnknownPrimitiveUniversal (Some (string_of_int t)) pstate;
+	  asn1_emit UnknownPrimitiveUniversal None (Some (string_of_int t)) pstate;
 	  der_to_octetstring true
 
 	| (_, true) ->
-	  asn1_emit UnknownConstructedUniversal (Some (string_of_int t)) pstate;
+	  asn1_emit UnknownConstructedUniversal None (Some (string_of_int t)) pstate;
 	  der_to_constructed
     end
       
     | C_Universal ->
       asn1_emit (if isC then UnknownConstructedUniversal else UnknownPrimitiveUniversal)
-	(Some (string_of_int t)) pstate;
+	None (Some (string_of_int t)) pstate;
       if isC then der_to_constructed else der_to_octetstring true
 
     | _ -> if isC then der_to_constructed else der_to_octetstring true
       
 and parse pstate : asn1_object =
-  let offset = pstate.cur_offset in
+  let offset = pstate.previous_offset + pstate.cur_offset in
   let (c, isC, t) = extract_header pstate in
-  let hlen = pstate.cur_offset - offset in
   let new_pstate = extract_length pstate (string_of_header_pretty c isC t) in
+  let hlen = new_pstate.previous_offset - offset in
   let len = Common.pop_option new_pstate.cur_length (-1) in
   let parse_fun = choose_parse_fun pstate c isC t in
   let res = mk_object (string_of_header_pretty c isC t)
     c t offset hlen len (parse_fun new_pstate) in
-  if not (eos new_pstate) then asn1_emit UnexpectedJunk None pstate;
+  if not (eos new_pstate) then asn1_emit UnexpectedJunk None None pstate;
   res
 
 
-let exact_parse orig str : asn1_object =
-  let pstate = pstate_of_string orig str in
+let exact_parse str : asn1_object =
+  let pstate = pstate_of_string (default_error_handling_function !tolerance !minDisplay) str in
   let res = parse pstate in
   if not (eos pstate)
   then failwith "Trailing bytes at the end of the string"
@@ -648,3 +626,56 @@ let rec dump o =
 and constructed_to_der objlist =
   let subdumps = List.map dump objlist in
   String.concat "" subdumps
+
+
+
+
+
+let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
+
+
+let value_of_asn1_content o = match o.a_content with
+  | Null -> V_Unit
+  | Boolean b -> V_Bool b
+  | Integer i -> V_Bigint i
+  | BitString (n, s) -> V_BitString (n, s)
+  | OId oid ->  (* TODO *) raise NotImplemented (* V_List (List.map (fun x -> V_Int x) (oid_expand oid)) *)
+  | String (s, true) -> V_BinaryString s
+  | String (s, false) -> V_String s
+  | Constructed objs -> (* TODO *) raise NotImplemented (*V_List (List.map (fun x -> V_Asn1 x) objs)*)
+
+
+module Asn1Parser = struct
+  type t = asn1_object
+  let name = "asn1"
+  let params = [
+    param_from_int_ref "_tolerance" tolerance;
+    param_from_int_ref "_minDisplay" minDisplay;
+  ]
+
+  (* TODO: Make these options mutable from the language ? *)
+  let opts = { type_repr = PrettyType; data_repr = PrettyData;
+	       resolver = Some name_directory; indent_output = true };;
+
+
+  let mk_ehf () = default_error_handling_function !tolerance !minDisplay
+
+  let parse = parse
+
+  let dump = dump
+
+  let enrich o dict =
+    Hashtbl.replace dict "class" (V_String (string_of_class o.a_class));
+    Hashtbl.replace dict "tag" (V_Int (o.a_tag));
+    Hashtbl.replace dict "tag_str" (V_String (string_of_tag o.a_class o.a_tag));
+    Hashtbl.replace dict "is_constructed" (V_Bool (isConstructed o));
+    Hashtbl.replace dict "content" (value_of_asn1_content o)
+
+  let update dict = (* TODO *) raise NotImplemented
+
+  let to_string o = string_of_object "" opts o
+end
+
+module Asn1Module = MakeParserModule (Asn1Parser)
+let _ = add_module ((module Asn1Module : Module))
+

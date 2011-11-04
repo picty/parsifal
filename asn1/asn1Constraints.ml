@@ -1,6 +1,13 @@
 (* Constrained parsing *)
+
 open NewParsingEngine
 open Asn1
+
+
+
+let instead_of a b = Some ((string_of_int a) ^ " instead of " ^ (string_of_int b))
+let at_least a b = Some ((string_of_int a) ^ ", at least " ^ (string_of_int b) ^ " expected")
+let at_most a b = Some ((string_of_int a) ^ ", at most " ^ (string_of_int b) ^ " expected")
 
 
 type 'a asn1_constraint =
@@ -31,7 +38,7 @@ let common_constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state
     drop_bytes pstate to_discard;
     let new_pstate = extract_length pstate name in
     let content = f new_pstate in
-    if not (eos new_pstate) then asn1_emit UnexpectedJunk None pstate;
+    if not (eos new_pstate) then asn1_emit UnexpectedJunk None None pstate;
     Right content
   in
 
@@ -46,7 +53,7 @@ let common_constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state
 	let len = Common.pop_option new_pstate.cur_length (-1) in
 	let content = (choose_parse_fun pstate c isC t) new_pstate in
 	let res = mk_object (string_of_header_pretty c isC t) c t offset to_discard len content in
-	if not (eos new_pstate) then asn1_emit UnexpectedJunk None pstate;
+	if not (eos new_pstate) then asn1_emit UnexpectedJunk None None pstate;
 	Right (postprocess res)
 
       | Simple_cons (c', isC', t', name, f) when c = c' && isC = isC' && t = t' ->
@@ -67,7 +74,7 @@ let constrained_parse_opt (cons : 'a asn1_constraint) (sev : severity) (pstate :
   let res = common_constrained_parse cons pstate in
   match res with
     | Left err ->
-      if sev <> s_ok then asn1_emit err None pstate;
+      if sev <> s_ok then asn1_emit err None None pstate;
       None
     | Right x -> Some x
 
@@ -77,7 +84,7 @@ let constrained_parse_def (cons : 'a asn1_constraint) (sev : severity)
   let res = common_constrained_parse cons pstate in
   match res with
     | Left err ->
-      if sev <> s_ok then asn1_emit err None pstate;
+      if sev <> s_ok then asn1_emit err None None pstate;
       default_value
     | Right x -> x
 
@@ -85,7 +92,9 @@ let constrained_parse_def (cons : 'a asn1_constraint) (sev : severity)
 let constrained_parse (cons : 'a asn1_constraint) (pstate : parsing_state) : 'a =
   let res = common_constrained_parse cons pstate in
   match res with
-    | Left err -> raise (ParsingError (err, s_fatal, pstate))
+    | Left err ->
+      asn1_emit err (Some s_fatal) None pstate;
+      failwith "constrained_parse"
     | Right x -> x
 
 
@@ -104,22 +113,22 @@ let rec parse_sequenceof (postprocess : 'a list -> 'b) (cons : 'a asn1_constrain
     match n with
       | AlwaysOK -> ()
       | Exactly (num, sev) ->
-	if num <> res_len
-	then emit (WrongNumberOfObjects (res_len, num)) sev pstate
+	let e = if res_len < num then TooFewObjects else TooManyObjects in
+	asn1_emit e (Some sev) (instead_of res_len num) pstate
 	
       | AtLeast (num, sev) ->
-	if num > res_len
-	then emit (TooFewObjects (Some (res_len, num))) sev pstate
+	if res_len < num
+	then asn1_emit TooFewObjects (Some sev) (at_least res_len num) pstate
 	
       | AtMost (num, sev) ->
-	if num < res_len
-	then emit (TooManyObjects (Some (res_len, num))) sev pstate
+	if res_len > num
+	then asn1_emit TooManyObjects (Some sev) (at_most res_len num) pstate
 	  
       | Between (n1, n2, sev) ->
-	if n1 > res_len
-	then emit (TooFewObjects (Some (res_len, n1))) sev pstate;
-	if n2 < res_len 
-	then emit (TooManyObjects (Some (res_len, n2))) sev pstate
+	if res_len < n1
+	then asn1_emit TooFewObjects (Some sev) (at_least res_len n1) pstate;
+	if n2 < res_len
+	then asn1_emit TooManyObjects (Some sev) (at_most res_len n2) pstate
   end;
   postprocess res
 
@@ -131,7 +140,7 @@ let rec parse_constrained_sequence (postprocess : 'a list -> 'b) (conss : 'a seq
     match cons_list with
       | [] -> 
 	if not (eos pstate)
-	then emit (TooManyObjects None) conss.severity_if_too_many_objects pstate;
+	then asn1_emit UnexpectedJunk (Some conss.severity_if_too_many_objects) None pstate;
 	[]
 
       | (cons, sev)::r -> 

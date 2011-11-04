@@ -18,13 +18,6 @@ module AnswerDumpParser = struct
 
   let mk_ehf () = NewParsingEngine.default_error_handling_function 0 0
 
-  (* TODO: Should disappear soon... *)
-  type pstate = NewParsingEngine.parsing_state
-  let pstate_of_string = NewParsingEngine.pstate_of_string (mk_ehf ())
-  let pstate_of_stream = NewParsingEngine.pstate_of_stream (mk_ehf ())
-  let eos = eos
-  (* TODO: End of blob *)
-
   let parse pstate =
     let ip = Array.of_list (pop_bytes pstate 4) in
     let port = extract_uint16 pstate in
@@ -32,8 +25,8 @@ module AnswerDumpParser = struct
     let client_hello_type = pop_byte pstate in
     let msg_type = pop_byte pstate in
     let content = extract_variable_length_string "messages" extract_uint32 pstate in
-    Some { ip = ip; port = port; name = name; client_hello_type = client_hello_type;
-	   msg_type = msg_type; content = content }
+    { ip = ip; port = port; name = name; client_hello_type = client_hello_type;
+      msg_type = msg_type; content = content }
 
   let dump answer  =
     (Common.string_of_int_list (Array.to_list answer.ip)) ^

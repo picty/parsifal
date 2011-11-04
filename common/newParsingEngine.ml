@@ -68,7 +68,7 @@ let rec s_mk_subinput str old_offset local_len =
     pop_bytes = s_pop_bytes str offset;
     peek_byte = s_peek_byte str offset;
     drop_bytes = s_drop_bytes str offset;
-    eos = s_eos local_len offset;
+    eos = s_eos (initial_offset + local_len) offset;
     mk_subinput = s_mk_subinput str (Some offset) }
 
 let mk_string_input str = s_mk_subinput str None (String.length str)
@@ -166,6 +166,7 @@ type parsing_state = {
   cur_name : string;
   cur_input : input;
   mutable cur_offset : int;
+  previous_offset : int;
   cur_length : int option;
   history : parsing_history
 }
@@ -174,9 +175,10 @@ and error_handling_function = parsing_error -> severity -> parsing_state -> unit
 exception OutOfBounds of string
 exception ParsingError of parsing_error * severity * parsing_state
 
-let mk_pstate ehf n i o l h =
+let mk_pstate ehf n i o po l h =
   { ehf = ehf; cur_name = n;
     cur_input = i; cur_offset = o;
+    previous_offset = po;
     cur_length = l; history = h }
 
 let push_history pstate =
@@ -199,9 +201,10 @@ let string_of_pstate pcontext =
 type module_error_strings = string array
 let error_strings : (string, module_error_strings) Hashtbl.t = Hashtbl.create 10
 
+type 'a assoc_array = ('a * severity * string) array
+type 'a emit_fun = 'a -> severity option -> string option -> parsing_state -> unit
 
-let register_module_errors_and_make_emit_function (name : string) (assoc_array : ('a * severity * string) array)
-    : ('a -> string option -> parsing_state -> unit) =
+let register_module_errors_and_make_emit_function (name : string) (assoc_array : 'a assoc_array) : 'a emit_fun =
   let n = Array.length assoc_array in
   let assoc_hash = Hashtbl.create n in
   let table = Array.make n "" in
@@ -212,13 +215,12 @@ let register_module_errors_and_make_emit_function (name : string) (assoc_array :
   done;
   Hashtbl.replace error_strings name table;
 
-  let emit x details pstate =
-    let perror, sev =
+  let emit err sev_opt details pstate =
+    let i, sev =
       try
-	let i, sev = Hashtbl.find assoc_hash x in
-	(name, i, details), sev
-      with Not_found -> (name, -1, details), s_fatal
-    in pstate.ehf perror sev pstate
+	Hashtbl.find assoc_hash err
+      with Not_found -> -1, s_fatal
+    in pstate.ehf (name, i, details) (Common.pop_option sev_opt sev) pstate
   in
 
   emit
@@ -268,11 +270,11 @@ let check_bounds pstate to_be_read =
     | Some len -> pstate.cur_offset + to_be_read <= len
 
 let pstate_of_stream ehf orig content =
-  mk_pstate ehf orig (mk_stream_input content) 0 None []
+  mk_pstate ehf orig (mk_stream_input content) 0 0 None []
 
 let pstate_of_string ehf content =
   mk_pstate ehf "(inline string)" (mk_string_input content)
-    0 (Some (String.length content)) []
+    0 0 (Some (String.length content)) []
 
 let pstate_of_channel ehf orig content =
   pstate_of_stream ehf orig (Stream.of_channel content)
@@ -281,7 +283,8 @@ let go_down pstate name l =
   try
     if not (check_bounds pstate l) then raise RawOutOfBounds;
     let new_input = pstate.cur_input.mk_subinput l in
-    let res = mk_pstate pstate.ehf name new_input 0 (Some l) (push_history pstate) in
+    let res = mk_pstate pstate.ehf name new_input 0 (pstate.previous_offset + pstate.cur_offset)
+      (Some l) (push_history pstate) in
     pstate.cur_offset <- pstate.cur_offset + l;
     res
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))

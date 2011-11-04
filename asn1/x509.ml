@@ -1,8 +1,8 @@
 open Types
 open Modules
 open NewParsingEngine
+open Asn1
 open Asn1Constraints
-
 
 
 (* OId Objects (OId + ASN1_Object depending on the OId) *)
@@ -35,13 +35,12 @@ let parse_oid_object dir oid_type oid_sev pstate =
   let content = match common_constrained_parse content_cons pstate with
     | Left (TooFewObjects _) -> None
     | Left err ->
-      emit err content_sev pstate;
-      (* We try to get anything is the severity was not too much *)
+      asn1_emit err (Some content_sev) None pstate;
+      (* We try to get anything if the severity was not too much *)
       constrained_parse_opt (Anything Common.identity) s_ok pstate
     | Right o -> Some o
   in
-  if not (eos pstate)
-  then emit (TooManyObjects None) s_speclightlyviolated pstate;
+  if not (eos pstate) then asn1_emit UnexpectedJunk (Some s_speclightlyviolated) None pstate;
   { oo_id = oid; oo_content = content }
 
 
@@ -60,22 +59,39 @@ let string_of_oid_object indent resolver o =
 	let opts = { type_repr = PrettyType; data_repr = PrettyData;
 		     resolver = resolver; indent_output = true } in
 	let new_indent = indent ^ "  " in
-	oid_string ^ indent ^ "Parameters:\n" ^ (string_of_object new_indent opts p)
+	oid_string ^ indent ^ "Content:\n" ^ (string_of_object new_indent opts p)
   end
 
+
+(*module OIdObjectParser = struct
+  let name = "oid_object"
+  type t = oid_object
+
+  let mk_ehf () = default_error_handling_function !tolerance !minDisplay
+
+  let parse pstate = constrained_parse (object_constraint object_directory ) pstate 
+
+  let dump oo = raise NotImplemented
+
+  let enrich oo dict =
+    Hashtbl.replace dict "oid" (V_List (List.map (fun x -> V_Int x) oo.oo_oid));
+(* TODO : Asn1Object *)
+(*    Hashtbl.replace dict "content" record.content; *)
+    ()
+
+  let update dict = raise NotImplemented
+
+  let to_string oo = string_of_oid_object "" name_directory
+
+  let params = []
+end
+
+module OIdObjectModule = MakeParserModule (OIdObjectParser)
+let _ = add_module ((module OIdObjectModule : Module)) *)
+
+
+
 (*
-
-
-open ParsingEngine
-open Asn1
-open Asn1Constraints
-
-
-
-let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
-let (initial_directory : (int list, string) Hashtbl.t) = Hashtbl.create 50
-
-
 
 
 (* Version *)

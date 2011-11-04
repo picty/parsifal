@@ -91,7 +91,7 @@ let alert_level_of_int pstate = function
   | 1 -> AL_Warning
   | 2 -> AL_Fatal
   | x ->
-    tls_alert_emit UnexpectedAlertLevel (Some (string_of_int x)) pstate;
+    tls_alert_emit UnexpectedAlertLevel None (Some (string_of_int x)) pstate;
     AL_Unknown x
 
 let alert_type_of_int pstate = function
@@ -121,7 +121,7 @@ let alert_type_of_int pstate = function
   | 100 -> NoRenegotiation
   | 110 -> UnsupportedExtension
   | x ->
-    tls_alert_emit UnexpectedAlertType (Some (string_of_int x)) pstate;
+    tls_alert_emit UnexpectedAlertType None (Some (string_of_int x)) pstate;
     UnknownAlertType x
 
 module AlertParser = struct
@@ -130,20 +130,12 @@ module AlertParser = struct
 
   let mk_ehf () = default_error_handling_function !tolerance !minDisplay
 
-
-  (* TODO: Should disappear soon... *)
-  type pstate = NewParsingEngine.parsing_state
-  let pstate_of_string s = NewParsingEngine.pstate_of_string (mk_ehf ()) s
-  let pstate_of_stream n s = NewParsingEngine.pstate_of_stream (mk_ehf ()) n s
-  let eos = eos
-  (* TODO: End of blob *)
-
   let parse pstate =
     let level = pop_byte pstate in
     let t = pop_byte pstate in
     if not (eos pstate)
-    then tls_alert_emit UnexpectedJunk (Some (Common.hexdump (pop_string pstate))) pstate;
-    Some (alert_level_of_int pstate level, alert_type_of_int pstate t)
+    then tls_alert_emit UnexpectedJunk None (Some (Common.hexdump (pop_string pstate))) pstate;
+    (alert_level_of_int pstate level, alert_type_of_int pstate t)
 
   let dump alert = raise NotImplemented
 

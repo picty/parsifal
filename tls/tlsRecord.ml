@@ -37,7 +37,7 @@ let content_type_of_int pstate = function
   | 22 -> CT_Handshake
   | 23 -> CT_ApplicationData
   | x ->
-    tls_record_emit UnexpectedContentType (Some (string_of_int x)) pstate;
+    tls_record_emit UnexpectedContentType None (Some (string_of_int x)) pstate;
     CT_Unknown x
 
 
@@ -60,22 +60,15 @@ module RecordParser = struct
 
   let mk_ehf () = default_error_handling_function !tolerance !minDisplay
 
-  (* TODO: Should disappear soon... *)
-  type pstate = NewParsingEngine.parsing_state
-  let pstate_of_string s = NewParsingEngine.pstate_of_string (mk_ehf ()) s
-  let pstate_of_stream n s = NewParsingEngine.pstate_of_stream (mk_ehf ()) n s
-  let eos = eos
-  (* TODO: End of blob *)
-
   let parse pstate =
     let ctype = content_type_of_int pstate (pop_byte pstate) in
     let maj = pop_byte pstate in
     let min = pop_byte pstate in
     let len = extract_uint16 pstate in
     let content = extract_string (string_of_content_type ctype) len pstate in
-    Some { version = {major = maj; minor = min};
-	   content_type = ctype;
-	   content = V_BinaryString content }
+    { version = {major = maj; minor = min};
+      content_type = ctype;
+      content = V_BinaryString content }
 
   let dump record = raise NotImplemented
 

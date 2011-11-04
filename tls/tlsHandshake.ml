@@ -62,7 +62,7 @@ type handshake_msg =
   | HelloRequest
   | ClientHello of client_hello
   | ServerHello of server_hello
-  | Certificate of X509.certificate list
+  | Certificate of unit (*of X509.certificate list*)
   | ServerKeyExchange
   | CertificateRequest
   | ServerHelloDone
@@ -76,7 +76,7 @@ type handshake_msg =
 
 let assert_eos pstate =
   if not (eos pstate)
-  then tls_handshake_emit UnexpectedJunk (Some (Common.hexdump (pop_string pstate))) pstate
+  then tls_handshake_emit UnexpectedJunk None (Some (Common.hexdump (pop_string pstate))) pstate
 
 
 let handshake_msg_type_of_int = function
@@ -149,7 +149,7 @@ let string_of_server_hello sh =
 let parse_hello_extensions parse_exts pstate =
   if eos pstate then None else begin
     if not parse_exts then begin
-      tls_handshake_emit ExtensionsIgnored None pstate;
+      tls_handshake_emit ExtensionsIgnored None None pstate;
       ignore (pop_string pstate);
       None
     end else
@@ -158,8 +158,8 @@ let parse_hello_extensions parse_exts pstate =
         (* TODO *)
 	Some (extract_list "Extensions" extract_uint16
 		(extract_variable_length_string "Extension" extract_uint16) new_pstate)
-      with ParsingEngine.OutOfBounds _ ->
-	tls_handshake_emit InvalidExtensions None pstate;
+      with OutOfBounds _ ->
+	tls_handshake_emit InvalidExtensions None None pstate;
 	None
   end 
 
@@ -220,9 +220,9 @@ let string_of_handshake_msg = function
   | HelloRequest -> "Hello Request"
   | ClientHello ch -> string_of_client_hello ch
   | ServerHello sh -> string_of_server_hello sh
-  | Certificate certs ->
-    "Certificates:\n" ^
-      (String.concat "\n" (List.map (X509.string_of_certificate true "  " (Some X509.name_directory)) certs))
+  | Certificate certs -> "Certificates"
+(*    "Certificates:\n" ^
+      (String.concat "\n" (List.map (X509.string_of_certificate true "  " (Some X509.name_directory)) certs)) *)
   | ServerKeyExchange -> "Server Key Exchange"
   | CertificateRequest -> "Certificate Request"
   | ServerHelloDone -> "Server Hello Done"
@@ -261,7 +261,7 @@ let parse_handshake parse_exts htype pstate =
     | H_ClientKeyExchange
     | H_Finished -> UnparsedHandshakeMsg (htype, pop_string pstate)
     | H_Unknown x ->
-      tls_handshake_emit UnexpectedHandshakeMsgType (Some (string_of_int x)) pstate;
+      tls_handshake_emit UnexpectedHandshakeMsgType None (Some (string_of_int x)) pstate;
       UnparsedHandshakeMsg (htype, pop_string pstate)
   in
   assert_eos pstate;
@@ -276,18 +276,10 @@ module HandshakeParser = struct
 
   let mk_ehf () = default_error_handling_function !tolerance !minDisplay
 
-
-  (* TODO: Should disappear soon... *)
-  type pstate = NewParsingEngine.parsing_state
-  let pstate_of_string s = NewParsingEngine.pstate_of_string (mk_ehf ()) s
-  let pstate_of_stream n s = NewParsingEngine.pstate_of_stream (mk_ehf ()) n s
-  let eos = eos
-  (* TODO: End of blob *)
-
   let parse pstate =
     let (htype, len) = extract_handshake_header pstate in
     let new_pstate = go_down pstate (string_of_handshake_msg_type htype) len in
-    Some (parse_handshake !parse_extensions htype new_pstate)
+    parse_handshake !parse_extensions htype new_pstate
 
   let dump handshake = raise NotImplemented
 
@@ -310,9 +302,9 @@ module HandshakeParser = struct
 	Hashtbl.replace dict "ciphersuite" (V_Int sh.s_cipher_suite);
 	Hashtbl.replace dict "compression_method" (V_Int sh.s_compression_method);
 	()  (* TODO: Extensions *)
-      | Certificate certs ->
+(*      | Certificate certs ->
 	let certs = List.map X509Module.X509Module.register certs in
-	Hashtbl.replace dict "certificates" (V_List certs)
+	Hashtbl.replace dict "certificates" (V_List certs)*)
       | _ -> ()
 
   let update dict = raise NotImplemented

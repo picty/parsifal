@@ -1,3 +1,4 @@
+(* TODO
 open Types
 open Modules
 open X509
@@ -19,29 +20,9 @@ module DNParser = struct
     then Some name_directory
     else None
 
+  let mk_ehf () = NewParsingEngine.default_error_handling_function !Asn1.tolerance !Asn1.minDisplay
 
-  (* TODO: Should disappear soon... *)
-  type pstate = Asn1.Engine.parsing_state
-  let pstate_of_string = Asn1.Engine.pstate_of_string "(inline)"
-  let pstate_of_stream = Asn1.Engine.pstate_of_stream
-  let eos = Asn1.Engine.eos
-  (* TODO: End of blob *)
-
-  let mk_ehf _ = raise NotImplemented
-
-  let parse pstate =
-    try
-      Asn1Constraints.constrained_parse_opt (dn_constraint object_directory name)
-	ParsingEngine.s_specfatallyviolated pstate
-    with
-      | ParsingEngine.OutOfBounds s ->
-	output_string stderr ("Out of bounds in " ^ s ^ ")");
-	flush stderr;
-	None
-      | Asn1.Engine.ParsingError (err, sev, pstate) ->
-	output_string stderr ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ "\n");
-	flush stderr;
-	None
+  let parse pstate = Asn1Constraints.constrained_parse (dn_constraint object_directory name) pstate
 
   let dump dn = raise NotImplemented
 
@@ -110,28 +91,9 @@ module X509Parser = struct
   let name = "x509"
   let params = []
 
-  (* TODO: Should disappear soon... *)
-  type pstate = Asn1.Engine.parsing_state
-  let pstate_of_string = Asn1.Engine.pstate_of_string "(inline)"
-  let eos = Asn1.Engine.eos
-  let pstate_of_stream = Asn1.Engine.pstate_of_stream
-  (* TODO: End of blob *)
+  let mk_ehf () = NewParsingEngine.default_error_handling_function !Asn1.tolerance !Asn1.minDisplay
 
-  let mk_ehf _ = raise NotImplemented
-
-  let parse pstate =
-    try
-      Asn1Constraints.constrained_parse_opt (certificate_constraint object_directory)
-	ParsingEngine.s_specfatallyviolated pstate
-    with
-      | ParsingEngine.OutOfBounds s ->
-	output_string stderr ("Out of bounds in " ^ s ^ ")");
-	flush stderr;
-	None
-      | Asn1.Engine.ParsingError (err, sev, pstate) ->
-	output_string stderr ("Parsing error: " ^ (Asn1.Engine.string_of_exception err sev pstate) ^ "\n");
-	flush stderr;
-	None
+  let parse pstate = Asn1Constraints.constrained_parse (certificate_constraint object_directory) pstate
 
   let dump cert = raise NotImplemented
 
@@ -213,3 +175,4 @@ end
 
 module X509Module = MakeParserModule (X509Parser)
 let _ = add_module ((module X509Module : Module))
+*)

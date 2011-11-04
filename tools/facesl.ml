@@ -7,7 +7,7 @@ open NativeFunctions
 open AnswerModule
 open Tls
 
-open Asn1Module
+open Asn1
 open X509Module
 
 

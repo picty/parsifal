@@ -32,16 +32,8 @@ module type ParserInterface = sig
   val name : string
   val params : (string * getter option * setter option) list
 
-(* TODO: Must change when NewParsingEngine has replaced ParsingEngine *)
   val mk_ehf : unit -> error_handling_function 
-(*  val parse : pstate -> t option *)
-  type pstate
-  val eos : pstate -> bool
-  val pstate_of_string : string -> pstate
-  val pstate_of_stream : string -> char Stream.t -> pstate
-  val parse : pstate -> t option
-(* TODO: End of blob *)
-
+  val parse : parsing_state -> t
   val dump : t -> string
   val enrich : t -> (string, value) Hashtbl.t -> unit
   val update : (string, value) Hashtbl.t -> t
@@ -129,53 +121,33 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
       | _ -> raise (ContentError "String or stream expected")
 
   let parse input =
-    (* TODO: Must change when NewParsingEngine has replaced ParsingEngine *)
-    (* let pstate = mk_pstate input in *)
-    let pstate = match input with
-      | V_BinaryString s | V_String s -> Parser.pstate_of_string s
-      | V_Stream (name, s) -> Parser.pstate_of_stream name s
-      | _ -> raise (ContentError "String or stream expected")
-    in
-    (* TODO: End of blob *)
+    let pstate = mk_pstate input in
     try
-      (* TODO: The match should disappear in the end *)
-      match Parser.parse pstate with
-      | None -> V_Unit
-      | Some obj -> register obj
+      register (Parser.parse pstate)
     with
-      | NewParsingEngine.OutOfBounds s ->
+      | OutOfBounds s ->
 	output_string stderr ("Out of bounds in " ^ s ^ "\n");
 	flush stderr;
 	V_Unit
-      | NewParsingEngine.ParsingError (err, sev, pstate) ->
-	output_string stderr ((NewParsingEngine.string_of_parsing_error "Parsing error" err sev pstate));
+      | ParsingError (err, sev, pstate) ->
+	output_string stderr (string_of_parsing_error "Parsing error" err sev pstate);
 	flush stderr;
 	V_Unit
 
   let parse_all input =
-    (* TODO: Must change when NewParsingEngine has replaced ParsingEngine *)
-    (* let pstate = mk_pstate input in *)
-    let pstate = match input with
-      | V_BinaryString s | V_String s -> Parser.pstate_of_string s
-      | V_Stream (name, s) -> Parser.pstate_of_stream name s
-      | _ -> raise (ContentError "String or stream expected")
-    in
-    (* TODO: End of blob *)
+    let pstate = mk_pstate input in
     let rec aux () =
-      if Parser.eos pstate
-      then []
+      if eos pstate then []
       else
 	try
-	  match Parser.parse pstate with
-	    | None -> []
-	    | Some obj -> (register obj)::(aux ())
+	  (register (Parser.parse pstate))::(aux ())
 	with
-	  | NewParsingEngine.OutOfBounds s ->
+	  | OutOfBounds s ->
 	    output_string stderr ("Out of bounds in " ^ s ^ "\n");
 	    flush stderr;
 	    []
-	  | NewParsingEngine.ParsingError (err, sev, pstate) ->
-	    output_string stderr ((NewParsingEngine.string_of_parsing_error "Parsing error" err sev pstate));
+	  | ParsingError (err, sev, pstate) ->
+	    output_string stderr (string_of_parsing_error "Parsing error" err sev pstate);
 	    flush stderr;
 	    []
     in aux ()

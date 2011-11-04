@@ -1,9 +1,9 @@
-open ParsingEngine
+open NewParsingEngine
 open Asn1
-open Asn1.Engine
 open Asn1Constraints
 open X509Directory
 ;;
+
 
 (* display type *)
 
@@ -19,7 +19,7 @@ let dtype = ref ASN1
 
 let type_repr = ref PrettyType
 let data_repr = ref PrettyData
-let resolver = ref (Some (X509.name_directory))
+let resolver = ref (Some (name_directory))
 let indent = ref true
 
 let files = ref []
@@ -64,8 +64,8 @@ let options = [
   ("-display", Arg.String set_dtype, "Set display type (asn1, asn1parse or x509)");
 
   (* General options *)
-  ("-tolerance", Arg.String (update_sev Engine.tolerance), "Adjust the maximum severity acceptable while parsing");
-  ("-minDisplay", Arg.String (update_sev Engine.minDisplay), "Adjust the minimum severity to be displayed");
+  ("-tolerance", Arg.String (update_sev tolerance), "Adjust the maximum severity acceptable while parsing");
+  ("-minDisplay", Arg.String (update_sev minDisplay), "Adjust the minimum severity to be displayed");
 
   ("-notype", assign type_repr NoType, "Do not print types");
   ("-rawtype", assign type_repr RawType, "Print raw types");
@@ -96,8 +96,8 @@ Arg.parse options add_input "asn1parse [options]";;
 
 let opts = { type_repr = !type_repr; data_repr = !data_repr; resolver = !resolver; indent_output = !indent }
 let inputs = match !files with
-  | [] -> [pstate_of_channel "(stdin)" stdin]
-  | _ -> List.map (fun s -> pstate_of_channel s (open_in s)) !files;;
+  | [] -> [pstate_of_stream (Asn1Parser.mk_ehf ()) "(stdin)" (Stream.of_channel stdin)]
+  | _ -> List.map (fun s -> pstate_of_stream (Asn1Parser.mk_ehf ()) s (Stream.of_channel (open_in s))) !files;;
 
 
 
@@ -184,11 +184,11 @@ let content_string content =
 
 let rec asn1parse_input depth pstate =
   while not (eos pstate) do
-    let offset = get_offset pstate in
+    let offset = pstate.previous_offset + pstate.cur_offset in
     let (c, isC, t) = extract_header pstate in
-    extract_length pstate (string_of_header_pretty c isC t);
-    let hl = (get_offset pstate) - offset in
-    let len = get_len pstate in
+    let new_pstate = extract_length pstate (string_of_header_pretty c isC t) in
+    let hl = new_pstate.previous_offset - offset in
+    let len = Common.pop_option new_pstate.cur_length (-1) in
 
     if !print_offset
     then Printf.printf "%5d:" offset;
@@ -207,34 +207,29 @@ let rec asn1parse_input depth pstate =
 
     if isC then begin
       print_newline ();
-      asn1parse_input (depth + 1) pstate
+      asn1parse_input (depth + 1) new_pstate
     end else begin
       if c = C_Universal && t >= 0 &&
 	t < Array.length universal_tag_map &&
 	universal_tag_map.(t) <> T_Unknown
       then
-	let parse_fun = choose_parse_fun pstate c isC t in
-	let o = parse_fun pstate in
+	let parse_fun = choose_parse_fun pstate c false t in
+	let o = parse_fun new_pstate in
 	Printf.printf "%s\n" (content_string o)
       else
 	print_newline ();
     end;
 
-    if not (eos pstate) then begin
-      emit Asn1EngineParams.UnexpectedJunk s_idempotencebreaker pstate;
-      ignore (pop_string pstate)
-    end;
-
-    go_up pstate
+    if not (eos new_pstate) then asn1_emit UnexpectedJunk None None pstate;
   done;;
 
 
 (* X509 *)
-let parse_and_validate_cert cons pstate =
+(*let parse_and_validate_cert cons pstate =
   while not (eos pstate) do
     let o = constrained_parse cons pstate in
     print_endline (X509.string_of_certificate true "" !resolver o)
-  done;;
+  done;; *)
 
 
 try
@@ -242,10 +237,10 @@ try
     match !dtype with
       | ASN1 -> List.iter parse_input inputs
       | ASN1PARSE -> List.iter (asn1parse_input 0) inputs
-      | X509 -> List.iter (parse_and_validate_cert (X509.certificate_constraint X509.object_directory)) inputs
+      | X509 -> () (* TODO: List.iter (parse_and_validate_cert (X509.certificate_constraint X509.object_directory)) inputs *)
   end
 with
   | OutOfBounds s ->
-    output_string stderr ("Fatal (out of bounds in " ^ s ^ ")")
+    output_string stderr ("Out of bounds in " ^ s ^ "\n")
   | ParsingError (err, sev, pstate) ->
-    output_string stderr ("Fatal " ^ (string_of_exception err sev pstate) ^ "\n");;
+    output_string stderr ((string_of_parsing_error "Parsing error" err sev pstate));

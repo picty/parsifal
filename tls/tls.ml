@@ -18,8 +18,11 @@ module TlsLib = struct
 
   let rec shallow_parse_records pstate =
     if not (eos pstate) then
-      let Some (record) = RecordParser.parse pstate in
-      record::(shallow_parse_records pstate)
+      try
+	let record = RecordParser.parse pstate in
+	record::(shallow_parse_records pstate)
+      with 
+	| OutOfBounds _ | ParsingError _ -> []
     else []
 
   let parse input =

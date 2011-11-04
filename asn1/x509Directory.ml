@@ -1,9 +1,9 @@
 open ParsingEngine
+open Asn1
 open Asn1Constraints
-open Asn1.Asn1EngineParams
 open X509
 
-
+(*
 (* RSA *)
 
 let sha1WithRSAEncryption_oid = [42;840;113549;1;1;5]
@@ -15,7 +15,7 @@ let parse_rsa_public_key _ s =
     | _ -> PK_Unparsed s
   in
   let rsa_constraint = seqOf_cons rsa_from_list "RSA Public Key" int_cons (Exactly (2, s_specfatallyviolated)) in
-  let pstate = Asn1.Engine.pstate_of_string "RSA Public Key" s in
+  let pstate = pstate_of_string "RSA Public Key" s in
   constrained_parse_def rsa_constraint s_specfatallyviolated (PK_Unparsed s) pstate
 
 let parse_rsa_sig s = Sig_RSA s
@@ -109,3 +109,4 @@ let _ =
   add_rsa_stuff ();
   add_dsa_stuff ();
   add_standard_atv ();;
+*)
