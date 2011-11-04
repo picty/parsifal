@@ -20,7 +20,7 @@ module DNParser = struct
     then Some name_directory
     else None
 
-  let mk_ehf () = NewParsingEngine.default_error_handling_function !Asn1.tolerance !Asn1.minDisplay
+  let mk_ehf () = ParsingEngine.default_error_handling_function !Asn1.tolerance !Asn1.minDisplay
 
   let parse pstate = Asn1Constraints.constrained_parse (dn_constraint object_directory name) pstate
 
@@ -91,7 +91,7 @@ module X509Parser = struct
   let name = "x509"
   let params = []
 
-  let mk_ehf () = NewParsingEngine.default_error_handling_function !Asn1.tolerance !Asn1.minDisplay
+  let mk_ehf () = ParsingEngine.default_error_handling_function !Asn1.tolerance !Asn1.minDisplay
 
   let parse pstate = Asn1Constraints.constrained_parse (certificate_constraint object_directory) pstate
 

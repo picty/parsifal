@@ -27,11 +27,11 @@ let interactive () =
 	| End_of_file -> raise End_of_file
 
 	(* HACK *)
-	| NewParsingEngine.OutOfBounds s ->
+	| ParsingEngine.OutOfBounds s ->
 	  output_string stderr ("Out of bounds in " ^ s ^ "\n");
 	  flush stderr
-	| NewParsingEngine.ParsingError (err, sev, pstate) ->
-	  output_string stderr ((NewParsingEngine.string_of_parsing_error "Parsing error" err sev pstate));
+	| ParsingEngine.ParsingError (err, sev, pstate) ->
+	  output_string stderr ((ParsingEngine.string_of_parsing_error "Parsing error" err sev pstate));
 	  flush stderr
 
 	| e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); flush stderr

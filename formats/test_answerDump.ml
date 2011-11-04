@@ -12,11 +12,11 @@ let get_name answer =
 
 let parse_record = OldTls.parse_record true;;
 let ehf = mk_ehf ();;
-let pstate = NewParsingEngine.pstate_of_channel ehf "(stdin)" stdin;;
+let pstate = ParsingEngine.pstate_of_channel ehf "(stdin)" stdin;;
 
 
 try
-  while not (NewParsingEngine.eos pstate) do
+  while not (ParsingEngine.eos pstate) do
     match parse pstate with
       | Some answer -> begin
 	let name = get_name answer in

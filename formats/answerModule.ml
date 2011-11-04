@@ -1,6 +1,6 @@
 open Types
 open Modules
-open NewParsingEngine
+open ParsingEngine
 
 
 module AnswerDumpParser = struct
@@ -16,7 +16,7 @@ module AnswerDumpParser = struct
   let name = "answer_dump"
   let params = []
 
-  let mk_ehf () = NewParsingEngine.default_error_handling_function 0 0
+  let mk_ehf () = ParsingEngine.default_error_handling_function 0 0
 
   let parse pstate =
     let ip = Array.of_list (pop_bytes pstate 4) in
