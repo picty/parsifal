@@ -657,7 +657,7 @@ module Asn1Parser = struct
     | "Private" -> C_Private
     | _ -> raise (ContentError ("Invalid ASN.1 class"))
 
-  let rec value_of_asn1_content o = match o.a_content with
+  let rec value_of_asn1_content = function
     | Null -> V_Unit
     | Boolean b -> V_Bool b
     | Integer i -> V_Bigint i
@@ -687,7 +687,7 @@ module Asn1Parser = struct
 	  Hashtbl.replace dict "hlen" (V_Int hlen);
 	  Hashtbl.replace dict "len" (V_Int len);
     end;
-    Hashtbl.replace dict "content" (value_of_asn1_content o)
+    Hashtbl.replace dict "content" (value_of_asn1_content o.a_content)
 
 
   let rec asn1_content_of_value = function

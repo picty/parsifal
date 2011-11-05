@@ -5,227 +5,28 @@ open ParsingEngine
 open Asn1
 open Asn1Constraints
 
-
-(* OId Objects (OId + ASN1_Object depending on the OId) *)
-
-type oid_type =
-  | HashAlgo
-  | SigAlgo
-  | PubKeyAlgo
-  | ATV
-  | Extension
-
-let (object_directory : ((oid_type * int list),
-			 (asn1_object asn1_constraint * severity)) Hashtbl.t) = Hashtbl.create 50
+open X509Misc
+open X509DN
+open X509Validity
 
 
-type oid_object = {
-  oo_id : int list;
-  oo_content : asn1_object option
-}
-
-let empty_oid_object = { oo_id = []; oo_content = None }
-
-
-let parse_oid_object dir oid_type oid_sev pstate =
-  let oid = constrained_parse_def oid_cons oid_sev [] pstate in
-  let content_cons, content_sev = if Hashtbl.mem dir (oid_type, oid)
-    then Hashtbl.find dir (oid_type, oid)
-    else (Anything identity), s_benign
-  in
-  let content = match common_constrained_parse content_cons pstate with
-    | Left (TooFewObjects _) -> None
-    | Left err ->
-      asn1_emit err (Some content_sev) None pstate;
-      (* We try to get anything if the severity was not too much *)
-      constrained_parse_opt (Anything identity) s_ok pstate
-    | Right o -> Some o
-  in
-  if not (eos pstate) then asn1_emit UnexpectedJunk (Some s_speclightlyviolated) None pstate;
-  { oo_id = oid; oo_content = content }
+(* TODO 
+  let resolve_names = ref true
+  let params = [
+    param_from_bool_ref "_resolve_names" resolve_names
+  ]
 
 
-let object_constraint dir oid_type oid_sev name =
-  Simple_cons (C_Universal, true, 16, name, parse_oid_object dir oid_type oid_sev)
+  let get_name_resolver () =
+    if !resolve_names
+    then Some name_directory
+    else None *)
 
 
-let string_of_oid_object indent resolver o =
-  let oid_string = indent ^ (string_of_oid resolver o.oo_id) ^ "\n" in
-  begin
-    match o.oo_content with
-      | None
-      | Some {a_content = Null} -> oid_string
-      | Some p ->
-	(* TODO *)
-	let opts = { type_repr = PrettyType; data_repr = PrettyData;
-		     resolver = resolver; indent_output = true } in
-	let new_indent = indent ^ "  " in
-	oid_string ^ indent ^ "Content:\n" ^ (string_of_object new_indent opts p)
-  end
-
-
-(*module OIdObjectParser = struct
-  let name = "oid_object"
-  type t = oid_object
-
-  let parse pstate = constrained_parse (object_constraint object_directory ) pstate 
-
-  let dump oo = raise NotImplemented
-
-  let enrich oo dict =
-    Hashtbl.replace dict "oid" (V_List (List.map (fun x -> V_Int x) oo.oo_oid));
-(* TODO : Asn1Object *)
-(*    Hashtbl.replace dict "content" record.content; *)
-    ()
-
-  let update dict = raise NotImplemented
-
-  let to_string oo = string_of_oid_object "" name_directory
-
-  let params = []
-end
-
-module OIdObjectModule = MakeParserModule (OIdObjectParser)
-let _ = add_module ((module OIdObjectModule : Module)) *)
 
 
 
 (*
-
-
-(* Version *)
-
-let extract_version l =
-  match l with
-    | [s] ->
-      if String.length s = 1
-      then int_of_char (s.[0]) + 1
-      else 0
-    | _ -> 0
-
-let version_constraint : int asn1_constraint =
-  Simple_cons (C_ContextSpecific, true, 0, "Version",
-	       parse_sequenceof extract_version int_cons (Exactly (1, s_specfatallyviolated)))
-
-
-
-
-(* Serial *)
-let serial_constraint = int_cons
-
-
-(* Signature algo *)
-
-let sigalgo_constraint dir : oid_object asn1_constraint =
-  object_constraint dir SigAlgo s_specfatallyviolated "Signature Algorithm"
-
-
-(* Distinguished names *)
-
-type atv = oid_object
-type rdn = atv list
-type dn = rdn list
-
-let atv_constraint dir : atv asn1_constraint =
-  object_constraint dir ATV s_specfatallyviolated "ATV"
-let rdn_constraint dir : rdn asn1_constraint =
-  setOf_cons identity "Relative DN" (atv_constraint dir) (AtLeast (1, s_specfatallyviolated))
-let dn_constraint dir name : dn asn1_constraint =
-  seqOf_cons identity name (rdn_constraint dir) AlwaysOK
-
-let string_of_atv indent resolver atv =
-  let atv_opts = { type_repr = NoType; data_repr = PrettyData;
-		   resolver = resolver; indent_output = false } in
-  indent ^ (string_of_oid resolver atv.oo_id) ^
-    (match atv.oo_content with
-      | None -> ""
-      | Some o ->
-	 ": " ^ (string_of_object "" atv_opts o)
-    ) ^ "\n"
-
-let string_of_rdn indent resolver rdn =
-  String.concat "" (List.map (string_of_atv indent resolver) rdn)
-
-let string_of_dn indent resolver dn =
-  String.concat "" (List.map (string_of_rdn indent resolver) dn)
-
-
-(* Time and validity *)
-
-type datetime_content = {
-  year : int; month : int; day : int;
-  hour : int; minute : int; second : int option
-}
-
-type datetime = datetime_content option
-
-let pop_datetime four_digit_year pstate =
-  let s = pop_string pstate in
-
-  let year_of_string () =
-    if four_digit_year
-    then pop_int s 0 4
-    else begin
-      match pop_int s 0 2 with
-	| None -> None
-	| Some x -> Some ((if x < 50 then 2000 else 1900) + x)
-    end
-  in
-
-  let year_len = if four_digit_year then 4 else 2 in
-  let expected_len = year_len + 8 in
-  let n = String.length s in
-  if n < expected_len then None else begin
-    let year = year_of_string () in
-    let month = pop_int s year_len 2 in
-    let day = pop_int s (2 + year_len) 2 in
-    let hour = pop_int s (4 + year_len) 2 in
-    let minute = pop_int s (6 + year_len) 2 in
-    match year, month, day, hour, minute with
-      | Some y, Some m, Some d, Some hh, Some mm ->
-	let ss = if (n < expected_len + 2)
-	  then None
-	  else pop_int s (8 + year_len) 2
-	in Some { year = y; month = m; day = d;
-		  hour = hh; minute = mm; second = ss }
-      | _ -> None
-  (* TODO: Handle trailing bytes? *)
-  end
-
-let datetime_constraint : datetime asn1_constraint =
-  let aux c isC t =
-    if c = C_Universal && not isC then begin
-      match t with
-	| 23 -> Some ("Time", pop_datetime false)
-	| 24 -> Some ("Time", pop_datetime true)
-	| _ -> None
-    end else None
-  in Complex_cons aux
-
-
-type validity = { not_before : datetime; not_after : datetime }
-
-let empty_validity = { not_before = None; not_after = None }
-
-let extract_validity = function
-  | [nb; na] -> { not_before = nb; not_after = na }
-  | _ -> { not_before = None; not_after = None }
-
-let validity_constraint : validity asn1_constraint =
-  seqOf_cons extract_validity "Validity" datetime_constraint (Exactly (2, s_specfatallyviolated))
-
-
-let string_of_datetime = function
-  | None -> "Invalid date/time"
-  | Some dt ->
-    Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d"
-      dt.year dt.month dt.day dt.hour dt.minute (pop_option dt.second 0)
-
-let string_of_validity indent _ v =
-  indent ^ "Not before: " ^ (string_of_datetime v.not_before) ^ "\n" ^
-  indent ^ "Not after: " ^ (string_of_datetime v.not_after) ^ "\n"
-
-
 
 (* Public key *)
 
@@ -564,4 +365,94 @@ let pkcs1_RSA_private_key = seqOf_cons mk_object "RSA Private Key" int_cons (Exa
 let pkcs1_RSA_public_key = seqOf_cons mk_object "RSA Public Key" int_cons (Exactly (2, s_specfatallyviolated))
 
 *)
+
+
+
+module X509Parser = struct
+  type t = certificate
+  let name = "x509"
+  let params = []
+
+  let parse pstate = Asn1Constraints.constrained_parse (certificate_constraint object_directory) pstate
+
+  let dump cert = raise NotImplemented
+
+  let enrich cert dict =
+    let handle_unique_id id_name = function
+      | None -> ()
+      | Some (n, s) -> Hashtbl.replace  dict id_name (V_BitString (n, s))
+    in
+    let handle_datetime id_name = function
+      | None -> ()
+      | Some dt ->
+	let datetime_value = DateTimeModule.register dt in
+	Hashtbl.replace dict id_name datetime_value
+    in
+
+    (* TODO: Add all the missing fields! *)
+    begin
+      match cert.tbs.version with
+	| None -> ()
+	| Some v -> Hashtbl.replace dict "version" (V_Int v)
+    end;
+    Hashtbl.replace dict "serial" (V_Bigint cert.tbs.serial);
+
+    (* sigalgo *)
+
+    let issuer_value = DNModule.register cert.tbs.issuer in
+    Hashtbl.replace dict "issuer" issuer_value;
+
+    handle_datetime "not_before" cert.tbs.validity.not_before;
+    handle_datetime "not_after" cert.tbs.validity.not_after;
+
+    let subject_value = DNModule.register cert.tbs.subject in
+    Hashtbl.replace dict "subject" subject_value;
+
+    (* cert.tbs.public_key_info.pk_algo *)
+    begin
+      match cert.tbs.pk_info.public_key with
+	| PK_DSA {dsa_p; dsa_q; dsa_g; dsa_Y} ->
+	  Hashtbl.replace dict "key_type" (V_String "DSA");
+	  Hashtbl.replace dict "p" (V_Bigint dsa_p);
+	  Hashtbl.replace dict "q" (V_Bigint dsa_q);
+	  Hashtbl.replace dict "g" (V_Bigint dsa_g);
+	  Hashtbl.replace dict "Y" (V_Bigint dsa_Y)
+	| PK_RSA {rsa_n; rsa_e} ->
+	  Hashtbl.replace dict "key_type" (V_String "RSA");
+	  Hashtbl.replace dict "n" (V_Bigint rsa_n);
+	  Hashtbl.replace dict "e" (V_Bigint rsa_e)
+	| PK_WrongPKInfo ->
+	  Hashtbl.replace dict "key_type" (V_String "WrongPKInfo");
+	| PK_Unparsed _ ->
+	  Hashtbl.replace dict "key_type" (V_String "UnparsedPKInfo");
+    end;
+
+    handle_unique_id "issuer_unique_id" cert.tbs.issuer_unique_id;
+    handle_unique_id "subject_unique_id" cert.tbs.subject_unique_id;
+    (* extensions *)
+    (* cert_sig_algo *)
+    begin
+      match cert.signature with
+	| Sig_DSA {dsa_r; dsa_s} ->
+	  Hashtbl.replace dict "sig_type" (V_String "DSA");
+	  Hashtbl.replace dict "r" (V_Bigint dsa_r);
+	  Hashtbl.replace dict "s" (V_Bigint dsa_s)
+	| Sig_RSA rsa_s ->
+	  Hashtbl.replace dict "sig_type" (V_String "RSA");
+	  Hashtbl.replace dict "s" (V_Bigint rsa_s)
+	| Sig_WrongSignature ->
+	  Hashtbl.replace dict "key_type" (V_String "WrongSignature");
+	| Sig_Unparsed _ ->
+	  Hashtbl.replace dict "key_type" (V_String "UnparsedSignature");
+    end	;
+    ()
+
+  let update dict = raise NotImplemented
+
+  (* TODO : resolver *)
+  let to_string cert = string_of_certificate true "" (Some name_directory) cert
+end
+
+module X509Module = MakeParserModule (X509Parser)
+let _ = add_module ((module X509Module : Module))
 *)
