@@ -1,9 +1,10 @@
+open Printer
 open ParsingEngine
 open Modules
 open Asn1
 open Asn1Constraints
 open X509Directory
-;;
+
 
 
 (* display type *)
@@ -20,7 +21,6 @@ let dtype = ref ASN1
 
 let type_repr = ref PrettyType
 let data_repr = ref PrettyData
-let indent = ref true
 
 let files = ref []
 
@@ -76,8 +76,11 @@ let options = [
   ("-rawdata", assign data_repr RawData, "Print raw data");
   ("-prettydata", assign data_repr PrettyData, "Print pretty data");
 
-  ("-indent", Arg.Set indent, "Display ASN.1 dump with indentation");
-  ("-noindent", Arg.Clear indent, "Display ASN.1 dump without indentation");
+  ("-indent", Arg.Set PrinterLib.multiline, "Display ASN.1 dump with indentation");
+  ("-noindent", Arg.Clear PrinterLib.multiline, "Display ASN.1 dump without indentation");
+
+  ("-resolve", Arg.Set PrinterLib.resolve_names, "Resolve names");
+  ("-noresolve", Arg.Clear PrinterLib.resolve_names, "Do not resolve names");
 
   (* ASN1PARSE *)
   ("-depth", Arg.Set print_depth, "Print depth column in asn1parse");  
@@ -94,7 +97,7 @@ let add_input s = files := s::(!files) in
 Arg.parse options add_input "asn1parse [options]";;
 
 
-let opts = { type_repr = !type_repr; data_repr = !data_repr; indent_output = !indent }
+let opts = { type_repr = !type_repr; data_repr = !data_repr }
 let inputs = match !files with
   | [] -> [pstate_of_stream "(stdin)" (Stream.of_channel stdin)]
   | _ -> List.map (fun s -> pstate_of_channel s (open_in s)) !files;;
@@ -155,7 +158,7 @@ let string_of_header_asn1parse depth c isC t =
     end
   in
   (if isC then "cons: " else "prim: ") ^
-    (if !indent then String.make (depth * 2) ' ' else "") ^
+    (if !PrinterLib.multiline then String.make (depth * 2) ' ' else "") ^
     res
 
 

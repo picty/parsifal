@@ -13,7 +13,7 @@ let _ =
       (string_of_header_raw c isC t) (String.length remaining) (Common.hexdump remaining);
 
     let o = exact_parse None s in
-    let opts = { type_repr = PrettyType; data_repr = PrettyData; indent_output = true } in
+    let opts = { type_repr = PrettyType; data_repr = PrettyData } in
     Printf.printf "%s" (string_of_object "" opts o)
   with
     | OutOfBounds s ->

@@ -79,9 +79,8 @@ let string_of_oid_object indent o =
       | Some {a_content = Null} -> oid_string
       | Some p ->
 	(* TODO *)
-	let opts = { type_repr = PrettyType; data_repr = PrettyData;
-		     indent_output = true } in
-	let new_indent = indent ^ "  " in
+	let opts = { type_repr = PrettyType; data_repr = PrettyData } in
+	let new_indent = indent ^ !Printer.PrinterLib.indent in
 	oid_string ^ indent ^ "Content:\n" ^ (string_of_object new_indent opts p)
   end
 

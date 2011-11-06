@@ -469,7 +469,6 @@ type data_representation =
 type print_options = {
   type_repr : type_representation;
   data_repr : data_representation;
-  indent_output : bool;     (* indent output and add eols *)
 }
 
 
@@ -540,17 +539,17 @@ let rec string_of_object indent popts o =
   in
 
   let res = String.concat ": " (type_string@content_string) in
-  if popts.indent_output
+  if !PrinterLib.multiline
   then indent ^ res ^ "\n"
- else res
+  else res
 
 and string_of_constructed indent popts l =
-  let newindent = if popts.indent_output
-    then indent ^ "  "
+  let newindent = if !PrinterLib.multiline
+    then indent ^ !PrinterLib.indent
     else indent
   in
   let objects = List.map (string_of_object newindent popts) l in
-  if popts.indent_output
+  if !PrinterLib.multiline
   then "{\n" ^ (String.concat "" objects) ^ indent ^ "}"
   else "{" ^ (String.concat "; " objects) ^ "}"
 
@@ -649,8 +648,7 @@ module Asn1Parser = struct
   let params = []
 
   (* TODO: Make these options mutable from the language ? *)
-  let opts = { type_repr = PrettyType; data_repr = PrettyData;
-	       indent_output = true };;
+  let opts = { type_repr = PrettyType; data_repr = PrettyData };;
 
   let parse = parse
   let dump = dump

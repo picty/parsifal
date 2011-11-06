@@ -53,7 +53,7 @@ let public_key_info_constraint dir : public_key_info asn1_constraint =
 
 
 let string_of_public_key_info indent pki =
-  let new_indent = indent ^ "  " in
+  let new_indent = indent ^ !PrinterLib.indent in
     (match pki.public_key with
       | PK_WrongPKInfo ->
 	indent ^ "Wrong Public Key Info:\n" ^
@@ -156,7 +156,7 @@ let string_of_extension indent e =
       | KeyUsage (i, s) ->
 	"keyUsage", "[" ^ (string_of_int i) ^ "]" ^ (hexdump s)
       | ExtKeyUsage l ->
-	let new_indent = indent ^ "  " in
+	let new_indent = indent ^ !PrinterLib.indent in
 	"extendedKeyUsage", "\n" ^ (String.concat "\n" (List.map (fun oid -> new_indent ^ string_of_oid oid) l))
       | UnparsedExt (oid, raw_content) ->
 	(string_of_oid oid), "[HEX]" ^ (hexdump raw_content)
@@ -244,7 +244,7 @@ let tbs_certificate_constraint dir : tbs_certificate asn1_constraint =
 
 
 let string_of_tbs_certificate indent tbs =
-  let new_indent = indent ^ "  " in
+  let new_indent = indent ^ !PrinterLib.indent in
   (match tbs.version with
     | None -> ""
     | Some i -> indent ^ "Version: " ^ (string_of_int i) ^ "\n") ^ 
@@ -331,7 +331,7 @@ let certificate_constraint dir : certificate asn1_constraint =
 
 
 let rec string_of_certificate print_title indent c =
-  let new_indent = indent ^ "  " in
+  let new_indent = indent ^ !PrinterLib.indent in
   if (print_title)
   then indent ^ "Certificate:\n" ^ (string_of_certificate false new_indent c)
   else indent ^ "tbsCertificate:\n" ^ (string_of_tbs_certificate new_indent c.tbs) ^

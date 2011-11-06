@@ -223,7 +223,7 @@ let string_of_handshake_msg = function
     "Certificates:\n" ^ (String.concat "\n" (List.map hexdump raw_certs))
   | Certificate (Right certs) -> raise NotImplemented
 (*    "Certificates:\n" ^
-      (String.concat "\n" (List.map (X509.string_of_certificate true "  ") certs)) *)
+      (String.concat "\n" (List.map (X509.string_of_certificate true) certs)) *)
   | ServerKeyExchange -> "Server Key Exchange"
   | CertificateRequest -> "Certificate Request"
   | ServerHelloDone -> "Server Hello Done"

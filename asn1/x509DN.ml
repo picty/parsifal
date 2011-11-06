@@ -20,8 +20,7 @@ let dn_constraint dir name : dn asn1_constraint =
   seqOf_cons Common.identity name (rdn_constraint dir) AlwaysOK
 
 let string_of_atv indent atv =
-  let atv_opts = { type_repr = NoType; data_repr = PrettyData;
-		   indent_output = false } in
+  let atv_opts = { type_repr = NoType; data_repr = PrettyData } in
   indent ^ (string_of_oid atv.oo_id) ^
     (match atv.oo_content with
       | None -> ""
