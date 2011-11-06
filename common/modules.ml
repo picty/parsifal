@@ -36,7 +36,7 @@ module type ParserInterface = sig
   val dump : t -> string
   val enrich : t -> (string, value) Hashtbl.t -> unit
   val update : (string, value) Hashtbl.t -> t
-  val to_string : t -> string
+  val to_string : string -> t -> string
 end;;
 
 
@@ -166,7 +166,8 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
 
   (* dump / to_string should be constructed with apply *)
   let dump_aux obj = V_BinaryString (Parser.dump obj)
-  let to_string_aux obj = V_String (Parser.to_string obj)
+  let to_string_aux obj = V_String (Parser.to_string "" obj)
+  let to_string_indent indent obj = V_String (apply (Parser.to_string (eval_as_string indent)) obj)
 
   let populate_param (param_name, getter, setter) =
     Hashtbl.replace param_getters param_name (Common.pop_option getter no_getter);
@@ -187,6 +188,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
     populate_fun ("make", one_value_fun make);
     populate_fun ("dump", one_value_fun (apply dump_aux));
     populate_fun ("to_string", one_value_fun (apply to_string_aux));
+    populate_fun ("to_string_indent", two_value_fun (to_string_indent));
     ()
 
     (* TODO: Add a _dict or _params magic objects ? Remove all _ ? *)

@@ -1,5 +1,6 @@
 open Common
 open Types
+open Printer
 open Modules
 open ParsingEngine
 open TlsCommon
@@ -130,25 +131,27 @@ let extract_handshake_header pstate =
   (htype, len)
 
 
-let string_of_client_hello ch =
-  "Client Hello:" ^
-    "\n  protocol version: " ^ (string_of_protocol_version ch.c_version) ^
-    "\n  random: " ^ (hexdump ch.c_random) ^
-    "\n  session id: " ^ (hexdump ch.c_session_id) ^
-    "\n  cipher suites: " ^ (String.concat ", " (List.map (hexdump_int 4) ch.c_cipher_suites)) ^
-    "\n  compression methods: " ^ (String.concat ", " (List.map (hexdump_int 2) ch.c_compression_methods)) ^
-    (* Extensions ... *)
-    "\n"
+let string_of_client_hello indent ch =
+  let hdr = "Client Hello:" in
+  let content =
+    [ "protocol version: " ^ (string_of_protocol_version ch.c_version);
+      "random: " ^ (hexdump ch.c_random);
+      "session id: " ^ (hexdump ch.c_session_id);
+      "cipher suites: " ^ (String.concat ", " (List.map (hexdump_int 4) ch.c_cipher_suites));
+      "compression methods: " ^ (String.concat ", " (List.map (hexdump_int 2) ch.c_compression_methods)) ]
+    (* TODO: Extensions ... *)
+  in PrinterLib._string_of_strlist hdr "" indent content
 
-let string_of_server_hello sh =
-  "Server Hello:" ^
-    "\n  protocol version: " ^ (string_of_protocol_version sh.s_version) ^
-    "\n  random: " ^ (hexdump sh.s_random) ^
-    "\n  session id: " ^ (hexdump sh.s_session_id) ^
-    "\n  cipher suite: " ^ (hexdump_int 4 sh.s_cipher_suite) ^
-    "\n  compression method: " ^ (hexdump_int 2 sh.s_compression_method) ^
-    (* Extensions ... *)
-    "\n"
+let string_of_server_hello indent sh =
+  let hdr = "Server Hello:" in
+  let content =
+    [ "protocol version: " ^ (string_of_protocol_version sh.s_version);
+      "random: " ^ (hexdump sh.s_random);
+      "session id: " ^ (hexdump sh.s_session_id);
+      "cipher suite: " ^ (hexdump_int 4 sh.s_cipher_suite);
+      "compression method: " ^ (hexdump_int 2 sh.s_compression_method)]
+    (* TODO: Extensions ... *)
+  in PrinterLib._string_of_strlist hdr "" indent content
 
 
 let parse_hello_extensions pstate =
@@ -199,9 +202,6 @@ let parse_server_hello pstate =
 		s_extensions = extensions }
 
 (*
-let asn1_opts = { Asn1.type_repr = Asn1.NoType; Asn1.data_repr = Asn1.NoData;
-		  Asn1.indent_output = false }
-
 let parse_one_certificate pstate =
   let s = extract_variable_length_string "Certificate" extract_uint24 pstate in
   let res = Asn1Constraints.constrained_parse (X509.certificate_constraint X509.object_directory) asn1_pstate in
@@ -215,12 +215,12 @@ let parse_certificate_msg pstate =
   else Certificate (Left (extract_list "Certificates" extract_uint24 (extract_variable_length_string "Extension" extract_uint24) pstate))
 
 
-let string_of_handshake_msg = function
+let string_of_handshake_msg indent = function
   | HelloRequest -> "Hello Request"
-  | ClientHello ch -> string_of_client_hello ch
-  | ServerHello sh -> string_of_server_hello sh
+  | ClientHello ch -> string_of_client_hello indent ch
+  | ServerHello sh -> string_of_server_hello indent sh
   | Certificate (Left raw_certs) ->
-    "Certificates:\n" ^ (String.concat "\n" (List.map hexdump raw_certs))
+    PrinterLib._string_of_strlist "Certificates:" "" indent (List.map hexdump raw_certs)
   | Certificate (Right certs) -> raise NotImplemented
 (*    "Certificates:\n" ^
       (String.concat "\n" (List.map (X509.string_of_certificate true) certs)) *)
@@ -231,9 +231,9 @@ let string_of_handshake_msg = function
   | ClientKeyExchange -> "Client Key Exchange"
   | Finished -> "Finished"
   | UnparsedHandshakeMsg (htype, s) ->
-    (string_of_handshake_msg_type htype) ^ " (len=" ^
-      (string_of_int (String.length s)) ^ "): " ^
-      (hexdump s)
+    let hdr = (string_of_handshake_msg_type htype) ^ " (len=" ^ (string_of_int (String.length s)) ^ "):" in
+    PrinterLib._string_of_strlist hdr "" indent [hexdump s]
+
 
 let type_of_handshake_msg = function
   | HelloRequest -> H_HelloRequest

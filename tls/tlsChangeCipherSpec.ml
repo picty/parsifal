@@ -32,7 +32,7 @@ module ChangeCipherSpecParser = struct
   let dump _ = ""
   let enrich _ _ = ()
   let update _ = ()
-  let to_string _ = "TLS Change_Cipher_Spec"
+  let to_string _ _ = "TLS Change_Cipher_Spec"
 
   let params = []
 end

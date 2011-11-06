@@ -19,7 +19,7 @@ let interactive () =
       flush stdout;
       try
 	let res = interpret_string [global_env] (input_line stdin) in
-	print_endline (PrinterLib.string_of_value_aux "" true res);
+	print_endline (PrinterLib._string_of_value "" true res);
 	flush stdout
       with
 	| NotImplemented -> output_string stderr "Not implemented\n"; flush stderr

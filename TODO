@@ -9,9 +9,9 @@ TLS
  - Add parser for SSLv2.
 
 Modules
+ - Normalize to_string with the options (quoted_strings, multiline)
  - MapModule: Add a _dict or _params magic objects ? Remove all _ ?
  - Write the missing update/dump functions
- - Normalize to_string so it accepts a indent param
  - Problem with @enriched... it does not work if a sub-dictionary is modified...
 
 X509

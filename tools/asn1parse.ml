@@ -19,8 +19,7 @@ let dtype = ref ASN1
 
 (* General options *)
 
-let type_repr = ref PrettyType
-let data_repr = ref PrettyData
+let type_disp = ref true
 
 let files = ref []
 
@@ -31,10 +30,8 @@ let print_depth = ref true
 let print_offset = ref true
 let print_headerlen = ref true
 let print_len = ref true
+let print_type = ref true
 
-
-
-let assign r v = Arg.Unit (fun () -> r:=v)
 
 let update_sev r arg =
   let v = match String.lowercase arg with
@@ -67,14 +64,8 @@ let options = [
   ("-tolerance", Arg.String (update_sev tolerance), "Adjust the maximum severity acceptable while parsing");
   ("-minDisplay", Arg.String (update_sev minDisplay), "Adjust the minimum severity to be displayed");
 
-  ("-notype", assign type_repr NoType, "Do not print types");
-  ("-rawtype", assign type_repr RawType, "Print raw types");
-  ("-prettytype", assign type_repr PrettyType, "Print pretty types");
-  ("-namedtype", assign type_repr NamedType, "Print types using the name given by the spec");
-
-  ("-nodata", assign data_repr NoData, "Do not print data");
-  ("-rawdata", assign data_repr RawData, "Print raw data");
-  ("-prettydata", assign data_repr PrettyData, "Print pretty data");
+  ("-raw", Arg.Set PrinterLib.raw_display, "Print raw types and values");
+  ("-noraw", Arg.Clear PrinterLib.raw_display, "Print pretty types and values");
 
   ("-indent", Arg.Set PrinterLib.multiline, "Display ASN.1 dump with indentation");
   ("-noindent", Arg.Clear PrinterLib.multiline, "Display ASN.1 dump without indentation");
@@ -91,13 +82,14 @@ let options = [
   ("-noheaderlen", Arg.Clear print_headerlen, "Print header len column in asn1parse");  
   ("-len", Arg.Set print_len, "Print len column in asn1parse");  
   ("-nolen", Arg.Clear print_len, "Print len column in asn1parse");  
+  ("-type", Arg.Set print_type, "Print type column in asn1parse");  
+  ("-notype", Arg.Clear print_type, "Print type column in asn1parse");  
 ];;
 
 let add_input s = files := s::(!files) in
 Arg.parse options add_input "asn1parse [options]";;
 
 
-let opts = { type_repr = !type_repr; data_repr = !data_repr }
 let inputs = match !files with
   | [] -> [pstate_of_stream "(stdin)" (Stream.of_channel stdin)]
   | _ -> List.map (fun s -> pstate_of_channel s (open_in s)) !files;;
@@ -108,7 +100,7 @@ let inputs = match !files with
 let parse_input pstate =
   while not (eos pstate) do
     let o = parse pstate in
-    output_string stdout (string_of_object "" opts o)
+    output_string stdout (string_of_object "" o)
   done
 
 
@@ -163,22 +155,16 @@ let string_of_header_asn1parse depth c isC t =
 
 
 let content_string content =
-  let v = match !data_repr, content with
-    | _, Constructed _
-    | NoData, _
-    | _, Null -> None
-
-    | _, Boolean true -> Some "0"
-    | _, Boolean false -> Some "255"
-
-    | _, Integer i -> Some ("0x" ^ (Common.hexdump i))
-
-    | _, BitString (nBits, s) -> Some (string_of_bitstring (!data_repr = RawData) nBits s)
-    | _, OId oid -> Some (string_of_oid oid)
-
-    | RawData, String (s, _)
-    | _, String (s, true) -> Some ("[HEX DUMP]:" ^ (Common.hexdump s))
-    | _, String (s, _) -> Some (s)
+  let v = match content with
+    | Constructed _
+    | Null -> None
+    | Boolean true -> Some "0"
+    | Boolean false -> Some "255"
+    | Integer i -> Some ("0x" ^ (Common.hexdump i))
+    | BitString (nBits, s) -> Some (string_of_bitstring !PrinterLib.raw_display nBits s)
+    | OId oid -> Some (string_of_oid oid)
+    | String (s, true) -> Some ("[HEX DUMP]:" ^ (Common.hexdump s))
+    | String (s, false) -> Some (if !PrinterLib.raw_display then Common.hexdump s else s)
   in
   match v with
     | None -> ""
@@ -205,7 +191,7 @@ let rec asn1parse_input depth pstate =
     if !print_len
     then Printf.printf "l=%4d " len;
 
-    if !type_repr <> NoType
+    if !print_type
     then print_string (string_of_header_asn1parse depth c isC t);
 
     if isC then begin

@@ -2,12 +2,14 @@ open Types
 open ParsingEngine
 open AnswerDump
 
+
 let get_name answer =
   if String.length answer.name = 0
   then Common.string_of_ip answer.ip
   else answer.name
 
 let _ =
+  Printer.PrinterLib.multiline := true;
   let pstate = pstate_of_channel "(stdin)" stdin in
 
   try
@@ -20,7 +22,7 @@ let _ =
 
       let tls_msgs = List.map TlsRecord.RecordModule.pop_object (Tls.TlsLib._parse tls_pstate) in
 
-      List.iter (fun x -> Printf.printf "%s\n" (TlsRecord.RecordParser.to_string x)) tls_msgs;
+      List.iter (fun x -> Printf.printf "  %s\n" (TlsRecord.RecordParser.to_string "  " x)) tls_msgs;
       print_newline ()
     done
   with

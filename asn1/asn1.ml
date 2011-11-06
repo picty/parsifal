@@ -454,24 +454,6 @@ let exact_parse name str : asn1_object =
 (* Content pretty printer *)
 (**************************)
 
-(* TODO: Rewrite this as options... *)
-type type_representation =
-  | NoType
-  | RawType
-  | PrettyType
-  | NamedType
-
-type data_representation =
-  | NoData
-  | RawData
-  | PrettyData
-
-type print_options = {
-  type_repr : type_representation;
-  data_repr : data_representation;
-}
-
-
 (* Useful func *)
 
 let isConstructed o = match o.a_content with
@@ -511,44 +493,39 @@ let string_of_oid oid =
   else raw_string_of_oid oid
 
 
-let rec string_of_object indent popts o =
-  let type_string = match popts.type_repr with
-    | NoType -> []
-    | RawType -> [string_of_header_raw o.a_class (isConstructed o) o.a_tag]
-    | PrettyType -> [string_of_header_pretty o.a_class (isConstructed o) o.a_tag]
-    | NamedType -> [o.a_name]
+let rec string_of_content indent = function
+  | Constructed l -> [string_of_constructed indent l]
+  | Null -> []
+  | Boolean true -> ["true"]
+  | Boolean false -> ["false"]
+  | Integer i -> ["0x" ^ (Common.hexdump i)]
+  | BitString (nBits, s) -> [string_of_bitstring !PrinterLib.raw_display nBits s]
+  | OId oid -> [string_of_oid oid]
+  | String (s, true) -> ["[HEX:]" ^ (Common.hexdump s)]  
+  | String (s, false) -> [if !PrinterLib.raw_display then Common.hexdump s else s]
+
+and string_of_object indent o =
+  let type_string =
+    if !PrinterLib.raw_display
+    then string_of_header_raw o.a_class (isConstructed o) o.a_tag
+    else begin
+      if !PrinterLib.resolve_names
+      then o.a_name
+      else string_of_header_pretty o.a_class (isConstructed o) o.a_tag
+    end
   in
-
-  let content_string = match popts.data_repr, o.a_content with
-    | _, Constructed l -> [string_of_constructed indent popts l]
-
-    | NoData, _
-    | _, Null -> []
-
-    | _, Boolean true -> ["true"]
-    | _, Boolean false -> ["false"]
-
-    | _, Integer i -> ["0x" ^ (Common.hexdump i)]
-
-    | _, BitString (nBits, s) -> [string_of_bitstring (popts.data_repr = RawData) nBits s]
-    | _, OId oid -> [string_of_oid oid]
-
-    | RawData, String (s, _)
-    | _, String (s, true) -> ["[HEX:]" ^ (Common.hexdump s)]  
-    | _, String (s, _) -> [s]
-  in
-
-  let res = String.concat ": " (type_string@content_string) in
+  let content_string = string_of_content indent o.a_content in
+  let res = String.concat ": " (type_string::content_string) in
   if !PrinterLib.multiline
   then indent ^ res ^ "\n"
   else res
 
-and string_of_constructed indent popts l =
+and string_of_constructed indent l =
   let newindent = if !PrinterLib.multiline
     then indent ^ !PrinterLib.indent
     else indent
   in
-  let objects = List.map (string_of_object newindent popts) l in
+  let objects = List.map (string_of_object newindent) l in
   if !PrinterLib.multiline
   then "{\n" ^ (String.concat "" objects) ^ indent ^ "}"
   else "{" ^ (String.concat "; " objects) ^ "}"
@@ -647,9 +624,6 @@ module Asn1Parser = struct
   let name = "asn1"
   let params = []
 
-  (* TODO: Make these options mutable from the language ? *)
-  let opts = { type_repr = PrettyType; data_repr = PrettyData };;
-
   let parse = parse
   let dump = dump
 
@@ -715,7 +689,8 @@ module Asn1Parser = struct
     mk_object' name c t content
 
 
-  let to_string o = string_of_object "" opts o
+  (* TODO: Remove this opts *)
+  let to_string indent o = string_of_object indent o
 end
 
 module Asn1Module = MakeParserModule (Asn1Parser)

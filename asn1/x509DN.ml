@@ -19,20 +19,20 @@ let rdn_constraint dir : rdn asn1_constraint =
 let dn_constraint dir name : dn asn1_constraint =
   seqOf_cons Common.identity name (rdn_constraint dir) AlwaysOK
 
-let string_of_atv indent atv =
-  let atv_opts = { type_repr = NoType; data_repr = PrettyData } in
-  indent ^ (string_of_oid atv.oo_id) ^
-    (match atv.oo_content with
-      | None -> ""
-      | Some o ->
-	 ": " ^ (string_of_object "" atv_opts o)
-    ) ^ "\n"
+let string_of_atv indent _ atv =
+  let id = string_of_oid atv.oo_id in
+  let c = match atv.oo_content with
+    | None -> []
+    | Some o -> string_of_content indent o.a_content
+  in
+  String.concat ": " (id::c)
 
-let string_of_rdn indent rdn =
-  String.concat "" (List.map (string_of_atv indent) rdn)
+let string_of_rdn indent qs rdn =
+  String.concat ", " (List.map (string_of_atv indent qs) rdn)
 
-let string_of_dn indent dn =
-  String.concat "" (List.map (string_of_rdn indent) dn)
+let string_of_dn title indent dn =
+  let aux i qs = List.map (string_of_rdn i qs) in
+  Printer.PrinterLib._string_of_constructed title "" indent aux dn
 
 
 
@@ -64,7 +64,7 @@ module DNParser = struct
 
   let update dict = raise NotImplemented
 
-  let to_string dn = string_of_dn "" dn
+  let to_string = string_of_dn "Distinguished Name"
 end
 
 module DNModule = MakeParserModule (DNParser)

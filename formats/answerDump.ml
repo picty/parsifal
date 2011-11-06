@@ -51,7 +51,7 @@ module AnswerDumpParser = struct
       msg_type = eval_as_int (Hashtbl.find dict "msg_type");
       content = eval_as_string (Hashtbl.find dict "content"); }
 
-  let to_string answer =
+  let to_string indent answer =
     let host = "Host " ^ (String.concat "." (List.map string_of_int (Array.to_list answer.ip))) ^
       ":" ^ (string_of_int answer.port) in
     let named_host = if String.length answer.name > 0
@@ -60,7 +60,8 @@ module AnswerDumpParser = struct
     let chtype = "Client Hello Type: " ^ (string_of_int answer.client_hello_type) in
     let msgtype = "Message type: " ^ (string_of_int answer.msg_type) in
     let contents = "Content: " ^ (Common.hexdump answer.content) in
-    String.concat "\n" [named_host; chtype; msgtype; contents]
+    let strcontent = [named_host; chtype; msgtype; contents] in
+    Printer.PrinterLib._string_of_strlist "Answer" "" indent strcontent
 
 end
 

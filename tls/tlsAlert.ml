@@ -144,7 +144,7 @@ module AlertParser = struct
 
   let update dict = raise NotImplemented
 
-  let to_string (alert_level, alert_type) =
+  let to_string _ (alert_level, alert_type) =
     "TLS Alert (" ^ (string_of_alert_level alert_level) ^ "): " ^ (string_of_alert_type alert_type)
 
   let params = []

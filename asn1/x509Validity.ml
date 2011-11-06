@@ -121,7 +121,7 @@ module DateTimeParser = struct
       | Some sec -> Hashtbl.replace dict "second_fraction" (V_String sec)
 
   let update dict = raise NotImplemented
-  let to_string = string_of_datetime
+  let to_string _ = string_of_datetime
 end
 
 module DateTimeModule = MakeParserModule (DateTimeParser)
@@ -143,8 +143,9 @@ let validity_constraint : validity asn1_constraint =
 
 
 let string_of_validity indent v =
-  indent ^ "Not before: " ^ (string_of_datetime v.not_before) ^ "\n" ^
-  indent ^ "Not after: " ^ (string_of_datetime v.not_after) ^ "\n"
+  let content = ["Not before: " ^ (string_of_datetime v.not_before);
+		 "Not after: " ^ (string_of_datetime v.not_after)] in
+  Printer.PrinterLib._string_of_strlist "Validity" "" indent content
 
 
 
@@ -162,7 +163,7 @@ module ValidityParser = struct
     ()
 
   let update dict = raise NotImplemented
-  let to_string = string_of_validity ""
+  let to_string = string_of_validity
 end
 
 module ValidityModule = MakeParserModule (ValidityParser)
