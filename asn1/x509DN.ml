@@ -42,7 +42,7 @@ module DNParser = struct
   type t = dn
   let params = []
 
-  let parse pstate = Asn1Constraints.constrained_parse (dn_constraint object_directory name) pstate
+  let parse = constrained_parse (dn_constraint object_directory name)
 
   let dump dn = raise NotImplemented
 

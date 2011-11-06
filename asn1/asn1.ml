@@ -13,15 +13,19 @@ type asn1_errors =
   | TooFewObjects
   | TooManyObjects
   | UnexpectedHeader
+  | InvalidDate
 
 let asn1_errors_strings = [|
   (NotInNormalForm, s_idempotencebreaker, "Object is not in normal form");
   (UnexpectedJunk, s_idempotencebreaker, "Trailing bytes in a parsed objects");
+
   (UnknownPrimitiveUniversal, s_speclightlyviolated, "Unknown primitive universal type");
   (UnknownConstructedUniversal, s_speclightlyviolated, "Unknown constructed universal type");
   (TooFewObjects, s_speclightlyviolated, "Too few objects");
   (TooManyObjects, s_speclightlyviolated, "Too many objects");
   (UnexpectedHeader, s_speclightlyviolated, "Unexpected header");
+
+  (InvalidDate, s_speclightlyviolated, "Invalid date");
 |]
 
 let asn1_emit = register_module_errors_and_make_emit_function "ASN.1" asn1_errors_strings

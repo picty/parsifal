@@ -1,45 +1,84 @@
-(*
+open Types
+open Modules
+open ParsingEngine
+open Asn1
+open Asn1Constraints
+
+
 (* Time and validity *)
 
-type datetime_content = {
+type datetime = {
   year : int; month : int; day : int;
-  hour : int; minute : int; second : int option
+  hour : int; minute : int; second : int option;
+  second_fraction : string option
 }
 
-type datetime = datetime_content option
+let empty_datetime = {
+  year = 0; month = 0; day = 0;
+  hour = 0; minute = 0; second = None;
+  second_fraction = None
+}
+
 
 let pop_datetime four_digit_year pstate =
   let s = pop_string pstate in
+  let year_len = if four_digit_year then 4 else 2 in
+  let expected_len = year_len + 8 in
+  let n = String.length s in
 
   let year_of_string () =
     if four_digit_year
-    then pop_int s 0 4
+    then Common.pop_int s 0 4
     else begin
-      match pop_int s 0 2 with
+      match Common.pop_int s 0 2 with
 	| None -> None
 	| Some x -> Some ((if x < 50 then 2000 else 1900) + x)
     end
   in
 
-  let year_len = if four_digit_year then 4 else 2 in
-  let expected_len = year_len + 8 in
-  let n = String.length s in
-  if n < expected_len then None else begin
+  let second_of_string () =
+    if (n < expected_len + 2)
+    then begin
+      asn1_emit NotInNormalForm (Some s_benign) (Some "Missing seconds") pstate;
+      if n <= expected_len || s.[expected_len] != 'Z'
+      then asn1_emit NotInNormalForm None (Some "Time field should end with a Z") pstate;
+      None, None
+    end else begin
+      let ss = Common.pop_int s expected_len 2 in
+      let sfrac = match ss with
+	| None ->
+	  asn1_emit NotInNormalForm None (Some "Missing seconds") pstate;
+	  None
+	| Some _ ->
+	  let end_of_trail = expected_len + 2 in
+	  if n <= end_of_trail || s.[n-1] != 'Z'
+	  then asn1_emit NotInNormalForm None (Some "Time field should end with a Z") pstate;
+	  if n <= end_of_trail then None else Some (String.sub s end_of_trail (n - end_of_trail - 1))
+      in
+      ss, sfrac
+    end
+  in
+
+  let invalid_date () =
+    asn1_emit InvalidDate None None pstate;
+    empty_datetime
+  in
+
+  if n < expected_len then invalid_date () else begin
     let year = year_of_string () in
-    let month = pop_int s year_len 2 in
-    let day = pop_int s (2 + year_len) 2 in
-    let hour = pop_int s (4 + year_len) 2 in
-    let minute = pop_int s (6 + year_len) 2 in
+    let month = Common.pop_int s year_len 2 in
+    let day = Common.pop_int s (2 + year_len) 2 in
+    let hour = Common.pop_int s (4 + year_len) 2 in
+    let minute = Common.pop_int s (6 + year_len) 2 in
     match year, month, day, hour, minute with
       | Some y, Some m, Some d, Some hh, Some mm ->
-	let ss = if (n < expected_len + 2)
-	  then None
-	  else pop_int s (8 + year_len) 2
-	in Some { year = y; month = m; day = d;
-		  hour = hh; minute = mm; second = ss }
-      | _ -> None
-  (* TODO: Handle trailing bytes? *)
+	let ss, sfrac = second_of_string () in
+	{ year = y; month = m; day = d;
+	  hour = hh; minute = mm; second = ss;
+	  second_fraction = sfrac}
+      | _ -> invalid_date ()
   end
+
 
 let datetime_constraint : datetime asn1_constraint =
   let aux c isC t =
@@ -52,61 +91,79 @@ let datetime_constraint : datetime asn1_constraint =
   in Complex_cons aux
 
 
-type validity = { not_before : datetime; not_after : datetime }
-
-let empty_validity = { not_before = None; not_after = None }
-
-let extract_validity = function
-  | [nb; na] -> { not_before = nb; not_after = na }
-  | _ -> { not_before = None; not_after = None }
-
-let validity_constraint : validity asn1_constraint =
-  seqOf_cons extract_validity "Validity" datetime_constraint (Exactly (2, s_specfatallyviolated))
-
-
-let string_of_datetime = function
-  | None -> "Invalid date/time"
-  | Some dt ->
-    Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d"
-      dt.year dt.month dt.day dt.hour dt.minute (pop_option dt.second 0)
-
-let string_of_validity indent _ v =
-  indent ^ "Not before: " ^ (string_of_datetime v.not_before) ^ "\n" ^
-  indent ^ "Not after: " ^ (string_of_datetime v.not_after) ^ "\n"
-
-
-
-
-
+let string_of_datetime dt =
+  Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d%s"
+    dt.year dt.month dt.day dt.hour dt.minute
+    (Common.pop_option dt.second 0)
+    (Common.pop_option dt.second_fraction "")
 
 
 module DateTimeParser = struct
-  type t = datetime_content
-  let name = "date_time"
+  type t = datetime
+  let name = "datetime"
   let params = []
 
-  type pstate = unit
-  let pstate_of_string _ = raise NotImplemented
-  let pstate_of_stream _ _ = raise NotImplemented
-  let eos _ = raise NotImplemented
-  let mk_ehf _ = raise NotImplemented
-  let parse _ = raise NotImplemented
-  let dump _ = raise NotImplemented
-  let update _ = raise NotImplemented
-
+  let parse = constrained_parse datetime_constraint
+  let dump dt = raise NotImplemented
   let enrich dt dict =
     Hashtbl.replace dict "year" (V_Int dt.year);
     Hashtbl.replace dict "month" (V_Int dt.month);
     Hashtbl.replace dict "day" (V_Int dt.day);
     Hashtbl.replace dict "hour" (V_Int dt.hour);
     Hashtbl.replace dict "minute" (V_Int dt.minute);
-    match dt.second with
+    begin
+      match dt.second with
+	| None -> ()
+	| Some sec -> Hashtbl.replace dict "second" (V_Int sec)
+    end;
+    match dt.second_fraction with
       | None -> ()
-      | Some sec -> Hashtbl.replace dict "second" (V_Int sec)
+      | Some sec -> Hashtbl.replace dict "second_fraction" (V_String sec)
 
-  let to_string o = string_of_datetime (Some o)
+  let update dict = raise NotImplemented
+  let to_string = string_of_datetime
 end
 
 module DateTimeModule = MakeParserModule (DateTimeParser)
 let _ = add_module ((module DateTimeModule : Module))
-*)
+
+
+
+
+
+type validity = { not_before : datetime;
+		  not_after : datetime}
+
+let extract_validity = function
+  | [nb; na] -> { not_before = nb; not_after = na }
+  | _ -> { not_before = empty_datetime; not_after = empty_datetime }
+
+let validity_constraint : validity asn1_constraint =
+  seqOf_cons extract_validity "Validity" datetime_constraint (Exactly (2, s_specfatallyviolated))
+
+
+let string_of_validity indent v =
+  indent ^ "Not before: " ^ (string_of_datetime v.not_before) ^ "\n" ^
+  indent ^ "Not after: " ^ (string_of_datetime v.not_after) ^ "\n"
+
+
+
+module ValidityParser = struct
+  type t = validity
+  let name = "validity"
+  let params = []
+
+  let parse = constrained_parse validity_constraint
+  let dump dt = raise NotImplemented
+
+  let enrich dt dict =
+    Hashtbl.replace dict "not_before" (DateTimeModule.register dt.not_before);
+    Hashtbl.replace dict "not_after" (DateTimeModule.register dt.not_after);
+    ()
+
+  let update dict = raise NotImplemented
+  let to_string = string_of_validity ""
+end
+
+module ValidityModule = MakeParserModule (ValidityParser)
+let _ = add_module ((module ValidityModule : Module))
