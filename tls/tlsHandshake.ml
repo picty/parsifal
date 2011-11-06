@@ -200,7 +200,7 @@ let parse_server_hello pstate =
 
 (*
 let asn1_opts = { Asn1.type_repr = Asn1.NoType; Asn1.data_repr = Asn1.NoData;
-		  Asn1.resolver = None; Asn1.indent_output = false }
+		  Asn1.indent_output = false }
 
 let parse_one_certificate pstate =
   let s = extract_variable_length_string "Certificate" extract_uint24 pstate in
@@ -223,7 +223,7 @@ let string_of_handshake_msg = function
     "Certificates:\n" ^ (String.concat "\n" (List.map hexdump raw_certs))
   | Certificate (Right certs) -> raise NotImplemented
 (*    "Certificates:\n" ^
-      (String.concat "\n" (List.map (X509.string_of_certificate true "  " (Some X509.name_directory)) certs)) *)
+      (String.concat "\n" (List.map (X509.string_of_certificate true "  ") certs)) *)
   | ServerKeyExchange -> "Server Key Exchange"
   | CertificateRequest -> "Certificate Request"
   | ServerHelloDone -> "Server Hello Done"

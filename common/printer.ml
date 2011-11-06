@@ -10,6 +10,7 @@ module PrinterLib = struct
   let indent = ref "  "        (* If we are multiline, here is the indent for each level *)    
   let separator = ref ", "     (* If not multiline, here is the separator *)
   let endline = ref "\n"
+  let resolve_names = ref true
 
   let params = [
     param_from_bool_ref "raw_display" raw_display;
@@ -17,6 +18,7 @@ module PrinterLib = struct
     param_from_string_ref "indent" indent;
     param_from_string_ref "separator" separator;
     param_from_string_ref "endline" endline;
+    param_from_bool_ref "resolve_names" resolve_names
   ]
 
   let rec is_multiline raw v =

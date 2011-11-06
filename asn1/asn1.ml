@@ -30,6 +30,8 @@ let asn1_errors_strings = [|
 
 let asn1_emit = register_module_errors_and_make_emit_function "ASN.1" asn1_errors_strings
 
+let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
+
 
 
 (*****************)
@@ -467,7 +469,6 @@ type data_representation =
 type print_options = {
   type_repr : type_representation;
   data_repr : data_representation;
-  resolver : (int list, string) Hashtbl.t option;
   indent_output : bool;     (* indent output and add eols *)
 }
 
@@ -500,11 +501,15 @@ let oid_squash = function
   | _ -> raise (ContentError ("Invalid OId"))
 
 
-let string_of_oid diropt oid = match diropt with
-  | Some dir when Hashtbl.mem dir oid ->
-    Hashtbl.find dir oid
-  | _ ->
-    String.concat "." (List.map string_of_int (oid_expand oid))
+let raw_string_of_oid oid =
+  String.concat "." (List.map string_of_int (oid_expand oid))
+
+let string_of_oid oid =
+  if !PrinterLib.resolve_names then
+    try
+      Hashtbl.find name_directory oid
+    with Not_found -> raw_string_of_oid oid
+  else raw_string_of_oid oid
 
 
 let rec string_of_object indent popts o =
@@ -527,7 +532,7 @@ let rec string_of_object indent popts o =
     | _, Integer i -> ["0x" ^ (Common.hexdump i)]
 
     | _, BitString (nBits, s) -> [string_of_bitstring (popts.data_repr = RawData) nBits s]
-    | _, OId oid -> [string_of_oid popts.resolver oid]
+    | _, OId oid -> [string_of_oid oid]
 
     | RawData, String (s, _)
     | _, String (s, true) -> ["[HEX:]" ^ (Common.hexdump s)]  
@@ -638,10 +643,6 @@ and constructed_to_der objlist =
 
 
 
-
-let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
-
-
 module Asn1Parser = struct
   type t = asn1_object
   let name = "asn1"
@@ -649,7 +650,7 @@ module Asn1Parser = struct
 
   (* TODO: Make these options mutable from the language ? *)
   let opts = { type_repr = PrettyType; data_repr = PrettyData;
-	       resolver = Some name_directory; indent_output = true };;
+	       indent_output = true };;
 
   let parse = parse
   let dump = dump

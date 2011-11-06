@@ -10,22 +10,6 @@ open X509DN
 open X509Validity
 
 
-(* TODO 
-  let resolve_names = ref true
-  let params = [
-    param_from_bool_ref "_resolve_names" resolve_names
-  ]
-
-
-  let get_name_resolver () =
-    if !resolve_names
-    then Some name_directory
-    else None *)
-
-
-
-
-
 (*
 
 (* Public key *)
@@ -68,12 +52,12 @@ let public_key_info_constraint dir : public_key_info asn1_constraint =
     (pubkeyalgo_constraint dir) bitstring_cons s_specfatallyviolated
 
 
-let string_of_public_key_info indent resolver pki =
+let string_of_public_key_info indent pki =
   let new_indent = indent ^ "  " in
     (match pki.public_key with
       | PK_WrongPKInfo ->
 	indent ^ "Wrong Public Key Info:\n" ^
-	  new_indent ^ "Public key algorithm:\n" ^ (string_of_oid_object new_indent resolver pki.pk_algo)
+	  new_indent ^ "Public key algorithm:\n" ^ (string_of_oid_object new_indent pki.pk_algo)
       | PK_DSA {dsa_p; dsa_q; dsa_g; dsa_Y} ->
 	indent ^ "DSA Public Key:\n" ^
 	  new_indent ^ "p: 0x" ^ (hexdump dsa_p) ^ "\n" ^
@@ -86,7 +70,7 @@ let string_of_public_key_info indent resolver pki =
 	  new_indent ^ "e: 0x" ^ (hexdump rsa_e) ^ "\n"
       | PK_Unparsed s ->
 	indent ^ "Public key:\n" ^
-	  new_indent ^ "Public key algorithm:\n" ^ (string_of_oid_object new_indent resolver pki.pk_algo) ^
+	  new_indent ^ "Public key algorithm:\n" ^ (string_of_oid_object new_indent pki.pk_algo) ^
 	  new_indent ^ "Value: [HEX]" ^ hexdump (s) ^ "\n")
 
 
@@ -144,7 +128,7 @@ let extension_constraint = Simple_cons (C_Universal, true, 16, "Extension",
 let extensions_constraint = seqOf_cons identity "Extensions" extension_constraint (AtLeast (1, s_speclightlyviolated))
 
 
-let string_of_extension indent resolver e =
+let string_of_extension indent e =
   let critical_string = match e.e_critical with
     | Some true -> "(critical)"
     | _ -> ""
@@ -173,9 +157,9 @@ let string_of_extension indent resolver e =
 	"keyUsage", "[" ^ (string_of_int i) ^ "]" ^ (hexdump s)
       | ExtKeyUsage l ->
 	let new_indent = indent ^ "  " in
-	"extendedKeyUsage", "\n" ^ (String.concat "\n" (List.map (fun oid -> new_indent ^ string_of_oid resolver oid) l))
+	"extendedKeyUsage", "\n" ^ (String.concat "\n" (List.map (fun oid -> new_indent ^ string_of_oid oid) l))
       | UnparsedExt (oid, raw_content) ->
-	(string_of_oid resolver oid), "[HEX]" ^ (hexdump raw_content)
+	(string_of_oid oid), "[HEX]" ^ (hexdump raw_content)
       | InvalidExt -> "InvalidExt", ""
   in
   indent ^ oid_string ^ critical_string ^ (if String.length content_string > 0 then ": " else "") ^ content_string ^ "\n"
@@ -259,17 +243,17 @@ let tbs_certificate_constraint dir : tbs_certificate asn1_constraint =
   Simple_cons (C_Universal, true, 16, "tbsCertificate", parse_tbs_certificate dir)
 
 
-let string_of_tbs_certificate indent resolver tbs =
+let string_of_tbs_certificate indent tbs =
   let new_indent = indent ^ "  " in
   (match tbs.version with
     | None -> ""
     | Some i -> indent ^ "Version: " ^ (string_of_int i) ^ "\n") ^ 
     indent ^ "Serial: " ^ (hexdump tbs.serial) ^ "\n" ^
-    indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent resolver tbs.sig_algo) ^
-    indent ^ "Issuer:\n" ^ (string_of_dn new_indent resolver tbs.issuer) ^
-    indent ^ "Validity:\n" ^ (string_of_validity new_indent resolver tbs.validity) ^
-    indent ^ "Subject:\n" ^ (string_of_dn new_indent resolver tbs.subject) ^
-    indent ^ "Public Key Info:\n" ^ (string_of_public_key_info new_indent resolver tbs.pk_info) ^
+    indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent tbs.sig_algo) ^
+    indent ^ "Issuer:\n" ^ (string_of_dn new_indent tbs.issuer) ^
+    indent ^ "Validity:\n" ^ (string_of_validity new_indent tbs.validity) ^
+    indent ^ "Subject:\n" ^ (string_of_dn new_indent tbs.subject) ^
+    indent ^ "Public Key Info:\n" ^ (string_of_public_key_info new_indent tbs.pk_info) ^
     (match tbs.issuer_unique_id with
       | None -> ""
       | Some (nb, s) ->
@@ -281,7 +265,7 @@ let string_of_tbs_certificate indent resolver tbs =
     (match tbs.extensions with
       | None -> ""
       | Some e ->
-	indent ^ "Extensions:\n" ^ (String.concat "" (List.map (string_of_extension new_indent resolver) e)))
+	indent ^ "Extensions:\n" ^ (String.concat "" (List.map (string_of_extension new_indent) e)))
 
 
 (* Signature *)
@@ -314,7 +298,7 @@ let signature_constraint dir sigalgo : signature asn1_constraint =
 	       fun pstate -> extract_signature (sigalgo, raw_der_to_bitstring "" pstate))
 
 
-let string_of_signature indent _resolver sign =
+let string_of_signature indent sign =
   match sign with
     | Sig_WrongSignature -> indent ^ "Wrong Signature\n"
     | Sig_DSA {dsa_r; dsa_s} ->
@@ -346,13 +330,13 @@ let certificate_constraint dir : certificate asn1_constraint =
   Simple_cons (C_Universal, true, 16, "Certificate", parse_certificate dir)
 
 
-let rec string_of_certificate print_title indent resolver c =
+let rec string_of_certificate print_title indent c =
   let new_indent = indent ^ "  " in
   if (print_title)
-  then indent ^ "Certificate:\n" ^ (string_of_certificate false new_indent resolver c)
-  else indent ^ "tbsCertificate:\n" ^ (string_of_tbs_certificate new_indent resolver c.tbs) ^
-    indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent resolver c.cert_sig_algo) ^
-    indent ^ "Signature:\n" ^ (string_of_signature new_indent resolver c.signature) ^
+  then indent ^ "Certificate:\n" ^ (string_of_certificate false new_indent c)
+  else indent ^ "tbsCertificate:\n" ^ (string_of_tbs_certificate new_indent c.tbs) ^
+    indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent c.cert_sig_algo) ^
+    indent ^ "Signature:\n" ^ (string_of_signature new_indent c.signature) ^
     "\n"
 		 
 
@@ -449,8 +433,7 @@ module X509Parser = struct
 
   let update dict = raise NotImplemented
 
-  (* TODO : resolver *)
-  let to_string cert = string_of_certificate true "" (Some name_directory) cert
+  let to_string cert = string_of_certificate true "" cert
 end
 
 module X509Module = MakeParserModule (X509Parser)

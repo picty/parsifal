@@ -71,8 +71,8 @@ let object_constraint dir oid_type oid_sev name =
   Simple_cons (C_Universal, true, 16, name, parse_oid_object dir oid_type oid_sev)
 
 
-let string_of_oid_object indent resolver o =
-  let oid_string = indent ^ (string_of_oid resolver o.oo_id) ^ "\n" in
+let string_of_oid_object indent o =
+  let oid_string = indent ^ (string_of_oid o.oo_id) ^ "\n" in
   begin
     match o.oo_content with
       | None
@@ -80,7 +80,7 @@ let string_of_oid_object indent resolver o =
       | Some p ->
 	(* TODO *)
 	let opts = { type_repr = PrettyType; data_repr = PrettyData;
-		     resolver = resolver; indent_output = true } in
+		     indent_output = true } in
 	let new_indent = indent ^ "  " in
 	oid_string ^ indent ^ "Content:\n" ^ (string_of_object new_indent opts p)
   end
@@ -112,7 +112,7 @@ module OIdObjectParser = struct
     in
     { oo_id = id; oo_content = content }
 
-  let to_string = string_of_oid_object "" (Some name_directory)
+  let to_string = string_of_oid_object ""
 
   let params = []
 end

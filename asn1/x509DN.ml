@@ -19,21 +19,21 @@ let rdn_constraint dir : rdn asn1_constraint =
 let dn_constraint dir name : dn asn1_constraint =
   seqOf_cons Common.identity name (rdn_constraint dir) AlwaysOK
 
-let string_of_atv indent resolver atv =
+let string_of_atv indent atv =
   let atv_opts = { type_repr = NoType; data_repr = PrettyData;
-		   resolver = resolver; indent_output = false } in
-  indent ^ (string_of_oid resolver atv.oo_id) ^
+		   indent_output = false } in
+  indent ^ (string_of_oid atv.oo_id) ^
     (match atv.oo_content with
       | None -> ""
       | Some o ->
 	 ": " ^ (string_of_object "" atv_opts o)
     ) ^ "\n"
 
-let string_of_rdn indent resolver rdn =
-  String.concat "" (List.map (string_of_atv indent resolver) rdn)
+let string_of_rdn indent rdn =
+  String.concat "" (List.map (string_of_atv indent) rdn)
 
-let string_of_dn indent resolver dn =
-  String.concat "" (List.map (string_of_rdn indent resolver) dn)
+let string_of_dn indent dn =
+  String.concat "" (List.map (string_of_rdn indent) dn)
 
 
 
@@ -51,7 +51,7 @@ module DNParser = struct
     let rec handle_atv = function
       | [] -> ()
       | atv::r ->
-	let oid = Asn1.string_of_oid (Some name_directory) atv.oo_id in
+	let oid = Asn1.string_of_oid atv.oo_id in
 	let value =
 	  match atv.oo_content with
 	    | None -> V_Unit
@@ -65,7 +65,7 @@ module DNParser = struct
 
   let update dict = raise NotImplemented
 
-  let to_string dn = string_of_dn "" (Some name_directory) dn
+  let to_string dn = string_of_dn "" dn
 end
 
 module DNModule = MakeParserModule (DNParser)

@@ -20,7 +20,6 @@ let dtype = ref ASN1
 
 let type_repr = ref PrettyType
 let data_repr = ref PrettyData
-let resolver = ref (Some (name_directory))
 let indent = ref true
 
 let files = ref []
@@ -95,7 +94,7 @@ let add_input s = files := s::(!files) in
 Arg.parse options add_input "asn1parse [options]";;
 
 
-let opts = { type_repr = !type_repr; data_repr = !data_repr; resolver = !resolver; indent_output = !indent }
+let opts = { type_repr = !type_repr; data_repr = !data_repr; indent_output = !indent }
 let inputs = match !files with
   | [] -> [pstate_of_stream "(stdin)" (Stream.of_channel stdin)]
   | _ -> List.map (fun s -> pstate_of_channel s (open_in s)) !files;;
@@ -172,7 +171,7 @@ let content_string content =
     | _, Integer i -> Some ("0x" ^ (Common.hexdump i))
 
     | _, BitString (nBits, s) -> Some (string_of_bitstring (!data_repr = RawData) nBits s)
-    | _, OId oid -> Some (string_of_oid !resolver oid)
+    | _, OId oid -> Some (string_of_oid oid)
 
     | RawData, String (s, _)
     | _, String (s, true) -> Some ("[HEX DUMP]:" ^ (Common.hexdump s))
@@ -229,7 +228,7 @@ let rec asn1parse_input depth pstate =
 (*let parse_and_validate_cert cons pstate =
   while not (eos pstate) do
     let o = constrained_parse cons pstate in
-    print_endline (X509.string_of_certificate true "" !resolver o)
+    print_endline (X509.string_of_certificate true "" o)
   done;; *)
 
 
