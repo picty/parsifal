@@ -132,7 +132,9 @@ let _ = add_module ((module DateTimeModule : Module))
 
 
 type validity = { not_before : datetime;
-		  not_after : datetime}
+		  not_after : datetime }
+let empty_validity = { not_before = empty_datetime;
+		       not_after = empty_datetime }
 
 let extract_validity = function
   | [nb; na] -> { not_before = nb; not_after = na }

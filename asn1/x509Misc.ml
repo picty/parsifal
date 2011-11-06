@@ -49,11 +49,11 @@ type oid_object = {
 let empty_oid_object = { oo_id = []; oo_content = None }
 
 
-let parse_oid_object dir oid_type oid_sev pstate =
+let parse_oid_object oid_type oid_sev pstate =
   let oid = constrained_parse_def oid_cons oid_sev [] pstate in
-  let content_cons, content_sev = if Hashtbl.mem dir (oid_type, oid)
-    then Hashtbl.find dir (oid_type, oid)
-    else (Anything identity), s_benign
+  let content_cons, content_sev =
+    try Hashtbl.find object_directory (oid_type, oid)
+    with Not_found -> (Anything identity), s_benign
   in
   let content = match common_constrained_parse content_cons pstate with
     | Left (TooFewObjects _) -> None
@@ -67,8 +67,8 @@ let parse_oid_object dir oid_type oid_sev pstate =
   { oo_id = oid; oo_content = content }
 
 
-let object_constraint dir oid_type oid_sev name =
-  Simple_cons (C_Universal, true, 16, name, parse_oid_object dir oid_type oid_sev)
+let object_constraint oid_type oid_sev name =
+  Simple_cons (C_Universal, true, 16, name, parse_oid_object oid_type oid_sev)
 
 
 let string_of_oid_object indent o =
@@ -87,7 +87,7 @@ module OIdObjectParser = struct
   let name = "oid_object"
   type t = oid_object
 
-  let parse pstate = raise NotImplemented (*constrained_parse (object_constraint object_directory ) pstate *)
+  let parse pstate = raise NotImplemented (*constrained_parse object_constraint pstate *)
 
   let dump oo = raise NotImplemented
 
@@ -121,5 +121,5 @@ let _ = add_module ((module OIdObjectModule : Module))
 
 (* Signature algo *)
 
-let sigalgo_constraint dir : oid_object asn1_constraint =
-  object_constraint dir SigAlgo s_specfatallyviolated "Signature Algorithm"
+let sigalgo_constraint : oid_object asn1_constraint =
+  object_constraint SigAlgo s_specfatallyviolated "Signature Algorithm"

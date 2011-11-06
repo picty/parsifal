@@ -13,7 +13,11 @@ type asn1_errors =
   | TooFewObjects
   | TooManyObjects
   | UnexpectedHeader
+
   | InvalidDate
+  | UnexpectedUniqueIdentifier
+  | UnexpectedExtension
+
 
 let asn1_errors_strings = [|
   (NotInNormalForm, s_idempotencebreaker, "Object is not in normal form");
@@ -26,6 +30,8 @@ let asn1_errors_strings = [|
   (UnexpectedHeader, s_speclightlyviolated, "Unexpected header");
 
   (InvalidDate, s_speclightlyviolated, "Invalid date");
+  (UnexpectedUniqueIdentifier, s_speclightlyviolated, "Unexpected unique identifier");
+  (UnexpectedExtension, s_speclightlyviolated, "Unexpected extension");
 |]
 
 let asn1_emit = register_module_errors_and_make_emit_function "ASN.1" asn1_errors_strings

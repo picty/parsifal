@@ -8,10 +8,14 @@ open TlsAlert
 open TlsChangeCipherSpec
 
 
+  
 module TlsLib = struct
   let name = "tls"
 
-  let params = []
+  let params = [
+    param_from_bool_ref "parse_extensions" parse_extensions;
+    param_from_bool_ref "parse_certificates" parse_extensions;
+  ]
 
   let rec shallow_parse_records pstate =
     if not (eos pstate) then

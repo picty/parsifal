@@ -12,12 +12,12 @@ type atv = oid_object
 type rdn = atv list
 type dn = rdn list
 
-let atv_constraint dir : atv asn1_constraint =
-  object_constraint dir ATV s_specfatallyviolated "ATV"
-let rdn_constraint dir : rdn asn1_constraint =
-  setOf_cons Common.identity "Relative DN" (atv_constraint dir) (AtLeast (1, s_specfatallyviolated))
-let dn_constraint dir name : dn asn1_constraint =
-  seqOf_cons Common.identity name (rdn_constraint dir) AlwaysOK
+let atv_constraint : atv asn1_constraint =
+  object_constraint ATV s_specfatallyviolated "ATV"
+let rdn_constraint : rdn asn1_constraint =
+  setOf_cons Common.identity "Relative DN" atv_constraint (AtLeast (1, s_specfatallyviolated))
+let dn_constraint name : dn asn1_constraint =
+  seqOf_cons Common.identity name rdn_constraint AlwaysOK
 
 let string_of_atv indent _ atv =
   let id = string_of_oid atv.oo_id in
@@ -41,7 +41,7 @@ module DNParser = struct
   type t = dn
   let params = []
 
-  let parse = constrained_parse (dn_constraint object_directory name)
+  let parse = constrained_parse (dn_constraint name)
 
   let dump dn = raise NotImplemented
 
@@ -70,3 +70,42 @@ end
 module DNModule = MakeParserModule (DNParser)
 let _ = add_module ((module DNModule : Module))
 
+
+
+
+(* ATVs directory entries *)
+
+let (initial_directory : (int list, string) Hashtbl.t) = Hashtbl.create 20
+
+let add_atv oid name initial cons sev =
+  Hashtbl.add name_directory oid name;
+  match initial with
+    | None -> ()
+    | Some s -> Hashtbl.add initial_directory oid s;
+  Hashtbl.add object_directory (ATV, oid) (cons, sev)
+
+
+let add_standard_atv () =
+  add_atv [85;4;41] "name" None directory_name_cons s_benign;
+  add_atv [85;4;4] "surname" None directory_name_cons s_benign;
+  add_atv [85;4;42] "givenName" None directory_name_cons s_benign;
+  add_atv [85;4;43] "initials" None directory_name_cons s_benign;
+  add_atv [85;4;44] "genrationQualifier" None directory_name_cons s_benign;
+  add_atv [85;4;3] "commonName" (Some "CN") directory_name_cons s_benign;
+  add_atv [85;4;7] "locality" (Some "L") directory_name_cons s_benign;
+  add_atv [85;4;8] "state" (Some "S") directory_name_cons s_benign;
+  add_atv [85;4;10] "organization" (Some "O") directory_name_cons s_benign;
+  add_atv [85;4;11] "organizationalUnit" (Some "OU") directory_name_cons s_benign;
+  add_atv [85;4;12] "title" None directory_name_cons s_benign;
+  add_atv [85;4;46] "dnQualifier" None printablestring_cons s_benign;
+  (* TODO: Add constraint on length ? *)
+  add_atv [85;4;6] "country" (Some "C") printablestring_cons s_benign;
+  add_atv [85;4;5] "serial" None printablestring_cons s_benign;
+  add_atv [85;4;65] "pseudonym" None directory_name_cons s_benign;
+  add_atv [9;2342;19200300;100;1;25] "domainComponent" None ia5string_cons s_benign;
+  add_atv [42;840;113549;1;9;1] "emailAddress" None ia5string_cons s_benign;;
+
+
+
+let _ =
+  add_standard_atv ();;

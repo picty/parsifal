@@ -110,8 +110,8 @@ let rec parse_sequenceof (postprocess : 'a list -> 'b) (cons : 'a asn1_constrain
     match n with
       | AlwaysOK -> ()
       | Exactly (num, sev) ->
-	let e = if res_len < num then TooFewObjects else TooManyObjects in
-	asn1_emit e (Some sev) (instead_of res_len num) pstate
+	if res_len < num then asn1_emit TooFewObjects (Some sev) (instead_of res_len num) pstate
+	else if res_len > num then asn1_emit TooManyObjects (Some sev) (instead_of res_len num) pstate
 	
       | AtLeast (num, sev) ->
 	if res_len < num

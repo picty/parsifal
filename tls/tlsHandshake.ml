@@ -21,9 +21,10 @@ let tls_handshake_errors_strings = [|
 
 let tls_handshake_emit = register_module_errors_and_make_emit_function "tlsHandshake" tls_handshake_errors_strings
 
+
+(* The params are declared here but are associated to the Tls module *)
 let parse_extensions = ref true
-(* TODO: Is this the good default? *)
-let parse_certificates = ref false
+let parse_certificates = ref false (* TODO: Is this the good default? *)
 
 
 
@@ -311,10 +312,7 @@ module HandshakeParser = struct
 
   let to_string = string_of_handshake_msg
 
-  let params = [
-    param_from_bool_ref "parse_extensions" parse_extensions;
-    param_from_bool_ref "parse_certificates" parse_extensions;
-  ]
+  let params = []
 end
 
 module HandshakeModule = MakeParserModule (HandshakeParser)
