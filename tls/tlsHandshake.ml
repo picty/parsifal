@@ -69,7 +69,7 @@ type handshake_msg =
   | HelloRequest
   | ClientHello of client_hello
   | ServerHello of server_hello
-  | Certificate of (string list, unit (*X509.certificate list*)) alternative
+  | Certificate of (string list, X509.certificate list) alternative
   | ServerKeyExchange
   | CertificateRequest
   | ServerHelloDone
@@ -202,17 +202,17 @@ let parse_server_hello pstate =
 		s_compression_method = compression_method;
 		s_extensions = extensions }
 
-(*
+
 let parse_one_certificate pstate =
-  let s = extract_variable_length_string "Certificate" extract_uint24 pstate in
-  let res = Asn1Constraints.constrained_parse (X509.certificate_constraint X509.object_directory) asn1_pstate in
-  if not (Asn1.Engine.eos asn1_pstate) then emit UnexpectedJunk ParsingEngine.s_benign pstate;
+  let len = extract_uint24 pstate in
+  let new_pstate = go_down pstate "Certificate" len in
+  let res = Asn1Constraints.constrained_parse X509.certificate_constraint new_pstate in
+  assert_eos pstate;
   res
-*)
 
 let parse_certificate_msg pstate =
   if (!parse_certificates)
-  then raise NotImplemented (*Certificate (extract_list "Certificates" extract_uint24 (parse_one_certificate) pstate)*)
+  then Certificate (Right (extract_list "Certificates" extract_uint24 (parse_one_certificate) pstate))
   else Certificate (Left (extract_list "Certificates" extract_uint24 (extract_variable_length_string "Extension" extract_uint24) pstate))
 
 
@@ -222,9 +222,9 @@ let string_of_handshake_msg indent = function
   | ServerHello sh -> string_of_server_hello indent sh
   | Certificate (Left raw_certs) ->
     PrinterLib._string_of_strlist "Certificates:" "" indent (List.map hexdump raw_certs)
-  | Certificate (Right certs) -> raise NotImplemented
-(*    "Certificates:\n" ^
-      (String.concat "\n" (List.map (X509.string_of_certificate true) certs)) *)
+  | Certificate (Right certs) ->
+    let aux indent _ cs = List.map (X509.string_of_certificate true indent) cs in
+    PrinterLib._string_of_constructed "Certificates:" "" indent aux certs
   | ServerKeyExchange -> "Server Key Exchange"
   | CertificateRequest -> "Certificate Request"
   | ServerHelloDone -> "Server Hello Done"
@@ -303,9 +303,8 @@ module HandshakeParser = struct
 	let strs = List.map (fun x -> V_BinaryString x) raw_certs in
 	Hashtbl.replace dict "certificates" (V_List strs)
       | Certificate (Right certs) ->
-	raise NotImplemented
-(*	let cert_objs = List.map X509Module.X509Module.register certs in
-	Hashtbl.replace dict "certificates" (V_List cert_objs)*)
+	let cert_objs = List.map X509.X509Module.register certs in
+	Hashtbl.replace dict "certificates" (V_List cert_objs)
       | _ -> ()
 
   let update dict = raise NotImplemented

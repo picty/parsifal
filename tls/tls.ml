@@ -14,7 +14,7 @@ module TlsLib = struct
 
   let params = [
     param_from_bool_ref "parse_extensions" parse_extensions;
-    param_from_bool_ref "parse_certificates" parse_extensions;
+    param_from_bool_ref "parse_certificates" parse_certificates;
   ]
 
   let rec shallow_parse_records pstate =
