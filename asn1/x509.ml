@@ -193,6 +193,25 @@ let rec string_of_certificate title cert =
   ] in
   PrinterLib._string_of_strlist title indent_only cert_str
 
+let rec _get_extension exts oid = match exts with
+  | [] -> raise Not_found
+  | e::r ->
+    if e.e_id = oid
+    then ExtensionModule.register e
+    else _get_extension r oid
+
+let get_extension exts ext_id =
+  let oid = match ext_id with
+    | V_List oid -> List.map eval_as_int oid
+    | V_String s -> begin
+      try Hashtbl.find rev_name_directory s
+      with Not_found -> begin
+	try oid_squash (List.map int_of_string (string_split '.' s))
+	with Failure "int_of_string" -> raise (ContentError ("Unknown OId"))
+      end
+    end
+    | _ -> raise (ContentError ("OId must be strings or int list"))
+  in _get_extension exts oid
 
 module X509Parser = struct
   type t = certificate
@@ -209,7 +228,10 @@ module X509Parser = struct
   let enrich cert dict =
     Hashtbl.replace dict "tbs" (TbsModule.register cert.tbs);
     Hashtbl.replace dict "signature_algorithm" (OIdObjectModule.register cert.cert_sig_algo);
-    Hashtbl.replace dict "signature" cert.signature
+    Hashtbl.replace dict "signature" cert.signature;
+    match cert.tbs.extensions with
+      | None -> ()
+      | Some exts -> Hashtbl.replace dict "get_extension" (V_Function (NativeFun (one_value_fun (get_extension exts))))
 
   let update dict = raise NotImplemented
 

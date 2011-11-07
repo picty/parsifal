@@ -22,8 +22,16 @@ let empty_extension = {
 }
 
 
-type ext_parse_fun = string -> value
-let (extension_directory : (int list, value asn1_constraint) Hashtbl.t) = Hashtbl.create 10
+
+type ext_parse = value asn1_constraint
+type ext_dump = value -> string
+let (extension_directory : (int list, (ext_parse * ext_dump)) Hashtbl.t) = Hashtbl.create 10
+
+let register_extension oid name parse_cons dump_fun =
+  register_oid oid name;
+  Hashtbl.replace extension_directory oid (parse_cons, dump_fun)
+
+
 
 
 let extension_content_constraint = {
@@ -36,9 +44,9 @@ let extension_content_constraint = {
 }
 
 let deep_parse_ext id s =
-  if !parse_extensions then V_BinaryString s else
+  if not !parse_extensions then V_BinaryString s else
     try
-      let ext_cons = Hashtbl.find extension_directory id in
+      let ext_cons, _ = Hashtbl.find extension_directory id in
       let pstate = pstate_of_string (Some (string_of_oid id)) s in
       constrained_parse_def ext_cons s_speclightlyviolated (V_BinaryString s) pstate
     with Not_found -> V_BinaryString s
@@ -74,8 +82,8 @@ module ExtensionParser = struct
 
   let parse = constrained_parse extension_constraint
 
-  let dump pki = raise NotImplemented
-  let enrich pki dict = raise NotImplemented
+  let dump ext = raise NotImplemented
+  let enrich ext dict = raise NotImplemented
   let update dict = raise NotImplemented
 
   let to_string = string_of_extension
@@ -83,6 +91,67 @@ end
 
 module ExtensionModule = MakeParserModule (ExtensionParser)
 let _ = add_module ((module ExtensionModule : Module))
+
+
+
+
+(* Basic Constraints *)
+
+let basicConstraints_oid = [85;29;19]
+
+let bc_constraint = {
+  severity_if_too_many_objects = s_specfatallyviolated;
+  constraint_list = [
+    Simple_cons (C_Universal, false, 1, "CA", der_to_boolean), s_ok;
+    Simple_cons (C_Universal, false, 2, "PathLen", der_to_int), s_ok
+  ]
+}
+
+let extract_bc l =
+  let res = Hashtbl.create 2 in
+  let add_ca b = Hashtbl.replace res "CA" (V_Bool b)
+  and add_pl i = Hashtbl.replace res "PathLen" (V_Bigint i) in
+  begin
+    match l with
+      | [Boolean b; Integer i] -> add_ca b; add_pl i
+      | [Boolean b] -> add_ca b
+      | [Integer i] -> add_pl i
+      | _ -> ()
+  end;
+  V_Dict res
+
+let mkBasicConstraints = Simple_cons (C_Universal, true, 16, "basicConstraints",
+				      parse_constrained_sequence extract_bc bc_constraint)
+
+let dump_basicConstraints v =
+  let d = eval_as_dict v in
+  let ca_obj =
+    try [mk_object' "" C_Universal 1 (Boolean (eval_as_bool (Hashtbl.find d "CA")))]
+    with Not_found -> []
+  and pl_obj =
+    try [mk_object' "" C_Universal 2 (Integer (eval_as_string (Hashtbl.find d "PathLen")))]
+    with Not_found -> []
+  in dump (mk_object' "" C_Universal 16 (Constructed (ca_obj@pl_obj)))
+
+let _ = register_extension basicConstraints_oid "basicConstraints" mkBasicConstraints dump_basicConstraints
+
+
+
+(* Subject Key Identifier *)
+
+let subjectKeyIdentifier_oid = [85;29;14]
+
+let mkSKI = Simple_cons (C_Universal, false, 4, "subjectKeyIdentifier",
+			 fun pstate -> V_BinaryString (pop_string pstate))
+
+let dump_SKI v = dump (mk_object' "" C_Universal 4 (String (eval_as_string v, true)))
+
+let _ = register_extension subjectKeyIdentifier_oid "subjectKeyIdentifier" mkSKI dump_SKI
+
+
+
+
+
 
 
 (*
@@ -152,37 +221,7 @@ let string_of_extension indent e =
 
 
 
-(* Basic Constraints *)
 
-let basicConstraints_oid = [85;29;19]
-
-let bc_constraint = {
-  severity_if_too_many_objects = s_specfatallyviolated;
-  constraint_list = [
-    Simple_cons (C_Universal, false, 1, "CA", der_to_boolean), s_ok;
-    Simple_cons (C_Universal, false, 2, "PathLen", der_to_int), s_ok
-  ]
-}
-
-let extract_bc = function
-  | [Boolean b; Integer i] -> BasicConstraints (Some b, Some i)
-  | [Boolean b] -> BasicConstraints (Some b, None)
-  | [Integer i] -> BasicConstraints (None, Some i)
-  | [] -> BasicConstraints (None, None)
-  | _ -> InvalidExt
-
-let mkBasicConstraints = Simple_cons (C_Universal, true, 16, "basicConstraints",
-				      parse_constrained_sequence extract_bc bc_constraint)
-
-
-
-
-(* Subject Key Identifier *)
-
-let subjectKeyIdentifier_oid = [85;29;14]
-
-let mkSKI = Simple_cons (C_Universal, false, 4, "subjectKeyIdentifier",
-			 fun pstate -> SubjectKeyIdentifier (Asn1.Engine.pop_string pstate))
 
 
 

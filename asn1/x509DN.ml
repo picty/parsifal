@@ -79,7 +79,7 @@ let _ = add_module ((module DNModule : Module))
 let (initial_directory : (int list, string) Hashtbl.t) = Hashtbl.create 20
 
 let add_atv oid name initial cons sev =
-  Hashtbl.add name_directory oid name;
+  register_oid oid name;
   match initial with
     | None -> ()
     | Some s -> Hashtbl.add initial_directory oid s;

@@ -36,7 +36,6 @@ let asn1_errors_strings = [|
 
 let asn1_emit = register_module_errors_and_make_emit_function "ASN.1" asn1_errors_strings
 
-let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
 
 
 
@@ -488,8 +487,16 @@ let oid_squash = function
   | _ -> raise (ContentError ("Invalid OId"))
 
 
+let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
+let (rev_name_directory : (string, int list) Hashtbl.t) = Hashtbl.create 200
+
 let raw_string_of_oid oid =
   String.concat "." (List.map string_of_int (oid_expand oid))
+
+let register_oid oid s =
+  Hashtbl.add name_directory oid s;
+  Hashtbl.add rev_name_directory s oid;
+  Hashtbl.add rev_name_directory (raw_string_of_oid oid) oid
 
 let string_of_oid oid =
   if !PrinterLib.resolve_names then
