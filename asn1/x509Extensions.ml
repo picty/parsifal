@@ -147,19 +147,6 @@ let _ = register_extension basicConstraints_oid "basicConstraints" mkBasicConstr
 
 
 
-(* Subject Key Identifier *)
-
-let subjectKeyIdentifier_oid = [85;29;14]
-
-let mkSKI = Simple_cons (C_Universal, false, 4, "subjectKeyIdentifier",
-			 fun pstate -> V_BinaryString (pop_string pstate))
-
-let dump_SKI v = dump (mk_object' "" C_Universal 4 (String (eval_as_string v, true)))
-
-let _ = register_extension subjectKeyIdentifier_oid "subjectKeyIdentifier" mkSKI dump_SKI
-
-
-
 (* Key Usage *)
 
 let keyUsage_oid = [85;29;15]
@@ -199,6 +186,60 @@ let dump_ExtKeyUsage v = raise NotImplemented
 
 
 let _ = register_extension extKeyUsage_oid "extendedKeyUsage" mkExtKeyUsage dump_ExtKeyUsage
+
+
+
+(* Subject Key Identifier *)
+
+let subjectKeyIdentifier_oid = [85;29;14]
+
+let mkSKI = Simple_cons (C_Universal, false, 4, "subjectKeyIdentifier",
+			 fun pstate -> V_BinaryString (pop_string pstate))
+
+let dump_SKI v = dump (mk_object' "" C_Universal 4 (String (eval_as_string v, true)))
+
+let _ = register_extension subjectKeyIdentifier_oid "subjectKeyIdentifier" mkSKI dump_SKI
+
+
+
+(* Authority Key Identifier *)
+let authorityKeyIdentifier_oid = [85;29;35]
+
+let aki_constraint = {
+  severity_if_too_many_objects = s_specfatallyviolated;
+  constraint_list = [
+    Simple_cons (C_ContextSpecific, false, 0, "keyIdentifier", der_to_octetstring true), s_ok;
+    (* TODO: Do better than that *)
+    Simple_cons (C_ContextSpecific, true, 1, "authorityCertIssuer", der_to_constructed), s_ok;
+    Simple_cons (C_ContextSpecific, false, 2, "authorityCertSerialNumber", der_to_int), s_ok
+  ]
+}
+
+let extract_aki aki =
+  let res = Hashtbl.create 3 in
+  let extract_serial = function
+    | (Integer i)::_ -> Hashtbl.replace res "authorityCertSerialNumber" (V_Bigint i)
+    | _ -> () in
+  (* TODO: Do better than that *)
+  let extract_cert_issuer = function
+    | (Constructed l)::r ->
+      Hashtbl.replace res "authorityCertIssuer" (V_List (List.map Asn1Module.register l));
+      extract_serial r
+    | r -> extract_serial r in
+  let extract_key_identifier = function
+    | (String (s, true))::r ->
+      Hashtbl.replace res "keyIdentifier" (V_BinaryString s);
+      extract_cert_issuer r
+    | r -> extract_cert_issuer r in
+  extract_key_identifier aki;
+  V_Dict res
+
+let mkAKI = Simple_cons (C_Universal, true, 16, "authorityKeyIdentifier",
+			 parse_constrained_sequence extract_aki aki_constraint)
+
+let dump_AKI v = raise NotImplemented
+
+let _ = register_extension authorityKeyIdentifier_oid "authorityKeyIdentifier" mkAKI dump_AKI
 
 
 
@@ -242,30 +283,6 @@ let _ = register_extension nsCertType_oid "nsCertType" mkNSCertType dump_NSCertT
 
 
 (*
-
-
-(* Authority Key Identifier *)
-let authorityKeyIdentifier_oid = [85;29;35]
-
-let aki_constraint = {
-  severity_if_too_many_objects = s_specfatallyviolated;
-  constraint_list = [
-    Simple_cons (C_ContextSpecific, false, 0, "keyIdentifier", der_to_octetstring true), s_ok;
-    Simple_cons (C_ContextSpecific, true, 1, "authorityCertIssuer", der_to_constructed), s_ok;
-    Simple_cons (C_ContextSpecific, false, 2, "authorityCertSerialNumber", der_to_int), s_ok
-  ]
-}
-
-let extract_aki = function
-  | (String (s, true))::_ -> AuthorityKeyIdentifier (AKI_KeyIdentifier s)
-  (* TODO *)
-  | _ -> AuthorityKeyIdentifier AKI_Unknown
-
-let mkAKI = Simple_cons (C_Universal, true, 16, "basicConstraints",
-			 parse_constrained_sequence extract_aki aki_constraint)
-
-
-
 
 (* CRL Distribution Point *)
 

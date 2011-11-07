@@ -1,5 +1,5 @@
 X509
- - Add AIA, CRLDP and AKI extensions
+ - Add AIA and CRLDP extensions
  - Write code to parse PK, Sig.
  - Rewrite PK/Signature as modules.
  - Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
