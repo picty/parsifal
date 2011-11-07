@@ -686,13 +686,16 @@ module Asn1Parser = struct
     | "Private" -> C_Private
     | _ -> raise (ContentError ("Invalid ASN.1 class"))
 
+  let value_of_oid oid =
+    V_List (List.map (fun x -> V_Int x) (oid_expand oid))
+
   let rec value_of_asn1_content = function
     | Null -> V_Unit
     | Boolean b -> V_Bool b
     | Integer i -> V_Bigint i
     | BitString (n, s) -> V_BitString (n, s)
     | EnumeratedBitString l -> V_List (List.map (fun x -> V_String x) l)
-    | OId oid ->  V_List (List.map (fun x -> V_Int x) (oid_expand oid))
+    | OId oid -> value_of_oid oid
     | String (s, true) -> V_BinaryString s
     | String (s, false) -> V_String s
     | Constructed objs ->
@@ -719,6 +722,7 @@ module Asn1Parser = struct
     end;
     Hashtbl.replace dict "content" (value_of_asn1_content o.a_content)
 
+  let oid_of_list v = oid_squash (List.map eval_as_int v)
 
   let rec asn1_content_of_value = function
     | false, V_Unit -> Null
@@ -727,8 +731,7 @@ module Asn1Parser = struct
     | false, V_BitString (n, s) -> BitString (n, s)
     | false, V_BinaryString s -> String (s, true)
     | false, V_String s -> String (s, false)
-    | false, V_List ((V_Int _::r) as l) ->
-      OId (oid_squash (List.map eval_as_int l))
+    | false, V_List ((V_Int _::r) as l) -> OId (oid_of_list l)
     | false, V_List l -> raise NotImplemented (* TODO *)
     | true, V_List l ->
       Constructed (List.map (fun x -> update (eval_as_dict x)) l)

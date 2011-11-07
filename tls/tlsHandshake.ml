@@ -205,7 +205,7 @@ let parse_one_certificate pstate =
   let len = extract_uint24 pstate in
   let new_pstate = go_down pstate "Certificate" len in
   let res = Asn1Constraints.constrained_parse X509.certificate_constraint new_pstate in
-  assert_eos pstate;
+  assert_eos new_pstate;
   res
 
 let parse_certificate_msg pstate =

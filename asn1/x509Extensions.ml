@@ -85,7 +85,7 @@ module ExtensionParser = struct
   let dump ext = raise NotImplemented
 
   let enrich ext dict =
-    Hashtbl.replace dict "id" (V_List (List.map (fun x -> V_Int x) ext.e_id));
+    Hashtbl.replace dict "id" (Asn1Parser.value_of_oid  ext.e_id);
     begin
       match ext.e_critical with
 	| None -> ()
@@ -188,43 +188,60 @@ let _ = register_extension keyUsage_oid "keyUsage" mkKeyUsage dump_KeyUsage
 
 
 
+(* Extended Key Usage *)
+
+let extKeyUsage_oid = [85;29;37]
+
+let extract_EKU l = V_List (List.map Asn1Parser.value_of_oid l)
+let mkExtKeyUsage = seqOf_cons extract_EKU "extendedKeyUsage" oid_cons (AtLeast (1, s_speclightlyviolated))
+
+let dump_ExtKeyUsage v = raise NotImplemented
+
+
+let _ = register_extension extKeyUsage_oid "extendedKeyUsage" mkExtKeyUsage dump_ExtKeyUsage
+
+
+
+(* NSComment *)
+
+let nsComment_oid = [96;16;840;1;113730;1;13]
+
+let mkNSComment = Simple_cons (C_Universal, false, 22, "nsComment", fun pstate -> V_String (pop_string pstate))
+
+let dump_NSComment v = dump (mk_object' "" C_Universal 22 (String (eval_as_string v, false)))
+
+let _ = register_extension nsComment_oid "nsComment" mkNSComment dump_NSComment
+
+
+
+(* NS Cert Type *)
+
+let nsCertType_oid = [96;16;840;1;113730;1;1]
+let nsCertType_values = [|
+  "client";
+  "server";
+  "email";
+  "objsign";
+  "reserved";
+  "sslCA";
+  "emailCA";
+  "objCA"
+|]
+
+let extract_NSCertType pstate =
+  let nBits, content = raw_der_to_bitstring pstate in
+  let l = enumerated_from_raw_bit_string pstate nsCertType_values nBits content in
+  V_List (List.map (fun x -> V_String x) l)
+
+let mkNSCertType = Simple_cons (C_Universal, false, 3, "nsCertType", extract_NSCertType)
+
+let dump_NSCertType v = raise NotImplemented
+
+let _ = register_extension nsCertType_oid "nsCertType" mkNSCertType dump_NSCertType
+
+
+
 (*
-
-
-
-(* Extensions *)
-type aki =
-  | AKI_KeyIdentifier of string
-  | AKI_Unknown
-
-type ext_content =
-  | AuthorityKeyIdentifier of aki (* Not fully compliant *)
-  | CRLDistributionPoint of string (* Only partial implementation *)
-  | AuthorityInfoAccess_OCSP of string (* Only OCSP is supported for now *)
-  | ExtKeyUsage of int list list
-
-
-
-let string_of_extension indent e =
-  let critical_string = match e.e_critical with
-    | Some true -> "(critical)"
-    | _ -> ""
-  in
-  let oid_string, content_string = 
-    match e.e_content with
-      | AuthorityKeyIdentifier (AKI_KeyIdentifier aki) ->
-	"authorityKeyIdentifier", hexdump aki
-      | CRLDistributionPoint s -> "cRLDistributionPoint", s
-      | AuthorityInfoAccess_OCSP s -> "authorityInfoAccess", "OCSP " ^ s
-      | ExtKeyUsage l ->
-	let new_indent = indent ^ !PrinterLib.indent in
-	"extendedKeyUsage", "\n" ^ (String.concat "\n" (List.map (fun oid -> new_indent ^ string_of_oid oid) l))
-  in
-  indent ^ oid_string ^ critical_string ^ (if String.length content_string > 0 then ": " else "") ^ content_string ^ "\n"
-
-
-
-
 
 
 (* Authority Key Identifier *)
@@ -256,7 +273,6 @@ let crlDistributionPoint_oid = [85;29;31]
 
 
 let authorityInfoAccess_oid = [43;6;1;5;5;7;1;1]
-let extKeyUsage_oid = [85;29;37]
 let ocsp_oid = [43;6;1;5;5;7;48;1]
 
 
@@ -264,9 +280,7 @@ let ocsp_oid = [43;6;1;5;5;7;48;1]
 
 
 
-
-
-(*let dp_constraint = {
+let dp_constraint = {
   severity_if_too_many_objects = s_specfatallyviolated;
   constraint_list = [
     Simple_cons (C_ContextSpecific, true, 0, "DistributionPointName", der_to_constructed), s_ok;
@@ -282,10 +296,7 @@ let distributionPoint_cons = Simple_cons (C_Universal, true, 16, "distributionPo
 
 let mkCRLDP = Simple_cons (C_Universal, true, 16, "cRLDistributionPoint",
 			   parse_sequenceof Common.identity distributionPoint_cons (AtLeast (1, s_speclightlyviolated)))
-
-parse_sequenceof (postprocess : 'a list -> 'b) (cons : 'a asn1_constraint)
-                         (n : number_constraint) (pstate : parsing_state) : 'b =
-  
+ 
 /* From RFC 5280
 DistributionPointName ::= CHOICE {
   fullName                [0]     GeneralNames,
@@ -346,17 +357,6 @@ let mkAuthorityInfoAccess s =
       then AuthorityInfoAccess_OCSP url
       else failwith "Unknown authority info access extension"
     | _ -> failwith "Invalid or unknown CRL authority info access extension"
-
-let mkExtKeyUsage s =
-  let extractOid = function
-    | (Asn1.C_Universal, 6, Asn1.OId oid) -> oid
-    | __ -> failwith "OId expected"
-  in
-  let asn1struct = Asn1.exact_parse s in
-  match asn1struct with
-    | (Asn1.C_Universal, 16, Asn1.Constructed oidlist) ->
-      ExtKeyUsage (List.map extractOid oidlist)
-    | _ -> failwith "Invalid extended key usage"*)
 
 
 *)

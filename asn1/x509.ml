@@ -202,7 +202,7 @@ let rec _get_extension exts oid = match exts with
 
 let get_extension exts ext_id =
   let oid = match ext_id with
-    | V_List oid -> List.map eval_as_int oid
+    | V_List oid -> Asn1Parser.oid_of_list oid
     | V_String s -> begin
       try Hashtbl.find rev_name_directory s
       with Not_found -> begin

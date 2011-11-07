@@ -1,8 +1,9 @@
 X509
- - Add EKU, NSComment, NSKeyType, AIA, CRLDP and AKI extensions
- - Write code to parse PK, Sig, Extensions.
+ - Add AIA, CRLDP and AKI extensions
+ - Write code to parse PK, Sig.
  - Rewrite PK/Signature as modules.
  - Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
+ - Use specific warnings for each interesting X.509 warnings.
 
 TLS
  - Rewrite alert types/levels as simple ints, and provide lookup tables to the code.
