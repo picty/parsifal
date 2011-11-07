@@ -1,5 +1,8 @@
-NewParsingEngine
- - Write down the invariants in string_input...
+X509
+ - Add EKU, NSComment, NSKeyType, AIA, CRLDP and AKI extensions
+ - Write code to parse PK, Sig, Extensions.
+ - Rewrite PK/Signature as modules.
+ - Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
 
 TLS
  - Rewrite alert types/levels as simple ints, and provide lookup tables to the code.
@@ -12,12 +15,6 @@ Modules
  - MapModule: Add a _dict or _params magic objects ? Remove all _ ?
  - Write the missing update/dump functions
  - Problem with @enriched... it does not work if a sub-dictionary is modified...
-
-X509
- - Put the objects, constraints and registering functions for (PKInfo, Signature and Crypto algo) in a separate file
- - Write code to parse PK, Sig, Extensions.
- - Rewrite PK/Signature as modules.
- - Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
 
 Language
  - Write a simple compare function instead of all the equal/lt functions
@@ -44,3 +41,6 @@ asn1
 
 map tool
  - Add a late interactive mode (first we load files, then we can use them)
+
+NewParsingEngine
+ - Document the invariants in string_input...

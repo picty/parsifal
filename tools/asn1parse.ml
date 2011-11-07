@@ -163,6 +163,7 @@ let content_string content =
     | Boolean false -> Some "255"
     | Integer i -> Some ("0x" ^ (Common.hexdump i))
     | BitString (nBits, s) -> Some (string_of_bitstring !PrinterLib.raw_display nBits s)
+    | EnumeratedBitString _ -> failwith "Should not happen"
     | OId oid -> Some (string_of_oid oid)
     | String (s, true) -> Some ("[HEX DUMP]:" ^ (Common.hexdump s))
     | String (s, false) -> Some (if !PrinterLib.raw_display then Common.hexdump s else s)

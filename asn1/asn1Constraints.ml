@@ -158,7 +158,7 @@ let rec parse_constrained_pair (postprocess : 'a option * 'b option -> 'c)
 
 let bool_cons = Simple_cons (C_Universal, false, 1, "Boolean", raw_der_to_boolean)
 let int_cons = Simple_cons (C_Universal, false, 2, "Integer", raw_der_to_int)
-let bitstring_cons = Simple_cons (C_Universal, false, 3, "Bit String", raw_der_to_bitstring 54)
+let bitstring_cons = Simple_cons (C_Universal, false, 3, "Bit String", raw_der_to_bitstring)
 let null_cons = Simple_cons (C_Universal, false, 5, "Null", raw_der_to_null)
 let oid_cons = Simple_cons (C_Universal, false, 6, "OId", raw_der_to_oid)
 

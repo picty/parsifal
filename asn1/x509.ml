@@ -46,11 +46,11 @@ let parse_tbs_certificate pstate =
 
   let issuer_unique_id =
       constrained_parse_opt (Simple_cons (C_ContextSpecific, false, 1, "Issuer Unique Identifer",
-					  raw_der_to_bitstring 54)) s_ok pstate in
+					  raw_der_to_bitstring)) s_ok pstate in
 
   let subject_unique_id =
     constrained_parse_opt (Simple_cons (C_ContextSpecific, false, 2, "Subject Unique Identifer",
-					raw_der_to_bitstring 54)) s_ok pstate in
+					raw_der_to_bitstring)) s_ok pstate in
 
   let extensions =
     constrained_parse_opt (Simple_cons (C_ContextSpecific, true, 3, "Extensions container",

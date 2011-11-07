@@ -29,6 +29,6 @@ let extract_signature algo (n, s) =
 
 let signature_constraint sigalgo : signature asn1_constraint =
   Simple_cons (C_Universal, false, 3, "Bit String",
-	       fun pstate -> extract_signature sigalgo (raw_der_to_bitstring "" pstate))
+	       fun pstate -> extract_signature sigalgo (raw_der_to_bitstring pstate))
 
 let string_of_signature indent signature = PrinterLib._string_of_value indent true signature

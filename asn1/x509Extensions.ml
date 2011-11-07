@@ -83,7 +83,17 @@ module ExtensionParser = struct
   let parse = constrained_parse extension_constraint
 
   let dump ext = raise NotImplemented
-  let enrich ext dict = raise NotImplemented
+
+  let enrich ext dict =
+    Hashtbl.replace dict "id" (V_List (List.map (fun x -> V_Int x) ext.e_id));
+    begin
+      match ext.e_critical with
+	| None -> ()
+	| Some critical -> Hashtbl.replace dict "critical" (V_Bool critical)
+    end;
+    Hashtbl.replace dict "content" ext.e_content;
+    ()
+
   let update dict = raise NotImplemented
 
   let to_string = string_of_extension
@@ -150,7 +160,31 @@ let _ = register_extension subjectKeyIdentifier_oid "subjectKeyIdentifier" mkSKI
 
 
 
+(* Key Usage *)
 
+let keyUsage_oid = [85;29;15]
+let keyUsage_values = [|
+  "digitalSignature";
+  "nonRepudiation";
+  "keyEncipherment";
+  "dataEncipherment";
+  "keyAgreement";
+  "keyCertSign";
+  "cRLSign";
+  "encipherOnly";
+  "decipherOnly"
+|]
+
+let extract_KeyUsage pstate =
+  let nBits, content = raw_der_to_bitstring pstate in
+  let l = enumerated_from_raw_bit_string pstate keyUsage_values nBits content in
+  V_List (List.map (fun x -> V_String x) l)
+
+let mkKeyUsage = Simple_cons (C_Universal, false, 3, "keyUsage", extract_KeyUsage)
+
+let dump_KeyUsage v = raise NotImplemented
+
+let _ = register_extension keyUsage_oid "keyUsage" mkKeyUsage dump_KeyUsage
 
 
 
@@ -164,19 +198,10 @@ type aki =
   | AKI_Unknown
 
 type ext_content =
-  | BasicConstraints of (bool option * string option)
-  | SubjectKeyIdentifier of string
   | AuthorityKeyIdentifier of aki (* Not fully compliant *)
   | CRLDistributionPoint of string (* Only partial implementation *)
   | AuthorityInfoAccess_OCSP of string (* Only OCSP is supported for now *)
-  | KeyUsage of (int * string)
   | ExtKeyUsage of int list list
-  | UnparsedExt of (int list * string)
-  | InvalidExt
-
-
-
-
 
 
 
@@ -187,38 +212,15 @@ let string_of_extension indent e =
   in
   let oid_string, content_string = 
     match e.e_content with
-      | BasicConstraints (flag, len) ->
-	let flag_string = match flag with
-	  | None -> []
-	  | Some b -> ["CA=" ^ (if b then "true" else "false")]
-	in
-	let len_string = match len with
-	  | None -> []
-	  | Some l -> ["PathLen=" ^ (hexdump l)]
-	in
-	"basicConstraints", String.concat ", " (flag_string@len_string)
-      | SubjectKeyIdentifier ski ->
-	"subjectKeyIdentifier", hexdump ski
-      | AuthorityKeyIdentifier AKI_Unknown ->
-	"authorityKeyIdentifier", ""
       | AuthorityKeyIdentifier (AKI_KeyIdentifier aki) ->
 	"authorityKeyIdentifier", hexdump aki
       | CRLDistributionPoint s -> "cRLDistributionPoint", s
       | AuthorityInfoAccess_OCSP s -> "authorityInfoAccess", "OCSP " ^ s
-      | KeyUsage (i, s) ->
-	"keyUsage", "[" ^ (string_of_int i) ^ "]" ^ (hexdump s)
       | ExtKeyUsage l ->
 	let new_indent = indent ^ !PrinterLib.indent in
 	"extendedKeyUsage", "\n" ^ (String.concat "\n" (List.map (fun oid -> new_indent ^ string_of_oid oid) l))
-      | UnparsedExt (oid, raw_content) ->
-	(string_of_oid oid), "[HEX]" ^ (hexdump raw_content)
-      | InvalidExt -> "InvalidExt", ""
   in
   indent ^ oid_string ^ critical_string ^ (if String.length content_string > 0 then ": " else "") ^ content_string ^ "\n"
-
-
-
-
 
 
 
@@ -254,10 +256,8 @@ let crlDistributionPoint_oid = [85;29;31]
 
 
 let authorityInfoAccess_oid = [43;6;1;5;5;7;1;1]
-let keyUsage_oid = [85;29;15]
 let extKeyUsage_oid = [85;29;37]
 let ocsp_oid = [43;6;1;5;5;7;48;1]
-
 
 
 
@@ -347,12 +347,6 @@ let mkAuthorityInfoAccess s =
       else failwith "Unknown authority info access extension"
     | _ -> failwith "Invalid or unknown CRL authority info access extension"
 
-let mkKeyUsage s =
-  let asn1struct = Asn1.exact_parse s in
-  match asn1struct with
-    | (Asn1.C_Universal, 3, Asn1.BitString (n, s)) -> KeyUsage (n, s)
-    | _ -> failwith "Invalid key usage"
-
 let mkExtKeyUsage s =
   let extractOid = function
     | (Asn1.C_Universal, 6, Asn1.OId oid) -> oid
@@ -364,26 +358,5 @@ let mkExtKeyUsage s =
       ExtKeyUsage (List.map extractOid oidlist)
     | _ -> failwith "Invalid extended key usage"*)
 
-
-let add_extensions () =
-  Hashtbl.add name_directory basicConstraints_oid "basicConstraints";
-  Hashtbl.add extension_directory basicConstraints_oid mkBasicConstraints;
-  Hashtbl.add name_directory subjectKeyIdentifier_oid "subjectKeyIdentifier";
-  Hashtbl.add extension_directory subjectKeyIdentifier_oid mkSKI;
-  Hashtbl.add name_directory authorityKeyIdentifier_oid "authorityKeyIdentifier";
-  Hashtbl.add extension_directory authorityKeyIdentifier_oid mkAKI;
-  Hashtbl.add name_directory crlDistributionPoint_oid "crlDistributionPoint";
-(*  Hashtbl.add extension_directory crlDistributionPoint_oid mkCRLDistributionPoint;*)
-  Hashtbl.add name_directory authorityInfoAccess_oid "authorityInfoAccess";
-(*  Hashtbl.add extension_directory authorityInfoAccess_oid mkAuthorityInfoAccess;*)
-  Hashtbl.add name_directory keyUsage_oid "keyUsage";
-(*  Hashtbl.add extension_directory keyUsage_oid mkKeyUsage;*)
-  Hashtbl.add name_directory extKeyUsage_oid "extKeyUsage";
-(*  Hashtbl.add extension_directory extKeyUsage_oid mkExtKeyUsage; *)
-  ()
-
-
-let _ =
-  add_extensions ();;
 
 *)

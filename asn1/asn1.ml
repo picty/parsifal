@@ -13,6 +13,7 @@ type asn1_errors =
   | TooFewObjects
   | TooManyObjects
   | UnexpectedHeader
+  | InvalidBitStringLength
 
   | InvalidDate
   | UnexpectedUniqueIdentifier
@@ -28,6 +29,7 @@ let asn1_errors_strings = [|
   (TooFewObjects, s_speclightlyviolated, "Too few objects");
   (TooManyObjects, s_speclightlyviolated, "Too many objects");
   (UnexpectedHeader, s_speclightlyviolated, "Unexpected header");
+  (InvalidBitStringLength, s_speclightlyviolated, "Invalid bit string length");
 
   (InvalidDate, s_speclightlyviolated, "Invalid date");
   (UnexpectedUniqueIdentifier, s_speclightlyviolated, "Unexpected unique identifier");
@@ -36,6 +38,7 @@ let asn1_errors_strings = [|
 
 let asn1_emit = register_module_errors_and_make_emit_function "ASN.1" asn1_errors_strings
 
+let parse_enumerated = ref true
 
 
 
@@ -107,6 +110,7 @@ and asn1_content =
   | Boolean of bool
   | Integer of string
   | BitString of int * string
+  | EnumeratedBitString of string list
   | Null
   | OId of int list
   | String of (string * bool)       (* bool : isBinary *)
@@ -348,7 +352,9 @@ let der_to_oid pstate = OId (raw_der_to_oid pstate)
 
 (* Bit String *)
 
-let raw_der_to_bitstring _type pstate =
+type bitstring_description = string array
+
+let raw_der_to_bitstring pstate =
   let nBits =
     if eos pstate then begin
       asn1_emit NotInNormalForm None (Some "empty bit string") pstate;
@@ -356,12 +362,52 @@ let raw_der_to_bitstring _type pstate =
     end else pop_byte pstate
   in
   let content = pop_string pstate in
-  (* TODO: Checks on nBits and on the final zeros *)
+  let len = (String.length content) * 8 - nBits in
+  if len < 0 then asn1_emit InvalidBitStringLength None (Some (string_of_int len)) pstate;
   (nBits, content)
 
-let der_to_bitstring _type pstate =
-  let nBits, content = raw_der_to_bitstring _type pstate in
-  BitString (nBits, content)
+let extract_bit_list s =
+  let n = String.length s in
+  let rec extract_from_byte accu i b =
+    if i = 0 then accu
+    else extract_from_byte (((b land i) <> 0)::accu) (i lsr 1) b
+  in
+  let rec extract_from_str accu offset =
+    if (offset >= n) then List.rev accu
+    else extract_from_str (extract_from_byte accu 0x80 (int_of_char s.[offset])) (offset + 1)
+  in
+  extract_from_str [] 0
+
+let name_bits pstate description l =
+  let n = Array.length description in
+  let rec aux i = function
+    | [] -> []
+    | true::r when i >= n ->
+      asn1_emit NotInNormalForm None (Some "Trailing bits in an enumerated bit string should be null") pstate;
+      []
+    | true::r -> (description.(i))::(aux (i+1) r)
+    | false::r when i = n ->
+      asn1_emit NotInNormalForm None (Some "Only significant bit should be put inside an enumerated bit string") pstate;
+      aux (i+1) r
+    | false::r -> aux (i+1) r
+  in aux 0 l
+
+let enumerated_from_raw_bit_string pstate desc nBits content =
+  let len = (String.length content) * 8 - nBits in
+  if len > Array.length desc
+  then asn1_emit NotInNormalForm None (Some "Bit string is too long") pstate;
+  let bits = extract_bit_list content in
+  name_bits pstate desc bits
+
+
+let der_to_bitstring description pstate =
+  let nBits, content = raw_der_to_bitstring pstate in
+  match description with
+    | None -> BitString (nBits, content)
+    | Some desc ->
+      if !parse_enumerated
+      then EnumeratedBitString (enumerated_from_raw_bit_string pstate desc nBits content)
+      else BitString (nBits, content)
 
 
 (* Octet String *)
@@ -515,6 +561,7 @@ let rec string_of_content = function
   | Boolean false -> ["false"], false
   | Integer i -> ["0x" ^ (Common.hexdump i)], false
   | BitString (nBits, s) -> [string_of_bitstring !PrinterLib.raw_display nBits s], false
+  | EnumeratedBitString l -> ["[" ^ (String.concat ", " l) ^ "]"], false
   | OId oid -> [string_of_oid oid], false
   | String (s, true) -> ["[HEX:]" ^ (Common.hexdump s)], false
   | String (s, false) -> [if !PrinterLib.raw_display then Common.hexdump s else s], false
@@ -608,6 +655,7 @@ let rec dump o =
     | Boolean b -> false, boolean_to_der b
     | Integer i -> false, i
     | BitString (nb, s) -> false, bitstring_to_der nb s
+    | EnumeratedBitString l -> raise NotImplemented (* TODO *)
     | OId id -> false, oid_to_der id
     | String (s, _) -> false, s
     | Constructed objects -> true, constructed_to_der objects
@@ -626,7 +674,7 @@ and constructed_to_der objlist =
 module Asn1Parser = struct
   type t = asn1_object
   let name = "asn1"
-  let params = []
+  let params = [param_from_bool_ref "parse_enumerated" parse_enumerated]
 
   let parse = parse
   let dump = dump
@@ -643,6 +691,7 @@ module Asn1Parser = struct
     | Boolean b -> V_Bool b
     | Integer i -> V_Bigint i
     | BitString (n, s) -> V_BitString (n, s)
+    | EnumeratedBitString l -> V_List (List.map (fun x -> V_String x) l)
     | OId oid ->  V_List (List.map (fun x -> V_Int x) (oid_expand oid))
     | String (s, true) -> V_BinaryString s
     | String (s, false) -> V_String s
@@ -678,8 +727,9 @@ module Asn1Parser = struct
     | false, V_BitString (n, s) -> BitString (n, s)
     | false, V_BinaryString s -> String (s, true)
     | false, V_String s -> String (s, false)
-    | false, V_List l ->
+    | false, V_List ((V_Int _::r) as l) ->
       OId (oid_squash (List.map eval_as_int l))
+    | false, V_List l -> raise NotImplemented (* TODO *)
     | true, V_List l ->
       Constructed (List.map (fun x -> update (eval_as_dict x)) l)
     | _ -> raise (ContentError ("Invalid value for an asn1 content"))
