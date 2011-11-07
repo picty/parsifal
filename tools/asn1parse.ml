@@ -31,6 +31,7 @@ let print_offset = ref true
 let print_headerlen = ref true
 let print_len = ref true
 let print_type = ref true
+let do_indent = ref true
 
 
 let update_sev r arg =
@@ -67,8 +68,8 @@ let options = [
   ("-raw", Arg.Set PrinterLib.raw_display, "Print raw types and values");
   ("-noraw", Arg.Clear PrinterLib.raw_display, "Print pretty types and values");
 
-  ("-indent", Arg.Set PrinterLib.multiline, "Display ASN.1 dump with indentation");
-  ("-noindent", Arg.Clear PrinterLib.multiline, "Display ASN.1 dump without indentation");
+  ("-indent", Arg.Set do_indent, "Display ASN.1 dump with indentation");
+  ("-noindent", Arg.Clear do_indent, "Display ASN.1 dump without indentation");
 
   ("-resolve", Arg.Set PrinterLib.resolve_names, "Resolve names");
   ("-noresolve", Arg.Clear PrinterLib.resolve_names, "Do not resolve names");
@@ -100,7 +101,7 @@ let inputs = match !files with
 let parse_input pstate =
   while not (eos pstate) do
     let o = parse pstate in
-    output_string stdout (string_of_object "" o)
+    output_string stdout (String.concat "\n" (string_of_object o))
   done
 
 
@@ -150,7 +151,7 @@ let string_of_header_asn1parse depth c isC t =
     end
   in
   (if isC then "cons: " else "prim: ") ^
-    (if !PrinterLib.multiline then String.make (depth * 2) ' ' else "") ^
+    (if !do_indent then String.make (depth * 2) ' ' else "") ^
     res
 
 
@@ -214,11 +215,11 @@ let rec asn1parse_input depth pstate =
 
 
 (* X509 *)
-(*let parse_and_validate_cert cons pstate =
+let parse_and_validate_cert cons pstate =
   while not (eos pstate) do
     let o = constrained_parse cons pstate in
-    print_endline (X509.string_of_certificate true "" o)
-  done;; *)
+    print_endline (String.concat "\n" (X509.string_of_certificate (Some "Certificate") o))
+  done;;
 
 
 try
@@ -226,7 +227,7 @@ try
     match !dtype with
       | ASN1 -> List.iter parse_input inputs
       | ASN1PARSE -> List.iter (asn1parse_input 0) inputs
-      | X509 -> () (* TODO: List.iter (parse_and_validate_cert (X509.certificate_constraint X509.object_directory)) inputs *)
+      | X509 -> List.iter (parse_and_validate_cert X509.certificate_constraint) inputs
   end
 with
   | OutOfBounds s ->

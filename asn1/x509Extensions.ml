@@ -57,19 +57,14 @@ let extensions_constraint = seqOf_cons Common.identity "Extensions" extension_co
 
 
 (* TODO: Improve this *)
-let string_of_extension indent ext =
-  let mk_content new_indent qs ext =
-    let id_str = (string_of_oid ext.e_id) in
-    let critical_str = match ext.e_critical with
-      | None -> ""
-      | Some true -> " (critical)"
-      | Some false -> " (not critical)"
-    in
-    let content_str = PrinterLib._string_of_value new_indent qs ext.e_content in
-    [id_str ^ critical_str; content_str]
+let string_of_extension ext =
+  let id_str = (string_of_oid ext.e_id) in
+  let critical_str = match ext.e_critical with
+    | None -> ""
+    | Some true -> " (critical)"
+    | Some false -> " (not critical)"
   in
-  PrinterLib._string_of_constructed "Extension:" "" indent mk_content ext
-
+  PrinterLib._string_of_value (Some (id_str ^ critical_str)) true ext.e_content
 
 
 module ExtensionParser = struct

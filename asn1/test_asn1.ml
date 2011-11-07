@@ -6,11 +6,8 @@ let s2 = { a_class = C_Universal; a_tag = 19; a_content = String ("234", false);
 
 let c = {a_class = C_Universal; a_tag = 16; a_content = Constructed [i; s; s2]; a_name = "Seq"; a_ohl = None };;
 
-Printer.PrinterLib.multiline := true;
 Printer.PrinterLib.raw_display := false;
-print_string (string_of_object "   " c);;
+print_endline (String.concat "\n" (string_of_object c));;
 
-Printer.PrinterLib.multiline := false;
 Printer.PrinterLib.raw_display := true;
-print_string (string_of_object "" c);;
-print_char '\n';;
+print_endline (String.concat "\n" (string_of_object c));;

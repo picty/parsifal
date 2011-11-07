@@ -10,29 +10,32 @@ foreach_answer := function (f, path) {
 };      
 
 
-string_of_msg := function (msg) {
-    local res;
+string_of_msgs := function (msgs) {
+    if ! msgs then return [] fi;
+
+    local res, msg, remaining_msgs;
+    msg := head (msgs); remaining_msgs := tail (msgs);
 
     if (! msg) || (! msg.content_type) || (msg.content_type ~= "Unknown content type")
-    then return "Invalid record"; fi;
+    then return  ["Invalid record"]; fi;
 
     if (msg.content_type == "Handshake") then
-        if exists msg.content.message_type then
-            return "Handshake (${msg.content.message_type})";
+       if exists msg.content.message_type then
+            return ("Handshake (${msg.content.message_type})")::(string_of_msgs (remaining_msgs));
         else
-            return "Handshake (Invalid message)";
+            return ("Handshake (Invalid message)")::(string_of_msgs (remaining_msgs));
         fi;
     fi;
 
     if (msg.content_type == "Alert") then
         if exists msg.content.type then
-            return "Alert (${msg.content.level}, ${msg.content.type})";
+            return ("Alert (${msg.content.level}, ${msg.content.type})")::(string_of_msgs (remaining_msgs));
         else
-            return "Alert (Invalid message)";
+            return ("Alert (Invalid message)")::(string_of_msgs (remaining_msgs));
         fi;
     fi;
 
-    return msg.content_type;
+    return msg.content_type::(string_of_msgs (remaining_msgs));
 };
 
 
@@ -52,7 +55,7 @@ handle_answer := function (answer) {
     count := count + 1;
 
     msgs := tls.parse (answer.ip, answer.content);
-    strs := map (string_of_msg, msgs);
+    strs := string_of_msgs (msgs);
     category := concat (", ", strs);
     if (length (category) = 0) then category := "EMPTY" fi;
 

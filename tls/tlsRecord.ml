@@ -78,16 +78,15 @@ module RecordParser = struct
 
   let update dict = raise NotImplemented
 
-  let to_string indent r =
+  let to_string r =
     let hdr = "TLS Record (" ^ (string_of_protocol_version r.version) ^ ", " ^
-      (string_of_content_type r.content_type) ^ "):" in
-    let mk_content new_indent quoted_string = function
+      (string_of_content_type r.content_type) ^ ")" in
+    match r.content with
       | (V_BinaryString s | V_String s) as str ->
-	["Length: " ^ (string_of_int (String.length s));
-	 "Content: " ^ (PrinterLib._string_of_value new_indent quoted_string str)]
-      | c -> [PrinterLib._string_of_value new_indent quoted_string c]
-    in
-    PrinterLib._string_of_constructed hdr "" indent mk_content r.content
+	let strs = (PrinterLib._single_line (Some "Length") (string_of_int (String.length s)))::
+	  (PrinterLib._string_of_value (Some "Content") true str) in
+	PrinterLib._string_of_strlist (Some hdr) indent_only strs
+      | c -> PrinterLib._string_of_value (Some hdr) true c
 
 
   let merge records =

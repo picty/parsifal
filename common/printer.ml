@@ -1,20 +1,31 @@
 open Types
 open Modules
 
+type print_options = {
+  opening : string;
+  closing : string;
+  separator : string;
+  multiline : bool;
+}
+
+let only_ml ml = { opening = ""; closing = ""; separator = ""; multiline = ml }
+let indent_only = only_ml true
+let list_options sep ml = { opening = "["; closing = "]"; separator = sep; multiline = ml }
+let hash_options sep ml = { opening = "{"; closing = "}"; separator = sep; multiline = ml }
+
 
 module PrinterLib = struct
   let name = "printer"
 
-  let raw_display = ref false  (* Display objects as dictionnaries *)
-  let multiline = ref false    (* Is it multiline? *)
-  let indent = ref "  "        (* If we are multiline, here is the indent for each level *)    
-  let separator = ref ", "     (* If not multiline, here is the separator *)
+  let raw_display = ref false   (* Display objects as dictionnaries *)
+  let indent = ref "  "         (* If we are multiline, here is the indent for each level *)    
+  let multiline_dict = ref true (* Force multiline dictionnaries *)
+  let separator = ref ", "      (* If not multiline, here is the separator *)
   let endline = ref "\n"
   let resolve_names = ref true
 
   let params = [
     param_from_bool_ref "raw_display" raw_display;
-    param_from_bool_ref "multiline" multiline;
     param_from_string_ref "indent" indent;
     param_from_string_ref "separator" separator;
     param_from_string_ref "endline" endline;
@@ -22,61 +33,79 @@ module PrinterLib = struct
   ]
 
 
+  let _single_line title s = match title with
+    | None -> s
+    | Some title_string ->
+      if s = ""
+      then title_string
+      else title_string ^ ": " ^ s
 
-  let _string_of_strlist o f cur_indent str_content = 
-    if !multiline then begin
-      let new_indent = cur_indent ^ !indent in
-      o ^ "\n" ^ new_indent ^ (String.concat ("\n" ^ new_indent) str_content) ^
-	(if f <> "" then ("\n" ^ cur_indent ^ f) else "")
-    end else
-      o ^ (String.concat !separator str_content) ^ f
+  let _string_of_strlist title opts str_content =
+    if opts.multiline
+    then begin
+      let partial = (_single_line title opts.opening)::
+	(List.map (function s -> (!indent ^ s)) str_content) in
+      (if opts.closing = "" then partial else partial@[opts.closing])
+    end else [_single_line title (opts.opening ^ (String.concat opts.separator str_content) ^ opts.closing)]
 
-  let _string_of_constructed o f cur_indent mk_content content =
-    let str_content = mk_content cur_indent true content in
-    _string_of_strlist o f cur_indent str_content
+  let rec _flatten_strlist str_accu multiline_accu (x : (string list) list) = match x with
+    | [] -> List.rev str_accu, multiline_accu
+    | ([])::r -> _flatten_strlist str_accu multiline_accu r
+    | ([s])::r -> _flatten_strlist (s::str_accu) multiline_accu r
+    | (s_list)::r ->
+      let rec local_aux accu = function
+	| [] -> accu
+	| s::r -> local_aux (s::accu) r
+      in
+      _flatten_strlist (local_aux str_accu s_list) true r
 
-  let rec _string_of_value cur_indent quote_strings v =
+  let flatten_strlist = _flatten_strlist [] false
+
+  let rec _string_of_value title quote_strings v =
     match v with
-      | V_Bool b -> string_of_bool b
-      | V_Int i -> string_of_int i
-      | V_String s -> if (quote_strings) then "\"" ^ (Common.quote_string s) ^ "\"" else s
-      | V_BinaryString s -> if (quote_strings) then "\"" ^ (Common.hexdump s) ^ "\"" else Common.hexdump s
-      | V_BitString (n, s) -> "\"[" ^ (string_of_int n) ^ "]" ^ (Common.hexdump s) ^ "\""
-      | V_Bigint s -> "0x" ^ (Common.hexdump s)
-
-      | V_List [] -> "[]"
-      | V_Dict d when (Hashtbl.length d = 0) -> "{}"
+      | V_Bool b -> [_single_line title (string_of_bool b)]
+      | V_Int i -> [_single_line title (string_of_int i)]
+      | V_String s ->
+	let res = if (quote_strings) then "\"" ^ (Common.quote_string s) ^ "\"" else s
+	in [_single_line title (res)]
+      | V_BinaryString s ->
+	let res = if (quote_strings) then "[HEX]" ^ (Common.hexdump s) else Common.hexdump s
+	in [_single_line title (res)]
+      | V_BitString (n, s) ->
+	[_single_line title ("\"[" ^ (string_of_int n) ^ "]" ^ (Common.hexdump s) ^ "\"")]
+      | V_Bigint s ->
+	[_single_line title ("0x" ^ (Common.hexdump s))]
 
       | V_List l ->
-	let list_aux n_i q_s l = List.map (_string_of_value n_i q_s) l in
-	_string_of_constructed "[" "]" cur_indent list_aux l
+	let content, multiline = flatten_strlist (List.map (_string_of_value None true) l) in
+	_string_of_strlist title (list_options !separator multiline) content
+	  
       | V_Dict d ->
-	let hash_aux n_i q_s h =
-	  let fold_fun k v accu =
-	    if !raw_display || ((String.length k > 0) && (k.[0] != '_') && (k.[0] != '@'))
-	    then (k ^ " -> " ^ (_string_of_value n_i q_s v))::accu
-	    else accu
-	  in
-	  Hashtbl.fold fold_fun d []
+	let hash_aux k v accu =
+	  if !raw_display || ((String.length k > 0) && (k.[0] != '_') && (k.[0] != '@'))
+	  then (_string_of_value (Some k) true v)::accu
+	  else accu
 	in
-	_string_of_constructed "{" "}" cur_indent hash_aux d
+	let content, multiline = flatten_strlist (Hashtbl.fold hash_aux d []) in
+	_string_of_strlist title (hash_options !separator (multiline || (!multiline_dict && content <> []))) content
 
       | V_Object (n, obj_ref, d) ->
 	let m = Hashtbl.find modules n in
 	let module M = (val m : Module) in
 	if not !raw_display && (Hashtbl.mem M.static_params "to_string_indent") then begin
-	  match (Hashtbl.find M.static_params "to_string_indent") with
-	    | V_Function (NativeFun f) -> eval_as_string (f [V_String cur_indent; v])
+	  let content = match (Hashtbl.find M.static_params "to_string_indent") with
+	    | V_Function (NativeFun f) -> List.map eval_as_string (eval_as_list (f [v]))
 	    | _ -> raise (ContentError "to_string_indent should be a native function")
-	end else begin
-	  M.enrich obj_ref d;
-	  _string_of_value cur_indent true (V_Dict d)
-	end
+	  in content
+	  end else begin
+	    M.enrich obj_ref d;
+	    _string_of_value title true (V_Dict d)
+	  end
 
       | (V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-	    | V_Module _) as v -> "<" ^ (string_of_type v) ^ ">"
+	    | V_Module _) as v -> ["<" ^ (string_of_type v) ^ ">"]
 
-  let string_of_value = _string_of_value "" false
+  let string_of_value v = String.concat "\n" (_string_of_value None false v)
 
 
   let functions = []

@@ -87,32 +87,33 @@ let tbs_certificate_constraint : tbs_certificate asn1_constraint =
   Simple_cons (C_Universal, true, 16, "tbsCertificate", parse_tbs_certificate)
 
 
-(* TODO... *)
-let string_of_tbs_certificate indent tbs =
-  let new_indent = indent ^ !PrinterLib.indent in
-  (match tbs.version with
-    | None -> ""
-    | Some i -> indent ^ "Version: " ^ (string_of_int i) ^ "\n") ^ 
-    indent ^ "Serial: " ^ (hexdump tbs.serial) ^ "\n" ^
-    indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent tbs.sig_algo) ^
-    indent ^ (string_of_dn "Issuer:" new_indent tbs.issuer) ^
-    indent ^ "Validity:\n" ^ (string_of_validity new_indent tbs.validity) ^
-    indent ^ (string_of_dn "Subject:" new_indent tbs.subject) ^
-    indent ^ "Public Key Info:\n" ^ (string_of_public_key_info new_indent tbs.pk_info) ^
-    (match tbs.issuer_unique_id with
-      | None -> ""
-      | Some (nb, s) ->
-	indent ^ "Issuer Unique Identifier:" ^ indent ^ (string_of_bitstring false nb s) ^ "\n") ^
-    (match tbs.subject_unique_id with
-      | None -> ""
-      | Some (nb, s) ->
-  	indent ^ "Subject Unique Identifier:" ^ indent ^ (string_of_bitstring false nb s) ^ "\n") ^
-    (match tbs.extensions with
-      | None -> ""
-      | Some e ->
-	indent ^ "Extensions:\n" ^ (String.concat "" (List.map (string_of_extension new_indent) e)))
-
-
+let string_of_tbs_certificate title tbs =
+  let version_str = match tbs.version with
+    | None -> []
+    | Some i -> ["Version: " ^ (string_of_int i)]
+  in
+  let serial_str = ["Serial: " ^ (hexdump tbs.serial)] in
+  let sigalgo_str = string_of_oid_object (Some "Signature algorithm") tbs.sig_algo in
+  let issuer_str = string_of_dn (Some "Issuer") tbs.issuer in
+  let validity_str = PrinterLib._string_of_strlist (Some "Validity") indent_only (string_of_validity tbs.validity) in
+  let subject_str = string_of_dn (Some "Subject") tbs.subject in
+  let pki_str = string_of_public_key_info tbs.pk_info in
+  let issuer_uid_str = match tbs.issuer_unique_id with
+    | None -> []
+    | Some (nb, s) -> [PrinterLib._single_line (Some "Issuer Unique Identifier") (string_of_bitstring false nb s)]
+  and subject_uid_str = match tbs.subject_unique_id with
+    | None -> []
+    | Some (nb, s) -> [PrinterLib._single_line (Some "Subject Unique Identifier") (string_of_bitstring false nb s)]
+  and extensions_str = match tbs.extensions with
+    | None -> []
+    | Some e ->
+      let exts_strlist = List.flatten (List.map string_of_extension e) in
+      PrinterLib._string_of_strlist (Some "Extensions") indent_only exts_strlist
+  in
+  let tbs_str = List.flatten [version_str; serial_str; sigalgo_str; issuer_str;
+			      validity_str; subject_str; pki_str; issuer_uid_str;
+			      subject_uid_str; extensions_str] in
+  PrinterLib._string_of_strlist title indent_only tbs_str
 
 
 
@@ -154,7 +155,7 @@ module TbsParser = struct
     ()
 
   let update dict = raise NotImplemented
-  let to_string = string_of_tbs_certificate
+  let to_string = string_of_tbs_certificate (Some "TBS")
 end
 
 module TbsModule = MakeParserModule (TbsParser)
@@ -184,14 +185,13 @@ let certificate_constraint : certificate asn1_constraint =
 
 
 (* TODO *)
-let rec string_of_certificate print_title indent c =
-  let new_indent = indent ^ !PrinterLib.indent in
-  if (print_title)
-  then indent ^ "Certificate:\n" ^ (string_of_certificate false new_indent c)
-  else indent ^ "tbsCertificate:\n" ^ (string_of_tbs_certificate new_indent c.tbs) ^
-    indent ^ "Signature algorithm:\n" ^ (string_of_oid_object new_indent c.cert_sig_algo) ^
-    indent ^ "Signature:\n" ^ (string_of_signature new_indent c.signature) ^
-    "\n"
+let rec string_of_certificate title cert =
+  let cert_str = List.flatten [
+    string_of_tbs_certificate (Some "tbsCertificate") cert.tbs;
+    string_of_oid_object (Some "Signature algorithm") cert.cert_sig_algo;
+    string_of_signature (Some "Signature") cert.signature
+  ] in
+  PrinterLib._string_of_strlist title indent_only cert_str
 
 
 module X509Parser = struct
@@ -213,7 +213,7 @@ module X509Parser = struct
 
   let update dict = raise NotImplemented
 
-  let to_string = string_of_certificate true
+  let to_string = string_of_certificate (Some "Certificate")
 end
 
 module X509Module = MakeParserModule (X509Parser)

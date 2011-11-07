@@ -9,8 +9,9 @@ let get_name answer =
   else answer.name
 
 let _ =
-  Printer.PrinterLib.multiline := true;
   let pstate = pstate_of_channel "(stdin)" stdin in
+
+  TlsHandshake.parse_certificates := true;
 
   try
     while not (eos pstate) do
@@ -22,7 +23,7 @@ let _ =
 
       let tls_msgs = List.map TlsRecord.RecordModule.pop_object (Tls.TlsLib._parse tls_pstate) in
 
-      List.iter (fun x -> Printf.printf "  %s\n" (TlsRecord.RecordParser.to_string "  " x)) tls_msgs;
+      List.iter (fun x -> Printf.printf "  %s\n" (String.concat "\n  " (TlsRecord.RecordParser.to_string x))) tls_msgs;
       print_newline ()
     done
   with

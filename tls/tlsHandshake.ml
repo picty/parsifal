@@ -132,8 +132,7 @@ let extract_handshake_header pstate =
   (htype, len)
 
 
-let string_of_client_hello indent ch =
-  let hdr = "Client Hello:" in
+let string_of_client_hello ch =
   let content =
     [ "protocol version: " ^ (string_of_protocol_version ch.c_version);
       "random: " ^ (hexdump ch.c_random);
@@ -141,10 +140,9 @@ let string_of_client_hello indent ch =
       "cipher suites: " ^ (String.concat ", " (List.map (hexdump_int 4) ch.c_cipher_suites));
       "compression methods: " ^ (String.concat ", " (List.map (hexdump_int 2) ch.c_compression_methods)) ]
     (* TODO: Extensions ... *)
-  in PrinterLib._string_of_strlist hdr "" indent content
+  in PrinterLib._string_of_strlist (Some "Client Hello") indent_only content
 
-let string_of_server_hello indent sh =
-  let hdr = "Server Hello:" in
+let string_of_server_hello sh =
   let content =
     [ "protocol version: " ^ (string_of_protocol_version sh.s_version);
       "random: " ^ (hexdump sh.s_random);
@@ -152,7 +150,7 @@ let string_of_server_hello indent sh =
       "cipher suite: " ^ (hexdump_int 4 sh.s_cipher_suite);
       "compression method: " ^ (hexdump_int 2 sh.s_compression_method)]
     (* TODO: Extensions ... *)
-  in PrinterLib._string_of_strlist hdr "" indent content
+  in PrinterLib._string_of_strlist (Some "Server Hello") indent_only content
 
 
 let parse_hello_extensions pstate =
@@ -216,24 +214,24 @@ let parse_certificate_msg pstate =
   else Certificate (Left (extract_list "Certificates" extract_uint24 (extract_variable_length_string "Extension" extract_uint24) pstate))
 
 
-let string_of_handshake_msg indent = function
-  | HelloRequest -> "Hello Request"
-  | ClientHello ch -> string_of_client_hello indent ch
-  | ServerHello sh -> string_of_server_hello indent sh
+let string_of_handshake_msg = function
+  | HelloRequest -> ["Hello Request"]
+  | ClientHello ch -> string_of_client_hello ch
+  | ServerHello sh -> string_of_server_hello sh
   | Certificate (Left raw_certs) ->
-    PrinterLib._string_of_strlist "Certificates:" "" indent (List.map hexdump raw_certs)
+    PrinterLib._string_of_strlist (Some "Certificates") indent_only (List.map hexdump raw_certs)
   | Certificate (Right certs) ->
-    let aux indent _ cs = List.map (X509.string_of_certificate true indent) cs in
-    PrinterLib._string_of_constructed "Certificates:" "" indent aux certs
-  | ServerKeyExchange -> "Server Key Exchange"
-  | CertificateRequest -> "Certificate Request"
-  | ServerHelloDone -> "Server Hello Done"
-  | CertificateVerify -> "Certificate Verify"
-  | ClientKeyExchange -> "Client Key Exchange"
-  | Finished -> "Finished"
+    let certs_str = List.flatten (List.map (X509.string_of_certificate (Some "Certificate")) certs) in
+    PrinterLib._string_of_strlist (Some "Certificates") indent_only certs_str
+  | ServerKeyExchange -> ["Server Key Exchange"]
+  | CertificateRequest -> ["Certificate Request"]
+  | ServerHelloDone -> ["Server Hello Done"]
+  | CertificateVerify -> ["Certificate Verify"]
+  | ClientKeyExchange -> ["Client Key Exchange"]
+  | Finished -> ["Finished"]
   | UnparsedHandshakeMsg (htype, s) ->
-    let hdr = (string_of_handshake_msg_type htype) ^ " (len=" ^ (string_of_int (String.length s)) ^ "):" in
-    PrinterLib._string_of_strlist hdr "" indent [hexdump s]
+    let hdr = (string_of_handshake_msg_type htype) ^ " (len=" ^ (string_of_int (String.length s)) ^ ")" in
+    PrinterLib._string_of_strlist (Some hdr) indent_only [hexdump s]
 
 
 let type_of_handshake_msg = function

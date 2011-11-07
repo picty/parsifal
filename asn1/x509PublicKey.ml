@@ -49,12 +49,10 @@ let public_key_info_constraint : public_key_info asn1_constraint =
 
 
 (* TODO: Improve this *)
-let string_of_public_key_info indent pki =
-  let mk_content new_indent qs pki =
-    [string_of_oid_object new_indent pki.pk_algo;
-     PrinterLib._string_of_value new_indent qs pki.public_key]
-  in
-  PrinterLib._string_of_constructed "Public Key Info:" "" indent mk_content pki
+let string_of_public_key_info pki =
+  let strs = [string_of_oid_object (Some "Algorithm") pki.pk_algo; PrinterLib._string_of_value None true pki.public_key] in
+  let c, ml = PrinterLib.flatten_strlist strs in
+  PrinterLib._string_of_strlist (Some "Public Key Info") (only_ml ml) c
 
 
 

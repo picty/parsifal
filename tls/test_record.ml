@@ -14,11 +14,11 @@ let show_records title str =
 
   print_endline title;
   let records, _ = TlsLib.shallow_parse_records pstate in
-  List.iter (fun r -> print_endline (RecordParser.to_string "" r)) records;
+  List.iter (fun r -> print_endline (String.concat "\n" (RecordParser.to_string r))) records;
   let merged_records = RecordParser.merge records in
   if merged_records <> records then begin
     print_endline "Merged version:";
-    List.iter (fun r -> print_endline (RecordParser.to_string "" r)) merged_records
+    List.iter (fun r -> print_endline (String.concat "\n" (RecordParser.to_string r))) merged_records
   end
 
 

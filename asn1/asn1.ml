@@ -499,18 +499,20 @@ let string_of_oid oid =
   else raw_string_of_oid oid
 
 
-let rec string_of_content indent = function
-  | Constructed l -> [string_of_constructed indent l]
-  | Null -> []
-  | Boolean true -> ["true"]
-  | Boolean false -> ["false"]
-  | Integer i -> ["0x" ^ (Common.hexdump i)]
-  | BitString (nBits, s) -> [string_of_bitstring !PrinterLib.raw_display nBits s]
-  | OId oid -> [string_of_oid oid]
-  | String (s, true) -> ["[HEX:]" ^ (Common.hexdump s)]  
-  | String (s, false) -> [if !PrinterLib.raw_display then Common.hexdump s else s]
+let rec string_of_content = function
+  | Constructed l ->
+    let objects = List.map string_of_object l in
+    PrinterLib._flatten_strlist [] true objects
+  | Null -> [], false
+  | Boolean true -> ["true"], false
+  | Boolean false -> ["false"], false
+  | Integer i -> ["0x" ^ (Common.hexdump i)], false
+  | BitString (nBits, s) -> [string_of_bitstring !PrinterLib.raw_display nBits s], false
+  | OId oid -> [string_of_oid oid], false
+  | String (s, true) -> ["[HEX:]" ^ (Common.hexdump s)], false
+  | String (s, false) -> [if !PrinterLib.raw_display then Common.hexdump s else s], false
 
-and string_of_object indent o =
+and string_of_object o =
   let type_string =
     if !PrinterLib.raw_display
     then string_of_header_raw o.a_class (isConstructed o) o.a_tag
@@ -520,21 +522,10 @@ and string_of_object indent o =
       else string_of_header_pretty o.a_class (isConstructed o) o.a_tag
     end
   in
-  let content_string = string_of_content indent o.a_content in
-  let res = String.concat ": " (type_string::content_string) in
-  if !PrinterLib.multiline
-  then indent ^ res ^ "\n"
-  else res
-
-and string_of_constructed indent l =
-  let newindent = if !PrinterLib.multiline
-    then indent ^ !PrinterLib.indent
-    else indent
-  in
-  let objects = List.map (string_of_object newindent) l in
-  if !PrinterLib.multiline
-  then "{\n" ^ (String.concat "" objects) ^ indent ^ "}"
-  else "{" ^ (String.concat "; " objects) ^ "}"
+  let content_string, multiline = string_of_content o.a_content in
+  if multiline
+  then PrinterLib._string_of_strlist (Some type_string) (hash_options "" true) content_string
+  else PrinterLib._string_of_strlist (Some type_string) (only_ml false) content_string
 
 
 
@@ -695,8 +686,7 @@ module Asn1Parser = struct
     mk_object' name c t content
 
 
-  (* TODO: Remove this opts *)
-  let to_string indent o = string_of_object indent o
+  let to_string = string_of_object
 end
 
 module Asn1Module = MakeParserModule (Asn1Parser)

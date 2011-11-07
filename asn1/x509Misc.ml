@@ -1,5 +1,6 @@
 open Common
 open Types
+open Printer
 open Modules
 open ParsingEngine
 open Asn1
@@ -71,21 +72,22 @@ let object_constraint oid_type oid_sev name =
   Simple_cons (C_Universal, true, 16, name, parse_oid_object oid_type oid_sev)
 
 
-let string_of_oid_object indent o =
-  let oid_string = indent ^ (string_of_oid o.oo_id) ^ "\n" in
+let string_of_oid_object title o =
+  let oid_string = string_of_oid o.oo_id in
   begin
-    match o.oo_content with
+    let c = match o.oo_content with
       | None
-      | Some {a_content = Null} -> oid_string
-      | Some p ->
-	let new_indent = indent ^ !Printer.PrinterLib.indent in
-	oid_string ^ indent ^ "Content:\n" ^ (string_of_object new_indent p)
+      | Some {a_content = Null} -> [oid_string]
+      | Some p -> oid_string::(string_of_object p)
+    in
+    PrinterLib._string_of_strlist title (only_ml (List.length c > 1)) c
   end
 
 
 module OIdObjectParser = struct
-  let name = "oid_object"
   type t = oid_object
+  let name = "oid_object"
+  let params = []
 
   let parse pstate = raise NotImplemented (*constrained_parse object_constraint pstate *)
 
@@ -109,9 +111,7 @@ module OIdObjectParser = struct
     in
     { oo_id = id; oo_content = content }
 
-  let to_string = string_of_oid_object
-
-  let params = []
+  let to_string = string_of_oid_object (Some "Object")
 end
 
 module OIdObjectModule = MakeParserModule (OIdObjectParser)

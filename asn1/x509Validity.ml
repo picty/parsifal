@@ -1,5 +1,6 @@
 open Types
 open Modules
+open Printer
 open ParsingEngine
 open Asn1
 open Asn1Constraints
@@ -91,11 +92,12 @@ let datetime_constraint : datetime asn1_constraint =
   in Complex_cons aux
 
 
-let string_of_datetime dt =
-  Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d%s"
-    dt.year dt.month dt.day dt.hour dt.minute
-    (Common.pop_option dt.second 0)
-    (Common.pop_option dt.second_fraction "")
+let string_of_datetime title dt =
+  PrinterLib._single_line title 
+    (Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d%s"
+       dt.year dt.month dt.day dt.hour dt.minute
+       (Common.pop_option dt.second 0)
+       (Common.pop_option dt.second_fraction ""))
 
 
 module DateTimeParser = struct
@@ -121,7 +123,7 @@ module DateTimeParser = struct
       | Some sec -> Hashtbl.replace dict "second_fraction" (V_String sec)
 
   let update dict = raise NotImplemented
-  let to_string _ = string_of_datetime
+  let to_string dt = [string_of_datetime None dt]
 end
 
 module DateTimeModule = MakeParserModule (DateTimeParser)
@@ -144,11 +146,9 @@ let validity_constraint : validity asn1_constraint =
   seqOf_cons extract_validity "Validity" datetime_constraint (Exactly (2, s_specfatallyviolated))
 
 
-let string_of_validity indent v =
-  let content = ["Not before: " ^ (string_of_datetime v.not_before);
-		 "Not after: " ^ (string_of_datetime v.not_after)] in
-  Printer.PrinterLib._string_of_strlist "Validity" "" indent content
-
+let string_of_validity v =
+  [string_of_datetime (Some "Not before") v.not_before;
+   string_of_datetime (Some "Not after") v.not_after]
 
 
 module ValidityParser = struct
