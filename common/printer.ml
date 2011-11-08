@@ -103,7 +103,7 @@ module PrinterLib = struct
 	  end
 
       | (V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
-	    | V_Module _) as v -> ["<" ^ (string_of_type v) ^ ">"]
+	    | V_Module _) as v -> [_single_line title ("<" ^ (string_of_type v) ^ ">")]
 
   let string_of_value v = String.concat "\n" (_string_of_value None false v)
 
