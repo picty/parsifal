@@ -1,0 +1,138 @@
+
+
+construct_chains := function (certificates) {
+    local subj_to_num, num_to_cert, chains, duplicates;
+    subj_to_num := dict ();
+    num_to_cert := dict ();
+    chains := [];
+    incomplete_chains := [];
+    duplicates := [];
+    unused := dict ();
+
+    if ! certificates then
+        output (stderr, "construct_chains called with an empty list.\n");
+        flush (stderr);
+        return
+    fi;
+
+    register_certs := function (i, certs) {
+        if certs then
+            local cert;
+            cert := head (certs);
+
+            dadd (unused, i, i);
+            certs_with_the_same_subject := map (dget (num_to_cert), dget_all (subj_to_num, cert.tbs.subject.short));
+            if cert in certs_with_the_same_subject then
+                duplicates := i::duplicates;
+                output (stderr, "Certificate $i is a duplicate\n");
+                flush (stderr);
+            else
+                dadd (subj_to_num, cert.tbs.subject.short, i);
+                dadd (num_to_cert, i, cert);
+            fi;
+            register_certs (i+1, tail (certs));
+        fi
+    };
+
+    register_certs (0, certificates);
+
+    check_issuer_of := function (subject, i) {
+        local issuer, ski, aki, bc;
+        issuer := dget (num_to_cert, i);
+
+        if subject.tbs.issuer != issuer.tbs.subject then return false fi;
+
+        bc := issuer.get_extension ("basicConstraints");
+        if (issuer.effective_version >= 3) &&
+            ((! bc) || (! (exists bc.content.CA)) || (! bc.content.CA))
+        then
+            output (stderr, "Certificate $i should be a CA\n");
+            flush (stderr);
+            return false;
+        fi;
+
+        aki := subject.get_extension ("authorityKeyIdentifier");
+
+        if (aki) then
+            if (exists aki.content.keyIdentifier) then
+                 ski := issuer.get_extension ("subjectKeyIdentifier");                 
+                 if ski && ski.content != aki.content.keyIdentifier then return false fi;
+                 // TODO: Could a SKI be absent in this case ?
+            fi;
+            if (exists aki.content.authorityCertSerialNumber) &&
+                aki.content.authorityCertSerialNumber != issuer.tbs.serial
+            then
+                return false
+            fi;
+            // TODO: authorityCertIssuer
+        fi;
+
+        // TODO: Check signature
+
+        return true;
+    };
+
+    find_issuers := function (s) {
+        local subject, probable_issuers;
+        subject := dget (num_to_cert, s);
+        probable_issuers := dget_all (subj_to_num, subject.tbs.issuer.short);
+        filter (check_issuer_of (subject), probable_issuers);
+    };
+
+    is_self_signed := function (i) {
+        local cert, ski, aki;
+        cert := dget (num_to_cert, i);
+
+        if cert.tbs.subject != cert.tbs.issuer then return false fi;
+
+        aki := cert.get_extension ("authorityKeyIdentifier");
+
+        if (aki) then
+            if (exists aki.content.keyIdentifier) then
+                 ski := cert.get_extension ("subjectKeyIdentifier");
+                 if ski && ski.content != aki.content.keyIdentifier then return false fi;
+            fi;
+            if (exists aki.content.authorityCertSerialNumber) &&
+                aki.content.authorityCertSerialNumber != cert.tbs.serial
+            then
+                return false
+            fi;
+            // TODO: authorityCertIssuer
+        fi;
+
+        // TODO: Check signature
+
+        return true;
+    };
+
+    // TODO: Check PathLen
+
+    clear_unused := function (n) {
+        if dget_all (unused, n)
+        then dunset (unused, n)
+        fi
+    };
+
+    construct := function (accu, current) {
+        local current_chain;
+	current_chain:= current::accu;
+
+        if (is_self_signed (current))
+        then
+            chains := (current_chain)::chains;
+            iter (clear_unused, current_chain);
+        else
+            local issuers;
+            issuers := filter (function (x) { ! (x in current_chain) }, find_issuers (current));
+            if issuers
+            then map (construct (current_chain), issuers)
+            else
+                incomplete_chains := (current_chain)::incomplete_chains;
+                iter (clear_unused, current::accu);
+            fi
+        fi
+    };
+
+    construct ([], 0);
+    [chains, incomplete_chains, duplicates, unused];
+};
