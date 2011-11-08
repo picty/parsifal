@@ -40,8 +40,5 @@ typing
 asn1
  - Write in FAcesl a asn1parse like
 
-map tool
- - Add a late interactive mode (first we load files, then we can use them)
-
 NewParsingEngine
  - Document the invariants in string_input...

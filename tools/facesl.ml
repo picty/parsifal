@@ -11,7 +11,7 @@ open Asn1
 open X509
 
 
-let interactive () =
+let interactive_loop () =
   setv [global_env] "PS1" (V_String "> ");
   try
     while true do
@@ -19,7 +19,8 @@ let interactive () =
       flush stdout;
       try
 	let res = interpret_string [global_env] (input_line stdin) in
-	print_endline (String.concat "\n" (PrinterLib._string_of_value None true res));
+	if res != V_Unit
+	then print_endline (String.concat "\n" (PrinterLib._string_of_value None true res));
 	flush stdout
       with
 	| NotImplemented -> output_string stderr "Not implemented\n"; flush stderr
@@ -38,6 +39,7 @@ let interactive () =
     done
   with End_of_file -> ()
 
+
 let script_interpreter filename =
   let retval =
     try
@@ -50,23 +52,40 @@ let script_interpreter filename =
       | Parsing.Parse_error -> output_string stderr ("Syntax error\n"); V_Int (-2)
       | e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); V_Int (-2)
   in 
-  let res = match retval with
+  match retval with
     | V_Unit
     | V_Bool true -> 0
     | V_Bool false -> -1
     | V_Int i -> i
     | _ -> 0
-  in exit (res)
+
+
+let rec load_files = function
+  | [] -> 0
+  | [f] -> script_interpreter f
+  | f::r -> ignore (script_interpreter f); load_files r
 
 
 let _ =
-  match Array.length (Sys.argv) with
-    | 0 | 1 -> Printexc.print interactive ()
-    | _ -> begin
-      match Array.to_list Sys.argv with
-	| [] | [_] -> ()
-	| _::_::args ->
-	  setv [global_env] "args" (V_List (List.map (fun s -> V_String s) args))
-      end;
-      script_interpreter Sys.argv.(1)
+  let interactive = ref false in
+  let files = ref [] in
+  let args = ref [] in
 
+  let add_input s = files := s::(!files) in
+  let add_arg s = args := (V_String s)::(!args) in
+  let options = [
+    ("-i", Arg.Set interactive, "Interactive mode");
+    ("-f", Arg.String add_input, "File to load");
+  ] in
+
+  Arg.parse options add_arg "facesl [-i] [-f <file>] args";
+  setv [global_env] "args" (V_List (List.rev !args));
+  if !files = [] then interactive := true;
+
+  let res = load_files (List.rev !files) in
+  if !interactive
+  then begin
+    Printexc.print interactive_loop ();
+    0
+  end
+  else res
