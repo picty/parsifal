@@ -7,6 +7,44 @@ open Asn1Constraints
 open X509Misc
 
 
+
+(* ATVs directory entries *)
+
+let (initial_directory : (int list, string) Hashtbl.t) = Hashtbl.create 20
+
+let add_atv oid name initial cons sev =
+  register_oid oid name;
+  match initial with
+    | None -> ()
+    | Some s -> Hashtbl.add initial_directory oid s;
+  Hashtbl.add object_directory (ATV, oid) (cons, sev)
+
+
+let add_standard_atv () =
+  add_atv [85;4;41] "name" None directory_name_cons s_benign;
+  add_atv [85;4;4] "surname" None directory_name_cons s_benign;
+  add_atv [85;4;42] "givenName" None directory_name_cons s_benign;
+  add_atv [85;4;43] "initials" None directory_name_cons s_benign;
+  add_atv [85;4;44] "genrationQualifier" None directory_name_cons s_benign;
+  add_atv [85;4;3] "commonName" (Some "CN") directory_name_cons s_benign;
+  add_atv [85;4;7] "locality" (Some "L") directory_name_cons s_benign;
+  add_atv [85;4;8] "state" (Some "ST") directory_name_cons s_benign;
+  add_atv [85;4;10] "organization" (Some "O") directory_name_cons s_benign;
+  add_atv [85;4;11] "organizationalUnit" (Some "OU") directory_name_cons s_benign;
+  add_atv [85;4;12] "title" None directory_name_cons s_benign;
+  add_atv [85;4;46] "dnQualifier" None printablestring_cons s_benign;
+  (* TODO: Add constraint on length ? *)
+  add_atv [85;4;6] "country" (Some "C") printablestring_cons s_benign;
+  add_atv [85;4;5] "serial" None printablestring_cons s_benign;
+  add_atv [85;4;65] "pseudonym" None directory_name_cons s_benign;
+  add_atv [9;2342;19200300;100;1;25] "domainComponent" None ia5string_cons s_benign;
+  add_atv [42;840;113549;1;9;1] "emailAddress" None ia5string_cons s_benign;;
+
+let _ = add_standard_atv ();;
+
+
+
+
 (* Distinguished names *)
 
 type atv = oid_object
@@ -36,6 +74,16 @@ let string_of_dn title dn =
   let c = List.flatten (List.map string_of_rdn dn) in
   PrinterLib._string_of_strlist title indent_only c
 
+let short_display dn =
+  let short_of_atv atv =
+    let oid_str =
+      try Hashtbl.find initial_directory atv.oo_id
+      with Not_found -> Asn1.string_of_oid atv.oo_id
+    and content_str = match atv.oo_content with
+      | None -> ""
+      | Some o -> String.concat "," (fst (string_of_content o.a_content))
+    in "/" ^ oid_str ^ "=" ^ content_str
+  in String.concat "" (List.map short_of_atv (List.flatten dn))
 
 module DNParser = struct
   let name = "dn"
@@ -61,7 +109,8 @@ module DNParser = struct
 	Hashtbl.add dict oid value;
 	handle_atv r
     in
-    handle_atv (List.flatten dn)
+    handle_atv (List.flatten dn);
+    Hashtbl.replace dict "short" (V_String (short_display dn))
 
   let update dict = raise NotImplemented
 
@@ -71,42 +120,3 @@ end
 module DNModule = MakeParserModule (DNParser)
 let _ = add_module ((module DNModule : Module))
 
-
-
-
-(* ATVs directory entries *)
-
-let (initial_directory : (int list, string) Hashtbl.t) = Hashtbl.create 20
-
-let add_atv oid name initial cons sev =
-  register_oid oid name;
-  match initial with
-    | None -> ()
-    | Some s -> Hashtbl.add initial_directory oid s;
-  Hashtbl.add object_directory (ATV, oid) (cons, sev)
-
-
-let add_standard_atv () =
-  add_atv [85;4;41] "name" None directory_name_cons s_benign;
-  add_atv [85;4;4] "surname" None directory_name_cons s_benign;
-  add_atv [85;4;42] "givenName" None directory_name_cons s_benign;
-  add_atv [85;4;43] "initials" None directory_name_cons s_benign;
-  add_atv [85;4;44] "genrationQualifier" None directory_name_cons s_benign;
-  add_atv [85;4;3] "commonName" (Some "CN") directory_name_cons s_benign;
-  add_atv [85;4;7] "locality" (Some "L") directory_name_cons s_benign;
-  add_atv [85;4;8] "state" (Some "S") directory_name_cons s_benign;
-  add_atv [85;4;10] "organization" (Some "O") directory_name_cons s_benign;
-  add_atv [85;4;11] "organizationalUnit" (Some "OU") directory_name_cons s_benign;
-  add_atv [85;4;12] "title" None directory_name_cons s_benign;
-  add_atv [85;4;46] "dnQualifier" None printablestring_cons s_benign;
-  (* TODO: Add constraint on length ? *)
-  add_atv [85;4;6] "country" (Some "C") printablestring_cons s_benign;
-  add_atv [85;4;5] "serial" None printablestring_cons s_benign;
-  add_atv [85;4;65] "pseudonym" None directory_name_cons s_benign;
-  add_atv [9;2342;19200300;100;1;25] "domainComponent" None ia5string_cons s_benign;
-  add_atv [42;840;113549;1;9;1] "emailAddress" None ia5string_cons s_benign;;
-
-
-
-let _ =
-  add_standard_atv ();;

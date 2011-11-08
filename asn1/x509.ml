@@ -194,7 +194,7 @@ let rec string_of_certificate title cert =
   PrinterLib._string_of_strlist title indent_only cert_str
 
 let rec _get_extension exts oid = match exts with
-  | [] -> raise Not_found
+  | [] -> V_Unit
   | e::r ->
     if e.e_id = oid
     then ExtensionModule.register e
