@@ -1,4 +1,4 @@
-#!/home/yeye/dev/FAceSL/facesl.native
+#!/home/yeye/dev/FAceSL/facesl.native -f
 
 parser.tolerance <- 4;
 parser.minDisplay <- 4;

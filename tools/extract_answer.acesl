@@ -1,4 +1,4 @@
-#!/home/yeye/dev/FAceSL/facesl.native
+#!/home/yeye/dev/FAceSL/facesl.native -f
 
 if (length (args) != 2) then
     output (stderr, "extract_answer <dump file> <ip>\n");

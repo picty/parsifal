@@ -1,4 +1,4 @@
-#!/home/yeye/dev/FAceSL/facesl.native
+#!/home/yeye/dev/FAceSL/facesl.native -f
 
 mk_filter := function (filter, value) {
     eval (filter)

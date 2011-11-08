@@ -1,4 +1,4 @@
-#!/home/yeye/dev/FAceSL/facesl.native
+#!/home/yeye/dev/FAceSL/facesl.native -f
 
 foreach_answer := function (f, path) {
     foreach (open (path), answer_dump.parse, f);

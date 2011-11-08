@@ -1,4 +1,4 @@
-#!/home/yeye/dev/FAceSL/facesl.native
+#!/home/yeye/dev/FAceSL/facesl.native -f
 
 print_x509 := function (name) {
 	f := open (name);
