@@ -91,18 +91,11 @@ let hash_make args =
   in
   V_Dict (Hashtbl.create (size))
 
-let check_ident id =
-  (* Here we tolerate an ident to begin with a digit. Is it a problem? *)
-  let ident_regexp = Str.regexp "[a-zA-Z_0-9]+" in
-  if not (Str.string_match ident_regexp id 0)
-  then raise (ContentError ("Invalid field identifier: \"" ^ id ^ "\""))
-  else id
-
-let hash_get h f = get_field h (check_ident (eval_as_string f))
+let hash_get h f = get_field h (eval_as_string f)
 let hash_get_def h f v = try hash_get h f with Not_found -> v
-let hash_get_all h f = get_field_all h (check_ident (eval_as_string f))
-let hash_set append h f v = set_field append h (check_ident (eval_as_string f)) v
-let hash_unset h f = unset_field h (check_ident (eval_as_string f))
+let hash_get_all h f = get_field_all h (eval_as_string f)
+let hash_set append h f v = set_field append h (eval_as_string f) v
+let hash_unset h f = unset_field h (eval_as_string f)
 
 let make_lookup input =
   let res = Hashtbl.create 10 in
