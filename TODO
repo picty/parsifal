@@ -21,7 +21,7 @@ Language
  - Write a simple compare function instead of all the equal/lt functions
  - Add constructors/destructors to manipulate V_BitString / V_Bigint
  - Add a library to filter and extract certs, either in native or interpreted form
- - Add a way to import new functions (Dynlink for native)
+ - Add a way to import new native functions (Dynlink for native, equivalent to load for scripts)
  - socket
  - Add encode/decode for base64 + gzip
  - Custom outputs (global _output, _error) for print/errors function

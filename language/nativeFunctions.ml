@@ -232,6 +232,16 @@ let decode format input = match (eval_as_string format) with
 
 
 
+(* Dynamic loading *)
+
+let load_script env filename =
+  let lexbuf = Lexing.from_channel (open_in filename) in
+  let ast = Parser.exprs Lexer.main_token lexbuf in
+  try eval_exps env ast
+  with ReturnValue res -> res
+
+
+
 
 
 
@@ -300,5 +310,9 @@ let _ =
   add_native "stream" (two_value_fun stream_of_string);
   add_native "concat" (two_value_fun concat_strings);
 
+  (* Dynamic loading *)
+  add_native_with_env "load" (one_string_fun_with_env load_script);
+
   (* OS interface *)
   add_native "getenv" (one_value_fun (fun x -> V_String (Unix.getenv (eval_as_string x))));
+  ()
