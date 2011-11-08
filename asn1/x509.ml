@@ -229,9 +229,16 @@ module X509Parser = struct
     Hashtbl.replace dict "tbs" (TbsModule.register cert.tbs);
     Hashtbl.replace dict "signature_algorithm" (OIdObjectModule.register cert.cert_sig_algo);
     Hashtbl.replace dict "signature" cert.signature;
-    match cert.tbs.extensions with
-      | None -> ()
-      | Some exts -> Hashtbl.replace dict "get_extension" (V_Function (NativeFun (one_value_fun (get_extension exts))))
+    begin
+      match cert.tbs.version with
+	| None -> Hashtbl.replace dict "effective_version" (V_Int 1)
+	| Some v -> Hashtbl.replace dict "effective_version" (V_Int v)
+    end;
+    begin
+      match cert.tbs.extensions with
+	| None -> Hashtbl.replace dict "get_extension" (V_Function (NativeFun (function _ -> V_Unit)))
+	| Some exts -> Hashtbl.replace dict "get_extension" (V_Function (NativeFun (one_value_fun (get_extension exts))))
+    end
 
   let update dict = raise NotImplemented
 
