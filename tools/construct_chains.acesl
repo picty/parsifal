@@ -4,10 +4,12 @@ construct_chains := function (certificates) {
     local subj_to_num, num_to_cert, chains, duplicates;
     subj_to_num := dict ();
     num_to_cert := dict ();
-    chains := [];
-    incomplete_chains := [];
-    duplicates := [];
-    unused := dict ();
+
+    res := dict ();
+    res.chains <- [];
+    res.incomplete_chains <- [];
+    res.duplicates <- [];
+    res.unused <- [];
 
     if ! certificates then
         output (stderr, "construct_chains called with an empty list.\n");
@@ -20,10 +22,10 @@ construct_chains := function (certificates) {
             local cert;
             cert := head (certs);
 
-            dadd (unused, i, i);
+            res.unused <- i::(res.unused);
             certs_with_the_same_subject := map (dget (num_to_cert), dget_all (subj_to_num, cert.tbs.subject.short));
             if cert in certs_with_the_same_subject then
-                duplicates := i::duplicates;
+                res.duplicates <- i::(res.duplicates);
                 output (stderr, "Certificate $i is a duplicate\n");
                 flush (stderr);
             else
@@ -107,32 +109,26 @@ construct_chains := function (certificates) {
 
     // TODO: Check PathLen
 
-    clear_unused := function (n) {
-        if dget_all (unused, n)
-        then dunset (unused, n)
-        fi
-    };
-
     construct := function (accu, current) {
         local current_chain;
 	current_chain:= current::accu;
 
         if (is_self_signed (current))
         then
-            chains := (current_chain)::chains;
-            iter (clear_unused, current_chain);
+            res.chains <- (current_chain)::(res.chains);
+            res.unused <- filter (function (x) { ! (x in current_chain) }, res.unused);
         else
             local issuers;
             issuers := filter (function (x) { ! (x in current_chain) }, find_issuers (current));
             if issuers
             then map (construct (current_chain), issuers)
             else
-                incomplete_chains := (current_chain)::incomplete_chains;
-                iter (clear_unused, current::accu);
+                res.incomplete_chains <- (current_chain)::(res.incomplete_chains);
+                res.unused <- filter (function (x) { ! (x in current_chain) }, res.unused);
             fi
         fi
     };
 
     construct ([], 0);
-    [chains, incomplete_chains, duplicates, unused];
+    res
 };
