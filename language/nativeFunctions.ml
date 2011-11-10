@@ -308,4 +308,8 @@ let _ =
 
   (* OS interface *)
   add_native "getenv" (one_value_fun (fun x -> V_String (Unix.getenv (eval_as_string x))));
+
+  (* Crypto *)
+  add_native "md5sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
+  add_native "sha1sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
   ()

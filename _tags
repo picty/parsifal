@@ -1,6 +1,6 @@
 <common> or <language> or <asn1> or <tls> or <formats> or <tools> or <crypto>: include
 
-<tools/facesl.{byte,native}>: use_str, use_unix
+<tools/facesl.{byte,native}>: use_str, use_unix, use_crypto
 <tools/test_socket.{byte,native}>: use_unix
 
 "crypto/test_crypto.native": use_crypto
