@@ -4,6 +4,7 @@ open Modules
 
 
 exception ReturnValue of value
+exception Exit of value
 exception Continue
 exception Break
 

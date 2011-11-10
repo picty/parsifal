@@ -29,6 +29,11 @@ let length = function
 let as_hexa_int n_digits i =
   V_String (Common.hexdump_int (eval_as_int n_digits) (eval_as_int i))
 
+let error_msg fatal msg =
+  output_string stderr ((eval_as_string msg) ^ "\n");
+  flush stderr;
+  if fatal then raise (Exit (V_Int (-1))) else V_Unit
+
 
 (* Environment handling *)
 let current_environment env =
@@ -262,6 +267,9 @@ let _ =
   add_native "length" (one_value_fun length);
   add_native_with_env "eval" (one_string_fun_with_env interpret_string);
   add_native "as_hexa_int" (two_value_fun as_hexa_int);
+  add_native "exit" (one_value_fun (fun v -> raise (Exit v)));
+  add_native "warning" (one_value_fun (error_msg false));
+  add_native "fatal_error" (one_value_fun (error_msg true));
 
   (* Environment handling *)
   add_native_with_env "current_environment" (zero_value_fun_with_env current_environment);

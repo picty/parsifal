@@ -47,7 +47,7 @@ let script_interpreter filename =
       let ast = Parser.exprs Lexer.main_token lexbuf in
       eval_exps [global_env] ast
     with
-      | ReturnValue res -> res
+      | Exit res | ReturnValue res -> res
       | NotImplemented -> output_string stderr ("Not implemented\n"); V_Int (-2)
       | Parsing.Parse_error -> output_string stderr ("Syntax error\n"); V_Int (-2)
       | e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); V_Int (-2)
@@ -88,4 +88,4 @@ let _ =
     Printexc.print interactive_loop ();
     0
   end
-  else res
+  else exit (res);
