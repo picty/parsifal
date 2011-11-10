@@ -1,0 +1,57 @@
+#!/home/yeye/dev/FAceSL/facesl.native -f
+
+parser.tolerance <- 4;
+parser.minDisplay <- 4;
+tls.parse_certificates <- false;
+printer.separator <- "\t";
+
+count := 0;
+
+foreach_answer := function (f, path) {
+    foreach (open (path), answer_dump.parse, f);
+};      
+
+
+print_cert_info := function (prefix, cert) {
+    local parsed_cert;
+    parsed_cert := x509.parse (cert);
+    if (parsed_cert) then
+        bc := parsed_cert.get_extension ("basicConstraints");
+        if (parsed_cert.effective_version < 3) || ((bc) && (exists bc.content.CA) && (bc.content.CA)) then
+            print (prefix, md5sum (cert), "CA");
+        else
+            print (prefix, md5sum (cert));
+        fi
+    else
+        print (prefix, md5sum (cert), "Junk (certificate could not be parsed)");
+    fi
+};
+
+handle_answer := function (answer) {
+    local msgs, msgs_certificates, certs;
+
+    count := count + 1;
+    if (freq && count % freq = 0) then
+        output (stderr, "Answer seen: $count, current answer: ${answer.client_hello_type}:${answer.ip}\n");
+        flush (stderr);
+    fi;
+
+    msgs := tls.parse (answer.ip, answer.content);
+    msgs_certificates := filter (function (x) { exists x.content.certificates }, msgs);
+    if length (msgs_certificates) = 0 then return fi;
+    if length (msgs_certificates) > 1 then
+        output (stderr, "Answer ${answer.ip} contains more than one certificate message.")
+    fi;
+    certs := head (msgs_certificates).content.certificates;
+
+    iter (print_cert_info (answer.client_hello_type ++ ":" ++ answer.ip), certs);
+};
+
+
+if exists getenv ("FREQ") then
+    freq := getenv ("FREQ");
+else
+    freq := 0;
+fi;
+
+map (foreach_answer (handle_answer), args);

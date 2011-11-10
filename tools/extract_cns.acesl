@@ -1,0 +1,57 @@
+#!/home/yeye/dev/FAceSL/facesl.native -f
+
+parser.tolerance <- 4;
+parser.minDisplay <- 4;
+tls.parse_certificates <- true;
+
+
+foreach_answer := function (f, path) {
+    foreach (open (path), answer_dump.parse, f);
+};      
+
+
+categorize_cn := function (cns) {
+    local local_cn, tmp;
+    local_cn := false;
+
+    tmp := filter (function (x) { x ~= ".+\.[a-zA-Z]*$" }, cns);
+    if (tmp) then
+        if (filter (function (x) { ! (x ~= "\.local$") }, cns))
+        then return " FQDN"
+        else local_cn := true
+        fi
+    fi;
+
+    tmp := filter (function (x) { x ~= "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$" }, cns);
+    if (tmp) then
+        if (filter (function (x) { ! (x ~= "^\(192\.168\|10\|172\.16\|172\.17\|172\.18\|172\.19\|172\.2\|172\.30\|172\.31\)\.") }, cns))
+        then return " IP"
+        else local_cn := true
+        fi
+    fi;
+
+    if local_cn || (filter (function (x) { x ~= "^localhost\(\|\.localnet\)$" }, cns))
+    then return " LOCAL" fi;
+
+    return "";
+};
+
+handle_answer := function (answer) {
+    local msgs, msgs_certificates, certs, cns, res;
+
+    msgs := tls.parse (answer.ip, answer.content);
+    msgs_certificates := filter (function (x) { exists x.content.certificates }, msgs);
+    if length (msgs_certificates) = 0 then return fi;
+    if length (msgs_certificates) > 1 then
+        output (stderr, "Answer ${answer.ip} contains more than one certificate message.")
+    fi;
+    certs := head (msgs_certificates).content.certificates;
+    if (length (certs) = 0) then return fi;
+
+    cns := dget_all (head (certs).tbs.subject, "commonName");
+    res := answer.ip ++ ": " ++ (to_string (cns)) ++ (categorize_cn (cns));
+
+    print (res);
+};
+
+iter (foreach_answer (handle_answer), args);
