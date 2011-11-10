@@ -1,0 +1,5 @@
+insert ignore into Campaigns (campaign_id, campaign_name)
+    values (0, "July_2010");
+
+insert into Answers (campaign_id, name, ip, port, msg_type)
+    values (0, "toto", "1.2.3.4", 443, 5);

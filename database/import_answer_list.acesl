@@ -1,0 +1,36 @@
+#!/home/yeye/dev/FAceSL/facesl.native -f
+
+if (length (args) < 3) then fatal_error ("Usage: import campaign_id campaign_name files"); fi;
+
+campaign_id := head (args);
+campaign_name := head (tail (args));
+files := tail (tail (args));
+
+list_ips := function (path) {
+    local f, count;
+    count := 0;
+
+    f := open (path);
+    if ! f then return fi;
+
+    print ("insert into Answers (campaign_id, name, ip, port, msg_type) values");
+    while f do
+        a := answer_dump.parse (f);
+        count := count + 1;
+	if f then
+            if (count % 1000 = 0) then
+	        print ("  ($campaign_id, \"${a.name}\", \"${a.ip}\", ${a.port}, ${a.msg_type});");
+		print ("insert into Answers (campaign_id, name, ip, port, msg_type) values");
+            else
+                print ("  ($campaign_id, \"${a.name}\", \"${a.ip}\", ${a.port}, ${a.msg_type}),");
+            fi
+        else
+            print ("  ($campaign_id, \"${a.name}\", \"${a.ip}\", ${a.port}, ${a.msg_type});");
+	fi
+    done;
+    print ();
+};
+
+print ("insert ignore into Campaigns (campaign_id, campaign_name) values ($campaign_id, \"$campaign_name\");");
+print ();
+iter (list_ips, files);
