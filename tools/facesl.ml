@@ -11,6 +11,18 @@ open Asn1
 open X509
 
 
+let string_of_pos pos1 pos2 =
+  "File \"" ^ pos1.Lexing.pos_fname ^ "\", line " ^
+    (string_of_int pos1.Lexing.pos_lnum) ^ ", characters " ^
+    (string_of_int (pos1.Lexing.pos_cnum - pos1.Lexing.pos_bol)) ^ "-" ^
+    (string_of_int (pos2.Lexing.pos_cnum - pos2.Lexing.pos_bol))
+
+let err msg =
+  output_string stderr (msg ^ "\n");
+  flush stderr;
+  V_Int (-2)
+
+
 let interactive_loop () =
   setv [global_env] "PS1" (V_String "> ");
   try
@@ -44,13 +56,17 @@ let script_interpreter filename =
   let retval =
     try
       let lexbuf = Lexing.from_channel (open_in filename) in
-      let ast = Parser.exprs Lexer.main_token lexbuf in
-      eval_exps [global_env] ast
-    with
-      | Exit res | ReturnValue res -> res
-      | NotImplemented -> output_string stderr ("Not implemented\n"); V_Int (-2)
-      | Parsing.Parse_error -> output_string stderr ("Syntax error\n"); V_Int (-2)
-      | e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); V_Int (-2)
+      try
+	let ast = Parser.exprs Lexer.main_token lexbuf in
+	eval_exps [global_env] ast
+      with
+	| Exit res | ReturnValue res -> res
+	| NotImplemented -> err "Not implemented\n"
+	| Parsing.Parse_error ->
+	  err ("Syntax error (" ^ (string_of_pos lexbuf.Lexing.lex_start_p
+				     lexbuf.Lexing.lex_curr_p) ^ "): \"" ^
+	  (Lexing.lexeme lexbuf) ^ "\"")
+    with e -> err ("Unexpected error: " ^ (Printexc.to_string e))
   in 
   match retval with
     | V_Unit
