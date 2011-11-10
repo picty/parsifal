@@ -19,6 +19,11 @@ add_sample := function (msg_types) {
     "(${dget_def (samples, msg_types, "???")})  \t" ++ msg_types
 };
 
+print_info := function () {
+    print ();
+    print (count, with_certs);
+    print_stats (content_types, add_sample);
+};
 
 handle_answer := function (answer) {
     local msgs, msgs_certificates, certs, chains, category, prev_count;
@@ -36,7 +41,7 @@ handle_answer := function (answer) {
 
     with_certs := with_certs + 1;
     chains := construct_chains (certs);
-    category := "${to_string (chains.chains)} ${to_string (chains.incomplete_chains)} ${to_string (chains.duplicates)} ${to_string (chains.unused)}";
+    category := "${length (certs)} certificate(s), ${length (chains.unused)} unused, of which ${length (chains.duplicates)} are duplicates. ${to_string (chains.chains)} ${to_string (chains.incomplete_chains)}";
 
     if single then print (answer.ip, category) fi;
  
@@ -44,11 +49,7 @@ handle_answer := function (answer) {
     if prev_count = 0 then dset (samples, category, answer.client_hello_type ++ ":" ++ answer.ip) fi;
     dset (content_types, category, prev_count + 1);
 
-   if (freq && count % freq = 0) then
-      print ();
-      print (count, with_certs);
-      print_stats (content_types, add_sample);
-    fi
+    if (freq && count % freq = 0) then print_info (); fi
 };
 
 
@@ -61,7 +62,4 @@ else
 fi;
 
 map (foreach_answer (handle_answer), args);
-
-print ();
-print (count, with_certs);
-print_stats (content_types, add_sample);
+print_info ();

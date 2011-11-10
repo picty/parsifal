@@ -1,3 +1,22 @@
+Chain categorization
+ - Add signature
+ - Add trust store
+ - Avoid loops
+ - What is a chain -> create a new object
+   * a list of certificates, and for each
+     - origin (cert n in chain, Mozilla store, IE store)
+     - trusted
+   * validity span
+   * algos used
+   * subject
+
+WTF? Is extension parsing fatal?
+  Answer seen: 21310000, current answer: 0:99.196.116.39
+  Parsing error (SpecFatallyViolated): Trailing bytes in a parsed objects inside {authorityKeyIdentifier[2/26], authorityKeyIdentifier[0/24]}
+  Answer seen: 21320000, current answer: 0:99.196.196.103
+
+
+
 X509
  - Add AIA and CRLDP extensions
  - Write code to parse PK, Sig.
