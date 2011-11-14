@@ -4,6 +4,14 @@ open ParsingEngine
 
 (* Generic param helpers *)
 
+let pstate_of_value input = 
+  let ehf = default_error_handling_function !tolerance !minDisplay in
+  match input with
+    | [name; V_BinaryString s | V_String s] -> _pstate_of_string ehf (Some (eval_as_string name)) s
+    | [V_BinaryString s | V_String s] -> _pstate_of_string ehf None s
+    | [V_Stream (name, s)] -> _pstate_of_stream ehf name s
+    | _ -> raise (ContentError "String or stream expected")
+
 let param_from_bool_ref name reference =
   (name,
    Some (fun () -> V_Bool !reference),

@@ -1,5 +1,3 @@
-open Types
-
 (*********)
 (* Input *)
 (*********)
@@ -302,14 +300,6 @@ let pstate_of_stream n s =
 
 let pstate_of_channel n s = pstate_of_stream n (Stream.of_channel s)
 
-let pstate_of_value input = 
-  let ehf = default_error_handling_function !tolerance !minDisplay in
-  match input with
-    | [name; V_BinaryString s | V_String s] -> _pstate_of_string ehf (Some (eval_as_string name)) s
-    | [V_BinaryString s | V_String s] -> _pstate_of_string ehf None s
-    | [V_Stream (name, s)] -> _pstate_of_stream ehf name s
-    | _ -> raise (ContentError "String or stream expected")
-
 
 let go_down pstate name l =
   try
@@ -328,6 +318,8 @@ let go_down_on_left_portion pstate name =
       let left_len = l - pstate.cur_offset in
       go_down pstate name left_len
 
+
+(* Basic stuff *)
 
 let pop_byte pstate =
   try
@@ -389,6 +381,7 @@ let drop_bytes pstate n =
 let eos pstate = pstate.cur_input.eos ()
 
 
+
 let rec extract_uint_as_int32_aux accu = function
   | i::r -> extract_uint_as_int32_aux (Int32.logor (Int32.shift_left accu 8) (Int32.of_int i)) r
   | [] -> accu
@@ -406,6 +399,8 @@ let extract_uint16 pstate = extract_uint_aux 0 (pop_bytes pstate 2)
 let extract_uint8 = pop_byte
 
 
+(* Strings *)
+
 let extract_string name len pstate =
   let new_pstate = go_down pstate name len in
   pop_string new_pstate
@@ -415,6 +410,8 @@ let extract_variable_length_string name length_fun pstate =
   let new_pstate = go_down pstate name len in
   pop_string new_pstate
 
+
+(* List of objects *)
 
 let extract_list_fixedlen name len extract_fun pstate =
   let new_pstate = go_down pstate name len in
