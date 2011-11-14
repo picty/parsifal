@@ -3,7 +3,7 @@ open Modules
 open ParsingEngine
 
 type answer_dump = {
-  ip : int array;
+  ip : string;
   port : int;
   name : string;
   client_hello_type : int;
@@ -18,7 +18,7 @@ module AnswerDumpParser = struct
   let params = []
 
   let parse pstate =
-    let ip = Array.of_list (pop_bytes pstate 4) in
+    let ip = pop_string_with_len pstate 4 in
     let port = extract_uint16 pstate in
     let name = extract_variable_length_string "name" extract_uint16 pstate in
     let client_hello_type = pop_byte pstate in
@@ -28,7 +28,7 @@ module AnswerDumpParser = struct
       msg_type = msg_type; content = content }
 
   let dump answer  =
-    (Common.string_of_int_list (Array.to_list answer.ip)) ^
+    (Common.string_of_ip4 answer.ip) ^
       (Common.dump_uint16 answer.port) ^
       (Common.dump_variable_length_string Common.dump_uint16 answer.name) ^
       (Common.dump_uint8 answer.client_hello_type) ^
@@ -36,7 +36,7 @@ module AnswerDumpParser = struct
       (Common.dump_variable_length_string Common.dump_int answer.content)
 
   let enrich answer dict =
-    Hashtbl.replace dict "ip" (V_String (Common.string_of_ip answer.ip));
+    Hashtbl.replace dict "ip" (V_String (Common.string_of_ip4 answer.ip));
     Hashtbl.replace dict "port" (V_Int answer.port);
     Hashtbl.replace dict "name" (V_String answer.name);
     Hashtbl.replace dict "client_hello_type" (V_Int answer.client_hello_type);
@@ -44,7 +44,7 @@ module AnswerDumpParser = struct
     Hashtbl.replace dict "content" (V_BinaryString answer.content)
 
   let update dict =
-    { ip = Common.ip_of_string (eval_as_string (Hashtbl.find dict "ip"));
+    { ip = Common.ip4_of_string (eval_as_string (Hashtbl.find dict "ip"));
       port = eval_as_int (Hashtbl.find dict "port");
       name = eval_as_string (Hashtbl.find dict "name");
       client_hello_type = eval_as_int (Hashtbl.find dict "client_hello_type");
@@ -52,7 +52,7 @@ module AnswerDumpParser = struct
       content = eval_as_string (Hashtbl.find dict "content"); }
 
   let to_string answer =
-    let host = "Host " ^ (String.concat "." (List.map string_of_int (Array.to_list answer.ip))) ^
+    let host = "Host " ^ (Common.string_of_ip4  answer.ip) ^
       ":" ^ (string_of_int answer.port) in
     let named_host = if String.length answer.name > 0
       then host ^ " (" ^ answer.name ^ ")"

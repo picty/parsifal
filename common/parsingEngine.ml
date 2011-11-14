@@ -353,6 +353,14 @@ let pop_string pstate =
 	res
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
 
+let pop_string_with_len pstate n =
+  try
+    if not (check_bounds pstate n) then raise RawOutOfBounds;
+    let res = pstate.cur_input.pop_string n in
+    pstate.cur_offset <- pstate.cur_offset + n;
+    res
+  with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
+
 let pop_bytes pstate n =
   try
     if not (check_bounds pstate n) then raise RawOutOfBounds;

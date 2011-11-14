@@ -5,7 +5,7 @@ open AnswerDump
 
 let get_name answer =
   if String.length answer.name = 0
-  then Common.string_of_ip answer.ip
+  then Common.string_of_ip4 answer.ip
   else answer.name
 
 let _ =

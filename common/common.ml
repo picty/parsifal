@@ -139,11 +139,25 @@ let pop_option x def =
     | Some v -> v
 
 
-let string_of_ip ip  =
-  (string_of_int ip.(0)) ^ "." ^
-  (string_of_int ip.(1)) ^ "." ^
-  (string_of_int ip.(2)) ^ "." ^
-  (string_of_int ip.(3))
+let string_of_ip4 ip4 =
+  (string_of_int (int_of_char ip4.[0])) ^ "." ^
+  (string_of_int (int_of_char ip4.[1])) ^ "." ^
+  (string_of_int (int_of_char ip4.[2])) ^ "." ^
+  (string_of_int (int_of_char ip4.[3]))
+
+let string_of_ip6 ip6 =
+  if String.length ip6 <> 16 then failwith "Invalid IPv6 address";
+  let res = String.make (32+7) ':' in
+  let rec aux src dst =
+    if src > 15 then res
+    else begin
+      res.[dst] <- hexa_char.[((int_of_char ip6.[src]) lsr 4) land 0xf];
+      res.[dst+1] <- hexa_char.[(int_of_char ip6.[src]) land 0xf];
+      res.[dst+2] <- hexa_char.[((int_of_char ip6.[src + 1]) lsr 4) land 0xf];
+      res.[dst+3] <- hexa_char.[(int_of_char ip6.[src + 1]) land 0xf];
+      aux (src+2) (dst+5)
+    end
+  in aux 0 0
 
 
 let string_split c s =
@@ -156,10 +170,15 @@ let string_split c s =
       if offset < len then [String.sub s offset (len - offset)] else []
   in aux 0
 
-let ip_of_string s =
-  let res = Array.of_list (List.map int_of_string (string_split '.' s)) in
-  if Array.length res != 4 then failwith "Invalid IP";
-  res
+let ip4_of_string s =
+  let res = String.make 4 ' ' in
+  let rec aux = function
+    | i, elt::r when i <= 3 ->
+      res.[i] <- char_of_int elt;
+      aux (i+1, r)
+    | 4, [] -> res
+    | _ -> failwith "Invalid IP";
+  in aux (0, List.map int_of_string (string_split '.' s))
 
 
 
