@@ -62,11 +62,13 @@ let get_prefixes_list pc address_size wr_len =
 let nlri_get_prefixes pc ip_len =
   (* This part of the NLRI BGP attributes is always at the end of the attribute.  *)
   (* TODO OL: Here, I have changed the behaviour if afi prefix is neither 1 or 2, since it is checked before *)
-  let rec aux () =
-    let p = get_nlri pc ip_len in
-    p::(aux ())
-  in
-  aux ()
+  let rec aux accu =
+    if eos pc then List.rev accu
+    else begin
+      let p = get_nlri pc ip_len in
+      aux (p::accu)
+    end
+  in aux []
 
 
 
