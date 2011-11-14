@@ -388,6 +388,14 @@ let drop_bytes pstate n =
 
 let eos pstate = pstate.cur_input.eos ()
 
+
+let rec extract_uint_as_int32_aux accu = function
+  | i::r -> extract_uint_as_int32_aux (Int32.logor (Int32.shift_left accu 8) (Int32.of_int i)) r
+  | [] -> accu
+
+let extract_uint32_as_int32 pstate = extract_uint_as_int32_aux Int32.zero (pop_bytes pstate 4)
+
+
 let rec extract_uint_aux accu = function
   | i::r -> extract_uint_aux ((accu lsl 8) lor i) r
   | [] -> accu
@@ -396,6 +404,7 @@ let extract_uint32 pstate = extract_uint_aux 0 (pop_bytes pstate 4)
 let extract_uint24 pstate = extract_uint_aux 0 (pop_bytes pstate 3)
 let extract_uint16 pstate = extract_uint_aux 0 (pop_bytes pstate 2)
 let extract_uint8 = pop_byte
+
 
 let extract_string name len pstate =
   let new_pstate = go_down pstate name len in
@@ -406,6 +415,18 @@ let extract_variable_length_string name length_fun pstate =
   let new_pstate = go_down pstate name len in
   pop_string new_pstate
 
+
+let extract_list_fixedlen name len extract_fun pstate =
+  let new_pstate = go_down pstate name len in
+  let rec aux () =
+    if eos new_pstate
+    then []
+    else begin
+      let next = extract_fun new_pstate in
+      next::(aux ())
+    end
+  in
+  aux ()
 
 let extract_list name length_fun extract_fun pstate =
   let len = length_fun pstate in
