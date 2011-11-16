@@ -90,6 +90,7 @@ and eval_exp env exp =
 
     | E_GetField (e, f) -> get_field (eval e) f
     | E_SetField (e, f, v) -> set_field false (eval e) f (eval v)
+    | E_Index (e, n) -> get_index (eval e) (eval n)
 
     | E_Assign (var, e) ->
       setv env var (eval e);
@@ -267,3 +268,17 @@ and unset_field e f =
     end;
     V_Unit
   with Not_found -> raise (NotFound f)
+
+and get_index v n_val =
+  let rec nth_list n = function
+    | [] -> raise ListTooShort
+    | h::r -> if n = 0 then h else nth_list (n-1) r
+  in
+  let n = eval_as_int n_val in
+  match v with
+    | V_List l -> nth_list n l
+    | V_String s -> V_String (String.make 1 s.[n])
+    | V_BinaryString s | V_Bigint s ->
+      V_BinaryString (String.make 1 s.[n])
+    | V_BitString (_, s) -> V_Bool ((int_of_char s.[n / 8]) land (0x80 lsr (n mod 8)) <> 0)
+    | _ -> raise (ContentError "nth can only apply on lists and strings")

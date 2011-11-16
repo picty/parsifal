@@ -29,7 +29,7 @@
 %left T_BAnd
 %left T_BNot
 %left T_Period
-%right T_LeftPar T_RightPar
+%right T_LeftPar T_RightPar T_LeftBracket T_RightBracket
 %nonassoc T_UMinus
 
 
@@ -96,6 +96,7 @@ expr:
     | expr T_Cons expr   { Language.E_Cons ($1, $3) }
     | expr T_Period T_Ident { Language.E_GetField ($1, $3) }
     | expr T_Period T_Ident T_FieldAssign expr { Language.E_SetField ($1, $3, $5) }
+    | expr T_LeftBracket expr T_RightBracket { Language.E_Index ($1, $3) }
 
 args:
     | /* empty */          { [] }

@@ -52,12 +52,7 @@ let tail l = match (eval_as_list l) with
   | [] -> raise ListTooShort
   | _::r -> V_List r
 
-let nth n l =
-  let rec nth_aux n = function
-  | [] -> raise ListTooShort
-  | h::r -> if n = 0 then h else nth_aux (n-1) r
-  in nth_aux (eval_as_int n) (eval_as_list l)
-
+let nth n v = get_index v n
 
 let import_list arg =
   let rec import_aux_stream accu s =

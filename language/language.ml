@@ -48,6 +48,7 @@ type expression =
   | E_Cons of (expression * expression)
   | E_GetField of expression * string
   | E_SetField of expression * string * expression
+  | E_Index of expression * expression
 
   | E_Assign of (string * expression)
   | E_Unset of string
