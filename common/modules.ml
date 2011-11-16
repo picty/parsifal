@@ -4,7 +4,7 @@ open ParsingEngine
 
 (* Generic param helpers *)
 
-let pstate_of_value input = 
+let pstate_of_value_list input =
   let ehf = default_error_handling_function !tolerance !minDisplay in
   match input with
     | [name; V_BinaryString s | V_String s] -> _pstate_of_string ehf (Some (eval_as_string name)) s
@@ -121,7 +121,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
   (* Object constructions *)
 
   let parse input =
-    let pstate = pstate_of_value input in
+    let pstate = pstate_of_value_list input in
     try
       register (Parser.parse pstate)
     with
@@ -135,7 +135,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
 	V_Unit
 
   let parse_all input =
-    let pstate = pstate_of_value input in
+    let pstate = pstate_of_value_list input in
     let rec aux () =
       if eos pstate then []
       else

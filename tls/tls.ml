@@ -27,8 +27,7 @@ module TlsLib = struct
 	| OutOfBounds _ | ParsingError _ -> [], true
     else [], false
 
-  let _parse pstate =
-    let records, error = shallow_parse_records pstate in
+  let _deep_parse name records error =
     let merged_records = RecordParser.merge records in
 
     let rec parse_aux = function
@@ -38,11 +37,11 @@ module TlsLib = struct
 	  try
 	    match msg.content_type with
 	      | CT_ChangeCipherSpec ->
-		[ChangeCipherSpecModule.parse [V_String pstate.cur_name; msg.content]]
+		[ChangeCipherSpecModule.parse [V_String name; msg.content]]
 	      | CT_Alert ->
-		[AlertModule.parse [V_String pstate.cur_name; msg.content]]
+		[AlertModule.parse [V_String name; msg.content]]
 	      | CT_Handshake ->
-		HandshakeModule.parse_all [V_String pstate.cur_name; msg.content]
+		HandshakeModule.parse_all [V_String name; msg.content]
 	      | _ -> [msg.content]
 	  with OutOfBounds _ | ParsingError _ -> [msg.content]
 	in
@@ -55,12 +54,20 @@ module TlsLib = struct
     then (parse_aux merged_records)@[V_Unit]
     else parse_aux merged_records
 
+  let _parse pstate =
+    let records, error = shallow_parse_records pstate in
+    _deep_parse pstate.cur_name records error
+
   let parse input =
-    let pstate = pstate_of_value input in
+    let pstate = pstate_of_value_list input in
     V_List (_parse pstate)
 
+  let deep_parse record_list =
+    let records = List.map RecordModule.pop_object (eval_as_list record_list) in
+    V_List (_deep_parse "(inline records)"records false)
 
   let functions = ["parse", NativeFun parse]
+  let functions = ["deep_parse", NativeFun (one_value_fun deep_parse)]
 end
 
 
