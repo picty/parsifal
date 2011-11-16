@@ -66,7 +66,7 @@ let import_list arg =
   in
   match arg with
     | V_List l -> V_List l
-    | V_Stream (_, s) -> import_aux_stream [] s
+    | V_Stream (_, s, _) -> import_aux_stream [] s
     | v -> V_List ([v])
 
 
@@ -77,7 +77,7 @@ let import_set args =
   let rec aux = function
     | [] -> V_Dict res
     | (V_List l)::r -> List.iter add_value l; aux r
-    | (V_Stream (_, s))::r ->
+    | (V_Stream (_, s, _))::r ->
       while not (Common.eos s) do
 	add_string (Common.pop_line s)
       done;
@@ -104,7 +104,7 @@ let hash_unset h f = unset_field h (eval_as_string f)
 
 let make_lookup input =
   let res = Hashtbl.create 10 in
-  let n, s = eval_as_stream input in
+  let n, s, _ = eval_as_stream input in
   while not (Common.eos s) do
     let line = Common.pop_line s in
     let key, value = 
@@ -200,7 +200,7 @@ let open_file filename_v =
   let filename = eval_as_string filename_v in
   let f = open_in filename in
   Gc.finalise close_in_noerr f;
-  V_Stream (filename, Stream.of_channel f)
+  V_Stream (filename, Stream.of_channel f, Some (Unix.descr_of_in_channel f))
 
 let open_out filename_v =
   let filename = eval_as_string filename_v in
@@ -245,12 +245,42 @@ let load_script env filename =
 
 
 let stream_of_string n s =
-  V_Stream (eval_as_string n, Stream.of_string (eval_as_string s))
+  V_Stream (eval_as_string n, Stream.of_string (eval_as_string s), None)
 
 let concat_strings sep l =
   V_String (String.concat (eval_as_string sep)
 	      (List.map (fun x -> eval_as_string x) (eval_as_list l)))
 
+
+(* Network *)
+
+let channels_of_socket server_addr_val port_val =
+  let server_addr = eval_as_string (server_addr_val)
+  and port = eval_as_int (port_val) in
+  let ip_addr = (Unix.gethostbyname server_addr).Unix.h_addr_list.(0) in
+  let sockaddr = Unix.ADDR_INET(ip_addr, port) in
+  let domain = Unix.PF_INET in
+  let sock = Unix.socket domain Unix.SOCK_STREAM 0 in
+  try
+    Unix.connect sock sockaddr;
+    Unix.set_nonblock sock;
+    V_List [V_Stream (server_addr, Stream.of_channel (Unix.in_channel_of_descr sock), Some sock);
+	    V_OutChannel (server_addr, Unix.out_channel_of_descr sock)]
+  with exn -> Unix.close sock ; V_Unit
+
+let wait_for_input in_channel duration_val =
+  match eval_as_stream (in_channel) with
+    | in_n, _, Some in_descr ->
+      let duration = eval_as_int duration_val in
+      let res, _, _ = Unix.select [in_descr] [] [] (float_of_int duration) in
+      V_Bool (res <> [])
+    (* TODO: is it a good choice? *)
+    | _ -> V_Bool true
+
+let wait duration_val =
+  let duration = eval_as_int duration_val in
+  ignore (Unix.select [] [] [] (float_of_int duration));
+  V_Unit
 
 
 let add_native name f =
@@ -320,4 +350,9 @@ let _ =
   (* Crypto *)
   add_native "md5sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
   add_native "sha1sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
+
+  (* Network *)
+  add_native "socket" (two_value_fun channels_of_socket);
+  add_native "wait_for_input" (two_value_fun wait_for_input);
+  add_native "wait" (one_value_fun wait);
   ()

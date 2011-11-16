@@ -1,0 +1,27 @@
+SSL_v2_CLIENT_HELLO := decode ("hex", 
+		    '8074010301004b000000200000390000380000350000160000130' ++
+                    '0000a0700c000003300003200002f030080000005000004010080' ++
+                    '00001500001200000906004000001400001100000800000604008' ++
+                    '00000030200808837143117c92059979c246e6dc46c5a95d6f708' ++
+                    '51bd0c2109225879138a1997');
+TLS_v1_CLIENT_HELLO := decode ("hex",
+                      '16030100c6010000c203014b4654587bed2a1c1cc132b07689ca6' ++
+                      'b8c79ea9b279e4e45c7fe77c51ab33d632029eb2686d8f371320b' ++
+                      'a1acb077e251916a1f751c0fec408c60d0d6ce854889310046c00' ++
+                      'ac0140088008700390038c00fc00500840035c007c009c011c013' ++
+                      '0045004400330032c00cc00ec002c0040096004100040005002fc' ++
+                      '008c01200160013c00dc003feff000a0100003300000019001700' ++
+                      '00147777772e69736563706172746e6572732e636f6d000a00080' ++
+                      '006001700180019000b0002010000230000');
+
+get_tls_answer := function (addr, port, client_hello) {
+    local l;
+
+    l := socket (addr, port);
+    output (nth (1, l), client_hello);
+    flush (nth (1, l));
+
+    //  TODO: Do better with wait_for_input, record gathering then deep_parse tls...
+    wait (3);
+    tls.parse (head (l));
+};

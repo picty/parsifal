@@ -79,7 +79,7 @@ let mk_string_input str = s_mk_subinput str None (String.length str)
 
 let f_pop_byte str () =
   try int_of_char (Stream.next str)
-  with Stream.Failure -> raise RawOutOfBounds
+  with Sys_blocked_io | Stream.Failure -> raise RawOutOfBounds
 
 let f_pop_string str len =  
   let res = String.make len ' ' in
@@ -90,7 +90,7 @@ let f_pop_string str len =
     end else res
   in
   try aux 0 
-  with Stream.Failure -> raise RawOutOfBounds
+  with Sys_blocked_io | Stream.Failure -> raise RawOutOfBounds
 
 let f_pop_bytes str len =
   let rec aux accu = function
@@ -100,17 +100,17 @@ let f_pop_bytes str len =
       aux (next_int::accu) (n-1)
   in
   try aux [] len
-  with Invalid_argument _ -> raise RawOutOfBounds
+  with Sys_blocked_io | Invalid_argument _ -> raise RawOutOfBounds
 
 let f_peek_byte str off =
   let l = Stream.npeek (off + 1) str in
   try int_of_char (List.nth l off)
-  with Failure _ -> raise RawOutOfBounds
+  with Sys_blocked_io | Failure _ -> raise RawOutOfBounds
 
 let f_drop_bytes str off =
   try
     for i = 1 to off do Stream.junk str done
-  with Stream.Failure -> raise RawOutOfBounds
+  with Sys_blocked_io | Stream.Failure -> raise RawOutOfBounds
 
 let f_eos str () = Common.eos str
 

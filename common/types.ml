@@ -30,7 +30,7 @@ and value =
 
   | V_List of value list
   | V_Dict of (string, value) Hashtbl.t
-  | V_Stream of string * char Stream.t
+  | V_Stream of string * char Stream.t * Unix.file_descr option
   | V_OutChannel of string * out_channel
 
   | V_Module of string
@@ -97,7 +97,7 @@ let eval_as_bool = function
   | V_BinaryString s
   | V_BitString (_, s) -> (String.length s) <> 0
   | V_Bigint s -> (String.length s) > 0 && s.[0] != '\x00'
-  | V_Stream (_, s) -> not (Common.eos s)
+  | V_Stream (_, s, _) -> not (Common.eos s)
   | V_Dict d -> (Hashtbl.length d) <> 0
   | V_Object _ -> true
 
@@ -108,7 +108,7 @@ let eval_as_function = function
   | _ -> raise (ContentError "Function expected")
 
 let eval_as_stream = function
-  | V_Stream (n, s) -> n, s
+  | V_Stream (n, s, descr) -> n, s, descr
   | _ -> raise (ContentError "Stream expected")
 
 let eval_as_outchannel = function

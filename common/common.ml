@@ -208,7 +208,7 @@ let eos stream =
   try
     Stream.empty stream;
     true
-  with Stream.Failure -> false
+  with Sys_blocked_io | Stream.Failure -> false
 
 let pop_line stream =
   let res = ref "" in
@@ -223,7 +223,7 @@ let pop_line stream =
   in
   try
     pop_char ()
-  with Stream.Failure -> !res
+  with Sys_blocked_io | Stream.Failure -> !res
   
 
 (* Triplet functions *)
