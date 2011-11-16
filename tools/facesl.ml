@@ -1,3 +1,4 @@
+open Common
 open Language
 open Types
 open Printer
@@ -6,7 +7,6 @@ open NativeFunctions
 
 open AnswerDump
 open Tls
-
 open Asn1
 open X509
 
@@ -49,6 +49,7 @@ let interactive_loop () =
 	  output_string stderr ((ParsingEngine.string_of_parsing_error "Parsing error" err sev pstate));
 	  flush stderr
 
+	| NotFound name -> output_string stderr ("Not found: " ^ name ^ "\n"); flush stderr
 	| e -> output_string stderr ("Unexpected error: " ^ (Printexc.to_string e) ^ "\n"); flush stderr
     done
   with End_of_file -> ()
@@ -63,6 +64,7 @@ let script_interpreter filename =
 	eval_exps [global_env] ast
       with
 	| Exit res | ReturnValue res -> res
+	| NotFound name -> err ("Not found: " ^ name ^ "\n")
 	| NotImplemented -> err "Not implemented\n"
 	| Parsing.Parse_error ->
 	  err ("Syntax error (" ^ (string_of_pos lexbuf.Lexing.lex_start_p

@@ -101,7 +101,7 @@ module OIdObjectParser = struct
 	Hashtbl.replace dict "content" (Asn1Module.register content)
 
   let update dict =
-    let id = match Asn1Parser.asn1_content_of_value (false, Hashtbl.find dict "oid") with
+    let id = match Asn1Parser.asn1_content_of_value (false, hash_find dict "oid") with
       | OId l -> l
       | _ -> raise (ContentError ("oid should be an object identifier (int list)"))
     in

@@ -1,3 +1,4 @@
+open Common
 open Types
 open Modules
 
@@ -66,15 +67,15 @@ module PrinterLib = struct
       | V_Bool b -> [_single_line title (string_of_bool b)]
       | V_Int i -> [_single_line title (string_of_int i)]
       | V_String s ->
-	let res = if (quote_strings) then "\"" ^ (Common.quote_string s) ^ "\"" else s
+	let res = if (quote_strings) then "\"" ^ (quote_string s) ^ "\"" else s
 	in [_single_line title (res)]
       | V_BinaryString s ->
-	let res = if (quote_strings) then "[HEX]" ^ (Common.hexdump s) else Common.hexdump s
+	let res = if (quote_strings) then "[HEX]" ^ (hexdump s) else hexdump s
 	in [_single_line title (res)]
       | V_BitString (n, s) ->
-	[_single_line title ("\"[" ^ (string_of_int n) ^ "]" ^ (Common.hexdump s) ^ "\"")]
+	[_single_line title ("\"[" ^ (string_of_int n) ^ "]" ^ (hexdump s) ^ "\"")]
       | V_Bigint s ->
-	[_single_line title ("0x" ^ (Common.hexdump s))]
+	[_single_line title ("0x" ^ (hexdump s))]
 
       | V_List l ->
 	let content, multiline = flatten_strlist (List.map (_string_of_value None true) l) in
@@ -90,8 +91,7 @@ module PrinterLib = struct
 	_string_of_strlist title (hash_options !separator (multiline || (!multiline_dict && content <> []))) content
 
       | V_Object (n, obj_ref, d) ->
-	let m = Hashtbl.find modules n in
-	let module M = (val m : Module) in
+	let module M = (val (hash_find modules n) : Module) in
 	if not !raw_display && (Hashtbl.mem M.static_params "to_string_indent") then begin
 	  let content = match (Hashtbl.find M.static_params "to_string_indent") with
 	    | V_Function (NativeFun f) -> List.map eval_as_string (eval_as_list (f [v]))

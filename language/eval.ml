@@ -1,3 +1,4 @@
+open Common
 open Language
 open Types
 open Modules
@@ -61,7 +62,7 @@ and eval_exp env exp =
       try
 	ignore (eval e);
 	V_Bool true
-      with Not_found | ContentError _ -> V_Bool false
+      with NotFound _ | ContentError _ -> V_Bool false
     end
 
     | E_Function (arg_names, e) ->
@@ -69,15 +70,13 @@ and eval_exp env exp =
       let new_env = Hashtbl.create (2 * na) in
       V_Function (InterpretedFun (new_env::env, arg_names, e))
     | E_Local ids ->
-      let rec add_locals ids =
-	match env, ids with
-	  | _, [] -> V_Unit
-	  | [], _ -> raise Not_found
-	  | e::_, id::r ->
-	    Hashtbl.replace e id V_Unit;
-	    add_locals r
+      let inner_env = match env with
+	| [] -> raise (NotFound "Internal mayhem: no environment!")
+	| e::_ -> e
       in
-      add_locals ids
+      let add_local id = Hashtbl.replace inner_env id V_Unit in
+      List.iter add_local ids;
+      V_Unit;
     | E_Apply (e, args) -> begin
       let f_value = eval_as_function (eval e) in
       let arg_values = List.map eval args in
@@ -155,8 +154,7 @@ and eval_equality env a b =
       if n1 <> n2 then false else begin
 	if r1 = r2 then true
 	else begin
-	  let m = Hashtbl.find modules n1 in
-	  let module M = (val m : Module) in
+	  let module M = (val (hash_find modules n1) : Module) in
 	  M.equals (r1, d1) (r2, d2);
 	end
       end
@@ -188,78 +186,84 @@ and interpret_string env s =
   eval_exps env ast
 
 and get_field e f =
-  match e with
-    | V_Dict d -> (Hashtbl.find d f)
+  try
+    match e with
+      | V_Dict d -> Hashtbl.find d f
 
-    | V_Module n -> begin
-      let module M = (val (Hashtbl.find modules n) : Module) in
-      try
-	Hashtbl.find M.static_params f
-      with Not_found -> (Hashtbl.find M.param_getters f) ()
-    end
+      | V_Module n -> begin
+	let module M = (val (hash_find modules n) : Module) in
+	try Hashtbl.find M.static_params f
+	with Not_found -> (Hashtbl.find M.param_getters f) ()
+      end
 
-    | V_Object (n, obj_ref, d) ->
-      let module M = (val (Hashtbl.find modules n) : Module) in
-      M.enrich obj_ref d;
-      if f = "_dict" then V_Dict d else (Hashtbl.find d f)
+      | V_Object (n, obj_ref, d) ->
+	let module M = (val (hash_find modules n) : Module) in
+	M.enrich obj_ref d;
+	if f = "_dict" then V_Dict d else Hashtbl.find d f
 
-    | _ -> raise (ContentError ("Object with fields expected"))
+      | _ -> raise (ContentError ("Object with fields expected"))
+  with Not_found -> raise (NotFound f)
 
 and get_field_all e f =
-  match e with
-    | V_Dict d -> V_List (Hashtbl.find_all d f)
+  try
+    match e with
+      | V_Dict d -> V_List (Hashtbl.find_all d f)
 
-    | V_Module n -> begin
-      let module M = (val (Hashtbl.find modules n) : Module) in
-      try
-	V_List [Hashtbl.find M.static_params f]
-      with Not_found -> V_List [(Hashtbl.find M.param_getters f) ()]
-    end
+      | V_Module n -> begin
+	let module M = (val (hash_find modules n) : Module) in
+	try V_List [Hashtbl.find M.static_params f]
+	with Not_found -> V_List [(Hashtbl.find M.param_getters f) ()]
+      end
 
-    | V_Object (n, obj_ref, d) ->
-      let module M = (val (Hashtbl.find modules n) : Module) in
-      M.enrich obj_ref d;
-      if f = "_dict" then V_List ([V_Dict d]) else V_List (Hashtbl.find_all d f)
+      | V_Object (n, obj_ref, d) ->
+	let module M = (val (hash_find modules n) : Module) in
+	M.enrich obj_ref d;
+	if f = "_dict" then V_List ([V_Dict d]) else V_List (Hashtbl.find_all d f)
 
-    | _ -> raise (ContentError ("Object with fields expected"))
+      | _ -> raise (ContentError ("Object with fields expected"))
+  with Not_found -> raise (NotFound f)
 
 and set_field append e f v =
-  let add_function = if append then Hashtbl.add else Hashtbl.replace in
-  begin
-    match e with
-      | V_Dict d -> (add_function d f v)
+  try
+    let add_function = if append then Hashtbl.add else Hashtbl.replace in
+    begin
+      match e with
+	| V_Dict d -> (add_function d f v)
 
-      | V_Module n ->
-	if append then raise (ContentError ("Module params can not have multiple values"));
-	let module M = (val (Hashtbl.find modules n) : Module) in
-	(Hashtbl.find M.param_setters f) v
+	| V_Module n ->
+	  if append then raise (ContentError ("Module params can not have multiple values"));
+	  let module M = (val (hash_find modules n) : Module) in
+	  (Hashtbl.find M.param_setters f) v
 
-      | V_Object (n, obj_ref, d) ->
-	if f = "_dict" then raise (ContentError ("Read-only field"));
-	let module M = (val (Hashtbl.find modules n) : Module) in
-	M.enrich obj_ref d;
-	add_function d f v;
-	Hashtbl.replace d "@modified" V_Unit
+	| V_Object (n, obj_ref, d) ->
+	  if f = "_dict" then raise (ContentError ("Read-only field"));
+	  let module M = (val (hash_find modules n) : Module) in
+	  M.enrich obj_ref d;
+	  add_function d f v;
+	  Hashtbl.replace d "@modified" V_Unit
 
-      | _ -> raise (ContentError ("Object with mutable fields expected"))
-  end;
-  V_Unit
+	| _ -> raise (ContentError ("Object with mutable fields expected"))
+    end;
+    V_Unit
+  with Not_found -> raise (NotFound f)
 
 and unset_field e f =
-  begin
-    match e with
-      | V_Dict d -> (Hashtbl.remove d f)
+  try
+    begin
+      match e with
+	| V_Dict d -> (Hashtbl.remove d f)
 
-      | V_Module n ->
-	raise (ContentError ("Module params can not be removed"));
+	| V_Module n ->
+	  raise (ContentError ("Module params can not be removed"));
 
-      | V_Object (n, obj_ref, d) ->
-	if f = "_dict" then raise (ContentError ("Read-only field"));
-	let module M = (val (Hashtbl.find modules n) : Module) in
-	M.enrich obj_ref d;
-	Hashtbl.remove d f;
-	Hashtbl.replace d "@modified" V_Unit
+	| V_Object (n, obj_ref, d) ->
+	  if f = "_dict" then raise (ContentError ("Read-only field"));
+	  let module M = (val (hash_find modules n) : Module) in
+	  M.enrich obj_ref d;
+	  Hashtbl.remove d f;
+	  Hashtbl.replace d "@modified" V_Unit
 
-      | _ -> raise (ContentError ("Object with mutable fields expected"))
-  end;
-  V_Unit
+	| _ -> raise (ContentError ("Object with mutable fields expected"))
+    end;
+    V_Unit
+  with Not_found -> raise (NotFound f)

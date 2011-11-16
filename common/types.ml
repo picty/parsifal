@@ -2,6 +2,7 @@
 (* Types *)
 (*********)
 
+open Common
 open Language
 
 
@@ -44,6 +45,7 @@ let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
 
 (* Exceptions *)
 exception NotImplemented
+exception ListTooShort
 exception WrongNumberOfArguments
 exception ContentError of string
 
@@ -97,7 +99,7 @@ let eval_as_bool = function
   | V_BinaryString s
   | V_BitString (_, s) -> (String.length s) <> 0
   | V_Bigint s -> (String.length s) > 0 && s.[0] != '\x00'
-  | V_Stream (_, s, _) -> not (Common.eos s)
+  | V_Stream (_, s, _) -> not (eos s)
   | V_Dict d -> (Hashtbl.length d) <> 0
   | V_Object _ -> true
 
@@ -162,29 +164,27 @@ let string_of_type = function
 (* Environment handling *)
 
 let rec getv env name = match env with
-  | [] -> raise Not_found
+  | [] -> raise (NotFound name)
   | e::r -> begin
-    try
-      Hashtbl.find e name
-    with
-      | Not_found -> getv r name
+    try Hashtbl.find e name
+    with Not_found -> getv r name
   end
 
 let getv_str env name default =
   try
     eval_as_string (getv env name)
   with
-    | Not_found | ContentError _ -> default
+    | NotFound _ | ContentError _ -> default
 
 let getv_bool env name default =
   try
     eval_as_bool (getv env name)
   with
-    | Not_found | ContentError _ -> default
+    | NotFound _ | ContentError _ -> default
 
 
 let rec setv env name v = match env with
-  | [] -> raise Not_found
+  | [] -> raise (NotFound name)
   | [e] -> Hashtbl.replace e name v
   | e::r ->
     if Hashtbl.mem e name
@@ -192,7 +192,7 @@ let rec setv env name v = match env with
     else setv r name v
 
 let rec unsetv env name = match env with
-  | [] -> raise Not_found
+  | [] -> raise (NotFound name)
   | e::r ->
     if Hashtbl.mem e name
     then Hashtbl.remove e name

@@ -1,3 +1,4 @@
+exception NotFound of string
 exception IntegerOverflow
 exception FormatError
 
@@ -208,7 +209,9 @@ let eos stream =
   try
     Stream.empty stream;
     true
-  with Sys_blocked_io | Stream.Failure -> false
+  with
+    | Sys_blocked_io -> true
+    | Stream.Failure -> false
 
 let pop_line stream =
   let res = ref "" in
@@ -231,3 +234,14 @@ let pop_line stream =
 let fst3 (a, _, _) = a
 let snd3 (_, b, _) = b
 let trd3 (_, _, c) = c
+
+
+(* Hashtable functions *)
+
+let hash_find_default ht name def =
+  try Hashtbl.find ht name
+  with Not_found -> def
+
+let hash_find ht name =
+  try Hashtbl.find ht name
+  with Not_found -> raise (NotFound name)

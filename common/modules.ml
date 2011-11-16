@@ -1,3 +1,4 @@
+open Common
 open Types
 open ParsingEngine
 
@@ -27,7 +28,7 @@ let param_from_string_ref name reference =
    Some (fun () -> V_String !reference),
    Some (fun x -> reference := eval_as_string (x)))
 
-let no_getter () = raise Not_found
+let no_getter name () = raise (NotFound name)
 let no_setter _ = raise (ContentError ("Read-only field"))
 
 
@@ -71,7 +72,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
   let find_index = function
     | ObjectRef i ->
       if (Hashtbl.mem objects i)
-      then i else raise Not_found
+      then i else raise (NotFound "Internal mayhem: object does not exist")
 
 
   let _register obj =
@@ -178,8 +179,8 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
   let to_string_indent_aux obj = V_List (List.map (fun x -> V_String x) (Parser.to_string obj))
 
   let populate_param (param_name, getter, setter) =
-    Hashtbl.replace param_getters param_name (Common.pop_option getter no_getter);
-    Hashtbl.replace param_setters param_name (Common.pop_option setter no_setter)
+    Hashtbl.replace param_getters param_name (pop_option getter (no_getter param_name));
+    Hashtbl.replace param_setters param_name (pop_option setter no_setter)
 
   let populate_static_param (param_name, v) =
     Hashtbl.replace static_params param_name v
@@ -223,8 +224,8 @@ module MakeLibraryModule = functor (Library : LibraryInterface) -> struct
   let static_params = Hashtbl.create 10
 
   let populate_param (param_name, getter, setter) =
-    Hashtbl.replace param_getters param_name (Common.pop_option getter no_getter);
-    Hashtbl.replace param_setters param_name (Common.pop_option setter no_setter)
+    Hashtbl.replace param_getters param_name (pop_option getter (no_getter param_name));
+    Hashtbl.replace param_setters param_name (pop_option setter no_setter)
 
   let populate_static_param (param_name, v) =
     Hashtbl.replace static_params param_name v

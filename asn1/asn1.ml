@@ -1,3 +1,4 @@
+open Common
 open Types
 open Modules
 open Printer
@@ -483,7 +484,7 @@ and parse pstate : asn1_object =
   let (c, isC, t) = extract_header pstate in
   let new_pstate = extract_length pstate (string_of_header_pretty c isC t) in
   let hlen = new_pstate.previous_offset - offset in
-  let len = Common.pop_option new_pstate.cur_length (-1) in
+  let len = pop_option new_pstate.cur_length (-1) in
   let parse_fun = choose_parse_fun pstate c isC t in
   let res = mk_object (string_of_header_pretty c isC t)
     c t offset hlen len (parse_fun new_pstate) in
@@ -514,8 +515,8 @@ let isConstructed o = match o.a_content with
 
 let string_of_bitstring raw nBits s =
   if raw || nBits <> 0
-  then "[" ^ (string_of_int nBits) ^ "]:" ^ (Common.hexdump s)
-  else Common.hexdump s
+  then "[" ^ (string_of_int nBits) ^ "]:" ^ (hexdump s)
+  else hexdump s
 
 let oid_expand = function
   | [] -> []
@@ -546,8 +547,7 @@ let register_oid oid s =
 
 let string_of_oid oid =
   if !PrinterLib.resolve_names then
-    try
-      Hashtbl.find name_directory oid
+    try Hashtbl.find name_directory oid
     with Not_found -> raw_string_of_oid oid
   else raw_string_of_oid oid
 
@@ -559,12 +559,12 @@ let rec string_of_content = function
   | Null -> [], false
   | Boolean true -> ["true"], false
   | Boolean false -> ["false"], false
-  | Integer i -> ["0x" ^ (Common.hexdump i)], false
+  | Integer i -> ["0x" ^ (hexdump i)], false
   | BitString (nBits, s) -> [string_of_bitstring !PrinterLib.raw_display nBits s], false
   | EnumeratedBitString l -> ["[" ^ (String.concat ", " l) ^ "]"], false
   | OId oid -> [string_of_oid oid], false
-  | String (s, true) -> ["[HEX:]" ^ (Common.hexdump s)], false
-  | String (s, false) -> [if !PrinterLib.raw_display then Common.hexdump s else s], false
+  | String (s, true) -> ["[HEX:]" ^ (hexdump s)], false
+  | String (s, false) -> [if !PrinterLib.raw_display then hexdump s else s], false
 
 and string_of_object o =
   let type_string =
@@ -621,7 +621,7 @@ let dump_length l =
   else begin
     let x = aux [] l in
     let prefix = ((List.length x) lor 0x80) in
-    Common.string_of_int_list (prefix::x)
+    string_of_int_list (prefix::x)
   end
 
 
@@ -641,7 +641,7 @@ let subid_to_charlist id =
 
 let oid_to_der idlist =
   let cll = List.map subid_to_charlist idlist in
-  Common.string_of_int_list (List.flatten cll)
+  string_of_int_list (List.flatten cll)
 
 let bitstring_to_der nBits s =
   let prefix = String.make 1 (char_of_int nBits) in
@@ -738,11 +738,11 @@ module Asn1Parser = struct
     | _ -> raise (ContentError ("Invalid value for an asn1 content"))
 
   and update dict =
-    let name = eval_as_string (Hashtbl.find dict "name") in
-    let c = class_of_string (eval_as_string (Hashtbl.find dict "class")) in
-    let t = eval_as_int (Hashtbl.find dict "tag") in
-    let isC = eval_as_bool (Hashtbl.find dict "is_constructed") in
-    let content = asn1_content_of_value (isC, Hashtbl.find dict "content") in
+    let name = eval_as_string (hash_find dict "name") in
+    let c = class_of_string (eval_as_string (hash_find dict "class")) in
+    let t = eval_as_int (hash_find dict "tag") in
+    let isC = eval_as_bool (hash_find dict "is_constructed") in
+    let content = asn1_content_of_value (isC, hash_find dict "content") in
     mk_object' name c t content
 
 

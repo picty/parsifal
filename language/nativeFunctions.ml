@@ -1,3 +1,4 @@
+open Common
 open Types
 open Printer
 open Modules
@@ -27,7 +28,7 @@ let length = function
   | _ -> raise (ContentError "String or list expected")
 
 let as_hexa_int n_digits i =
-  V_String (Common.hexdump_int (eval_as_int n_digits) (eval_as_int i))
+  V_String (hexdump_int (eval_as_int n_digits) (eval_as_int i))
 
 let error_msg fatal msg =
   output_string stderr ((eval_as_string msg) ^ "\n");
@@ -44,25 +45,25 @@ let current_environment env =
 (* List and set functions *)
 
 let head l = match (eval_as_list l) with
-  | [] -> raise Not_found
+  | [] -> raise ListTooShort
   | h::_ -> h
 
 let tail l = match (eval_as_list l) with
-  | [] -> raise Not_found
+  | [] -> raise ListTooShort
   | _::r -> V_List r
 
 let nth n l =
   let rec nth_aux n = function
-  | [] -> raise Not_found
+  | [] -> raise ListTooShort
   | h::r -> if n = 0 then h else nth_aux (n-1) r
   in nth_aux (eval_as_int n) (eval_as_list l)
 
 
 let import_list arg =
   let rec import_aux_stream accu s =
-    if Common.eos s
+    if eos s
     then V_List (List.rev accu)
-    else import_aux_stream ((V_String (Common.pop_line s))::accu) s
+    else import_aux_stream ((V_String (pop_line s))::accu) s
   in
   match arg with
     | V_List l -> V_List l
@@ -78,8 +79,8 @@ let import_set args =
     | [] -> V_Dict res
     | (V_List l)::r -> List.iter add_value l; aux r
     | (V_Stream (_, s, _))::r ->
-      while not (Common.eos s) do
-	add_string (Common.pop_line s)
+      while not (eos s) do
+	add_string (pop_line s)
       done;
       aux r
     | v::r -> add_value v; aux r
@@ -97,7 +98,7 @@ let hash_make args =
   V_Dict (Hashtbl.create (size))
 
 let hash_get h f = get_field h (eval_as_string f)
-let hash_get_def h f v = try hash_get h f with Not_found -> v
+let hash_get_def h f v = try hash_get h f with NotFound _ -> v
 let hash_get_all h f = get_field_all h (eval_as_string f)
 let hash_set append h f v = set_field append h (eval_as_string f) v
 let hash_unset h f = unset_field h (eval_as_string f)
@@ -105,8 +106,8 @@ let hash_unset h f = unset_field h (eval_as_string f)
 let make_lookup input =
   let res = Hashtbl.create 10 in
   let n, s, _ = eval_as_stream input in
-  while not (Common.eos s) do
-    let line = Common.pop_line s in
+  while not (eos s) do
+    let line = pop_line s in
     let key, value = 
       try
 	let index = String.index line ',' in
@@ -124,9 +125,7 @@ let print_stats env args =
   let preprocess f k = eval_function env (eval_as_function f) [V_String k] in
   let lookup dict preprocess k =
     let k' = preprocess k in
-    try
-      Hashtbl.find dict (eval_as_string k')
-    with Not_found -> k'
+    hash_find_default dict (eval_as_string k') k'
   in
   let list = match args with
   | [dict] ->
@@ -221,11 +220,11 @@ let outflush out_v =
   V_Unit
 
 let encode format input = match (eval_as_string format) with
-  | "hex" -> V_String (Common.hexdump (eval_as_string input))
+  | "hex" -> V_String (hexdump (eval_as_string input))
   | _ -> raise (ContentError ("Unknown format"))
 
 let decode format input = match (eval_as_string format) with
-  | "hex" -> V_BinaryString (Common.hexparse (eval_as_string input))
+  | "hex" -> V_BinaryString (hexparse (eval_as_string input))
   | _ -> raise (ContentError ("Unknown format"))
 
 

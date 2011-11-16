@@ -217,8 +217,7 @@ let register_module_errors_and_make_emit_function (name : string) (assoc_array :
 
   let emit err sev_opt details pstate =
     let i, sev =
-      try
-	Hashtbl.find assoc_hash err
+      try Hashtbl.find assoc_hash err
       with Not_found -> -1, s_fatal
     in pstate.ehf (name, i, details) (Common.pop_option sev_opt sev) pstate
   in
