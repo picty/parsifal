@@ -245,3 +245,5 @@ let hash_find_default ht name def =
 let hash_find ht name =
   try Hashtbl.find ht name
   with Not_found -> raise (NotFound name)
+
+let (-->) = hash_find

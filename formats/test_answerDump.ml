@@ -1,12 +1,15 @@
+open Common
 open Types
 open ParsingEngine
+open BinaryRecord
 open AnswerDump
 
 
 let get_name answer =
-  if String.length answer.name = 0
-  then Common.string_of_ip4 answer.ip
-  else answer.name
+  let name = eval_as_string (answer --> "name") in
+  if String.length name = 0
+  then Common.string_of_ip4 (eval_as_ipv4 (answer --> "ip"))
+  else name
 
 let _ =
   let pstate = pstate_of_channel "(stdin)" stdin in
@@ -15,11 +18,11 @@ let _ =
 
   try
     while not (eos pstate) do
-      let answer = AnswerDumpParser.parse pstate in
+      let answer = BinaryRecord.parse AnswerDump.description pstate in
       let name = get_name answer in
       Printf.printf "%s:\n" name;
       (* TODO: Keep the history? *)
-      let tls_pstate = pstate_of_string (Some name) answer.content in
+      let tls_pstate = pstate_of_string (Some name) (eval_as_string (answer --> "content")) in
 
       let tls_msgs = List.map TlsRecord.RecordModule.pop_object (Tls.TlsLib._parse tls_pstate) in
 

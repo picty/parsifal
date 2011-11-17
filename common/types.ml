@@ -106,6 +106,10 @@ let eval_as_bool = function
 
   | _ -> raise (ContentError "Boolean expected")
 
+let eval_as_ipv4 = function
+  | V_IPv4 s -> s
+  | _ -> raise (ContentError "IPv4 expected")
+
 let eval_as_function = function
   | V_Function f -> f
   | _ -> raise (ContentError "Function expected")

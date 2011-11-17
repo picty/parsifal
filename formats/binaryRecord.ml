@@ -17,11 +17,8 @@ let parse_string n pstate = V_String (pop_string_with_len pstate n)
 let parse_bin_string n pstate = V_BinaryString (pop_string_with_len pstate n)
 let parse_varlen_string name len_fun pstate = V_String (extract_variable_length_string name len_fun pstate)
 let parse_varlen_bin_string name len_fun pstate = V_BinaryString (extract_variable_length_string name len_fun pstate)
-let dump_string value = eval_as_string value
 
 let parse_ipv4 pstate = V_IPv4 (pop_string_with_len pstate 4)
-let dump_ipv4 = function V_IPv4 s -> s | _ -> raise (ContentError "IPv4 expected")
-
 
 
 module BinaryRecord = struct
@@ -48,6 +45,7 @@ module BinaryRecord = struct
 	(dump_fun v) ^ (dump_aux r)
     in dump_aux desc
 end
+
 
 module type BinaryRecordInterface = sig
   val name : string
