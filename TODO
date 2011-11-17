@@ -1,3 +1,6 @@
+BUG: the equality does not function at all when objects are embedded (extensions for examples : cert != cert)!!!
+
+
 Chain categorization
  - Add signature
  - Add trust store
@@ -25,6 +28,7 @@ X509
  - Use specific warnings for each interesting X.509 warnings.
 
 TLS
+ - Rewrite CH / SH and so on as simple BinaryRecords ?
  - Rewrite alert types/levels as simple ints, and provide lookup tables to the code.
  - Add a way to enrich/deep parse a posteriori (when parse_certs was not active)
  - Add native lookup_tables
@@ -32,11 +36,13 @@ TLS
  - Add parser for SSLv2.
 
 Modules
+ - Write a BinaryRecord module and functor
  - MapModule: Add a _dict or _params magic objects ? Remove all _ ?
  - Write the missing update/dump functions
  - Problem with @enriched... it does not work if a sub-dictionary is modified...
 
 Language
+ - Add a read_all (stream -> string) with an argument (max)
  - Write a simple compare function instead of all the equal/lt functions
  - Add constructors/destructors to manipulate V_BitString / V_Bigint
  - Add a library to filter and extract certs, either in native or interpreted form

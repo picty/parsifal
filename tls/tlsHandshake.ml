@@ -32,7 +32,7 @@ type cipher_suite = int
 type compression_method = int
 type random = string
 type session_id = string
-type tls_extension = string
+type tls_extension = int * string
 
 type client_hello = {
   c_version : protocol_version;
@@ -153,6 +153,11 @@ let string_of_server_hello sh =
   in PrinterLib._string_of_strlist (Some "Server Hello") indent_only content
 
 
+let extract_hello_extension pstate =
+  let id = extract_uint16 pstate in
+  let content = extract_variable_length_string "Extension" extract_uint16 pstate in
+  (id, content)
+
 let parse_hello_extensions pstate =
   if eos pstate then None else begin
     if not (!parse_extensions) then begin
@@ -162,13 +167,11 @@ let parse_hello_extensions pstate =
     end else
       let new_pstate = go_down_on_left_portion pstate "Extensions" in
       try
-        (* TODO *)
-	Some (extract_list "Extensions" extract_uint16
-		(extract_variable_length_string "Extension" extract_uint16) new_pstate)
+	Some (extract_list "Extensions" extract_uint16 extract_hello_extension new_pstate)
       with OutOfBounds _ ->
 	tls_handshake_emit InvalidExtensions None None pstate;
 	None
-  end 
+  end
 
 let parse_client_hello pstate =
   let maj = pop_byte pstate in
