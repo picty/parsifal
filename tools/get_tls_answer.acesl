@@ -1,3 +1,5 @@
+load ("construct_chains.acesl");
+
 SSL_v2_CLIENT_HELLO := decode ("hex", 
 		    '8074010301004b000000200000390000380000350000160000130' ++
                     '0000a0700c000003300003200002f030080000005000004010080' ++
@@ -25,3 +27,30 @@ get_tls_answer := function (addr, port, client_hello) {
     wait (3);
     tls.parse (head (l));
 };
+
+
+if length (args) != 0 then
+   if length (args) > 1 then port := args[1] else port := 443 fi;
+   if length (args) > 2 then tmpdir := args[2] fi;
+   records := get_tls_answer (args[0], port, TLS_v1_CLIENT_HELLO);
+   raw_certs := records[1].content.certificates;
+   certs := map (x509.parse, raw_certs);
+
+   print ("Certificates received:");
+   iteri (function (i, c) {print (i ++ ": " ++ c.tbs.subject.short ++ " signed by " ++ c.tbs.issuer.short)}, certs);
+   print ();
+
+   if exists tmpdir then
+       iteri (fun (i, c) { local f; f := open_out ("$tmpdir/${args[0]}-$i.der"); output (f, c); flush (f) }, raw_certs);
+   fi;
+
+   chains := construct_chains (certs);
+   print ("Chains found:");
+   iter (fun (l) { print ("Complete chain: " ++ to_string (rev (l))) }, chains.chains);
+   iter (fun (l) { print ("Incomplete chain: " ++ to_string (rev (l))) }, chains.incomplete_chains);
+
+   if (chains.unused) then
+       print ("Certificates unused:");
+       print (concat (", ", chains.unused));
+   fi;
+fi;
