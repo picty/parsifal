@@ -1,4 +1,5 @@
 BUG: the equality does not function at all when objects are embedded (extensions for examples : cert != cert)!!!
+Important: choose a way for naming functions (parse : pstate -> value, extract pstate -> real type, pop pstate -> real type)
 
 
 Chain categorization
@@ -30,13 +31,11 @@ X509
 TLS
  - Rewrite CH / SH and so on as simple BinaryRecords ?
  - Rewrite alert types/levels as simple ints, and provide lookup tables to the code.
- - Add a way to enrich/deep parse a posteriori (when parse_certs was not active)
  - Add native lookup_tables
  - Enrich TLS parser.
  - Add parser for SSLv2.
 
 Modules
- - Write a BinaryRecord module and functor
  - MapModule: Add a _dict or _params magic objects ? Remove all _ ?
  - Write the missing update/dump functions
  - Problem with @enriched... it does not work if a sub-dictionary is modified...
@@ -44,10 +43,9 @@ Modules
 Language
  - Add a read_all (stream -> string) with an argument (max)
  - Write a simple compare function instead of all the equal/lt functions
- - Add constructors/destructors to manipulate V_BitString / V_Bigint
+ - Add constructors/destructors to manipulate V_BitString / V_Bigint / V_IPv4
  - Add a library to filter and extract certs, either in native or interpreted form
  - Add a way to import new native functions (Dynlink for native, equivalent to load for scripts)
- - socket
  - Add encode/decode for base64 + gzip
  - Custom outputs (global _output, _error) for print/errors function
  - Add crypto through external bindings
