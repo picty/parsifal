@@ -65,6 +65,8 @@ let import_list arg =
     | V_Stream (_, s, _) -> import_aux_stream [] s
     | v -> V_List ([v])
 
+let rev l = V_List (List.rev (eval_as_list l))
+
 
 let import_set args =
   let res = Hashtbl.create 10 in
@@ -175,7 +177,13 @@ let iter env f arg =
   end;
   V_Unit
 
-
+let iteri env f arg =
+  let real_f = eval_as_function f in
+  let fun_aux i elt = ignore (eval_function env real_f [V_Int i; elt]) in
+  let rec iteri_aux i = function
+    | [] -> V_Unit
+    | elt::r -> fun_aux i elt; iteri_aux (i+1) r
+  in iteri_aux 0 (eval_as_list arg)
 
 let foreach env resource next process =
   let f_next = (eval_as_function next) in
@@ -251,7 +259,10 @@ let concat_strings sep l =
 let channels_of_socket server_addr_val port_val =
   let server_addr = eval_as_string (server_addr_val)
   and port = eval_as_int (port_val) in
-  let ip_addr = (Unix.gethostbyname server_addr).Unix.h_addr_list.(0) in
+  let ip_addr =
+    try (Unix.gethostbyname server_addr).Unix.h_addr_list.(0)
+    with Not_found -> raise (NotFound (server_addr))
+  in
   let sockaddr = Unix.ADDR_INET(ip_addr, port) in
   let domain = Unix.PF_INET in
   let sock = Unix.socket domain Unix.SOCK_STREAM 0 in
@@ -304,6 +315,7 @@ let _ =
   add_native "nth" (two_value_fun nth);
   add_native "list" (one_value_fun import_list);
   add_native "set" import_set;
+  add_native "rev" (one_value_fun rev);
 
   (* Dict functions *)
   add_native "dict" hash_make;
@@ -320,6 +332,7 @@ let _ =
   add_native_with_env "filter" (two_value_fun_with_env filter);
   add_native_with_env "map" (two_value_fun_with_env map);
   add_native_with_env "iter" (two_value_fun_with_env iter);
+  add_native_with_env "iteri" (two_value_fun_with_env iteri);
   add_native_with_env "foreach" (three_value_fun_with_env foreach);
 
   (* File and string functions *)

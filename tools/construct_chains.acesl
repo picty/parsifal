@@ -17,26 +17,20 @@ construct_chains := function (certificates) {
         return
     fi;
 
-    register_certs := function (i, certs) {
-        if certs then
-            local cert;
-            cert := head (certs);
-
-            res.unused <- i::(res.unused);
-            certs_with_the_same_subject := map (dget (num_to_cert), dget_all (subj_to_num, cert.tbs.subject.short));
-            if cert in certs_with_the_same_subject then
-                res.duplicates <- i::(res.duplicates);
-                output (stderr, "Certificate $i is a duplicate\n");
-                flush (stderr);
-            else
-                dadd (subj_to_num, cert.tbs.subject.short, i);
-                dadd (num_to_cert, i, cert);
-            fi;
-            register_certs (i+1, tail (certs));
-        fi
+    register_cert := function (i, cert) {
+        res.unused <- i::(res.unused);
+        certs_with_the_same_subject := map (dget (num_to_cert), dget_all (subj_to_num, cert.tbs.subject.short));
+        if cert in certs_with_the_same_subject then
+            res.duplicates <- i::(res.duplicates);
+            output (stderr, "Certificate $i is a duplicate\n");
+            flush (stderr);
+        else
+            dadd (subj_to_num, cert.tbs.subject.short, i);
+            dadd (num_to_cert, i, cert);
+        fi;
     };
 
-    register_certs (0, certificates);
+    iteri (register_cert, certificates);
 
     check_issuer_of := function (subject, i) {
         local issuer, ski, aki, bc;
