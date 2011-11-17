@@ -106,6 +106,7 @@ let rec string_of_exp indent exp =
     | E_Cons (e1, e2) -> (soe e1) ^ "::" ^ (soe e2)
     | E_GetField (e, f) -> (soe e) ^ "." ^ f
     | E_SetField (e, f, v) -> (soe e) ^ "." ^ f ^ " <- " ^ (soe v)
+    | E_Index (e, n) -> (soe e) ^ "[" ^ (soe n) ^ "]"
 
     | E_Assign (s, e) -> s ^ " := " ^ (soe e)
     | E_Unset s -> "unset " ^ s

@@ -69,7 +69,8 @@ rule main_token = parse
   | "break"    { T_Break }
   | "continue" { T_Continue }
 
-  | "function" { T_Function }
+  | "function"
+  | "fun" { T_Function }
   | "local" { T_Local }
   | "return" { T_Return }
   | "unset" { T_Unset }
