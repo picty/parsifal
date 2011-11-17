@@ -27,6 +27,7 @@ and value =
   | V_BinaryString of string
   | V_BitString of int * string
   | V_Bigint of string
+  | V_IPv4 of string
   | V_Function of function_sort
 
   | V_List of value list
@@ -136,7 +137,7 @@ let eval_as_string = function
   | V_BinaryString s
   | V_String s -> s
 
-  | V_BitString _ | V_List _ | V_Dict _
+  | V_BitString _ | V_IPv4 _ | V_List _ | V_Dict _
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
   | V_Module _ | V_Object _ ->
     raise (ContentError "String expected")
@@ -149,6 +150,7 @@ let string_of_type = function
   | V_BinaryString _ -> "binary_string"
   | V_BitString _ -> "bit_string"
   | V_Bigint _ -> "big_int"
+  | V_IPv4 _ -> "ipv4"
   | V_Function _ -> "function"  (* TODO: nature, arity? *)
 
   | V_List _ -> "list"

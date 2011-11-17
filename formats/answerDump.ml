@@ -37,7 +37,7 @@ module AnswerDumpParser = struct
       (dump_variable_length_string dump_int answer.content)
 
   let enrich answer dict =
-    Hashtbl.replace dict "ip" (V_String (string_of_ip4 answer.ip));
+    Hashtbl.replace dict "ip" (V_IPv4 answer.ip);
     Hashtbl.replace dict "port" (V_Int answer.port);
     Hashtbl.replace dict "name" (V_String answer.name);
     Hashtbl.replace dict "client_hello_type" (V_Int answer.client_hello_type);

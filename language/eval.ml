@@ -146,6 +146,7 @@ and eval_equality env a b =
     | V_Bool b1, V_Bool b2 -> b1 = b2
     | V_Int i1, V_Int i2 -> i1 = i2
     | V_BitString (n1, s1), V_BitString (n2, s2) -> n1 = n2 && s1 = s2
+    | V_IPv4 s1, V_IPv4 s2 -> s1 = s2
 
     | V_List l1, V_List l2 -> equal_list (l1, l2)
     | V_Dict d1, V_Dict d2 -> raise NotImplemented
@@ -281,4 +282,5 @@ and get_index v n_val =
     | V_BinaryString s | V_Bigint s ->
       V_BinaryString (String.make 1 s.[n])
     | V_BitString (_, s) -> V_Bool ((int_of_char s.[n / 8]) land (0x80 lsr (n mod 8)) <> 0)
+    | V_IPv4 s -> V_Int (int_of_char s.[n])
     | _ -> raise (ContentError "nth can only apply on lists and strings")

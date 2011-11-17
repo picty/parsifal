@@ -74,8 +74,8 @@ module PrinterLib = struct
 	in [_single_line title (res)]
       | V_BitString (n, s) ->
 	[_single_line title ("\"[" ^ (string_of_int n) ^ "]" ^ (hexdump s) ^ "\"")]
-      | V_Bigint s ->
-	[_single_line title ("0x" ^ (hexdump s))]
+      | V_Bigint s -> [_single_line title ("0x" ^ (hexdump s))]
+      | V_IPv4 s -> [_single_line title (string_of_ip4 s)]
 
       | V_List l ->
 	let content, multiline = flatten_strlist (List.map (_string_of_value None true) l) in
