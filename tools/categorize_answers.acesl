@@ -54,7 +54,7 @@ handle_answer := function (answer) {
 
     count := count + 1;
 
-    msgs := tls.parse (answer.ip, answer.content);
+    msgs := tls.parse (to_string (answer.ip), answer.content);
     strs := string_of_msgs (msgs);
     category := concat (", ", strs);
     if (length (category) = 0) then category := "EMPTY" fi;
@@ -66,7 +66,7 @@ handle_answer := function (answer) {
     fi;
 
     prev_count := dget_def (content_types, category, 0);
-    if prev_count = 0 then dset (samples, category, answer.client_hello_type ++ ":" ++ answer.ip) fi;
+    if prev_count = 0 then dset (samples, category, answer.client_hello_type ++ ":" ++ to_string (answer.ip)) fi;
     dset (content_types, category, prev_count + 1);
 
    if (freq && count % freq = 0) then

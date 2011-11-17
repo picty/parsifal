@@ -30,7 +30,7 @@ handle_answer := function (answer) {
 
     count := count + 1;
 
-    msgs := tls.parse (answer.ip, answer.content);
+    msgs := tls.parse (to_string (answer.ip), answer.content);
     msgs_certificates := filter (function (x) { exists x.content.certificates }, msgs);
     if length (msgs_certificates) = 0 then return fi;
     if length (msgs_certificates) > 1 then

@@ -1,8 +1,6 @@
 #!/home/yeye/dev/FAceSL/facesl.native -f
 
-tls._minDisplay <- 2;
-asn1._minDisplay <- 5;
-
+parser.minDisplay <- 5;
 printer.separator <- "\t";
 
 count_certs := function (path) {
@@ -10,7 +8,7 @@ count_certs := function (path) {
     while f do
         answer_str := answer_dump.parse (f);
 	if ! answer_str then break fi;
-        answer := stream (answer_str.ip, answer_str.content);
+        answer := stream (to_string (answer_str.ip), answer_str.content);
         n_certs := 0;
 	msgs := "";
 	self_signed := false;

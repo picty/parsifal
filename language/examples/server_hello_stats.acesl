@@ -1,7 +1,6 @@
 #!/home/yeye/dev/FAceSL/facesl.native -f
 
-tls._minDisplay <- 2;
-asn1._minDisplay <- 5;
+parser.minDisplay <- 5;
 
 foreach_answer := function (f, path) {
     foreach (open (path), answer_dump.parse, f);
@@ -17,7 +16,7 @@ msgs_of_answer := function (answer) {
         else []
         fi
     };
-    extract_aux (stream (answer.ip, answer.content));
+    extract_aux (stream (to_string (answer.ip), answer.content));
 };
 
 

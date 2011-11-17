@@ -1,7 +1,6 @@
 #!/home/yeye/dev/FAceSL/facesl.native -f
 
-tls._minDisplay <- 2;
-asn1._minDisplay <- 5;
+parser.minDisplay <- 5;
 
 foreach_answer := function (f, path) {
     foreach (open (path), answer_dump.parse, f);
@@ -11,7 +10,7 @@ extract_server_hello := function (answer) {
     local msg;
 
     if answer then
-        msg := tls.parse (stream (answer.ip, answer.content));
+        msg := tls.parse (stream (to_string (answer.ip), answer.content));
 	if msg && (exists msg.handshake_msg_type) && (msg.handshake_msg_type = "Server Hello") then return msg fi;
     fi
 };

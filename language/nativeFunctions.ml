@@ -241,6 +241,11 @@ let load_script env filename =
   with ReturnValue res -> res
 
 
+(* OS Interface *)
+let getenv varname_val =
+  let varname = (eval_as_string varname_val) in
+  try V_String (Unix.getenv varname)
+  with Not_found -> raise (NotFound varname)
 
 
 
@@ -352,7 +357,7 @@ let _ =
   add_native_with_env "load" (one_string_fun_with_env load_script);
 
   (* OS interface *)
-  add_native "getenv" (one_value_fun (fun x -> V_String (Unix.getenv (eval_as_string x))));
+  add_native "getenv" (one_value_fun getenv);
 
   (* Crypto *)
   add_native "md5sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
