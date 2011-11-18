@@ -279,7 +279,7 @@ module HandshakeParser = struct
     let new_pstate = go_down pstate (string_of_handshake_msg_type htype) len in
     parse_handshake htype new_pstate
 
-  let dump handshake = raise NotImplemented
+  let dump handshake = raise (NotImplemented "handshake.dump")
 
   let enrich handshake dict =
     Hashtbl.replace dict "message_type" (V_String (extract_handshake_msg_type handshake));
@@ -308,7 +308,7 @@ module HandshakeParser = struct
 	Hashtbl.replace dict "certificates" (V_List cert_objs)
       | _ -> ()
 
-  let update dict = raise NotImplemented
+  let update dict = raise (NotImplemented "handshake.update")
 
   let to_string = string_of_handshake_msg
 

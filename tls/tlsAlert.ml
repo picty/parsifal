@@ -135,14 +135,14 @@ module AlertParser = struct
     then tls_alert_emit UnexpectedJunk None (Some (Common.hexdump (pop_string pstate))) pstate;
     (alert_level_of_int pstate level, alert_type_of_int pstate t)
 
-  let dump alert = raise NotImplemented
+  let dump alert = raise (NotImplemented "alert.dump")
 
   let enrich (alert_level, alert_type) dict =
     Hashtbl.replace dict "level" (V_String (string_of_alert_level (alert_level)));
     Hashtbl.replace dict "type" (V_String (string_of_alert_type (alert_type)));
     ()
 
-  let update dict = raise NotImplemented
+  let update dict = raise (NotImplemented "alert.dump")
 
   let to_string (alert_level, alert_type) =
     ["TLS Alert (" ^ (string_of_alert_level alert_level) ^ "): " ^ (string_of_alert_type alert_type)]

@@ -92,7 +92,7 @@ module DNParser = struct
 
   let parse = constrained_parse (dn_constraint name)
 
-  let dump dn = raise NotImplemented
+  let dump dn = raise (NotImplemented "dn.dump")
 
   (* TODO: is it really cool to do that as enrich ? *)
   let enrich dn dict =
@@ -112,7 +112,7 @@ module DNParser = struct
     handle_atv (List.flatten dn);
     Hashtbl.replace dict "short" (V_String (short_display dn))
 
-  let update dict = raise NotImplemented
+  let update dict = raise (NotImplemented "dn.update")
 
   let to_string = string_of_dn (Some "Distinguished Name")
   let functions = []

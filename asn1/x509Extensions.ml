@@ -82,7 +82,7 @@ module ExtensionParser = struct
 
   let parse = constrained_parse extension_constraint
 
-  let dump ext = raise NotImplemented
+  let dump ext = raise (NotImplemented "extension.dump")
 
   let enrich ext dict =
     Hashtbl.replace dict "id" (Asn1Parser.value_of_oid  ext.e_id);
@@ -94,7 +94,7 @@ module ExtensionParser = struct
     Hashtbl.replace dict "content" ext.e_content;
     ()
 
-  let update dict = raise NotImplemented
+  let update dict = raise (NotImplemented "extension.update")
 
   let to_string = string_of_extension
   let functions = []
@@ -169,7 +169,7 @@ let extract_KeyUsage pstate =
 
 let mkKeyUsage = Simple_cons (C_Universal, false, 3, "keyUsage", extract_KeyUsage)
 
-let dump_KeyUsage v = raise NotImplemented
+let dump_KeyUsage v = raise (NotImplemented "dump_KeyUsage")
 
 let _ = register_extension keyUsage_oid "keyUsage" mkKeyUsage dump_KeyUsage
 
@@ -182,7 +182,7 @@ let extKeyUsage_oid = [85;29;37]
 let extract_EKU l = V_List (List.map Asn1Parser.value_of_oid l)
 let mkExtKeyUsage = seqOf_cons extract_EKU "extendedKeyUsage" oid_cons (AtLeast (1, s_speclightlyviolated))
 
-let dump_ExtKeyUsage v = raise NotImplemented
+let dump_ExtKeyUsage v = raise (NotImplemented "dump_ExtKeyUsage")
 
 
 let _ = register_extension extKeyUsage_oid "extendedKeyUsage" mkExtKeyUsage dump_ExtKeyUsage
@@ -237,7 +237,7 @@ let extract_aki aki =
 let mkAKI = Simple_cons (C_Universal, true, 16, "authorityKeyIdentifier",
 			 parse_constrained_sequence extract_aki aki_constraint)
 
-let dump_AKI v = raise NotImplemented
+let dump_AKI v = raise (NotImplemented "dump_AKI")
 
 let _ = register_extension authorityKeyIdentifier_oid "authorityKeyIdentifier" mkAKI dump_AKI
 
@@ -276,7 +276,7 @@ let extract_NSCertType pstate =
 
 let mkNSCertType = Simple_cons (C_Universal, false, 3, "nsCertType", extract_NSCertType)
 
-let dump_NSCertType v = raise NotImplemented
+let dump_NSCertType v = raise (NotImplemented "dump_NSCertType")
 
 let _ = register_extension nsCertType_oid "nsCertType" mkNSCertType dump_NSCertType
 

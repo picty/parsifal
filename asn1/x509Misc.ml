@@ -89,9 +89,9 @@ module OIdObjectParser = struct
   let name = "oid_object"
   let params = []
 
-  let parse pstate = raise NotImplemented (*constrained_parse object_constraint pstate *)
+  let parse pstate = raise (NotImplemented "oid_object.parse") (*constrained_parse object_constraint pstate *)
 
-  let dump oo = raise NotImplemented
+  let dump oo = raise (NotImplemented "oid_object.dump")
 
   let enrich oo dict =
     Hashtbl.replace dict "oid" (Asn1Parser.value_of_asn1_content (OId oo.oo_id));

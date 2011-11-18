@@ -106,7 +106,7 @@ module DateTimeParser = struct
   let params = []
 
   let parse = constrained_parse datetime_constraint
-  let dump dt = raise NotImplemented
+  let dump dt = raise (NotImplemented "datetime.dump")
   let enrich dt dict =
     Hashtbl.replace dict "year" (V_Int dt.year);
     Hashtbl.replace dict "month" (V_Int dt.month);
@@ -122,7 +122,7 @@ module DateTimeParser = struct
       | None -> ()
       | Some sec -> Hashtbl.replace dict "second_fraction" (V_String sec)
 
-  let update dict = raise NotImplemented
+  let update dict = raise (NotImplemented "datetime.update")
   let to_string dt = [string_of_datetime None dt]
   let functions = []
 end
@@ -158,14 +158,14 @@ module ValidityParser = struct
   let params = []
 
   let parse = constrained_parse validity_constraint
-  let dump dt = raise NotImplemented
+  let dump dt = raise (NotImplemented "validity.dump")
 
   let enrich dt dict =
     Hashtbl.replace dict "not_before" (DateTimeModule.register dt.not_before);
     Hashtbl.replace dict "not_after" (DateTimeModule.register dt.not_after);
     ()
 
-  let update dict = raise NotImplemented
+  let update dict = raise (NotImplemented "validity.update")
   let to_string = string_of_validity
   let functions = []
 end

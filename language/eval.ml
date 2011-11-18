@@ -40,7 +40,7 @@ and eval_exp env exp =
     | E_Equal (a, b) -> V_Bool (eval_equality env (eval a) (eval b))
     | E_Lt (a, b) -> V_Bool (match eval a, eval b with
 	| V_Int i1, V_Int i2 -> i1 < i2
-	| V_Bigint _, V_Bigint _ -> raise NotImplemented
+	| V_Bigint _, V_Bigint _ -> raise (NotImplemented "E_Lt (V_Bigint, V_Bigint)")
 	| v1, v2 -> eval_as_string v1 < eval_as_string v2
     )
     | E_In (a, b) -> V_Bool (eval_in env (eval a) (eval b))

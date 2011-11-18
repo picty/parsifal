@@ -63,8 +63,7 @@ module PublicKeyInfoParser = struct
 
   let parse = constrained_parse public_key_info_constraint
 
-  let dump pki = raise NotImplemented
-  let update dict = raise NotImplemented
+  let dump pki = raise (NotImplemented "public_key_info.dump")
 
   let enrich pki dict =
     Hashtbl.replace dict "algorithm" (V_String (Asn1.string_of_oid pki.pk_algo.oo_id));
@@ -74,6 +73,8 @@ module PublicKeyInfoParser = struct
 	| Some o -> Hashtbl.replace dict "parameters" (Asn1Parser.value_of_asn1_content o.a_content)
     end;
     Hashtbl.replace dict "public_key" pki.public_key
+
+  let update dict = raise (NotImplemented "public_key_info.update")
 
   let to_string = string_of_public_key_info
   let functions = []

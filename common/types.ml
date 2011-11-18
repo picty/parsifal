@@ -45,7 +45,7 @@ let global_env : (string, value) Hashtbl.t = Hashtbl.create 100
 
 
 (* Exceptions *)
-exception NotImplemented
+exception NotImplemented of string
 exception ListTooShort
 exception WrongNumberOfArguments
 exception ContentError of string
@@ -102,7 +102,7 @@ let eval_as_int = function
   | V_Int i -> i
   | V_String s
   | V_BinaryString s -> int_of_string s
-  | V_Bigint _ -> raise NotImplemented
+  | V_Bigint _ -> raise (NotImplemented "eval_as_int (V_Bigint)")
   | _ -> raise (ContentError "Integer expected")
 
 let eval_as_bool = function

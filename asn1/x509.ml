@@ -124,7 +124,7 @@ module TbsParser = struct
   let params = []
 
   let parse = constrained_parse tbs_certificate_constraint
-  let dump tbs = raise NotImplemented
+  let dump tbs = raise (NotImplemented "tbs.dump")
 
   let enrich tbs dict =
     let handle_unique_id id_name = function
@@ -154,7 +154,7 @@ module TbsParser = struct
     end;
     ()
 
-  let update dict = raise NotImplemented
+  let update dict = raise (NotImplemented "tbs.update")
   let to_string = string_of_tbs_certificate (Some "TBS")
   let functions = []
 end
@@ -224,7 +224,7 @@ module X509Parser = struct
   ]
 
   let parse = constrained_parse certificate_constraint
-  let dump cert = raise NotImplemented
+  let dump cert = raise (NotImplemented "x509.dump")
 
   let enrich cert dict =
     Hashtbl.replace dict "tbs" (TbsModule.register cert.tbs);
@@ -241,7 +241,7 @@ module X509Parser = struct
 	| Some exts -> Hashtbl.replace dict "get_extension" (V_Function (NativeFun (one_value_fun (get_extension exts))))
     end
 
-  let update dict = raise NotImplemented
+  let update dict = raise (NotImplemented "x509.update")
 
   let to_string = string_of_certificate (Some "Certificate")
   let functions = []

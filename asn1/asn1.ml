@@ -655,7 +655,7 @@ let rec dump o =
     | Boolean b -> false, boolean_to_der b
     | Integer i -> false, i
     | BitString (nb, s) -> false, bitstring_to_der nb s
-    | EnumeratedBitString l -> raise NotImplemented (* TODO *)
+    | EnumeratedBitString l -> raise (NotImplemented "asn1.dump (EnumeratedBitString)") (* TODO *)
     | OId id -> false, oid_to_der id
     | String (s, _) -> false, s
     | Constructed objects -> true, constructed_to_der objects
@@ -732,7 +732,7 @@ module Asn1Parser = struct
     | false, V_BinaryString s -> String (s, true)
     | false, V_String s -> String (s, false)
     | false, V_List ((V_Int _::r) as l) -> OId (oid_of_list l)
-    | false, V_List l -> raise NotImplemented (* TODO *)
+    | false, V_List l -> raise (NotImplemented "asn1_content_of_value (V_List [EnumeratedBitString])") (* TODO *)
     | true, V_List l ->
       Constructed (List.map (fun x -> update (eval_as_dict x)) l)
     | _ -> raise (ContentError ("Invalid value for an asn1 content"))

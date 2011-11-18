@@ -37,7 +37,7 @@ let interactive_loop () =
 	then print_endline (String.concat "\n" (PrinterLib._string_of_value None true res));
 	flush stdout
       with
-	| NotImplemented -> output_string stderr "Not implemented\n"; flush stderr
+	| NotImplemented msg -> output_string stderr ("Not implemented (" ^ msg ^ ")\n"); flush stderr
 	| Parsing.Parse_error -> output_string stderr ("Syntax error\n"); flush stderr
 	| End_of_file -> raise End_of_file
 
@@ -65,7 +65,7 @@ let script_interpreter filename =
       with
 	| Exit res | ReturnValue res -> res
 	| NotFound name -> err ("Not found: " ^ name ^ "\n")
-	| NotImplemented -> err "Not implemented\n"
+	| NotImplemented msg -> err ("Not implemented (" ^ msg ^ ")\n")
 	| Parsing.Parse_error ->
 	  err ("Syntax error (" ^ (string_of_pos lexbuf.Lexing.lex_start_p
 				     lexbuf.Lexing.lex_curr_p) ^ "): \"" ^

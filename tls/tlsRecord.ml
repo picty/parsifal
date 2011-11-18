@@ -68,7 +68,7 @@ module RecordParser = struct
       content_type = ctype;
       content = V_BinaryString content }
 
-  let dump record = raise NotImplemented
+  let dump record = raise (NotImplemented "record.dump")
 
   let enrich record dict =
     Hashtbl.replace dict "content_type" (V_String (string_of_content_type (record.content_type)));
@@ -76,7 +76,7 @@ module RecordParser = struct
     Hashtbl.replace dict "content" record.content;
     ()
 
-  let update dict = raise NotImplemented
+  let update dict = raise (NotImplemented "record.update")
 
   let to_string r =
     let hdr = "TLS Record (" ^ (string_of_protocol_version r.version) ^ ", " ^
