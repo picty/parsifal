@@ -152,12 +152,20 @@ and eval_equality env a b =
     | V_Dict d1, V_Dict d2 -> raise NotImplemented
 
     | V_Module (n1), V_Module (n2) -> n1 = n2
-    | V_Object (n1, r1, d1), V_Object (n2, r2, d2) ->
+    | (V_Object (n1, r1, d1)) as o1, (V_Object (n2, r2, d2) as o2) ->
       if n1 <> n2 then false else begin
 	if r1 = r2 then true
 	else begin
-	  let module M = (val (hash_find modules n1) : Module) in
-	  M.equals (r1, d1) (r2, d2);
+	  let module M = (val (hash_find object_modules n1) : ObjectModule) in
+	  if Hashtbl.mem M.static_params "equals" then begin
+	    match (Hashtbl.find M.static_params "equals") with
+	      | V_Function (NativeFun f) -> eval_as_bool (f [o1; o2])
+	      | _ -> raise (ContentError "equals should be a native function")
+	  end else begin
+	    M.enrich r1 d1;
+	    M.enrich r2 d2;
+	    eval_equality env (V_Dict d1) (V_Dict d2);
+	  end
 	end
       end
 
@@ -193,13 +201,13 @@ and get_field e f =
       | V_Dict d -> Hashtbl.find d f
 
       | V_Module n -> begin
-	let module M = (val (hash_find modules n) : Module) in
+	let module M = (val (find_module n) : Module) in
 	try Hashtbl.find M.static_params f
 	with Not_found -> (Hashtbl.find M.param_getters f) ()
       end
 
       | V_Object (n, obj_ref, d) ->
-	let module M = (val (hash_find modules n) : Module) in
+	let module M = (val (hash_find object_modules n) : ObjectModule) in
 	M.enrich obj_ref d;
 	if f = "_dict" then V_Dict d else Hashtbl.find d f
 
@@ -212,13 +220,13 @@ and get_field_all e f =
       | V_Dict d -> V_List (Hashtbl.find_all d f)
 
       | V_Module n -> begin
-	let module M = (val (hash_find modules n) : Module) in
+	let module M = (val (find_module n) : Module) in
 	try V_List [Hashtbl.find M.static_params f]
 	with Not_found -> V_List [(Hashtbl.find M.param_getters f) ()]
       end
 
       | V_Object (n, obj_ref, d) ->
-	let module M = (val (hash_find modules n) : Module) in
+	let module M = (val (hash_find object_modules n) : ObjectModule) in
 	M.enrich obj_ref d;
 	if f = "_dict" then V_List ([V_Dict d]) else V_List (Hashtbl.find_all d f)
 
@@ -234,12 +242,12 @@ and set_field append e f v =
 
 	| V_Module n ->
 	  if append then raise (ContentError ("Module params can not have multiple values"));
-	  let module M = (val (hash_find modules n) : Module) in
+	  let module M = (val (find_module n) : Module) in
 	  (Hashtbl.find M.param_setters f) v
 
 	| V_Object (n, obj_ref, d) ->
 	  if f = "_dict" then raise (ContentError ("Read-only field"));
-	  let module M = (val (hash_find modules n) : Module) in
+	  let module M = (val (hash_find object_modules n) : ObjectModule) in
 	  M.enrich obj_ref d;
 	  add_function d f v;
 	  Hashtbl.replace d "@modified" V_Unit
@@ -260,7 +268,7 @@ and unset_field e f =
 
 	| V_Object (n, obj_ref, d) ->
 	  if f = "_dict" then raise (ContentError ("Read-only field"));
-	  let module M = (val (hash_find modules n) : Module) in
+	  let module M = (val (hash_find object_modules n) : ObjectModule) in
 	  M.enrich obj_ref d;
 	  Hashtbl.remove d f;
 	  Hashtbl.replace d "@modified" V_Unit

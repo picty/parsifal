@@ -111,12 +111,14 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
     _update index d;
     Hashtbl.find objects index
 
-  let equals (ref1, d1) (ref2, d2) =
+  let equals o1 o2 =
+    let (_, ref1, d1) = eval_as_object o1
+    and (_, ref2, d2) = eval_as_object o2 in
     let i1 = find_index ref1
     and i2 = find_index ref2 in
     _update i1 d1;
     _update i2 d2;
-    Hashtbl.find objects i1 = Hashtbl.find objects i2
+    V_Bool (Hashtbl.find objects i1 = Hashtbl.find objects i2)
 
 
   (* Object constructions *)
@@ -198,6 +200,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
     populate_fun ("dump", one_value_fun (apply dump_aux));
     populate_fun ("to_string", one_value_fun (apply to_string_aux));
     populate_fun ("to_string_indent", one_value_fun (apply to_string_indent_aux));
+    populate_fun ("equals", two_value_fun equals);
     ()
 
     (* TODO: Add a _dict or _params magic objects ? Remove all _ ? *)
@@ -238,13 +241,6 @@ module MakeLibraryModule = functor (Library : LibraryInterface) -> struct
     populate_static_param ("name", V_String name);
     List.iter populate_fun Library.functions;
     ()
-
-  type t = unit
-  let register _ = raise NotImplemented
-  let pop_object _ = raise NotImplemented
-  let equals _ = raise NotImplemented
-  let enrich _ = raise NotImplemented
-  let update _ = raise NotImplemented
 end
 
 
@@ -261,4 +257,4 @@ module ParserLib = struct
 end
 
 module ParserModule = MakeLibraryModule (ParserLib)
-let _ = add_module ((module ParserModule : Module))
+let _ = add_library_module ((module ParserModule : Module))

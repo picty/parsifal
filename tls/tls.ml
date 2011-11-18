@@ -72,4 +72,4 @@ end
 
 
 module TlsModule = MakeLibraryModule (TlsLib)
-let _ = add_module ((module TlsModule : Module))
+let _ = add_library_module ((module TlsModule : Module))

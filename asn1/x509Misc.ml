@@ -115,7 +115,7 @@ module OIdObjectParser = struct
 end
 
 module OIdObjectModule = MakeParserModule (OIdObjectParser)
-let _ = add_module ((module OIdObjectModule : Module))
+let _ = add_object_module ((module OIdObjectModule : ObjectModule))
 
 
 

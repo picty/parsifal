@@ -15,4 +15,4 @@ module AnswerDump = struct
   ]
 end
 
-let _ = add_module ((module (MakeParserModule (MakeBinaryRecordParserInterface (AnswerDump))) : Module))
+let _ = add_object_module ((module (MakeParserModule (MakeBinaryRecordParserInterface (AnswerDump))) : ObjectModule))

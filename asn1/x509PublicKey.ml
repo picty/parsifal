@@ -71,4 +71,4 @@ module PublicKeyInfoParser = struct
 end
 
 module PublicKeyInfoModule = MakeParserModule (PublicKeyInfoParser)
-let _ = add_module ((module PublicKeyInfoModule : Module))
+let _ = add_object_module ((module PublicKeyInfoModule : ObjectModule))

@@ -39,6 +39,4 @@ end
 
 module ChangeCipherSpecModule = MakeParserModule (ChangeCipherSpecParser)
 
-let _ =
-  add_module ((module ChangeCipherSpecModule : Module));
-  ()
+let _ = add_object_module ((module ChangeCipherSpecModule : ObjectModule))

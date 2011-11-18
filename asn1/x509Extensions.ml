@@ -100,8 +100,7 @@ module ExtensionParser = struct
 end
 
 module ExtensionModule = MakeParserModule (ExtensionParser)
-let _ = add_module ((module ExtensionModule : Module))
-
+let _ = add_object_module ((module ExtensionModule : ObjectModule))
 
 
 

@@ -118,6 +118,6 @@ let wrapped_merge records =
   V_List (result)
 
 let _ =
-  add_module ((module RecordModule : Module));
+  add_object_module ((module RecordModule : ObjectModule));
   RecordModule.populate_fun ("merge", one_value_fun wrapped_merge);
   ()

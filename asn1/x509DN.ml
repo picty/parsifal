@@ -118,5 +118,4 @@ module DNParser = struct
 end
 
 module DNModule = MakeParserModule (DNParser)
-let _ = add_module ((module DNModule : Module))
-
+let _ = add_object_module ((module DNModule : ObjectModule))

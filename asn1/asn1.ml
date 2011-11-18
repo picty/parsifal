@@ -750,5 +750,4 @@ module Asn1Parser = struct
 end
 
 module Asn1Module = MakeParserModule (Asn1Parser)
-let _ = add_module ((module Asn1Module : Module))
-
+let _ = add_object_module ((module Asn1Module : ObjectModule))

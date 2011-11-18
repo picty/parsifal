@@ -1,3 +1,5 @@
+#!/home/yeye/dev/FAceSL/facesl.native -f
+
 load ("construct_chains.acesl");
 
 SSL_v2_CLIENT_HELLO := decode ("hex", 

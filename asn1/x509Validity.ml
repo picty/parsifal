@@ -127,7 +127,7 @@ module DateTimeParser = struct
 end
 
 module DateTimeModule = MakeParserModule (DateTimeParser)
-let _ = add_module ((module DateTimeModule : Module))
+let _ = add_object_module ((module DateTimeModule : ObjectModule))
 
 
 
@@ -169,4 +169,4 @@ module ValidityParser = struct
 end
 
 module ValidityModule = MakeParserModule (ValidityParser)
-let _ = add_module ((module ValidityModule : Module))
+let _ = add_object_module ((module ValidityModule : ObjectModule))

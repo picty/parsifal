@@ -61,26 +61,39 @@ module type Module = sig
   val static_params : (string, value) Hashtbl.t
 
   val init : unit -> unit
+end
 
-  (* Only useful for parser modules *)
+module type ObjectModule = sig
+  include Module
+
   type t
   val register : t -> value
   val pop_object : value -> t
-  val equals : (object_ref * (string, value) Hashtbl.t) ->
-               (object_ref * (string, value) Hashtbl.t) -> bool
   val enrich : object_ref -> (string, value) Hashtbl.t -> unit
   val update : object_ref -> (string, value) Hashtbl.t -> unit
 end
 
-let modules : (string, (module Module)) Hashtbl.t = Hashtbl.create 10
+let object_modules : (string, (module ObjectModule)) Hashtbl.t = Hashtbl.create 10
+let library_modules : (string, (module Module)) Hashtbl.t = Hashtbl.create 10
 
-let add_module m =
-  let module M = (val m : Module) in
+let add_object_module m =
+  let module M = (val m : ObjectModule) in
   M.init ();
-  Hashtbl.replace modules M.name m;
+  Hashtbl.replace object_modules M.name m;
   Hashtbl.replace global_env M.name (V_Module M.name)
 
+let add_library_module m =
+  let module M = (val m : Module) in
+  M.init ();
+  Hashtbl.replace library_modules M.name m;
+  Hashtbl.replace global_env M.name (V_Module M.name)
 
+let find_module n =
+  try Hashtbl.find library_modules n
+  with Not_found ->
+    let m = hash_find object_modules n in
+    let module M = (val m : ObjectModule) in
+    (module M : Module)
 
 
 (* Type extractors *)

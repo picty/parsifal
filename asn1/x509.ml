@@ -159,7 +159,7 @@ module TbsParser = struct
 end
 
 module TbsModule = MakeParserModule (TbsParser)
-let _ = add_module ((module TbsModule : Module))
+let _ = add_object_module ((module TbsModule : ObjectModule))
 
 
 
@@ -243,7 +243,8 @@ module X509Parser = struct
   let update dict = raise NotImplemented
 
   let to_string = string_of_certificate (Some "Certificate")
+  let functions = []
 end
 
 module X509Module = MakeParserModule (X509Parser)
-let _ = add_module ((module X509Module : Module))
+let _ = add_object_module ((module X509Module : ObjectModule))

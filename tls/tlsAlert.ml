@@ -152,6 +152,4 @@ end
 
 module AlertModule = MakeParserModule (AlertParser)
 
-let _ =
-  add_module ((module AlertModule : Module));
-  ()
+let _ = add_object_module ((module AlertModule : ObjectModule))

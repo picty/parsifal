@@ -317,6 +317,4 @@ end
 
 module HandshakeModule = MakeParserModule (HandshakeParser)
 
-let _ =
-  add_module ((module HandshakeModule : Module));
-  ()
+let _ = add_object_module ((module HandshakeModule : ObjectModule))

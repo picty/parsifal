@@ -91,7 +91,7 @@ module PrinterLib = struct
 	_string_of_strlist title (hash_options !separator (multiline || (!multiline_dict && content <> []))) content
 
       | V_Object (n, obj_ref, d) ->
-	let module M = (val (hash_find modules n) : Module) in
+	let module M = (val (hash_find object_modules n) : ObjectModule) in
 	if not !raw_display && (Hashtbl.mem M.static_params "to_string_indent") then begin
 	  let content = match (Hashtbl.find M.static_params "to_string_indent") with
 	    | V_Function (NativeFun f) -> List.map eval_as_string (eval_as_list (f [v]))
@@ -112,4 +112,4 @@ module PrinterLib = struct
 end
 
 module PrinterModule = MakeLibraryModule (PrinterLib)
-let _ = add_module ((module PrinterModule : Module))
+let _ = add_library_module ((module PrinterModule : Module))
