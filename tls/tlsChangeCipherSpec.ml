@@ -35,6 +35,7 @@ module ChangeCipherSpecParser = struct
   let to_string _ = ["TLS Change_Cipher_Spec"]
 
   let params = []
+  let functions = []
 end
 
 module ChangeCipherSpecModule = MakeParserModule (ChangeCipherSpecParser)

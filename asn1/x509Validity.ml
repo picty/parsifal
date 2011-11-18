@@ -124,6 +124,7 @@ module DateTimeParser = struct
 
   let update dict = raise NotImplemented
   let to_string dt = [string_of_datetime None dt]
+  let functions = []
 end
 
 module DateTimeModule = MakeParserModule (DateTimeParser)
@@ -166,6 +167,7 @@ module ValidityParser = struct
 
   let update dict = raise NotImplemented
   let to_string = string_of_validity
+  let functions = []
 end
 
 module ValidityModule = MakeParserModule (ValidityParser)

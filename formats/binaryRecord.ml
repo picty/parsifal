@@ -56,6 +56,7 @@ module MakeBinaryRecordParserInterface = functor (Interface : BinaryRecordInterf
   type t = (string, value) Hashtbl.t
   let name = Interface.name
   let params = []
+  let functions = []
   let n_fields = List.length (Interface.description)
 
   let parse = BinaryRecord.parse Interface.description
@@ -63,6 +64,7 @@ module MakeBinaryRecordParserInterface = functor (Interface : BinaryRecordInterf
   let dump = BinaryRecord.dump Interface.description
 
   let enrich o d =
+    Hashtbl.replace d "@name" (V_String name);
     let enrich_aux (n, _, _) = Hashtbl.replace d n (Hashtbl.find o n) in
     List.iter enrich_aux (Interface.description)
 

@@ -148,6 +148,7 @@ module AlertParser = struct
     ["TLS Alert (" ^ (string_of_alert_level alert_level) ^ "): " ^ (string_of_alert_type alert_type)]
 
   let params = []
+  let functions = []
 end
 
 module AlertModule = MakeParserModule (AlertParser)

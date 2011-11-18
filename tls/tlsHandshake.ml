@@ -313,6 +313,7 @@ module HandshakeParser = struct
   let to_string = string_of_handshake_msg
 
   let params = []
+  let functions = []
 end
 
 module HandshakeModule = MakeParserModule (HandshakeParser)

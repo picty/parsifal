@@ -156,6 +156,7 @@ module TbsParser = struct
 
   let update dict = raise NotImplemented
   let to_string = string_of_tbs_certificate (Some "TBS")
+  let functions = []
 end
 
 module TbsModule = MakeParserModule (TbsParser)

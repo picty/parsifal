@@ -106,18 +106,20 @@ module RecordParser = struct
 	end else merge_aux None (r1::accu) records
     in merge_aux None [] records
 
+  let wrapped_merge (pop_object, register) = function
+    | [V_List records] ->
+      let raw_records = List.map pop_object records in
+      let merged_records = merge raw_records in
+      let result = List.map register merged_records in
+      V_List (result)
+    | [_] -> raise (ContentError ("List of Tls Records expected."))
+    | _ -> raise WrongNumberOfArguments
+
   let params = []
+  let functions = ["merge", wrapped_merge]
 end
 
 module RecordModule = MakeParserModule (RecordParser)
 
-let wrapped_merge records =
-  let raw_records = List.map RecordModule.pop_object (eval_as_list records) in
-  let merged_records = RecordParser.merge raw_records in
-  let result = List.map RecordModule.register merged_records in
-  V_List (result)
 
-let _ =
-  add_object_module ((module RecordModule : ObjectModule));
-  RecordModule.populate_fun ("merge", one_value_fun wrapped_merge);
-  ()
+let _ = add_object_module ((module RecordModule : ObjectModule))

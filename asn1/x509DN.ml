@@ -115,6 +115,7 @@ module DNParser = struct
   let update dict = raise NotImplemented
 
   let to_string = string_of_dn (Some "Distinguished Name")
+  let functions = []
 end
 
 module DNModule = MakeParserModule (DNParser)

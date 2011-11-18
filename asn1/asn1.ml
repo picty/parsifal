@@ -747,6 +747,8 @@ module Asn1Parser = struct
 
 
   let to_string = string_of_object
+
+  let functions = []
 end
 
 module Asn1Module = MakeParserModule (Asn1Parser)

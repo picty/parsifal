@@ -41,6 +41,9 @@ module type ParserInterface = sig
   val name : string
   val params : (string * getter option * setter option) list
 
+  (* For the moment, we only work with NativeFuns *)
+  val functions : (string * ((value -> t) * (t -> value) -> value list -> value)) list
+
   val parse : parsing_state -> t
   val dump : t -> string
   val enrich : t -> (string, value) Hashtbl.t -> unit
@@ -157,7 +160,6 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
     in aux ()
 	      
 
-
     
   let make d =
     let dict = eval_as_dict d in
@@ -200,7 +202,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
     populate_fun ("dump", one_value_fun (apply dump_aux));
     populate_fun ("to_string", one_value_fun (apply to_string_aux));
     populate_fun ("to_string_indent", one_value_fun (apply to_string_indent_aux));
-    populate_fun ("equals", two_value_fun equals);
+    List.iter (fun (n, f) -> populate_fun (n, f (pop_object, register))) Parser.functions;
     ()
 
     (* TODO: Add a _dict or _params magic objects ? Remove all _ ? *)

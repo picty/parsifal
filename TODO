@@ -1,5 +1,7 @@
-BUG: the equality does not function at all when objects are embedded (extensions for examples : cert != cert)!!!
 Important: choose a way for naming functions (parse : pstate -> value, extract pstate -> real type, pop pstate -> real type)
+
+Use binaryRecord and LibModule directly -> use @name to keep the name of the module to use when dumping ?
+Rewrite some tls objects as binaryrecords.
 
 
 Chain categorization

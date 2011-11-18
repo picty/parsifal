@@ -141,36 +141,55 @@ and eval_equality env a b =
       (eval_equality env va vb) && (equal_list (ra, rb))
     | _ -> false
   in
-  match a, b with
-    | V_Unit, V_Unit -> true
-    | V_Bool b1, V_Bool b2 -> b1 = b2
-    | V_Int i1, V_Int i2 -> i1 = i2
-    | V_BitString (n1, s1), V_BitString (n2, s2) -> n1 = n2 && s1 = s2
-    | V_IPv4 s1, V_IPv4 s2 -> s1 = s2
+  if a == b then true else begin
+    match a, b with
+      | V_Unit, V_Unit -> true
+      | V_Bool b1, V_Bool b2 -> b1 = b2
+      | V_Int i1, V_Int i2 -> i1 = i2
+      | V_BitString (n1, s1), V_BitString (n2, s2) -> n1 = n2 && s1 = s2
+      | V_IPv4 s1, V_IPv4 s2 -> s1 = s2
 
-    | V_List l1, V_List l2 -> equal_list (l1, l2)
-    | V_Dict d1, V_Dict d2 -> raise NotImplemented
+      | V_List l1, V_List l2 -> equal_list (l1, l2)
+      | V_Dict d1, V_Dict d2 ->
+	let list_of_dict d =
+	  let rec list_of_dict_aux k v accu =
+	    match v with
+	      | V_Function _ -> accu
+	      | _ ->
+		if ((String.length k > 0) && (k.[0] != '@'))
+		then (k, v)::accu
+		else accu
+	  in
+	  List.sort compare (Hashtbl.fold list_of_dict_aux d [])
+	in
+	let l1 = list_of_dict d1 and l2 = list_of_dict d2 in
+	(List.map fst l1 = List.map fst l2) &&
+	  eval_equality env (V_List (List.map snd l1)) (V_List (List.map snd l2))
 
-    | V_Module (n1), V_Module (n2) -> n1 = n2
-    | (V_Object (n1, r1, d1)) as o1, (V_Object (n2, r2, d2) as o2) ->
-      if n1 <> n2 then false else begin
-	if r1 = r2 then true
-	else begin
-	  let module M = (val (hash_find object_modules n1) : ObjectModule) in
-	  if Hashtbl.mem M.static_params "equals" then begin
-	    match (Hashtbl.find M.static_params "equals") with
-	      | V_Function (NativeFun f) -> eval_as_bool (f [o1; o2])
-	      | _ -> raise (ContentError "equals should be a native function")
-	  end else begin
-	    M.enrich r1 d1;
-	    M.enrich r2 d2;
-	    eval_equality env (V_Dict d1) (V_Dict d2);
+      | V_Module (n1), V_Module (n2) -> n1 = n2
+      | (V_Object (n1, r1, d1)) as o1, (V_Object (n2, r2, d2) as o2) ->
+	if n1 <> n2 then false else begin
+	  if r1 = r2 then true
+	  else begin
+	    let module M = (val (hash_find object_modules n1) : ObjectModule) in
+	    if Hashtbl.mem M.static_params "equals" then begin
+	      match (Hashtbl.find M.static_params "equals") with
+		| V_Function (NativeFun f) -> eval_as_bool (f [o1; o2])
+		| _ -> raise (ContentError "equals should be a native function")
+	    end else begin
+	      M.enrich r1 d1;
+	      M.enrich r2 d2;
+	      eval_equality env (V_Dict d1) (V_Dict d2);
+	    end
 	  end
 	end
-      end
 
-    | v1, v2 ->
-      eval_as_string v1 = eval_as_string v2
+      | v1, v2 ->
+	try eval_as_string v1 = eval_as_string v2
+	with ContentError _ ->
+	  raise (ContentError ("Cannot decide equality between " ^
+				  (string_of_type v1) ^ " and " ^ (string_of_type v2)))
+  end
 
 and eval_in env a b =
   let rec eval_in_list = function

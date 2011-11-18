@@ -112,6 +112,8 @@ module OIdObjectParser = struct
     { oo_id = id; oo_content = content }
 
   let to_string = string_of_oid_object (Some "Object")
+
+  let functions = []
 end
 
 module OIdObjectModule = MakeParserModule (OIdObjectParser)
