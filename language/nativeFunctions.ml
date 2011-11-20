@@ -36,6 +36,28 @@ let error_msg fatal msg =
   if fatal then raise (Exit (V_Int (-1))) else V_Unit
 
 
+(* Type conversion *)
+
+let mk_bigint v = V_Bigint (eval_as_string v)
+let mk_bitstring v1 v2 = V_BitString (eval_as_int v1, eval_as_string v2)
+
+let mk_ipv4 v =
+  let ip_from_list = function
+    | [i0;i1;i2;i3] ->
+      let res = String.make 4 (char_of_int i0) in
+      res.[1] <- char_of_int i1;
+      res.[2] <- char_of_int i2;
+      res.[3] <- char_of_int i3;
+      V_IPv4 res
+    | _ -> raise (ContentError "Invalid IPv4 value")
+  in
+  match v with
+    | V_BinaryString s | V_IPv4 s -> V_IPv4 s
+    | V_List l -> ip_from_list (List.map eval_as_int l)
+    | V_String s -> ip_from_list (List.map int_of_string (string_split '.' s))
+    | _ -> raise (ContentError "Invalid IPv4 value")
+
+
 (* Environment handling *)
 let current_environment env =
   V_List (List.map (function d -> V_Dict d) env)
@@ -310,6 +332,11 @@ let _ =
   add_native "exit" (one_value_fun (fun v -> raise (Exit v)));
   add_native "warning" (one_value_fun (error_msg false));
   add_native "fatal_error" (one_value_fun (error_msg true));
+
+  (* Conversion functions *)
+  add_native "bigint" (one_value_fun mk_bigint);
+  add_native "bitstring" (two_value_fun mk_bitstring);
+  add_native "ipv4" (one_value_fun mk_ipv4);
 
   (* Environment handling *)
   add_native_with_env "current_environment" (zero_value_fun_with_env current_environment);

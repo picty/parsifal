@@ -43,7 +43,6 @@ Modules
 Language
  - Add a read_all (stream -> string) with an argument (max)
  - Write a simple compare function instead of all the equal/lt functions
- - Add constructors/destructors to manipulate V_BitString / V_Bigint / V_IPv4
  - Add a library to filter and extract certs, either in native or interpreted form
  - Add a way to import new native functions (Dynlink for native, equivalent to load for scripts)
  - Add encode/decode for base64 + gzip
