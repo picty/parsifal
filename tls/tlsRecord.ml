@@ -1,8 +1,10 @@
+open Common
 open Types
 open Modules
 open Printer
 open ParsingEngine
 open TlsCommon
+open TlsHandshake
 
 
 type tls_record_errors =
@@ -60,26 +62,32 @@ module RecordParser = struct
 
   let parse pstate =
     let ctype = content_type_of_int pstate (pop_byte pstate) in
-    let maj = pop_byte pstate in
-    let min = pop_byte pstate in
+    let version = pop_uint16 pstate in
     let len = pop_uint16 pstate in
     let content = pop_fixedlen_string len pstate in
-    { version = {major = maj; minor = min};
+    { version = version;
       content_type = ctype;
       content = V_BinaryString content }
 
-  let dump record = raise (NotImplemented "record.dump")
+  let dump record =
+    (* TODO: handle ctype correctly... *)
+    let ctype_dump, content_dump = match record.content with
+      | (V_Object ("handshake", r, d) as o) -> "\x16", HandshakeParser.dump (HandshakeModule.pop_object o)
+      | _ -> raise (NotImplemented "record.dump")
+    in
+    ctype_dump ^ (dump_uint16 record.version) ^ (dump_uint16 (String.length content_dump)) ^ content_dump
+    
 
   let enrich record dict =
     Hashtbl.replace dict "content_type" (V_String (string_of_content_type (record.content_type)));
-    Hashtbl.replace dict "version" (V_String (string_of_protocol_version record.version));
+    Hashtbl.replace dict "version" (V_String (protocol_version_string_of_int record.version));
     Hashtbl.replace dict "content" record.content;
     ()
 
   let update dict = raise (NotImplemented "record.update")
 
   let to_string r =
-    let hdr = "TLS Record (" ^ (string_of_protocol_version r.version) ^ ", " ^
+    let hdr = "TLS Record (" ^ (protocol_version_string_of_int r.version) ^ ", " ^
       (string_of_content_type r.content_type) ^ ")" in
     match r.content with
       | (V_BinaryString s | V_String s) as str ->

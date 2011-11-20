@@ -19,6 +19,16 @@ let parse_varlen_string len_fun = lift_string (pop_varlen_string len_fun)
 let parse_varlen_bin_string len_fun = lift_bin_string (pop_varlen_string len_fun)
 let parse_ipv4 = lift_ipv4 (pop_fixedlen_string 4)
 
+let dump_varlen_string dump_len value =
+  let content_str = eval_as_string value in
+  let n = String.length content_str in
+  (dump_len n) ^ content_str
+
+let dump_varlen_list dump_len dump_content value =
+  let content_str = String.concat "" (List.map dump_content (eval_as_list value)) in
+  let n = String.length content_str in
+  (dump_len n) ^ content_str
+
 
 module BinaryRecord = struct
   type parse_function = parsing_state -> value
@@ -43,6 +53,17 @@ module BinaryRecord = struct
 	let v = hash_find dict name in
 	(dump_fun v) ^ (dump_aux r)
     in dump_aux desc
+
+  let enrich desc o (d : (string, value) Hashtbl.t) =
+    let enrich_aux (n, _, _) = Hashtbl.replace d n (Hashtbl.find o n) in
+    List.iter enrich_aux desc
+
+  let update desc (d : (string, value) Hashtbl.t) =
+    let n_fields = List.length (desc) in
+    let new_obj = Hashtbl.create n_fields in
+    let update_aux (n, _, _) = Hashtbl.replace new_obj n (hash_find d n) in
+    List.iter update_aux (desc);
+    new_obj
 end
 
 
@@ -56,22 +77,11 @@ module MakeBinaryRecordParserInterface = functor (Interface : BinaryRecordInterf
   let name = Interface.name
   let params = []
   let functions = []
-  let n_fields = List.length (Interface.description)
 
   let parse = BinaryRecord.parse Interface.description
-
   let dump = BinaryRecord.dump Interface.description
-
-  let enrich o d =
-    Hashtbl.replace d "@name" (V_String name);
-    let enrich_aux (n, _, _) = Hashtbl.replace d n (Hashtbl.find o n) in
-    List.iter enrich_aux (Interface.description)
-
-  let update d =
-    let new_obj = Hashtbl.create n_fields in
-    let update_aux (n, _, _) = Hashtbl.replace new_obj n (hash_find d n) in
-    List.iter update_aux (Interface.description);
-    new_obj
+  let enrich = BinaryRecord.enrich Interface.description
+  let update = BinaryRecord.update Interface.description
 
   let to_string o = Printer.PrinterLib._string_of_value (Some name) true (V_Dict o)
 end

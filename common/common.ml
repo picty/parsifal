@@ -187,6 +187,9 @@ let dump_uint32 x =
   string_of_int_list [(x lsr 24) land 0xff; (x lsr 16) land 0xff;
 		      (x lsr 8) land 0xff; x land 0xff]
 
+let dump_uint24 x =
+  string_of_int_list [(x lsr 16) land 0xff; (x lsr 8) land 0xff; x land 0xff]
+
 let dump_uint16 x =
   if x > 65535 then failwith "Integer overflow";
   string_of_int_list [x lsr 8; x land 0xff]

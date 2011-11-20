@@ -37,7 +37,7 @@ let check_alert_level pstate = function
   | 1 | 2 -> ()
   | x -> tls_alert_emit UnexpectedAlertLevel None (Some (string_of_int x)) pstate
 
-let parse_alert_level pstate =
+let pop_alert_level pstate =
   let al = pop_byte pstate in
   check_alert_level pstate al;
   al
@@ -117,7 +117,7 @@ let check_alert_type pstate = function
   | 60 | 70 | 71 | 80 | 90 | 100 | 110  -> ()
   | x -> tls_alert_emit UnexpectedAlertType None (Some (string_of_int x)) pstate
 
-let parse_alert_type pstate =
+let pop_alert_type pstate =
   let at = pop_byte pstate in
   check_alert_type pstate at;
   at
@@ -138,8 +138,8 @@ module AlertParser = struct
   type t = alert_level * alert_type
 
   let parse pstate =
-    let al = parse_alert_level pstate in
-    let at = parse_alert_type pstate in
+    let al = pop_alert_level pstate in
+    let at = pop_alert_type pstate in
     if not (eos pstate) then tls_alert_emit UnexpectedJunk None (Some (hexdump (pop_string pstate))) pstate;
     (al, at)
 
