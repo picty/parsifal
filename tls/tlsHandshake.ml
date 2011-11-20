@@ -28,34 +28,53 @@ let parse_extensions = ref true
 let parse_certificates = ref false (* TODO: Is this the good default? *)
 
 
-type client_hello = (string, value) Hashtbl.t
-type server_hello = (string, value) Hashtbl.t
-type handshake_msg_type =
-  | H_HelloRequest
-  | H_ClientHello
-  | H_ServerHello
-  | H_Certificate
-  | H_ServerKeyExchange
-  | H_CertificateRequest
-  | H_ServerHelloDone
-  | H_CertificateVerify
-  | H_ClientKeyExchange
-  | H_Finished
-  | H_Unknown of int
 
-type handshake_msg =
-  | HelloRequest
-  | ClientHello of client_hello
-  | ServerHello of server_hello
-  | Certificate of (string list, X509.certificate list) alternative
-  | ServerKeyExchange
-  | CertificateRequest
-  | ServerHelloDone
-  | CertificateVerify
-  | ClientKeyExchange
-  | Finished
-  | UnparsedHandshakeMsg of handshake_msg_type * string
+(* Handshake message type *)
 
+type handshake_msg_type = int
+
+let message_type_string_of_int = function
+  |  0 -> "Hello Request"
+  |  1 -> "Client Hello"
+  |  2 -> "Server Hello"
+  | 11 -> "Certificate"
+  | 12 -> "Server Key Exchange"
+  | 13 -> "Certificate Request"
+  | 14 -> "Server Hello Done"
+  | 15 -> "Certificate Verify"
+  | 16 -> "Client Key Exchange"
+  | 20 -> "Finished"
+  |  x -> "Unknown handshake message type " ^ (string_of_int x)
+
+let message_type_int_of_string = function
+  | "Hello Request" -> 0
+  | "Client Hello" -> 1
+  | "Server Hello" -> 2
+  | "Certificate" -> 11
+  | "Server Key Exchange" -> 12
+  | "Certificate Request" -> 13
+  | "Server Hello Done" -> 14
+  | "Certificate Verify" -> 15
+  | "Client Key Exchange" -> 16
+  | "Finished" -> 20
+  | s -> int_of_string s
+
+let check_message_type pstate = function
+  | 0 | 1 | 2 | 11 | 12 | 13 | 14 | 15 | 16 | 20 -> ()
+  | x -> tls_handshake_emit UnexpectedHandshakeMsgType None (Some (string_of_int x)) pstate
+
+let pop_message_type pstate =
+  let hmt = pop_byte pstate in
+  check_message_type pstate hmt;
+  hmt
+
+let _make_message_type = function
+  | V_Int i
+  | V_Enumerated (i, _) -> i
+  | V_String s -> message_type_int_of_string s
+  | _ -> raise (ContentError "Invalid handshake message type value")
+
+let make_message_type v = V_Enumerated (_make_message_type v, message_type_string_of_int)
 
 
 
@@ -64,55 +83,18 @@ let assert_eos pstate =
   then tls_handshake_emit UnexpectedJunk None (Some (hexdump (pop_string pstate))) pstate
 
 
-let handshake_msg_type_of_int = function
-  |  0 -> H_HelloRequest
-  |  1 -> H_ClientHello
-  |  2 -> H_ServerHello
-  | 11 -> H_Certificate
-  | 12 -> H_ServerKeyExchange
-  | 13 -> H_CertificateRequest
-  | 14 -> H_ServerHelloDone
-  | 15 -> H_CertificateVerify
-  | 16 -> H_ClientKeyExchange
-  | 20 -> H_Finished
-  |  x -> H_Unknown x
-
-let string_of_handshake_msg_type = function
-  | H_HelloRequest -> "Hello Request"
-  | H_ClientHello -> "Client Hello"
-  | H_ServerHello -> "Server Hello"
-  | H_Certificate -> "Certificate"
-  | H_ServerKeyExchange -> "Server Key Exchange"
-  | H_CertificateRequest -> "Certificate Request"
-  | H_ServerHelloDone -> "Server Hello Done"
-  | H_CertificateVerify -> "Certificate Verify"
-  | H_ClientKeyExchange -> "Client Key Exchange"
-  | H_Finished -> "Finished"
-  | H_Unknown x -> "Unknown handshake message " ^ (string_of_int x)
-
-let extract_handshake_msg_type = function
-  | HelloRequest -> "Hello Request"
-  | ClientHello _ -> "Client Hello"
-  | ServerHello _ -> "Server Hello"
-  | Certificate _ -> "Certificate"
-  | ServerKeyExchange -> "Server Key Exchange"
-  | CertificateRequest -> "Certificate Request"
-  | ServerHelloDone -> "Server Hello Done"
-  | CertificateVerify -> "Certificate Verify"
-  | ClientKeyExchange -> "Client Key Exchange"
-  | Finished -> "Finished"
-  | UnparsedHandshakeMsg (x, _) -> string_of_handshake_msg_type x
-
 let extract_handshake_header pstate =
-  let htype = handshake_msg_type_of_int (pop_byte pstate) in
+  let htype = pop_message_type pstate in
   let len = pop_uint24 pstate in
   (htype, len)
 
 
+
+(* Hello *)
+
 type random = string
 type session_id = string
 type tls_extension = int * string
-
 
 let parse_hello_extension pstate =
   let id = parse_uint16 pstate in
@@ -143,7 +125,6 @@ let dump_hello_extensions = function
   | v -> dump_varlen_list dump_uint16 dump_hello_extension v
 
 
-
 let client_hello_description = [
   ("version", parse_protocol_version, dumpv_uint16);
   ("random", parse_bin_string 32, eval_as_string);
@@ -158,13 +139,12 @@ let server_hello_description = [
   ("random", parse_bin_string 32, eval_as_string);
   ("session_id", parse_varlen_bin_string pop_byte, eval_as_string);
   ("cipher_suite", parse_uint16, dumpv_uint16);
-  ("compression_methods", parse_uint8, dumpv_uint8);
+  ("compression_method", parse_uint8, dumpv_uint8);
   ("extensions", parse_hello_extensions, dump_hello_extension)
 ]
 
 
-
-let parse_client_hello pstate = BinaryRecord.parse client_hello_description pstate
+let parse_client_hello pstate = V_Dict (BinaryRecord.parse client_hello_description pstate)
 let string_of_client_hello ch =
   let content =
     [ "protocol version: " ^ (protocol_version_string_of_int (eval_as_int (ch --> "version")));
@@ -175,8 +155,7 @@ let string_of_client_hello ch =
     (* TODO: Extensions ... *)
   in PrinterLib._string_of_strlist (Some "Client Hello") indent_only content
 
-
-let parse_server_hello pstate = BinaryRecord.parse server_hello_description pstate
+let parse_server_hello pstate = V_Dict (BinaryRecord.parse server_hello_description pstate)
 let string_of_server_hello sh =
   let content =
     [ "protocol version: " ^ (protocol_version_string_of_int (eval_as_int (sh --> "version")));
@@ -189,70 +168,53 @@ let string_of_server_hello sh =
 
 
 
+(* Certificate *)
+
 let parse_one_certificate pstate =
   let len = pop_uint24 pstate in
   let new_pstate = go_down pstate "Certificate" len in
   let res = Asn1Constraints.constrained_parse X509.certificate_constraint new_pstate in
   assert_eos new_pstate;
-  res
+  X509.X509Module.register res
 
 let parse_certificate_msg pstate =
   if (!parse_certificates)
-  then Certificate (Right (pop_varlen_list "Certificates" pop_uint24 (parse_one_certificate) pstate))
-  else Certificate (Left (pop_varlen_list "Certificates" pop_uint24 (pop_varlen_string pop_uint24) pstate))
+  then V_List (pop_varlen_list "Certificates" pop_uint24 (parse_one_certificate) pstate)
+  else V_List (pop_varlen_list "Certificates" pop_uint24 (parse_varlen_bin_string pop_uint24) pstate)
+
+let string_of_certificate = function
+  | V_BinaryString s -> [hexdump s]
+  | V_Object ("x509", _, _) as o -> X509.string_of_certificate (Some "Certificate") (X509.X509Module.pop_object o)
+  | _ -> raise (ContentError ("Invalid certificate value"))
 
 
-let string_of_handshake_msg = function
-  | HelloRequest -> ["Hello Request"]
-  | ClientHello ch -> string_of_client_hello ch
-  | ServerHello sh -> string_of_server_hello sh
-  | Certificate (Left raw_certs) ->
-    PrinterLib._string_of_strlist (Some "Certificates") indent_only (List.map hexdump raw_certs)
-  | Certificate (Right certs) ->
-    let certs_str = List.flatten (List.map (X509.string_of_certificate (Some "Certificate")) certs) in
-    PrinterLib._string_of_strlist (Some "Certificates") indent_only certs_str
-  | ServerKeyExchange -> ["Server Key Exchange"]
-  | CertificateRequest -> ["Certificate Request"]
-  | ServerHelloDone -> ["Server Hello Done"]
-  | CertificateVerify -> ["Certificate Verify"]
-  | ClientKeyExchange -> ["Client Key Exchange"]
-  | Finished -> ["Finished"]
-  | UnparsedHandshakeMsg (htype, s) ->
-    let hdr = (string_of_handshake_msg_type htype) ^ " (len=" ^ (string_of_int (String.length s)) ^ ")" in
-    PrinterLib._string_of_strlist (Some hdr) indent_only [hexdump s]
+(* General handshake messages *)
 
 
-let type_of_handshake_msg = function
-  | HelloRequest -> H_HelloRequest
-  | ClientHello _ ->  H_ClientHello
-  | ServerHello _ -> H_ServerHello
-  | Certificate _ -> H_Certificate
-  | ServerKeyExchange -> H_ServerKeyExchange
-  | CertificateRequest -> H_CertificateRequest
-  | ServerHelloDone -> H_ServerHelloDone
-  | CertificateVerify -> H_CertificateVerify
-  | ClientKeyExchange -> H_ClientKeyExchange
-  | Finished -> H_Finished
-  | UnparsedHandshakeMsg (htype, _) -> htype
+type handshake_msg = handshake_msg_type * value
+
+let string_of_handshake_msg (msg_type, content) =
+  let msg_str = message_type_string_of_int msg_type in
+  match msg_type, content with
+    | _, V_Unit -> [msg_str]
+    | _, V_BinaryString s -> [PrinterLib._single_line (Some msg_str) (hexdump s)]
+    | 1, V_Dict d -> string_of_client_hello d
+    | 2, V_Dict d -> string_of_server_hello d
+    | 11, V_List l ->
+      let certs_str = List.flatten (List.map string_of_certificate l) in
+      PrinterLib._string_of_strlist (Some "Certificates") indent_only certs_str
+    | _ -> raise (ContentError ("Invalid Handshake value"))
 
 let parse_handshake htype pstate =
   let res = match htype with
-    | H_HelloRequest -> HelloRequest
-    | H_ClientHello -> ClientHello (parse_client_hello pstate)
-    | H_ServerHello -> ServerHello (parse_server_hello pstate)
-    | H_Certificate -> parse_certificate_msg pstate
-    | H_ServerKeyExchange
-    | H_CertificateRequest -> UnparsedHandshakeMsg (htype, pop_string pstate)
-    | H_ServerHelloDone -> ServerHelloDone
-    | H_CertificateVerify
-    | H_ClientKeyExchange
-    | H_Finished -> UnparsedHandshakeMsg (htype, pop_string pstate)
-    | H_Unknown x ->
-      tls_handshake_emit UnexpectedHandshakeMsgType None (Some (string_of_int x)) pstate;
-      UnparsedHandshakeMsg (htype, pop_string pstate)
+    | 1 -> parse_client_hello pstate
+    | 2 -> parse_server_hello pstate
+    | 11 -> parse_certificate_msg pstate
+    | 0 | 14 -> V_Unit
+    | _ -> V_BinaryString (pop_string pstate)
   in
   assert_eos pstate;
-  res
+  htype, res
 
 
 module HandshakeParser = struct
@@ -261,35 +223,35 @@ module HandshakeParser = struct
 
   let parse pstate =
     let (htype, len) = extract_handshake_header pstate in
-    let new_pstate = go_down pstate (string_of_handshake_msg_type htype) len in
+    let new_pstate = go_down pstate (message_type_string_of_int htype) len in
     parse_handshake htype new_pstate
 
-  let dump handshake =
-    (* TODO! *)
-    let htype_dump, content_dump = match handshake with
-      | ClientHello ch -> "\x01", BinaryRecord.dump client_hello_description ch
-      | ServerHello sh -> "\x01", BinaryRecord.dump server_hello_description sh
+  let dump (msg_type, content) =
+    let content_dump = match msg_type, content with
+      | _, V_Unit -> ""
+      | _, V_BinaryString s -> s
+      | 0x01, V_Dict ch -> BinaryRecord.dump client_hello_description ch
+      | 0x02, V_Dict sh -> BinaryRecord.dump server_hello_description sh
+      | 0x11, V_List certs -> raise (NotImplemented "handshake.dump")
       | _ -> raise (NotImplemented "handshake.dump")
     in
-    htype_dump ^ (dump_uint24 (String.length content_dump)) ^ content_dump
+    (dump_uint8 msg_type) ^ (dump_uint24 (String.length content_dump)) ^ content_dump
     
-  let enrich handshake dict =
-    Hashtbl.replace dict "message_type" (V_String (extract_handshake_msg_type handshake));
-    match handshake with
-      | ClientHello ch -> BinaryRecord.enrich client_hello_description ch dict
-      | ServerHello sh -> BinaryRecord.enrich server_hello_description sh dict
-      | Certificate (Left raw_certs) ->
-	let strs = List.map (fun x -> V_BinaryString x) raw_certs in
-	Hashtbl.replace dict "certificates" (V_List strs)
-      | Certificate (Right certs) ->
-	let cert_objs = List.map X509.X509Module.register certs in
-	Hashtbl.replace dict "certificates" (V_List cert_objs)
-      | _ -> ()
+  let enrich (msg_type, content) dict =
+    Hashtbl.replace dict "message_type" (V_Enumerated (msg_type, message_type_string_of_int));
+    match msg_type, content with
+      | _, V_Unit -> ()
+      | _, (V_BinaryString _ as s) -> Hashtbl.replace dict "content" s
+      | 0x01, V_Dict ch -> BinaryRecord.enrich client_hello_description ch dict
+      | 0x02, V_Dict sh -> BinaryRecord.enrich server_hello_description sh dict
+      | 0x0b, (V_List _ as l) -> Hashtbl.replace dict "certificates" l
+      | _ -> raise (NotImplemented "handshake.enrich")
 
   let update dict =
     match hash_find dict "message_type" with
-      | V_String ("Client Hello") | V_Int 1 -> ClientHello (BinaryRecord.update client_hello_description dict)
-      | V_String ("Server Hello") | V_Int 2 -> ServerHello (BinaryRecord.update server_hello_description dict)
+      | V_String ("Client Hello") | V_Int 1  ->  1, V_Dict (BinaryRecord.update client_hello_description dict)
+      | V_String ("Server Hello") | V_Int 2  ->  2, V_Dict (BinaryRecord.update server_hello_description dict)
+      | V_String ("Certificate")  | V_Int 11 -> 11, hash_find dict "certificates"
       | _ -> raise (NotImplemented "handshake.update")
 
   let to_string = string_of_handshake_msg

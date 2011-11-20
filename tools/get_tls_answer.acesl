@@ -17,6 +17,7 @@ TLS_v1_CLIENT_HELLO := decode ("hex",
                       '008c01200160013c00dc003feff000a0100003300000019001700' ++
                       '00147777772e69736563706172746e6572732e636f6d000a00080' ++
                       '006001700180019000b0002010000230000');
+MY_CLIENT_HELLO := decode ("hex","160301002d010000290301000000000000000000000000000000000000000000000000000000000000000000000200350100");
 
 get_tls_answer := function (addr, port, client_hello) {
     local l;
@@ -34,7 +35,7 @@ get_tls_answer := function (addr, port, client_hello) {
 if length (args) != 0 then
    if length (args) > 1 then port := args[1] else port := 443 fi;
    if length (args) > 2 then tmpdir := args[2] fi;
-   records := get_tls_answer (args[0], port, TLS_v1_CLIENT_HELLO);
+   records := get_tls_answer (args[0], port, MY_CLIENT_HELLO);
    raw_certs := records[1].content.certificates;
    certs := map (x509.parse, raw_certs);
 

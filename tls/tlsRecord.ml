@@ -4,6 +4,8 @@ open Modules
 open Printer
 open ParsingEngine
 open TlsCommon
+open TlsChangeCipherSpec
+open TlsAlert
 open TlsHandshake
 
 
@@ -19,30 +21,38 @@ let tls_record_emit = register_module_errors_and_make_emit_function "tlsAlert" t
 
 (* Content type *)
 
-type content_type =
-  | CT_ChangeCipherSpec
-  | CT_Alert
-  | CT_Handshake
-  | CT_ApplicationData
-  | CT_Unknown of int
+type content_type = int
 
-let string_of_content_type = function
-  | CT_ChangeCipherSpec -> "ChangeCipherSpec"
-  | CT_Alert -> "Alert"
-  | CT_Handshake -> "Handshake"
-  | CT_ApplicationData -> "ApplicationData"
-  | CT_Unknown x -> "Unknown content type " ^ (string_of_int x)
+let content_type_string_of_int = function
+  | 20 -> "ChangeCipherSpec"
+  | 21 -> "Alert"
+  | 22 -> "Handshake"
+  | 23 -> "ApplicationData"
+  | x -> "Unknown content type " ^ (string_of_int x)
 
-let content_type_of_int pstate = function
-  | 20 -> CT_ChangeCipherSpec
-  | 21 -> CT_Alert
-  | 22 -> CT_Handshake
-  | 23 -> CT_ApplicationData
-  | x ->
-    tls_record_emit UnexpectedContentType None (Some (string_of_int x)) pstate;
-    CT_Unknown x
+let content_type_int_of_string = function
+  | "ChangeCipherSpec" -> 20
+  | "Alert" -> 21
+  | "Handshake" -> 22
+  | "ApplicationData" -> 23
+  | s -> int_of_string s
 
+let check_content_type pstate = function
+  | 20 | 21 | 22 | 23 -> ()
+  | x -> tls_record_emit UnexpectedContentType None (Some (string_of_int x)) pstate
 
+let pop_content_type pstate =
+  let ct = pop_byte pstate in
+  check_content_type pstate ct;
+  ct
+
+let _make_content_type = function
+  | V_Int i
+  | V_Enumerated (i, _) -> i
+  | V_String s -> content_type_int_of_string s
+  | _ -> raise (ContentError "Invalid content type value")
+
+let make_content_type v = V_Enumerated (_make_content_type v, content_type_string_of_int)
 
 
 
@@ -61,7 +71,7 @@ module RecordParser = struct
   type t = record_type
 
   let parse pstate =
-    let ctype = content_type_of_int pstate (pop_byte pstate) in
+    let ctype = pop_content_type pstate in
     let version = pop_uint16 pstate in
     let len = pop_uint16 pstate in
     let content = pop_fixedlen_string len pstate in
@@ -70,25 +80,30 @@ module RecordParser = struct
       content = V_BinaryString content }
 
   let dump record =
-    (* TODO: handle ctype correctly... *)
-    let ctype_dump, content_dump = match record.content with
-      | (V_Object ("handshake", r, d) as o) -> "\x16", HandshakeParser.dump (HandshakeModule.pop_object o)
+    let content_dump = match record.content_type, record.content with
+      | _, V_BinaryString s -> s
+      | 0x14, (V_Object ("change_cipher_spec", _, _) as o) -> ChangeCipherSpecParser.dump (ChangeCipherSpecModule.pop_object o)
+      | 0x15, (V_Object ("alert", _, _) as o) -> AlertParser.dump (AlertModule.pop_object o)
+      | 0x16, (V_Object ("handshake", _, _) as o) -> HandshakeParser.dump (HandshakeModule.pop_object o)
       | _ -> raise (NotImplemented "record.dump")
     in
-    ctype_dump ^ (dump_uint16 record.version) ^ (dump_uint16 (String.length content_dump)) ^ content_dump
+    (dump_uint8 record.content_type) ^ (dump_uint16 record.version) ^ (dump_uint16 (String.length content_dump)) ^ content_dump
     
 
   let enrich record dict =
-    Hashtbl.replace dict "content_type" (V_String (string_of_content_type (record.content_type)));
+    Hashtbl.replace dict "content_type" (V_Enumerated (record.content_type, content_type_string_of_int));
     Hashtbl.replace dict "version" (V_String (protocol_version_string_of_int record.version));
     Hashtbl.replace dict "content" record.content;
     ()
 
-  let update dict = raise (NotImplemented "record.update")
+  let update dict =
+    { version = _make_protocol_version (hash_find dict "version");
+      content_type = _make_content_type (hash_find dict "content_type");
+      content = hash_find dict "content" }
 
   let to_string r =
     let hdr = "TLS Record (" ^ (protocol_version_string_of_int r.version) ^ ", " ^
-      (string_of_content_type r.content_type) ^ ")" in
+      (content_type_string_of_int r.content_type) ^ ")" in
     match r.content with
       | (V_BinaryString s | V_String s) as str ->
 	let strs = (PrinterLib._single_line (Some "Length") (string_of_int (String.length s)))::
@@ -102,7 +117,7 @@ module RecordParser = struct
       | None, [] -> List.rev accu
       | Some r, [] -> List.rev (r::accu)
       | None, r::rem ->
-	if r.content_type = CT_Handshake
+	if r.content_type = 0x16
 	then merge_aux (Some r) accu rem
 	else merge_aux None (r::accu) rem
       | Some r1, r2::rem ->

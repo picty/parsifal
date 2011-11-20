@@ -36,12 +36,9 @@ module TlsLib = struct
 	let parsed_content =
 	  try
 	    match msg.content_type with
-	      | CT_ChangeCipherSpec ->
-		[ChangeCipherSpecModule.parse [V_String name; msg.content]]
-	      | CT_Alert ->
-		[AlertModule.parse [V_String name; msg.content]]
-	      | CT_Handshake ->
-		HandshakeModule.parse_all [V_String name; msg.content]
+	      | 0x14 -> [ChangeCipherSpecModule.parse [V_String name; msg.content]]
+	      | 0x15 ->	[AlertModule.parse [V_String name; msg.content]]
+	      | 0x16 ->	HandshakeModule.parse_all [V_String name; msg.content]
 	      | _ -> [msg.content]
 	  with OutOfBounds _ | ParsingError _ -> [msg.content]
 	in

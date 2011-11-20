@@ -1,6 +1,6 @@
-Expand binaryRecord to handle to_String also. Use V_Unit = None to handle optional fields.
-Rewrite some tls objects as enumerated (content type, message type) and binaryrecords.
-Use binaryRecord and LibModule directly ?
+Software Engineering
+ - Expand binaryRecord to handle update (when using enumerated for example) and to_String.
+ - Use V_Unit = None to handle optional fields.
 
 
 Chain categorization
@@ -21,7 +21,6 @@ WTF? Is extension parsing fatal?
   Answer seen: 21320000, current answer: 0:99.196.196.103
 
 
-
 X509
  - Add SAN, AIA and CRLDP extensions
  - Write code to parse PK, Sig.
@@ -30,9 +29,10 @@ X509
  - Use specific warnings for each interesting X.509 warnings.
 
 TLS
- - Improve record / handshake manipulation
- - Add native lookup_tables
  - Enrich TLS parser.
+ - fake_len -> can override computed len
+ - tls.dump -> calls record.split if needed
+ - record.split -> TODO
  - Add parser for SSLv2.
 
 Modules
