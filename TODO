@@ -1,5 +1,6 @@
-Use binaryRecord and LibModule directly -> use @name to keep the name of the module to use when dumping ?
-Rewrite some tls objects as binaryrecords.
+Expand binaryRecord to handle to_String also. Use V_Unit = None to handle optional fields.
+Rewrite some tls objects as enumerated (content type, message type) and binaryrecords.
+Use binaryRecord and LibModule directly ?
 
 
 Chain categorization
@@ -29,8 +30,7 @@ X509
  - Use specific warnings for each interesting X.509 warnings.
 
 TLS
- - Rewrite CH / SH and so on as simple BinaryRecords ?
- - Rewrite alert types/levels as simple ints, and provide lookup tables to the code.
+ - Improve record / handshake manipulation
  - Add native lookup_tables
  - Enrich TLS parser.
  - Add parser for SSLv2.

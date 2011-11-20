@@ -99,6 +99,8 @@ let universal_tag_map =
      T_UnspecifiedCharacterString; T_BMPString |]
 
 
+type bitstring_description = string array
+
 type asn1_object = {
   a_class : asn1_class;
   a_tag : int;
@@ -111,7 +113,7 @@ and asn1_content =
   | Boolean of bool
   | Integer of string
   | BitString of int * string
-  | EnumeratedBitString of string list
+  | EnumeratedBitString of (int list) * bitstring_description
   | Null
   | OId of int list
   | String of (string * bool)       (* bool : isBinary *)
@@ -353,7 +355,9 @@ let der_to_oid pstate = OId (raw_der_to_oid pstate)
 
 (* Bit String *)
 
-type bitstring_description = string array
+let apply_desc desc i =
+  if i >= 0 && i < Array.length desc
+  then desc.(i) else raise (OutOfBounds "apply_desc")
 
 let raw_der_to_bitstring pstate =
   let nBits =
@@ -386,7 +390,7 @@ let name_bits pstate description l =
     | true::r when i >= n ->
       asn1_emit NotInNormalForm None (Some "Trailing bits in an enumerated bit string should be null") pstate;
       []
-    | true::r -> (description.(i))::(aux (i+1) r)
+    | true::r -> (i)::(aux (i+1) r)
     | false::r when i = n ->
       asn1_emit NotInNormalForm None (Some "Only significant bit should be put inside an enumerated bit string") pstate;
       aux (i+1) r
@@ -407,7 +411,7 @@ let der_to_bitstring description pstate =
     | None -> BitString (nBits, content)
     | Some desc ->
       if !parse_enumerated
-      then EnumeratedBitString (enumerated_from_raw_bit_string pstate desc nBits content)
+      then EnumeratedBitString (enumerated_from_raw_bit_string pstate desc nBits content, desc)
       else BitString (nBits, content)
 
 
@@ -561,7 +565,7 @@ let rec string_of_content = function
   | Boolean false -> ["false"], false
   | Integer i -> ["0x" ^ (hexdump i)], false
   | BitString (nBits, s) -> [string_of_bitstring !PrinterLib.raw_display nBits s], false
-  | EnumeratedBitString l -> ["[" ^ (String.concat ", " l) ^ "]"], false
+  | EnumeratedBitString (l, desc) -> ["[" ^ (String.concat ", " (List.map (apply_desc desc) l)) ^ "]"], false
   | OId oid -> [string_of_oid oid], false
   | String (s, true) -> ["[HEX:]" ^ (hexdump s)], false
   | String (s, false) -> [if !PrinterLib.raw_display then hexdump s else s], false
@@ -655,7 +659,7 @@ let rec dump o =
     | Boolean b -> false, boolean_to_der b
     | Integer i -> false, i
     | BitString (nb, s) -> false, bitstring_to_der nb s
-    | EnumeratedBitString l -> raise (NotImplemented "asn1.dump (EnumeratedBitString)") (* TODO *)
+    | EnumeratedBitString (l, _) -> raise (NotImplemented "asn1.dump (EnumeratedBitString)") (* TODO *)
     | OId id -> false, oid_to_der id
     | String (s, _) -> false, s
     | Constructed objects -> true, constructed_to_der objects
@@ -694,7 +698,9 @@ module Asn1Parser = struct
     | Boolean b -> V_Bool b
     | Integer i -> V_Bigint i
     | BitString (n, s) -> V_BitString (n, s)
-    | EnumeratedBitString l -> V_List (List.map (fun x -> V_String x) l)
+    | EnumeratedBitString (l, desc) ->
+      let f = apply_desc desc in
+      V_List (List.map (fun x -> V_Enumerated (x, f)) l)
     | OId oid -> value_of_oid oid
     | String (s, true) -> V_BinaryString s
     | String (s, false) -> V_String s

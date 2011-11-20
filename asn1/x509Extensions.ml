@@ -165,7 +165,7 @@ let keyUsage_values = [|
 let extract_KeyUsage pstate =
   let nBits, content = raw_der_to_bitstring pstate in
   let l = enumerated_from_raw_bit_string pstate keyUsage_values nBits content in
-  V_List (List.map (fun x -> V_String x) l)
+  V_List (List.map (fun x -> V_Enumerated (x, apply_desc keyUsage_values)) l)
 
 let mkKeyUsage = Simple_cons (C_Universal, false, 3, "keyUsage", extract_KeyUsage)
 
@@ -272,7 +272,7 @@ let nsCertType_values = [|
 let extract_NSCertType pstate =
   let nBits, content = raw_der_to_bitstring pstate in
   let l = enumerated_from_raw_bit_string pstate nsCertType_values nBits content in
-  V_List (List.map (fun x -> V_String x) l)
+  V_List (List.map (fun x -> V_Enumerated (x, apply_desc nsCertType_values)) l)
 
 let mkNSCertType = Simple_cons (C_Universal, false, 3, "nsCertType", extract_NSCertType)
 
