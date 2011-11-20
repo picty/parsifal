@@ -334,6 +334,11 @@ let peek_byte pstate n =
     pstate.cur_input.peek_byte n
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
 
+let eos pstate = pstate.cur_input.eos ()
+
+
+(* Strings *)
+
 let pop_string pstate =
   try
     match pstate.cur_length with
@@ -344,13 +349,25 @@ let pop_string pstate =
 	res
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
 
-let pop_string_with_len pstate n =
+let pop_fixedlen_string len pstate =
   try
-    if not (check_bounds pstate n) then raise RawOutOfBounds;
-    let res = pstate.cur_input.pop_string n in
-    pstate.cur_offset <- pstate.cur_offset + n;
+    if not (check_bounds pstate len) then raise RawOutOfBounds;
+    let res = pstate.cur_input.pop_string len in
+    pstate.cur_offset <- pstate.cur_offset + len;
     res
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
+
+let pop_varlen_string fun_len pstate =
+  try
+    let len = fun_len pstate in
+    if not (check_bounds pstate len) then raise RawOutOfBounds;
+    let res = pstate.cur_input.pop_string len in
+    pstate.cur_offset <- pstate.cur_offset + len;
+    res
+  with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
+
+
+(* Byte lists *)
 
 let pop_bytes pstate n =
   try
@@ -377,42 +394,28 @@ let drop_bytes pstate n =
     pstate.cur_offset <- pstate.cur_offset + n
   with RawOutOfBounds -> raise (OutOfBounds (string_of_pstate pstate))
 
-let eos pstate = pstate.cur_input.eos ()
 
 
-
-let rec extract_uint_as_int32_aux accu = function
-  | i::r -> extract_uint_as_int32_aux (Int32.logor (Int32.shift_left accu 8) (Int32.of_int i)) r
+let rec pop_uint_as_int32_aux accu = function
+  | i::r -> pop_uint_as_int32_aux (Int32.logor (Int32.shift_left accu 8) (Int32.of_int i)) r
   | [] -> accu
 
-let extract_uint32_as_int32 pstate = extract_uint_as_int32_aux Int32.zero (pop_bytes pstate 4)
+let pop_uint32_as_int32 pstate = pop_uint_as_int32_aux Int32.zero (pop_bytes pstate 4)
 
 
-let rec extract_uint_aux accu = function
-  | i::r -> extract_uint_aux ((accu lsl 8) lor i) r
+let rec pop_uint_aux accu = function
+  | i::r -> pop_uint_aux ((accu lsl 8) lor i) r
   | [] -> accu
 
-let extract_uint32 pstate = extract_uint_aux 0 (pop_bytes pstate 4)
-let extract_uint24 pstate = extract_uint_aux 0 (pop_bytes pstate 3)
-let extract_uint16 pstate = extract_uint_aux 0 (pop_bytes pstate 2)
-let extract_uint8 = pop_byte
-
-
-(* Strings *)
-
-let extract_string name len pstate =
-  let new_pstate = go_down pstate name len in
-  pop_string new_pstate
-
-let extract_variable_length_string name length_fun pstate =
-  let len = length_fun pstate in
-  let new_pstate = go_down pstate name len in
-  pop_string new_pstate
+let pop_uint32 pstate = pop_uint_aux 0 (pop_bytes pstate 4)
+let pop_uint24 pstate = pop_uint_aux 0 (pop_bytes pstate 3)
+let pop_uint16 pstate = pop_uint_aux 0 (pop_bytes pstate 2)
+let pop_uint8 = pop_byte
 
 
 (* List of objects *)
 
-let extract_list_fixedlen name len extract_fun pstate =
+let pop_fixedlen_list name len extract_fun pstate =
   let new_pstate = go_down pstate name len in
   let rec aux () =
     if eos new_pstate
@@ -424,7 +427,7 @@ let extract_list_fixedlen name len extract_fun pstate =
   in
   aux ()
 
-let extract_list name length_fun extract_fun pstate =
+let pop_varlen_list name length_fun extract_fun pstate =
   let len = length_fun pstate in
   let new_pstate = go_down pstate name len in
   let rec aux () =

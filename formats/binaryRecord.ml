@@ -3,22 +3,21 @@ open Types
 open Modules
 open ParsingEngine
 
-let parse_uint8 pstate = V_Int (extract_uint8 pstate)
+let parse_uint8 = lift_int pop_uint8
 let dump_uint8 value = String.make 1 (char_of_int (eval_as_int value land 0xff))
 
-let parse_uint16 pstate = V_Int (extract_uint16 pstate)
+let parse_uint16 = lift_int pop_uint16
 let dump_uint16 value =
   let int_val = eval_as_int value in
   let res = String.make 2 (char_of_int (int_val land 0xff)) in
   res.[0] <- char_of_int ((int_val lsr 8) land 0xff);
   res
 
-let parse_string n pstate = V_String (pop_string_with_len pstate n)
-let parse_bin_string n pstate = V_BinaryString (pop_string_with_len pstate n)
-let parse_varlen_string name len_fun pstate = V_String (extract_variable_length_string name len_fun pstate)
-let parse_varlen_bin_string name len_fun pstate = V_BinaryString (extract_variable_length_string name len_fun pstate)
-
-let parse_ipv4 pstate = V_IPv4 (pop_string_with_len pstate 4)
+let parse_string n = lift_string (pop_fixedlen_string n)
+let parse_bin_string n = lift_bin_string (pop_fixedlen_string n)
+let parse_varlen_string len_fun = lift_string (pop_varlen_string len_fun)
+let parse_varlen_bin_string len_fun = lift_bin_string (pop_varlen_string len_fun)
+let parse_ipv4 = lift_ipv4 (pop_fixedlen_string 4)
 
 
 module BinaryRecord = struct

@@ -96,6 +96,15 @@ let find_module n =
     (module M : Module)
 
 
+(* Type lifters *)
+let lift_int f arg = V_Int (f arg)
+let lift_bool f arg = V_Bool (f arg)
+let lift_string f arg = V_String (f arg)
+let lift_bin_string f arg = V_BinaryString (f arg)
+let lift_list f arg = V_List (f arg)
+let lift_ipv4 f arg = V_IPv4 (f arg)
+
+
 (* Type extractors *)
 
 let eval_as_int = function

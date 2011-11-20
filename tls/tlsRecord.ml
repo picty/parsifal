@@ -62,8 +62,8 @@ module RecordParser = struct
     let ctype = content_type_of_int pstate (pop_byte pstate) in
     let maj = pop_byte pstate in
     let min = pop_byte pstate in
-    let len = extract_uint16 pstate in
-    let content = extract_string (string_of_content_type ctype) len pstate in
+    let len = pop_uint16 pstate in
+    let content = pop_fixedlen_string len pstate in
     { version = {major = maj; minor = min};
       content_type = ctype;
       content = V_BinaryString content }

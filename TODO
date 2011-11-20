@@ -1,5 +1,3 @@
-Important: choose a way for naming functions (parse : pstate -> value, extract pstate -> real type, pop pstate -> real type)
-
 Use binaryRecord and LibModule directly -> use @name to keep the name of the module to use when dumping ?
 Rewrite some tls objects as binaryrecords.
 

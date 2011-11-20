@@ -128,7 +128,7 @@ let extract_handshake_msg_type = function
 
 let extract_handshake_header pstate =
   let htype = handshake_msg_type_of_int (pop_byte pstate) in
-  let len = extract_uint24 pstate in
+  let len = pop_uint24 pstate in
   (htype, len)
 
 
@@ -154,8 +154,8 @@ let string_of_server_hello sh =
 
 
 let extract_hello_extension pstate =
-  let id = extract_uint16 pstate in
-  let content = extract_variable_length_string "Extension" extract_uint16 pstate in
+  let id = pop_uint16 pstate in
+  let content = pop_varlen_string pop_uint16 pstate in
   (id, content)
 
 let parse_hello_extensions pstate =
@@ -167,7 +167,7 @@ let parse_hello_extensions pstate =
     end else
       let new_pstate = go_down_on_left_portion pstate "Extensions" in
       try
-	Some (extract_list "Extensions" extract_uint16 extract_hello_extension new_pstate)
+	Some (pop_varlen_list "Extensions" pop_uint16 extract_hello_extension new_pstate)
       with OutOfBounds _ ->
 	tls_handshake_emit InvalidExtensions None None pstate;
 	None
@@ -176,10 +176,10 @@ let parse_hello_extensions pstate =
 let parse_client_hello pstate =
   let maj = pop_byte pstate in
   let min = pop_byte pstate in
-  let random = extract_string "Random" 32 pstate in
-  let session_id = extract_variable_length_string "Session id" pop_byte pstate in
-  let cipher_suites = extract_list "Cipher suites" extract_uint16 extract_uint16 pstate in
-  let compression_methods = extract_list "Compression methods" pop_byte pop_byte pstate in
+  let random = pop_fixedlen_string 32 pstate in
+  let session_id = pop_varlen_string pop_byte pstate in
+  let cipher_suites = pop_varlen_list "Cipher suites" pop_uint16 pop_uint16 pstate in
+  let compression_methods = pop_varlen_list "Compression methods" pop_byte pop_byte pstate in
   let extensions = parse_hello_extensions pstate in
   ClientHello { c_version = {major = maj; minor = min};
 		c_random = random;
@@ -191,9 +191,9 @@ let parse_client_hello pstate =
 let parse_server_hello pstate =
   let maj = pop_byte pstate in
   let min = pop_byte pstate in
-  let random = extract_string "Random" 32 pstate in
-  let session_id = extract_variable_length_string "Session id" pop_byte pstate in
-  let cipher_suite = extract_uint16 pstate in
+  let random = pop_fixedlen_string 32 pstate in
+  let session_id = pop_varlen_string pop_byte pstate in
+  let cipher_suite = pop_uint16 pstate in
   let compression_method = pop_byte pstate in
   let extensions = parse_hello_extensions pstate in
   ServerHello { s_version = {major = maj; minor = min};
@@ -205,7 +205,7 @@ let parse_server_hello pstate =
 
 
 let parse_one_certificate pstate =
-  let len = extract_uint24 pstate in
+  let len = pop_uint24 pstate in
   let new_pstate = go_down pstate "Certificate" len in
   let res = Asn1Constraints.constrained_parse X509.certificate_constraint new_pstate in
   assert_eos new_pstate;
@@ -213,8 +213,8 @@ let parse_one_certificate pstate =
 
 let parse_certificate_msg pstate =
   if (!parse_certificates)
-  then Certificate (Right (extract_list "Certificates" extract_uint24 (parse_one_certificate) pstate))
-  else Certificate (Left (extract_list "Certificates" extract_uint24 (extract_variable_length_string "Extension" extract_uint24) pstate))
+  then Certificate (Right (pop_varlen_list "Certificates" pop_uint24 (parse_one_certificate) pstate))
+  else Certificate (Left (pop_varlen_list "Certificates" pop_uint24 (pop_varlen_string pop_uint24) pstate))
 
 
 let string_of_handshake_msg = function
