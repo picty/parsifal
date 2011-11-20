@@ -23,6 +23,7 @@ and value =
   | V_Unit
   | V_Bool of bool
   | V_Int of int
+  | V_Enumerated of int * (int -> string)
   | V_String of string
   | V_BinaryString of string
   | V_BitString of int * string
@@ -108,7 +109,8 @@ let lift_ipv4 f arg = V_IPv4 (f arg)
 (* Type extractors *)
 
 let eval_as_int = function
-  | V_Int i -> i
+  | V_Int i
+  | V_Enumerated (i, _) -> i
   | V_String s
   | V_BinaryString s -> int_of_string s
   | V_Bigint _ -> raise (NotImplemented "eval_as_int (V_Bigint)")
@@ -116,8 +118,8 @@ let eval_as_int = function
 
 let eval_as_bool = function
   | V_Bool b -> b
-  | V_Unit | V_Int 0 | V_List [] -> false
-  | V_Int _ | V_List _ -> true
+  | V_Unit | V_Int 0 | V_Enumerated (0, _) | V_List [] -> false
+  | V_Int _ | V_Enumerated _ | V_List _ -> true
   | V_String s
   | V_BinaryString s
   | V_BitString (_, s) -> (String.length s) <> 0
@@ -162,6 +164,7 @@ let eval_as_string = function
   | V_Bigint s
   | V_BinaryString s
   | V_String s -> s
+  | V_Enumerated (i, f) -> f i
 
   | V_BitString _ | V_IPv4 _ | V_List _ | V_Dict _
   | V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
@@ -172,6 +175,7 @@ let string_of_type = function
   | V_Unit -> "unit"
   | V_Bool _ -> "bool"
   | V_Int _ -> "int"
+  | V_Enumerated _ -> "enumerated"
   | V_String _ -> "string"
   | V_BinaryString _ -> "binary_string"
   | V_BitString _ -> "bit_string"

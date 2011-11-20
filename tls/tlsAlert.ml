@@ -1,3 +1,4 @@
+open Common
 open Types
 open Modules
 open ParsingEngine
@@ -18,137 +19,150 @@ let tls_alert_errors_strings = [|
 let tls_alert_emit = register_module_errors_and_make_emit_function "tlsAlert" tls_alert_errors_strings
 
 
+(* Alert Level *)
 
-type alert_level =
-  | AL_Warning
-  | AL_Fatal
-  | AL_Unknown of int
+type alert_level = int
 
-type alert_type =
-  | CloseNotify
-  | UnexpectedMessage
-  | BadRecordMac
-(* TODO: Should not be used in TLSv1.* ; add checks for the alert it is OK to send in certain versions *)
-  | DecryptionFailed
-  | RecordOverflow
-  | DecompressionFailure
-  | HandshakeFailure
-  | NoCertificate
-  | BadCertificate
-  | UnsupportedCertificate
-  | CertificateRevoked
-  | CertificateExpired
-  | CertificateUnknown
-  | IllegalParameter
-  | UnknownCA
-  | AccessDenied
-  | DecodeError
-  | DecryptError
-(* TODO: Should not be used in TLSv1.* ; add checks for the alert it is OK to send in certain versions *)
-  | ExportRestriction
-  | ProtocolVersion
-  | InsufficientSecurity
-  | InternalError
-  | UserCanceled
-  | NoRenegotiation
-  | UnsupportedExtension
-  | UnknownAlertType of int
+let alert_level_string_of_int = function
+  | 1 -> "Warning"
+  | 2 -> "Fatal"
+  | x -> "Unknown alert level " ^ (string_of_int x)
 
-let string_of_alert_level = function
-  | AL_Warning -> "Warning"
-  | AL_Fatal -> "Fatal"
-  | AL_Unknown x -> "Unknown alert level " ^ (string_of_int x)
+let alert_level_int_of_string = function
+  | "Warning" | "warning" -> 1
+  | "Fatal" | "fatal" -> 2
+  | s -> int_of_string s
 
-let string_of_alert_type = function
-  | CloseNotify -> "Close notify"
-  | UnexpectedMessage -> "Unexpected message"
-  | BadRecordMac -> "Bad record mac"
-  | DecryptionFailed -> "Decryption failed"
-  | RecordOverflow -> "Record overflow"
-  | DecompressionFailure -> "Decompression failure"
-  | HandshakeFailure -> "Handshake failure"
-  | NoCertificate -> "No certificate"
-  | BadCertificate -> "Bad certificate"
-  | UnsupportedCertificate -> "Unsupported certificate"
-  | CertificateRevoked -> "Certificate revoked"
-  | CertificateExpired -> "Certificate expired"
-  | CertificateUnknown -> "Certificate unknown"
-  | IllegalParameter -> "Illegal parameter"
-  | UnknownCA -> "Unknown CA"
-  | AccessDenied -> "Access denied"
-  | DecodeError -> "Decode error"
-  | DecryptError -> "Decrypt error"
-  | ExportRestriction -> "Export restriction"
-  | ProtocolVersion -> "Protocol version"
-  | InsufficientSecurity -> "Insufficient security"
-  | InternalError -> "Internal error"
-  | UserCanceled -> "User canceled"
-  | NoRenegotiation -> "No renegotiation"
-  | UnsupportedExtension -> "Unsupported extension"
-  | UnknownAlertType x -> "Unknown alert type " ^ (string_of_int x)
+let check_alert_level pstate = function
+  | 1 | 2 -> ()
+  | x -> tls_alert_emit UnexpectedAlertLevel None (Some (string_of_int x)) pstate
 
-let alert_level_of_int pstate = function
-  | 1 -> AL_Warning
-  | 2 -> AL_Fatal
-  | x ->
-    tls_alert_emit UnexpectedAlertLevel None (Some (string_of_int x)) pstate;
-    AL_Unknown x
+let parse_alert_level pstate =
+  let al = pop_byte pstate in
+  check_alert_level pstate al;
+  al
 
-let alert_type_of_int pstate = function
-  | 0 -> CloseNotify
-  | 10 -> UnexpectedMessage
-  | 20 -> BadRecordMac
-  | 21 -> DecryptionFailed
-  | 22 -> RecordOverflow
-  | 30 -> DecompressionFailure
-  | 40 -> HandshakeFailure
-  | 41 -> NoCertificate
-  | 42 -> BadCertificate
-  | 43 -> UnsupportedCertificate
-  | 44 -> CertificateRevoked
-  | 45 -> CertificateExpired
-  | 46 -> CertificateUnknown
-  | 47 -> IllegalParameter
-  | 48 -> UnknownCA
-  | 49 -> AccessDenied
-  | 50 -> DecodeError
-  | 51 -> DecryptError
-  | 60 -> ExportRestriction
-  | 70 -> ProtocolVersion
-  | 71 -> InsufficientSecurity
-  | 80 -> InternalError
-  | 90 -> UserCanceled
-  | 100 -> NoRenegotiation
-  | 110 -> UnsupportedExtension
-  | x ->
-    tls_alert_emit UnexpectedAlertType None (Some (string_of_int x)) pstate;
-    UnknownAlertType x
+let _make_alert_level = function
+  | V_Int i
+  | V_Enumerated (i, _) -> i
+  | V_String s -> alert_level_int_of_string s
+  | _ -> raise (ContentError "Invalid alert level value")
+
+let make_alert_level v = V_Enumerated (_make_alert_level v, alert_level_string_of_int)
+
+
+(* Alert Type *)
+
+type alert_type = int
+
+let alert_type_string_of_int = function
+  | 0   -> "Close notify"
+  | 10  -> "Unexpected message"
+  | 20  -> "Bad record mac"
+  | 21  -> "Decryption failed"
+  | 22  -> "Record overflow"
+  | 30  -> "Decompression failure"
+  | 40  -> "Handshake failure"
+  | 41  -> "No certificate"
+  | 42  -> "Bad certificate"
+  | 43  -> "Unsupported certificate"
+  | 44  -> "Certificate revoked"
+  | 45  -> "Certificate expired"
+  | 46  -> "Certificate unknown"
+  | 47  -> "Illegal parameter"
+  | 48  -> "Unknown CA"
+  | 49  -> "Access denied"
+  | 50  -> "Decode error"
+  | 51  -> "Decrypt error"
+  | 60  -> "Export restriction"
+  | 70  -> "Protocol version"
+  | 71  -> "Insufficient security"
+  | 80  -> "Internal error"
+  | 90  -> "User canceled"
+  | 100 -> "No renegotiation"
+  | 110 -> "Unsupported extension"
+  | x   -> "Unknown alert type " ^ (string_of_int x)
+
+let alert_type_int_of_string = function
+  | "Close notify" -> 0
+  | "Unexpected message" -> 10
+  | "Bad record mac" -> 20
+  | "Decryption failed" -> 21
+  | "Record overflow" -> 22
+  | "Decompression failure" -> 30
+  | "Handshake failure" -> 40
+  | "No certificate" -> 41
+  | "Bad certificate" -> 42
+  | "Unsupported certificate" -> 43
+  | "Certificate revoked" -> 44
+  | "Certificate expired" -> 45
+  | "Certificate unknown" -> 46
+  | "Illegal parameter" -> 47
+  | "Unknown CA" -> 48
+  | "Access denied" -> 49
+  | "Decode error" -> 50
+  | "Decrypt error" -> 51
+  | "Export restriction" -> 60
+  | "Protocol version" -> 70
+  | "Insufficient security" -> 71
+  | "Internal error" -> 80
+  | "User canceled" -> 90
+  | "No renegotiation" -> 100
+  | "Unsupported extension" -> 110
+  | s -> int_of_string s
+
+let check_alert_type pstate = function
+  | 0 | 10 | 20 | 21 | 22 | 30 | 40 | 41 | 42
+  | 43 | 44 | 45 | 46 | 47 | 48 | 49 | 50 | 51
+  | 60 | 70 | 71 | 80 | 90 | 100 | 110  -> ()
+  | x -> tls_alert_emit UnexpectedAlertType None (Some (string_of_int x)) pstate
+
+let parse_alert_type pstate =
+  let at = pop_byte pstate in
+  check_alert_type pstate at;
+  at
+
+let _make_alert_type = function
+  | V_Int i
+  | V_Enumerated (i, _) -> i
+  | V_String s -> alert_type_int_of_string s
+  | _ -> raise (ContentError "Invalid alert level value")
+
+let make_alert_type v = V_Enumerated (_make_alert_type v, alert_type_string_of_int)
+
+
+(* AlertParser *)
 
 module AlertParser = struct
   let name = "alert"
   type t = alert_level * alert_type
 
   let parse pstate =
-    let level = pop_byte pstate in
-    let t = pop_byte pstate in
-    if not (eos pstate)
-    then tls_alert_emit UnexpectedJunk None (Some (Common.hexdump (pop_string pstate))) pstate;
-    (alert_level_of_int pstate level, alert_type_of_int pstate t)
+    let al = parse_alert_level pstate in
+    let at = parse_alert_type pstate in
+    if not (eos pstate) then tls_alert_emit UnexpectedJunk None (Some (hexdump (pop_string pstate))) pstate;
+    (al, at)
 
-  let dump alert = raise (NotImplemented "alert.dump")
+  let dump (alert_level, alert_type) = (dump_uint8 alert_level) ^ (dump_uint8 alert_type)
 
   let enrich (alert_level, alert_type) dict =
-    Hashtbl.replace dict "level" (V_String (string_of_alert_level (alert_level)));
-    Hashtbl.replace dict "type" (V_String (string_of_alert_type (alert_type)));
+    Hashtbl.replace dict "level" (V_Enumerated (alert_level, alert_level_string_of_int));
+    Hashtbl.replace dict "type" (V_Enumerated (alert_type, alert_type_string_of_int));
     ()
 
-  let update dict = raise (NotImplemented "alert.dump")
+  let update dict =
+    let al = _make_alert_level (hash_find dict "level")
+    and at = _make_alert_type (hash_find dict "type") in
+    (al, at)
 
   let to_string (alert_level, alert_type) =
-    ["TLS Alert (" ^ (string_of_alert_level alert_level) ^ "): " ^ (string_of_alert_type alert_type)]
+    ["TLS Alert (" ^ (alert_level_string_of_int alert_level) ^ "): " ^ (alert_type_string_of_int alert_type)]
 
   let params = []
-  let functions = []
+  let functions = [
+    ("mk_level", fun _ -> one_value_fun make_alert_level);
+    ("mk_type", fun _ -> one_value_fun make_alert_type)
+  ]
 end
 
 module AlertModule = MakeParserModule (AlertParser)

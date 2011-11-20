@@ -66,6 +66,7 @@ module PrinterLib = struct
     match v with
       | V_Bool b -> [_single_line title (string_of_bool b)]
       | V_Int i -> [_single_line title (string_of_int i)]
+      | V_Enumerated (i, f) -> [_single_line title ((f i) ^ " (" ^ (string_of_int i) ^ ")")]
       | V_String s ->
 	let res = if (quote_strings) then "\"" ^ (quote_string s) ^ "\"" else s
 	in [_single_line title (res)]

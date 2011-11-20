@@ -183,6 +183,10 @@ let ip4_of_string s =
 
 
 
+let dump_uint32 x =
+  string_of_int_list [(x lsr 24) land 0xff; (x lsr 16) land 0xff;
+		      (x lsr 8) land 0xff; x land 0xff]
+
 let dump_uint16 x =
   if x > 65535 then failwith "Integer overflow";
   string_of_int_list [x lsr 8; x land 0xff]
@@ -190,10 +194,6 @@ let dump_uint16 x =
 let dump_uint8 x =
   if x > 255 then failwith "Integer overflow";
   String.make 1 (char_of_int x)
-
-let dump_int x =
-  string_of_int_list [(x lsr 24) land 0xff; (x lsr 16) land 0xff;
-		      (x lsr 8) land 0xff; x land 0xff]
 
 
 let dump_variable_length_string length_fun s =

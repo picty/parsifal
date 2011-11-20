@@ -4,10 +4,10 @@ open Modules
 open ParsingEngine
 
 let parse_uint8 = lift_int pop_uint8
-let dump_uint8 value = String.make 1 (char_of_int (eval_as_int value land 0xff))
+let dumpv_uint8 value = String.make 1 (char_of_int (eval_as_int value land 0xff))
 
 let parse_uint16 = lift_int pop_uint16
-let dump_uint16 value =
+let dumpv_uint16 value =
   let int_val = eval_as_int value in
   let res = String.make 2 (char_of_int (int_val land 0xff)) in
   res.[0] <- char_of_int ((int_val lsr 8) land 0xff);
