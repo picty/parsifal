@@ -89,6 +89,17 @@ let import_list arg =
 
 let rev l = V_List (List.rev (eval_as_list l))
 
+let range vl =
+  let rec range_aux accu current max =
+    if current < max
+    then range_aux ((V_Int current)::accu) (current+1) max
+    else V_List (List.rev accu)
+  in
+  match vl with
+    | [v1] -> range_aux [] 0 (eval_as_int v1)
+    | [v1; v2] -> range_aux [] (eval_as_int v1) (eval_as_int v2)
+    | _ -> raise (ContentError ("range expects one or two integer as arguments"))
+
 
 let import_set args =
   let res = Hashtbl.create 10 in
@@ -323,6 +334,7 @@ let add_native_with_env name f =
 
 let _ =
   (* Generic functions *)
+  add_native "unit" (fun _ -> V_Unit);
   add_native "typeof" (one_value_fun typeof);
   add_native "to_string" (one_value_fun to_string);
   add_native "print" print;
@@ -348,6 +360,7 @@ let _ =
   add_native "list" (one_value_fun import_list);
   add_native "set" import_set;
   add_native "rev" (one_value_fun rev);
+  add_native "range" range;
 
   (* Dict functions *)
   add_native "dict" hash_make;
