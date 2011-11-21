@@ -63,8 +63,13 @@ module TlsLib = struct
     let records = List.map RecordModule.pop_object (eval_as_list record_list) in
     V_List (_deep_parse "(inline records)"records false)
 
-  let functions = ["parse", NativeFun parse;
-		   "deep_parse", NativeFun (one_value_fun deep_parse)]
+  let functions = [
+    "parse", NativeFun parse;
+    "deep_parse", NativeFun (one_value_fun deep_parse);
+    "mk_protocol_version", NativeFun (one_value_fun make_protocol_version);
+    "mk_cipher_suite", NativeFun (one_value_fun make_cipher_suite);
+    "mk_compression_method", NativeFun (one_value_fun make_compression_method)
+  ]
 end
 
 
