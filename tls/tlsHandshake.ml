@@ -162,7 +162,7 @@ let string_of_server_hello sh =
       "random: " ^ (hexdump (eval_as_string (sh --> "random")));
       "session id: " ^ (hexdump (eval_as_string (sh --> "session_id")));
       "cipher suites: " ^ (hexdump_int 4 (eval_as_int (sh --> "cipher_suite")));
-      "compression methods: " ^ (hexdump_int 2 (eval_as_int (sh --> "compression_methods"))) ]
+      "compression methods: " ^ (hexdump_int 2 (eval_as_int (sh --> "compression_method"))) ]
     (* TODO: Extensions ... *)
   in PrinterLib._string_of_strlist (Some "Server Hello") indent_only content
 
