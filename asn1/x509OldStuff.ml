@@ -11,33 +11,6 @@ type public_key =
 
 
 (*
-(* RSA *)
-
-let sha1WithRSAEncryption_oid = [42;840;113549;1;1;5]
-let rsaEncryption_oid = [42;840;113549;1;1;1]
-
-let parse_rsa_public_key _ s =
-  let rsa_from_list = function
-    | [n; e] -> PK_RSA {rsa_n = n; rsa_e = e}
-    | _ -> PK_Unparsed s
-  in
-  let rsa_constraint = seqOf_cons rsa_from_list "RSA Public Key" int_cons (Exactly (2, s_specfatallyviolated)) in
-  let pstate = pstate_of_string "RSA Public Key" s in
-  constrained_parse_def rsa_constraint s_specfatallyviolated (PK_Unparsed s) pstate
-
-let parse_rsa_sig s = Sig_RSA s
-
-let add_rsa_stuff () =
-  Hashtbl.add name_directory sha1WithRSAEncryption_oid "sha1WithRSAEncryption";
-  Hashtbl.add object_directory (SigAlgo, sha1WithRSAEncryption_oid) (null_obj_cons, s_benign);
-
-  Hashtbl.add name_directory rsaEncryption_oid "rsaEncryption";
-  Hashtbl.add object_directory (PubKeyAlgo, rsaEncryption_oid) (null_obj_cons, s_benign);
-
-  Hashtbl.add pubkey_directory rsaEncryption_oid parse_rsa_public_key;
-  Hashtbl.add signature_directory sha1WithRSAEncryption_oid parse_rsa_sig;;
-
-
 (* DSA *)
 
 let dSA_oid = [42;840;10040;4;1]

@@ -13,6 +13,8 @@ open X509PublicKey
 open X509Extensions
 open X509Signature
 
+open X509RSA
+
 
 (* TBS Certificate *)
 

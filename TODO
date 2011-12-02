@@ -1,3 +1,10 @@
+Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
+Rename x509Parser -> x509
+Add X509.isCA (using all extensions and version)
+Code construct_chains in caml
+Write some C wrappers (modular_expo, aes, sha256)
+Write some crypto in Caml (HMAC, CBC, RSA ops, DSA ops)
+
 Software Engineering
  - Expand binaryRecord to handle update (when using enumerated for example) and to_String.
  - Use V_Unit = None to handle optional fields.
@@ -24,7 +31,6 @@ WTF? Is extension parsing fatal?
 X509
  - Add SAN, AIA and CRLDP extensions
  - Write code to parse PK, Sig.
- - Rewrite PK/Signature as modules.
  - Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
  - Use specific warnings for each interesting X.509 warnings.
 
