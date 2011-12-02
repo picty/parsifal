@@ -56,14 +56,30 @@ let write_record o record =
   let l = String.length s in
   really_write o s 0 l
 
-let print_record record =
-  print_endline (String.concat "\n" (TlsRecord.RecordParser.to_string record))
+let print_record name record =
+  print_endline name;
+  print_endline (String.concat "\n" (List.map (fun s -> "  " ^ s) (TlsRecord.RecordParser.to_string record)));
+  print_newline ()
 
 let handle_records state =
-  let records = state.cur_records in
-  state.cur_records <- [];
-  List.iter print_record records;
-  records
+  let rec aux deep_parsed ready_to_go pending rest =
+    match state.clear, pending, rest with
+      | _, p, [] -> List.rev deep_parsed, List.rev ready_to_go, List.rev pending
+      | false, [], r::rem -> aux (r::deep_parsed) (r::ready_to_go) [] rem
+      | false, _, _ -> failwith "This should not happen"
+      | true, p, r::rem ->
+	try
+	  let parsed_recs = Tls.TlsLib._deep_parse_aux state.name (List.rev (r::p)) false in
+	  if r.TlsRecord.content_type == 20
+	  then state.clear <- false;
+	  aux (List.rev_append parsed_recs deep_parsed) (r::(p@ready_to_go)) [] rem
+	with _ -> aux deep_parsed ready_to_go (r::p) rest
+  in
+  let deep_parsed, ready_to_go, still_unparsed = aux [] [] [] state.cur_records in
+  List.iter (print_record state.name) deep_parsed;
+  state.cur_records <- still_unparsed;
+  ready_to_go
+
 
 let rec forward state i o =
   let new_buf = String.make 1024 ' ' in
