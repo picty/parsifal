@@ -90,6 +90,17 @@ let hexdump s =
   done;
   res
 
+(* TODO: Should this be reused for ipv6 to_string? *)
+let hexdump_with_separators separator s =
+  let len = String.length s in
+  let res = String.make (len * 3 - 1) separator in
+  for i = 0 to (len - 1) do
+    let x = int_of_char (String.get s i) in
+    res.[i * 3] <- hexa_char.[(x lsr 4) land 0xf];
+    res.[i * 3 + 1] <- hexa_char.[x land 0xf];
+  done;
+  res
+
 let hexparse s =
   let len = String.length s in
   if len mod 2 = 1 then raise FormatError else begin

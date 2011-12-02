@@ -76,6 +76,7 @@ module PrinterLib = struct
       | V_BitString (n, s) ->
 	[_single_line title ("\"[" ^ (string_of_int n) ^ "]" ^ (hexdump s) ^ "\"")]
       | V_Bigint s -> [_single_line title ("0x" ^ (hexdump s))]
+(*      | V_Bigint s -> [_single_line title ("0x" ^ (hexdump_with_separators ':' s))] *)
       | V_IPv4 s -> [_single_line title (string_of_ip4 s)]
 
       | V_List l ->
