@@ -12,6 +12,7 @@ type input = {
   drop_bytes : int -> unit;
   eos : unit -> bool;
 
+  clone : int -> input;
   mk_subinput : int -> input;
 }
 
@@ -54,12 +55,12 @@ let s_eos n offset () = !offset >= n
 
 let s_drop_bytes str offset n = offset := !offset + n
 
-let rec s_mk_subinput str old_offset local_len =
+let rec s_mk_subinput str old_offset update local_len =
   let initial_offset = match old_offset with
     | None -> 0
     | Some offset_ref ->
       let tmp = !offset_ref in
-      offset_ref := !offset_ref + local_len;
+      if (update) then offset_ref := !offset_ref + local_len;
       tmp
   in
   let offset = ref initial_offset in
@@ -69,9 +70,10 @@ let rec s_mk_subinput str old_offset local_len =
     peek_byte = s_peek_byte str offset;
     drop_bytes = s_drop_bytes str offset;
     eos = s_eos (initial_offset + local_len) offset;
-    mk_subinput = s_mk_subinput str (Some offset) }
+    clone = s_mk_subinput str (Some offset) false;
+    mk_subinput = s_mk_subinput str (Some offset) true }
 
-let mk_string_input str = s_mk_subinput str None (String.length str)
+let mk_string_input str = s_mk_subinput str None true (String.length str)
 
 
 
@@ -125,6 +127,7 @@ let mk_stream_input str =
     peek_byte = f_peek_byte str;
     drop_bytes = f_drop_bytes str;
     eos = f_eos str;
+    clone = (fun _ -> failwith "Not implemented");
     mk_subinput = f_mk_subinput str }
 
 
@@ -298,6 +301,14 @@ let pstate_of_stream n s =
   _pstate_of_stream ehf n s
 
 let pstate_of_channel n s = pstate_of_stream n (Stream.of_channel s)
+
+let clone_pstate pstate =
+  match pstate.cur_length with
+    | None -> raise RawOutOfBounds
+    | Some l ->
+      {pstate with
+	cur_offset = pstate.cur_offset;
+	cur_input = pstate.cur_input.clone l}
 
 
 let go_down pstate name l =
