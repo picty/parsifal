@@ -407,7 +407,11 @@ let _ =
 
   (* Crypto *)
   add_native "md5sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
-  add_native "sha1sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
+  add_native "sha1sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha1sum (eval_as_string x))));
+  add_native "sha224sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha224sum (eval_as_string x))));
+  add_native "sha256sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha256sum (eval_as_string x))));
+  add_native "sha384sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha384sum (eval_as_string x))));
+  add_native "sha512sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha512sum (eval_as_string x))));
   add_native "pow" (three_value_fun pow);
 
   (* Network *)

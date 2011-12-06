@@ -36,6 +36,39 @@ value sha1sum (value caml_s) {
   CAMLreturn (caml_res);
 }
 
+value sha224_256sum (value caml_s, value caml_is224) {
+  CAMLparam2 (caml_s, caml_is224);
+  CAMLlocal1 (caml_res);
+
+  int is224 = Bool_val (caml_is224);
+  caml_res = caml_alloc_string (is224 ? 28 : 32);
+  unsigned char* res = (unsigned char*) String_val (caml_res);
+
+  const unsigned char* s = (const unsigned char*) String_val (caml_s);
+  size_t n = caml_string_length(caml_s);
+
+  sha2 (s, n, res, is224);
+
+  CAMLreturn (caml_res);
+}
+
+value sha384_512sum (value caml_s, value caml_is384) {
+  CAMLparam2 (caml_s, caml_is384);
+  CAMLlocal1 (caml_res);
+
+  int is384 = Bool_val (caml_is384);
+  caml_res = caml_alloc_string (is384 ? 48 : 64);
+  unsigned char* res = (unsigned char*) String_val (caml_res);
+
+  const unsigned char* s = (const unsigned char*) String_val (caml_s);
+  size_t n = caml_string_length(caml_s);
+
+  sha4 (s, n, res, is384);
+
+  CAMLreturn (caml_res);
+}
+
+
 const char* hexachar = "0123456789abcdef";
 const char hexachar_rev[256] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

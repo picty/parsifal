@@ -2,7 +2,7 @@ Add an option to customize the integer dump -> hexdump or hexdump_with_separator
 Rename x509Parser -> x509
 Add X509.isCA (using all extensions and version)
 Code construct_chains in caml
-Write some C wrappers (modular_expo, aes, sha256)
+Write some C wrappers (aes)
 Write some crypto in Caml (HMAC, CBC, RSA ops, DSA ops)
 
 Software Engineering
