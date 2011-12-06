@@ -292,6 +292,12 @@ let concat_strings sep l =
 	      (List.map (fun x -> eval_as_string x) (eval_as_list l)))
 
 
+(* Crypto *)
+
+let pow x e n =
+  V_Bigint (Crypto.exp_mod (eval_as_string x) (eval_as_string e) (eval_as_string n))
+
+
 (* Network *)
 
 let channels_of_socket server_addr_val port_val =
@@ -402,6 +408,7 @@ let _ =
   (* Crypto *)
   add_native "md5sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
   add_native "sha1sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
+  add_native "pow" (three_value_fun pow);
 
   (* Network *)
   add_native "socket" (two_value_fun channels_of_socket);
