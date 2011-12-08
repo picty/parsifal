@@ -332,12 +332,6 @@ let wait duration_val =
   V_Unit
 
 
-let add_native name f =
-  Hashtbl.replace global_env name (V_Function (NativeFun f))
-
-let add_native_with_env name f =
-  Hashtbl.replace global_env name (V_Function (NativeFunWithEnv f))
-
 let _ =
   (* Generic functions *)
   add_native "unit" (fun _ -> V_Unit);

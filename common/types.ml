@@ -275,3 +275,24 @@ let three_value_fun_with_env f env = function
   | [e1; e2] -> V_Function (NativeFunWithEnv (one_value_fun_with_env (fun env -> f env e1 e2)))
   | [e1] -> V_Function (NativeFunWithEnv (two_value_fun_with_env (fun env -> f env e1)))
   | _ -> raise WrongNumberOfArguments
+
+let four_value_fun f = function
+  | [e1; e2; e3; e4] -> f e1 e2 e3 e4
+  | [e1; e2; e3] -> V_Function (NativeFun (one_value_fun (f e1 e2 e3)))
+  | [e1; e2] -> V_Function (NativeFun (two_value_fun (f e1 e2)))
+  | [e1] -> V_Function (NativeFun (three_value_fun (f e1)))
+  | _ -> raise WrongNumberOfArguments
+
+let five_value_fun f = function
+  | [e1; e2; e3; e4; e5] -> f e1 e2 e3 e4 e5
+  | [e1; e2; e3; e4] -> V_Function (NativeFun (one_value_fun (f e1 e2 e3 e4)))
+  | [e1; e2; e3] -> V_Function (NativeFun (two_value_fun (f e1 e2 e3)))
+  | [e1; e2] -> V_Function (NativeFun (three_value_fun (f e1 e2)))
+  | [e1] -> V_Function (NativeFun (four_value_fun (f e1)))
+  | _ -> raise WrongNumberOfArguments
+
+let add_native name f =
+  Hashtbl.replace global_env name (V_Function (NativeFun f))
+
+let add_native_with_env name f =
+  Hashtbl.replace global_env name (V_Function (NativeFunWithEnv f))
