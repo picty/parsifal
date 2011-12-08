@@ -1,8 +1,12 @@
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
 #include <caml/alloc.h>
+#include <caml/fail.h>
+
 #include "md5.h"
 #include "sha1.h"
+#include "sha2.h"
+#include "sha4.h"
 #include <gmp.h>
 
 
@@ -69,6 +73,7 @@ value sha384_512sum (value caml_s, value caml_is384) {
 }
 
 
+
 const char* hexachar = "0123456789abcdef";
 const char hexachar_rev[256] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -87,7 +92,7 @@ const char hexachar_rev[256] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-static int mk_mpz (mpz_t* res, value caml_value) {
+static int os2ip (mpz_t* res, value caml_value) {
   const char* x_str = String_val (caml_value);
   size_t x_size = caml_string_length(caml_value);
   char* x_hexa = (char*) malloc (x_size * 2 + 1);
@@ -108,40 +113,60 @@ static int mk_mpz (mpz_t* res, value caml_value) {
 }
 
 
+static int i2osp (value* res, mpz_t val, size_t len) {
+  size_t i, s_len;
+  char* s;
+  char* os_res;
+
+  *res = caml_alloc_string (len);
+  os_res = String_val (*res);
+  // TODO: Could this fail?
+
+  s = mpz_get_str (NULL, 16, val);
+  s_len = strlen (s);
+
+  for (i=0; i<(s_len/2); i++)
+    os_res[len-1-i] = (hexachar_rev[(int) s[(s_len - 1) - 2 * i - 1]] << 4) | hexachar_rev[(int) s[(s_len - 1) - 2 * i]];
+
+  if (s_len % 2 != 0)
+    os_res[len-1-(s_len/2)] = hexachar_rev[(int) s[0]];
+
+  free (s);
+
+  return 1;
+}
+
+
+
+
 value exp_mod (value caml_x, value caml_e, value caml_n) {
   CAMLparam3 (caml_x, caml_e, caml_n);
   CAMLlocal1 (caml_res);
 
   mpz_t x, e, n;
-  int res = mk_mpz (&x, caml_x) && mk_mpz (&e, caml_e) && mk_mpz (&n, caml_n);
+  size_t n_len;
+  int res;
 
-  if (res) {
-    size_t n_len = (mpz_sizeinbase (n, 16) + 1) / 2;
-    char* s;
-    char* res;
-    size_t i, s_len;
+  if (!os2ip (&x, caml_x))
+    goto error;
+  if (!os2ip (&e, caml_e))
+    goto free_x;
+  if (!os2ip (&n, caml_n))
+    goto free_e;
 
-    mpz_powm (x, x, e, n);
-    s = mpz_get_str (NULL, 16, x);
-    s_len = strlen (s);
+  n_len = (mpz_sizeinbase (n, 16) + 1) / 2;
+  mpz_powm (x, x, e, n);
+  res = i2osp (&caml_res, x, n_len);
+  mpz_clear (x); mpz_clear (e); mpz_clear (n);
+  if (!res)
+    caml_failwith ("Not enough memory");
+  else
+    CAMLreturn (caml_res);
 
-    mpz_clear (x); mpz_clear (e); mpz_clear (n);
-
-    caml_res = caml_alloc_string (n_len);
-    res = String_val (caml_res);
-    for (i=0; i<n_len; i++)
-      res[i] = 0;
-
-    for (i=0; i<(s_len/2); i++)
-      res[n_len-1-i] = (hexachar_rev[s[(s_len - 1) - 2 * i - 1]] << 4) | hexachar_rev[s[(s_len - 1) - 2 * i]];
-
-    if (s_len % 2 != 0)
-      res[n_len-1-(s_len/2)] = hexachar_rev[s[0]];
-
-    free (s);
-  } else {
-    caml_res = caml_alloc_string (0);
-  }
-
-  CAMLreturn (caml_res);
+ free_e:
+  mpz_clear (e);
+ free_x:
+  mpz_clear (x);
+ error:
+  caml_failwith ("Not enough memory");
 }
