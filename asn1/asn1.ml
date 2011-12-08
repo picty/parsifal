@@ -597,9 +597,9 @@ and string_of_object o =
 let dump_class c =
   match c with
     | C_Universal -> 0
-    | C_Private -> 0x40
-    | C_Application -> 0x80
-    | C_ContextSpecific -> 0xc0
+    | C_Application -> 0x40
+    | C_ContextSpecific -> 0x80
+    | C_Private -> 0xc0
 
 let dump_isConstructed isC =
   if isC then 0x20 else 0
@@ -635,13 +635,11 @@ let boolean_to_der b =
   if b then "\xff" else "\x00"
 
 let subid_to_charlist id =
-  let rec aux x =
-    let q = x lsr 7 in
-    let c = x land 0x7f in
-    match q with
-      | 0 -> [c]
-      | _ -> c::(aux q)
-  in aux id
+  let rec aux accu x =
+    if x = 0
+    then accu
+    else aux (((x land 0x7f) lor 0x80)::accu) (x lsr 7)
+  in aux [id land 0x7f] (id lsr 7)
 
 let oid_to_der idlist =
   let cll = List.map subid_to_charlist idlist in
