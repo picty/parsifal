@@ -1,7 +1,6 @@
 Document native functions.
 
 Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
-Add X509.isCA (using all extensions and version)
 Code construct_chains in caml
 Write some C wrappers (aes)
 Write some crypto in Caml (HMAC, CBC, DSA ops)
