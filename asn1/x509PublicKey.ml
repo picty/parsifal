@@ -13,11 +13,16 @@ open X509Misc
 (* This param is declared here, but is accessible via the x509 module *)
 let parse_public_key = ref true
 
-type public_key_info = {
+type public_key_info =
+(*  | UnparsedPublicKey of oid_object * int * string
+  | ParsedPublicKey of value*)
+ {
   pk_algo : oid_object;
   public_key : value;
-  (* string if unparsed, DSA/RSA object if parsed *)
+  (* binary_tring if unparsed, DSA/RSA object if parsed *)
+  (* if public_key is *not* a binary_string, we should not take pk_algo into account *)
 }
+
 
 let empty_public_key_info = {
   pk_algo = empty_oid_object;
@@ -26,7 +31,6 @@ let empty_public_key_info = {
 
 type pk_parse_fun = asn1_object option -> int -> string -> value
 let (pubkey_directory : (int list, pk_parse_fun) Hashtbl.t) = Hashtbl.create 10
-
 
 let extract_public_key_info = function
   | Some algo, Some (n, pk) ->
@@ -49,8 +53,16 @@ let public_key_info_constraint : public_key_info asn1_constraint =
 
 
 (* TODO: Improve this *)
-let string_of_public_key_info pki =
+let string_of_raw_public_key_info pki =
   let strs = [string_of_oid_object (Some "Algorithm") pki.pk_algo; PrinterLib._string_of_value None true pki.public_key] in
+  let c, ml = PrinterLib.flatten_strlist strs in
+  PrinterLib._string_of_strlist (Some "Public Key Info") (only_ml ml) c
+
+let string_of_public_key_info pki =
+  match pki.public_key with
+    | V_BitString (n, pk) -> string_of_raw_public_key_info pki
+    | v ->
+  let strs = [PrinterLib._string_of_value None true v] in
   let c, ml = PrinterLib.flatten_strlist strs in
   PrinterLib._string_of_strlist (Some "Public Key Info") (only_ml ml) c
 

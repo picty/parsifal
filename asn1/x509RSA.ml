@@ -16,7 +16,8 @@ let rsaEncryption_oid = [42;840;113549;1;1;1]
 let parse_rsa_public_key _ nBits s =
   let rsa_from_list = function
     | [n; e] ->
-      let res = Hashtbl.create 2 in
+      let res = Hashtbl.create 3 in
+      Hashtbl.replace res "type" (V_String "RSA");
       Hashtbl.replace res "n" (V_Bigint n);
       Hashtbl.replace res "e" (V_Bigint e);
       V_Dict res

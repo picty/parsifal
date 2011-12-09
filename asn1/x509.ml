@@ -307,7 +307,12 @@ module X509 = struct
 	| Some v -> Hashtbl.replace dict "effective_version" (V_Int v)
     end;
     Hashtbl.replace dict "get_extension" (V_Function (NativeFun (one_value_fun (get_extension cert.tbs.extensions))));
-    Hashtbl.replace dict "is_ca" (V_Function (NativeFun (zero_value_fun (fun () -> string_of_blurry (is_ca cert)))))
+    Hashtbl.replace dict "is_ca" (V_Function (NativeFun (zero_value_fun (fun () -> string_of_blurry (is_ca cert)))));
+    begin
+      match cert.tbs.pk_info.public_key with
+	| V_BitString _ -> ()
+	| v -> Hashtbl.replace dict "public_key" v
+    end
 
   let update dict = raise (NotImplemented "x509.update")
 
