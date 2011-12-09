@@ -219,7 +219,7 @@ let rec asn1parse_input depth pstate =
 let parse_and_validate_cert cons pstate =
   while not (eos pstate) do
     let o = constrained_parse cons pstate in
-    print_endline (String.concat "\n" (X509.string_of_certificate (Some "Certificate") o))
+    print_endline (String.concat "\n" (string_of_certificate (Some "Certificate") o))
   done;;
 
 
@@ -228,7 +228,7 @@ try
     match !dtype with
       | ASN1 -> List.iter parse_input inputs
       | ASN1PARSE -> List.iter (asn1parse_input 0) inputs
-      | X509 -> List.iter (parse_and_validate_cert X509.certificate_constraint) inputs
+      | X509 -> List.iter (parse_and_validate_cert certificate_constraint) inputs
   end
 with
   | OutOfBounds s ->

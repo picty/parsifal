@@ -120,7 +120,7 @@ let string_of_tbs_certificate title tbs =
 
 
 
-module TbsParser = struct
+module Tbs = struct
   type t = tbs_certificate
   let name = "tbs"
   let params = []
@@ -161,7 +161,7 @@ module TbsParser = struct
   let functions = []
 end
 
-module TbsModule = MakeParserModule (TbsParser)
+module TbsModule = MakeParserModule (Tbs)
 let _ = add_object_module ((module TbsModule : ObjectModule))
 
 
@@ -216,7 +216,7 @@ let get_extension exts ext_id =
     | _ -> raise (ContentError ("OId must be strings or int list"))
   in _get_extension exts oid
 
-module X509Parser = struct
+module X509 = struct
   type t = certificate
   let name = "x509"
   let params = [
@@ -249,5 +249,5 @@ module X509Parser = struct
   let functions = []
 end
 
-module X509Module = MakeParserModule (X509Parser)
+module X509Module = MakeParserModule (X509)
 let _ = add_object_module ((module X509Module : ObjectModule))
