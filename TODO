@@ -1,47 +1,98 @@
-Document native functions.
-
-Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
-Code construct_chains in caml
-
-Software Engineering
- - Expand binaryRecord to handle update (when using enumerated for example) and to_String.
- - Use V_Unit = None to handle optional fields.
-
-
-Chain categorization
- - Add signature
- - Add trust store
- - Avoid loops
- - What is a chain -> create a new object
-   * a list of certificates, and for each
-     - origin (cert n in chain, Mozilla store, IE store)
-     - trusted
+v0.1 (jan. 2012)
+ - FIND A NAME TO THIS PROJECT (FAceSL sucks!)
+ - X509
+   * Add SAN, AIA and CRLDP extensions
+   * Write code to parse DSA PK and Sig.
+   * Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
+ - TLS
+   * Code construct_chains in caml
+         Chain categorization
+          - Add signature
+          - Add trust store
+          - Avoid loops
+          - What is a chain -> create a new object
+            * a list of certificates, and for each
+              - origin (cert n in chain, Mozilla store, IE store)
+              - trusted
    * validity span
    * algos used
    * subject
 
-WTF? Is extension parsing fatal?
-  Answer seen: 21310000, current answer: 0:99.196.116.39
-  Parsing error (SpecFatallyViolated): Trailing bytes in a parsed objects inside {authorityKeyIdentifier[2/26], authorityKeyIdentifier[0/24]}
-  Answer seen: 21320000, current answer: 0:99.196.196.103
+   * Enrich TLS parser.
+   * fake_len -> can override computed len
+   * tls.dump -> calls record.split if needed
+   * record.split -> TODO
+   * Add parser for SSLv2.
+ - Bugfix
+   * WTF? Is extension parsing fatal?
+         Answer seen: 21310000, current answer: 0:99.196.116.39
+         Parsing error (SpecFatallyViolated): Trailing bytes in a parsed objects inside {authorityKeyIdentifier[2/26], authorityKeyIdentifier[0/24]}
+         Answer seen: 21320000, current answer: 0:99.196.196.103
+ - Crypto
+   * Add a PRNG (at least a Barak-Halevi)
+ - Misc
+   * Add encode/decode for base64 + gzip
+   * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
+ - Tools
+   * Finalize asn1parse / x509 checks
+   * Add support for CSR
+   * Create simple PKI tools to create a RSA key, sign, verify, encrypt, decrypt, handle a simple PKI (rsa tool)
+   * Passive TLS_Proxy
+ - Software engineering
+   * Expand binaryRecord to handle update (when using enumerated for example) and to_String.
+   * Use V_Unit = None to handle optional fields.
 
 
-X509
- - Add SAN, AIA and CRLDP extensions
- - Write code to parse PK, Sig.
- - Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
- - Use specific warnings for each interesting X.509 warnings.
+v0.2 (apr. 2012)
+ - X509
+   * Clean up code about X509_Algorithm, ATV, AccessDescription, QualifierInfo
+   * Add a catalog of all warnings (id, severity, msg, where (possibly recursive where)) / use specific warnings for each interesting X.509 warnings.
+   * Add methods in OCSP/CRL extensions to extract data
+   * Clean up the toString architecture which still stinks
+ - Language
+   * Document native functions (help field?)
+ - Tools
+   * Begin a GUI for PKI tools
+   * Add a general config directory, modifiable by cmdline, by general config file and by local config file (which could contain a directory of OIds)
+   * s_client
+   * Active TLS_Proxy
+ - getopt handling to replace Arg
+   * short options
+   * long options
+   * --help handling
+ - MRT?
 
-Crypto
- - Clean up crypto code from polar -> only keep the code really used.
- - Rewrite CBC in Caml (we need to be able to keep a C object with the current context).
 
-TLS
- - Enrich TLS parser.
- - fake_len -> can override computed len
- - tls.dump -> calls record.split if needed
- - record.split -> TODO
- - Add parser for SSLv2.
+v0.3 (jul. 2012)
+ - Software Engineering
+   * Document NewParsingEngine (the invariants in string_input)
+   * Write some tests
+ - X509
+   * add popular extensions (1.2.840.113549.1.9.15 : sMIMECapabilities; 1.3.6.1.5.5.7.1.12 : logoType)
+   * Add a test to really check if the idempotence was broken!
+ - Tools
+   * s_server
+ - Crypto
+   * Clean up crypto code from polar -> only keep the code really used.
+   * Rewrite CBC in Caml (we need to be able to keep a C object with the current context).
+
+
+v1.0 (oct 2012)
+ - Software Engineering
+   *unit tests for everything
+ - Tools which should be usable
+   * asn1parse
+   * x509
+   * rsa
+   * pki
+   * tlsparse
+   * s_client
+   * s_server
+   * tls_proxy
+
+
+
+Long Term... it could also be moved upstairs...
 
 Modules
  - MapModule: Add a _dict or _params magic objects ? Remove all _ ?
@@ -53,9 +104,7 @@ Language
  - Write a simple compare function instead of all the equal/lt functions
  - Add a library to filter and extract certs, either in native or interpreted form
  - Add a way to import new native functions (Dynlink for native, equivalent to load for scripts)
- - Add encode/decode for base64 + gzip
  - Custom outputs (global _output, _error) for print/errors function
- - Add crypto through external bindings
  - Add for loops, break n, continue n ?
  - concurrentmap (Nproc, OutputTemplate, fun (verif pas d'effet de bord hors la fonction))
 
@@ -66,9 +115,3 @@ Lexer / Parser
 
 typing
  - Add type constraints in the language, to help understanding errors.
-
-asn1
- - Write in FAcesl a asn1parse like
-
-NewParsingEngine
- - Document the invariants in string_input...
