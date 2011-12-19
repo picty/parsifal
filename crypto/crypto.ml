@@ -14,10 +14,46 @@ exception IncorrectPadding
 exception WrongParameters of string
 
 
+(* Hash functions and HMAC *)
+
 let sha224sum s = sha224_256sum s true
 let sha256sum s = sha224_256sum s false
 let sha384sum s = sha384_512sum s true
 let sha512sum s = sha384_512sum s false
+
+type hash_function = {
+  hash_name : string;
+  hash_block_size : int;
+  hash_len : int;
+  hash_fun : string -> string;
+}
+
+let mk_hf n blen f = {hash_name = n; hash_block_size = blen; hash_len = String.length (f ""); hash_fun = f}
+
+let hmac hash_fun k m =
+  let ipad = String.make hash_fun.hash_block_size '\x36' in
+  let opad = String.make hash_fun.hash_block_size '\x5c' in
+  let key_length = String.length k in
+  let real_key =
+    if key_length > hash_fun.hash_block_size
+    then hash_fun.hash_fun k
+    else k ^ (String.make (hash_fun.hash_block_size - key_length) '\x00')
+  in
+  for i = 0 to (hash_fun.hash_block_size - 1) do
+    ipad.[i] <- char_of_int ((int_of_char ipad.[i]) lxor (int_of_char real_key.[i]));
+    opad.[i] <- char_of_int ((int_of_char opad.[i]) lxor (int_of_char real_key.[i]));
+  done;
+  hash_fun.hash_fun (opad ^ (hash_fun.hash_fun (ipad ^ m)))
+
+
+let sha1 = mk_hf "sha1" 64 sha1sum
+let md5 = mk_hf "md5" 64 md5sum
+let sha256 = mk_hf "sha256" 64 sha256sum
+let sha224 = mk_hf "sha224" 64 sha224sum
+let sha512 = mk_hf "sha512" 128 sha512sum
+let sha384 = mk_hf "sha384" 128 sha384sum
+
+
 (* AES *)
 
 let aes_cbc_raw do_encrypt key iv input =

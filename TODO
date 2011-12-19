@@ -2,7 +2,6 @@ Document native functions.
 
 Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
 Code construct_chains in caml
-Write some crypto in Caml (HMAC, CBC, DSA ops)
 
 Software Engineering
  - Expand binaryRecord to handle update (when using enumerated for example) and to_String.

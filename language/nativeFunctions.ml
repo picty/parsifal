@@ -339,6 +339,13 @@ let lift_three_to_one_string f =
   in
   three_value_fun aux
 
+let lift_two_to_one_string f =
+  let aux a b =
+    V_BinaryString (f (eval_as_string a) (eval_as_string b))
+  in
+  two_value_fun aux
+
+
 let _ =
   (* Generic functions *)
   add_native "unit" (fun _ -> V_Unit);
@@ -407,12 +414,18 @@ let _ =
   add_native "getenv" (one_value_fun getenv);
 
   (* Crypto *)
+  (* TODO: factorize this with a register hash fun -> OId, <hash>sum, hmac_<hash>, RSA_signature_with? *)
   add_native "md5sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
   add_native "sha1sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha1sum (eval_as_string x))));
   add_native "sha224sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha224sum (eval_as_string x))));
   add_native "sha256sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha256sum (eval_as_string x))));
   add_native "sha384sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha384sum (eval_as_string x))));
   add_native "sha512sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha512sum (eval_as_string x))));
+
+  add_native "hmac_md5" (lift_two_to_one_string (Crypto.hmac Crypto.md5));
+  add_native "hmac_sha1" (lift_two_to_one_string (Crypto.hmac Crypto.sha1));
+  add_native "hmac_sha256" (lift_two_to_one_string (Crypto.hmac Crypto.sha256));
+
   add_native "pow" (three_value_fun pow);
 
   add_native "aes_cbc_raw_encrypt" (lift_three_to_one_string Crypto.aes_cbc_raw_encrypt);
