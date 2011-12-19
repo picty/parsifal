@@ -335,7 +335,7 @@ int sha4_file( const char *path, unsigned char output[64], int is384 )
     unsigned char buf[1024];
 
     if( ( f = fopen( path, "rb" ) ) == NULL )
-        return( 1 );
+        return( POLARSSL_ERR_SHA4_FILE_IO_ERROR );
 
     sha4_starts( &ctx, is384 );
 
@@ -349,7 +349,7 @@ int sha4_file( const char *path, unsigned char output[64], int is384 )
     if( ferror( f ) != 0 )
     {
         fclose( f );
-        return( 2 );
+        return( POLARSSL_ERR_SHA4_FILE_IO_ERROR );
     }
 
     fclose( f );

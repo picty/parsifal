@@ -16,6 +16,7 @@ value md5sum (value caml_s) {
   CAMLlocal1 (caml_res);
 
   caml_res = caml_alloc_string (16);
+  // TODO: Check the allocation succeeded ?
   unsigned char* res = (unsigned char*) String_val (caml_res);
 
   const unsigned char* s = (const unsigned char*) String_val (caml_s);
@@ -31,6 +32,7 @@ value sha1sum (value caml_s) {
   CAMLlocal1 (caml_res);
 
   caml_res = caml_alloc_string (20);
+  // TODO: Check the allocation succeeded ?
   unsigned char* res = (unsigned char*) String_val (caml_res);
 
   const unsigned char* s = (const unsigned char*) String_val (caml_s);
@@ -47,6 +49,7 @@ value sha224_256sum (value caml_s, value caml_is224) {
 
   int is224 = Bool_val (caml_is224);
   caml_res = caml_alloc_string (is224 ? 28 : 32);
+  // TODO: Check the allocation succeeded ?
   unsigned char* res = (unsigned char*) String_val (caml_res);
 
   const unsigned char* s = (const unsigned char*) String_val (caml_s);
@@ -63,6 +66,7 @@ value sha384_512sum (value caml_s, value caml_is384) {
 
   int is384 = Bool_val (caml_is384);
   caml_res = caml_alloc_string (is384 ? 48 : 64);
+  // TODO: Check the allocation succeeded ?
   unsigned char* res = (unsigned char*) String_val (caml_res);
 
   const unsigned char* s = (const unsigned char*) String_val (caml_s);
