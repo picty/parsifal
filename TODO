@@ -2,7 +2,6 @@ Document native functions.
 
 Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
 Code construct_chains in caml
-Write some C wrappers (aes)
 Write some crypto in Caml (HMAC, CBC, DSA ops)
 
 Software Engineering
@@ -33,6 +32,10 @@ X509
  - Write code to parse PK, Sig.
  - Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
  - Use specific warnings for each interesting X.509 warnings.
+
+Crypto
+ - Clean up crypto code from polar -> only keep the code really used.
+ - Rewrite CBC in Caml (we need to be able to keep a C object with the current context).
 
 TLS
  - Enrich TLS parser.

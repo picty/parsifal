@@ -332,6 +332,13 @@ let wait duration_val =
   V_Unit
 
 
+
+let lift_three_to_one_string f =
+  let aux a b c =
+    V_BinaryString (f (eval_as_string a) (eval_as_string b) (eval_as_string c))
+  in
+  three_value_fun aux
+
 let _ =
   (* Generic functions *)
   add_native "unit" (fun _ -> V_Unit);
@@ -407,6 +414,11 @@ let _ =
   add_native "sha384sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha384sum (eval_as_string x))));
   add_native "sha512sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha512sum (eval_as_string x))));
   add_native "pow" (three_value_fun pow);
+
+  add_native "aes_cbc_raw_encrypt" (lift_three_to_one_string Crypto.aes_cbc_raw_encrypt);
+  add_native "aes_cbc_raw_decrypt" (lift_three_to_one_string Crypto.aes_cbc_raw_decrypt);
+  add_native "aes_cbc_encrypt" (lift_three_to_one_string Crypto.aes_cbc_encrypt);
+  add_native "aes_cbc_decrypt" (lift_three_to_one_string Crypto.aes_cbc_decrypt);
 
   (* Network *)
   add_native "socket" (two_value_fun channels_of_socket);

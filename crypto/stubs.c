@@ -7,6 +7,7 @@
 #include "sha1.h"
 #include "sha2.h"
 #include "sha4.h"
+#include "aes.h"
 #include <gmp.h>
 
 
@@ -72,6 +73,37 @@ value sha384_512sum (value caml_s, value caml_is384) {
   CAMLreturn (caml_res);
 }
 
+
+value aes_cbc (value caml_encrypt, value caml_key, value caml_iv, value caml_input) {
+  CAMLparam4 (caml_encrypt, caml_key, caml_iv, caml_input);
+  CAMLlocal1 (caml_output);
+
+  int do_encrypt = Bool_val (caml_encrypt);
+  int res;
+  size_t key_length, input_length;
+  unsigned char* key;
+  aes_context ctx;
+
+  key_length = caml_string_length(caml_key);
+  key = (unsigned char*) String_val (caml_key);
+  if (do_encrypt)
+    res = aes_setkey_enc (&ctx, key, key_length * 8);
+  else
+    res = aes_setkey_dec (&ctx, key, key_length * 8);
+  if (res != 0) caml_failwith ("context");
+
+  input_length = caml_string_length(caml_input);
+  caml_output = caml_alloc_string (input_length);
+  // TODO: Check wether the allocation succeeded? Does it raise an exception?
+
+  if (aes_crypt_cbc (&ctx, do_encrypt ? AES_ENCRYPT : AES_DECRYPT, input_length,
+		     (unsigned char*) String_val (caml_iv),
+		     (unsigned char*) String_val (caml_input),
+		     (unsigned char*) String_val (caml_output)) != 0)
+    caml_failwith ("crypt");
+
+  CAMLreturn (caml_output);
+}
 
 
 const char* hexachar = "0123456789abcdef";

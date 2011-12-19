@@ -1,6 +1,7 @@
 exception NotFound of string
 exception IntegerOverflow
 exception FormatError
+exception UnexpectedError of string
 
 
 type ('a, 'b) alternative =
