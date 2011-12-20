@@ -257,12 +257,21 @@ let outflush out_v =
 
 let encode format input = match (eval_as_string format) with
   | "hex" -> V_String (hexdump (eval_as_string input))
+  | "base64" -> V_String (Base64.to_base64 None (eval_as_string input))
+  | "raw_base64" -> V_String (Base64.to_raw_base64 (eval_as_string input))
   | _ -> raise (ContentError ("Unknown format"))
 
 let decode format input = match (eval_as_string format) with
   | "hex" -> V_BinaryString (hexparse (eval_as_string input))
+  | "base64" -> V_BinaryString (Base64.from_base64 None (eval_as_string input))
+  | "raw_base64" -> V_BinaryString (Base64.from_raw_base64 (eval_as_string input))
   | _ -> raise (ContentError ("Unknown format"))
 
+let base64_encode title s =
+  V_String (Base64.to_base64 (Some (eval_as_string title)) (eval_as_string s))
+
+let base64_decode title s =
+  V_BinaryString (Base64.from_base64 (Some (eval_as_string title)) (eval_as_string s))
 
 
 (* Dynamic loading *)
@@ -404,6 +413,8 @@ let _ =
 
   add_native "encode" (two_value_fun encode);
   add_native "decode" (two_value_fun decode);
+  add_native "base64_encode" (two_value_fun base64_encode);
+  add_native "base64_decode" (two_value_fun base64_decode);
   add_native "stream" (two_value_fun stream_of_string);
   add_native "concat" (two_value_fun concat_strings);
 

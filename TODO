@@ -31,7 +31,7 @@ v0.1 (jan. 2012)
  - Crypto
    * Add a PRNG (at least a Barak-Halevi)
  - Misc
-   * Add encode/decode for base64 + gzip
+   * Add encode/decode for gzip
    * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
  - Tools
    * Finalize asn1parse / x509 checks

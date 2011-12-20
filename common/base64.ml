@@ -3,7 +3,7 @@ let reverse_base64_chars =
   [|-1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
     -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
     -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; 62; -1; -1; -1; 63;
-    52; 53; 54; 55; 56; 57; 58; 59; 60; 61; -1; -1; -1; -1; -1; -1;
+    52; 53; 54; 55; 56; 57; 58; 59; 60; 61; -1; -1; -1; -2; -1; -1;
     -1; 00; 01; 02; 03; 04; 05; 06; 07; 08; 09; 10; 11; 12; 13; 14;
     15; 16; 17; 18; 19; 20; 21; 22; 23; 24; 25; -1; -1; -1; -1; -1;
     -1; 26; 27; 28; 29; 30; 31; 32; 33; 34; 35; 36; 37; 38; 39; 40;
@@ -17,7 +17,7 @@ let reverse_base64_chars =
     -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
     -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1|]
 
-exception InvalidBase64String
+exception InvalidBase64String of string
 
 let to_raw_base64 s =
   let n = String.length s in
@@ -55,7 +55,7 @@ let to_raw_base64 s =
 
 let from_raw_base64 s =
   let n = String.length s in
-  if n mod 4 <> 0 then raise InvalidBase64String;
+  if n mod 4 <> 0 then raise (InvalidBase64String "Wrong length");
   let n_groups = n/4 in
   let to_drop, entire_groups =
     if s.[n-1] = '=' then begin
@@ -92,4 +92,69 @@ let from_raw_base64 s =
   res;;
 
 
-from_raw_base64 (to_raw_base64 "tititoto");;
+let to_base64 title s =
+  let dashes = "-----" in
+  let mk_boundary header =
+    match title with
+      | None -> ""
+      | Some title ->
+	if header
+	then dashes ^ "BEGIN " ^ title ^ dashes ^ "\n"
+	else "\n" ^ dashes ^ "END " ^ title ^ dashes
+  in
+  (mk_boundary true) ^
+    (String.concat "\n" (Common.string_cut_at 64 (to_raw_base64 s))) ^
+    (mk_boundary false)
+
+
+let from_base64 expected_title s =
+
+  let decapsulate is_begin l =
+    let l_len = String.length l in
+    let start_str = if is_begin then "-----BEGIN " else "-----END " in
+    let start_len = String.length start_str in
+    if (String.sub l 0 start_len) = start_str && (String.sub l (l_len - 5) 5) = "-----"
+    then Some (String.sub l start_len (l_len - 5 - start_len))
+    else None
+  in
+
+  let title, content = match Common.string_split '\n' s with
+    | first::rest -> begin
+      match (List.rev rest) with
+	| last::rev_content -> begin
+	  match decapsulate true first, decapsulate false last with
+	    | Some t1, Some t2 when t1 = t2 -> Some t1, (String.concat "" (List.rev rev_content))
+	    | None, None -> None, s
+	    | _ -> raise (InvalidBase64String "Wrong title header or tailer")
+	end
+	| _ -> None, s
+    end
+    | _ -> None, s
+  in
+
+  begin
+    match expected_title, title with
+      | None, _ -> ()
+      | Some t1, None -> raise (InvalidBase64String (t1 ^ " expected"))
+      | Some t1, Some t2 when t1 = t2 -> ()
+      | Some t1, Some t2 -> raise (InvalidBase64String (t1 ^ " expected, " ^ t2 ^ " found"))
+  end;
+  
+  let n = String.length content in
+  let tmp = String.make n '\x00' in
+
+  let rec keep_only_b64_chars src_i dst_i =
+    if src_i >= n then dst_i
+    else begin
+      let c = content.[src_i] in
+      if reverse_base64_chars.(int_of_char c) <> -1
+      then begin
+	tmp.[dst_i] <- c;
+	keep_only_b64_chars (src_i + 1) (dst_i + 1)
+      end else 
+	keep_only_b64_chars (src_i + 1) (dst_i)
+    end
+  in
+
+  let real_n = keep_only_b64_chars 0 0 in
+  from_raw_base64 (String.sub tmp 0 real_n)

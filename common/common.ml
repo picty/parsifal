@@ -183,6 +183,18 @@ let string_split c s =
       if offset < len then [String.sub s offset (len - offset)] else []
   in aux 0
 
+let string_cut_at len s =
+  let n = String.length s in
+  let rec aux index =
+    if index >= n
+    then []
+    else begin
+      if n - index >= len
+      then (String.sub s index len)::(aux (index + len))
+      else [String.sub s index (n - index)]
+    end
+  in aux 0
+
 let ip4_of_string s =
   let res = String.make 4 ' ' in
   let rec aux = function
