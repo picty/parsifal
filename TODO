@@ -100,7 +100,6 @@ Modules
  - Problem with @enriched... it does not work if a sub-dictionary is modified...
 
 Language
- - Add a read_all (stream -> string) with an argument (max)
  - Write a simple compare function instead of all the equal/lt functions
  - Add a library to filter and extract certs, either in native or interpreted form
  - Add a way to import new native functions (Dynlink for native, equivalent to load for scripts)

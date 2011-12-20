@@ -255,6 +255,24 @@ let outflush out_v =
   flush out_channel;
   V_Unit
 
+let read_all i =
+  match eval_as_stream i with
+    | _, _, Some descr ->
+      let res = ref "" in
+      let buf = String.make 4096 '\x00' in
+      let in_ch = Unix.in_channel_of_descr descr in
+      let rec read_bytes () =
+	let n_bytes = input in_ch buf 0 4096 in
+	if n_bytes = 0
+	then !res
+	else begin
+	  res := !res ^ (String.sub buf 0 n_bytes);
+	  read_bytes ()
+	end
+      in V_BinaryString (read_bytes())
+    | _ -> raise (NotImplemented "read_all on a generic stream")
+
+
 let encode format input = match (eval_as_string format) with
   | "hex" -> V_String (hexdump (eval_as_string input))
   | "base64" -> V_String (Base64.to_base64 None (eval_as_string input))
@@ -410,6 +428,7 @@ let _ =
   Hashtbl.replace global_env "stderr" (V_OutChannel ("(stderr)", stderr));
   add_native "output" (two_value_fun output);
   add_native "flush" (one_value_fun outflush);
+  add_native "read_all" (one_value_fun read_all);
 
   add_native "encode" (two_value_fun encode);
   add_native "decode" (two_value_fun decode);
