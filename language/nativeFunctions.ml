@@ -11,6 +11,13 @@ let typeof v = V_String (string_of_type v)
 
 let to_string input = V_String (PrinterLib.string_of_value input)
 
+let _str input = V_String (eval_as_string input)
+let _bigint = function
+  | V_Int _ -> raise (NotImplemented "int -> big_int through _bigint")
+  | s -> V_Bigint (eval_as_string s)
+let _binstr input = V_BinaryString (eval_as_string input)
+
+
 let print args =
   print_string ((String.concat !PrinterLib.separator (List.map (PrinterLib.string_of_value) args)) ^ !PrinterLib.endline);
   V_Unit
@@ -378,6 +385,9 @@ let _ =
   add_native "unit" (fun _ -> V_Unit);
   add_native "typeof" (one_value_fun typeof);
   add_native "to_string" (one_value_fun to_string);
+  add_native "_str" (one_value_fun _str);
+  add_native "_bigint" (one_value_fun _bigint);
+  add_native "_binstr" (one_value_fun _binstr);
   add_native "print" print;
   add_native "length" (one_value_fun length);
   add_native_with_env "eval" (one_string_fun_with_env interpret_string);
