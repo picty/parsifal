@@ -11,7 +11,6 @@ external exp_mod : string -> string -> string -> string = "exp_mod"
 
 (* Exception for the crypto code *)
 exception IncorrectPadding
-exception WrongParameters of string
 
 
 (* Hash functions and HMAC *)
@@ -60,12 +59,12 @@ let aes_cbc_raw do_encrypt key iv input =
   begin
     match String.length key with
       | 16 | 24 | 32 -> ()
-      | _ -> raise (WrongParameters "key length should be 128, 192 or 256 bits")
+      | _ -> raise (Common.WrongParameter "key length should be 128, 192 or 256 bits")
   end;
   if String.length iv <> 16
-  then raise (WrongParameters "IV should be exactly 16 byte long");
+  then raise (Common.WrongParameter "IV should be exactly 16 byte long");
   if (String.length input) mod 16 <> 0
-  then raise (WrongParameters "aes_cbc_raw expects already padded inputs");
+  then raise (Common.WrongParameter "aes_cbc_raw expects already padded inputs");
   try
     aes_cbc do_encrypt key iv input
   with

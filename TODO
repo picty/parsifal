@@ -28,8 +28,6 @@ v0.1 (jan. 2012)
          Answer seen: 21310000, current answer: 0:99.196.116.39
          Parsing error (SpecFatallyViolated): Trailing bytes in a parsed objects inside {authorityKeyIdentifier[2/26], authorityKeyIdentifier[0/24]}
          Answer seen: 21320000, current answer: 0:99.196.196.103
- - Crypto
-   * Add a PRNG (at least a Barak-Halevi)
  - Misc
    * Add encode/decode for gzip
    * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like

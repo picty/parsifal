@@ -62,7 +62,7 @@ let format_encryption_block block_type padding_len d =
   let padding = match block_type with
     | 0 -> String.make padding_len '\x00'
     | 1 -> String.make padding_len '\xff'
-    | 2 -> Random.random_string padding_len
+    | 2 -> Random.random_string Random.RandomLib.state padding_len
     | _ -> raise InvalidBlockType
   in
   let tmp1 = String.make 1 '\x00' in

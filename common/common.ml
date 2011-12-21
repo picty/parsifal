@@ -2,6 +2,7 @@ exception NotFound of string
 exception IntegerOverflow
 exception FormatError
 exception UnexpectedError of string
+exception WrongParameter of string
 
 
 type ('a, 'b) alternative =
