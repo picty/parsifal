@@ -4,6 +4,10 @@ v0.1 (jan. 2012)
    * Add SAN, AIA and CRLDP extensions
    * Write code to parse DSA PK and Sig.
    * Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
+   * Add a way to create a certificate object
+ - Crypto
+   * Add a is_prime as a C function (Rabbin Miller + PGCD with little p_i products)
+   * Add a gen_rsa_key in Caml
  - TLS
    * Code construct_chains in caml
          Chain categorization
@@ -32,7 +36,10 @@ v0.1 (jan. 2012)
    * Add encode/decode for gzip
    * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
  - Tools
-   * Finalize asn1parse / x509 checks
+   * x509check
+   * chaincheck
+   * servercheck (cert + ciphersuites?)
+   * Finalize asn1parse / x509 programs with more checks
    * Add support for CSR
    * Create simple PKI tools to create a RSA key, sign, verify, encrypt, decrypt, handle a simple PKI (rsa tool)
    * Passive TLS_Proxy
@@ -58,7 +65,7 @@ v0.2 (apr. 2012)
    * short options
    * long options
    * --help handling
- - MRT?
+ - MRT (file samples at http://data.ris.ripe.net/rrc00/, RFC 6397)?
 
 
 v0.3 (jul. 2012)
@@ -88,6 +95,10 @@ v1.0 (oct 2012)
    * s_server
    * tls_proxy
 
+
+Checks on certs / chains
+ - if S.AKI is absent but I.SKI is present
+ - if S.AKI is present but I.AKI is not
 
 
 Long Term... it could also be moved upstairs...
