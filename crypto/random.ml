@@ -2,6 +2,12 @@ open Common
 open Types
 open Modules
 
+(*
+  In the interactive mode, we can seed the random engine with
+  random.seed (read_some (open ("/dev/urandom"), 64))
+*)
+
+
 exception InvalidRandomState
 
 let refresh_bh h s x =
