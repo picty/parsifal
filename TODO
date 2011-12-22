@@ -1,5 +1,7 @@
 v0.1 (jan. 2012)
  - FIND A NAME TO THIS PROJECT (FAceSL sucks!)
+ - Have a Makefile-based build process!
+   * ocamldep -I crypto -I asn1 -I common -I formats -I language -I tls -I tools [^_]*/*ml
  - X509
    * Add SAN, AIA and CRLDP extensions
    * Write code to parse DSA PK and Sig.
