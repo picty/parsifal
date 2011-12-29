@@ -1,4 +1,8 @@
 v0.1 (jan. 2012)
+ - Crypto
+   * Add a is_prime as a C function (Rabbin Miller + PGCD with little p_i products)
+   * Add a gen_rsa_key in Caml
+
  - FIND A NAME TO THIS PROJECT (FAceSL sucks!)
  - Have a Makefile-based build process!
    * ocamldep -I crypto -I asn1 -I common -I formats -I language -I tls -I tools [^_]*/*ml
@@ -7,9 +11,6 @@ v0.1 (jan. 2012)
    * Write code to parse DSA PK and Sig.
    * Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
    * Add a way to create a certificate object
- - Crypto
-   * Add a is_prime as a C function (Rabbin Miller + PGCD with little p_i products)
-   * Add a gen_rsa_key in Caml
  - TLS
    * Code construct_chains in caml
          Chain categorization
@@ -20,20 +21,15 @@ v0.1 (jan. 2012)
             * a list of certificates, and for each
               - origin (cert n in chain, Mozilla store, IE store)
               - trusted
-   * validity span
-   * algos used
-   * subject
-
+          - validity span
+          - algos used
+          - subject
+   * Code to check chains against certificate stores
    * Enrich TLS parser.
    * fake_len -> can override computed len
    * tls.dump -> calls record.split if needed
    * record.split -> TODO
    * Add parser for SSLv2.
- - Bugfix
-   * WTF? Is extension parsing fatal?
-         Answer seen: 21310000, current answer: 0:99.196.116.39
-         Parsing error (SpecFatallyViolated): Trailing bytes in a parsed objects inside {authorityKeyIdentifier[2/26], authorityKeyIdentifier[0/24]}
-         Answer seen: 21320000, current answer: 0:99.196.196.103
  - Misc
    * Add encode/decode for gzip
    * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
@@ -56,18 +52,26 @@ v0.2 (apr. 2012)
    * Add a catalog of all warnings (id, severity, msg, where (possibly recursive where)) / use specific warnings for each interesting X.509 warnings.
    * Add methods in OCSP/CRL extensions to extract data
    * Clean up the toString architecture which still stinks
+   * Add functions to be able to change a cert and recompute the signature easily
  - Language
    * Document native functions (help field?)
+   * Add new primitive types (IPv4, IPv6, int32, int64, etc.)
  - Tools
    * Begin a GUI for PKI tools
    * Add a general config directory, modifiable by cmdline, by general config file and by local config file (which could contain a directory of OIds)
    * s_client
    * Active TLS_Proxy
+   * Ajouter liens dgst <- sha1sum
+   * dgst : options (-quiet, -hex, -check, -file + args / ou stdin)
+   * Gestion du temps passé (man 2 times) et ajout de barres de progression
  - getopt handling to replace Arg
    * short options
    * long options
    * --help handling
  - MRT (file samples at http://data.ris.ripe.net/rrc00/, RFC 6397)?
+ - Write some tests to check in browsers
+   * certificates with extensions containing images
+   * certificates signing each other (A <-> B)
 
 
 v0.3 (jul. 2012)
@@ -86,7 +90,8 @@ v0.3 (jul. 2012)
 
 v1.0 (oct 2012)
  - Software Engineering
-   *unit tests for everything
+   * Document everything (ocamldoc or doxygen)
+   * unit tests for everything
  - Tools which should be usable
    * asn1parse
    * x509
@@ -104,6 +109,11 @@ Checks on certs / chains
 
 
 Long Term... it could also be moved upstairs...
+
+- Encoding
+  * 2022 -> Simple ASCII (NumericString, PrintableString, VisibleString, IA5String)
+  * 2022 (T61String, VideotexString, GraphicString, GeneralString)
+  * 10646 / Unicode (UniversalString, BMPString, UTF8String)
 
 Modules
  - MapModule: Add a _dict or _params magic objects ? Remove all _ ?
