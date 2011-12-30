@@ -20,7 +20,6 @@ module PrinterLib = struct
 
   let raw_display = ref false   (* Display objects as dictionnaries *)
   let indent = ref "  "         (* If we are multiline, here is the indent for each level *)    
-  let multiline_dict = ref true (* Force multiline dictionnaries *)
   let separator = ref ", "      (* If not multiline, here is the separator *)
   let endline = ref "\n"
   let resolve_names = ref true
@@ -89,8 +88,8 @@ module PrinterLib = struct
 	  then (_string_of_value (Some k) true v)::accu
 	  else accu
 	in
-	let content, multiline = flatten_strlist (Hashtbl.fold hash_aux d []) in
-	_string_of_strlist title (hash_options !separator (multiline || (!multiline_dict && content <> []))) content
+	let content, _ = flatten_strlist (Hashtbl.fold hash_aux d []) in
+	_string_of_strlist title (hash_options !separator (content <> [])) content
 
       | V_Object (n, obj_ref, d) ->
 	let module M = (val (hash_find object_modules n) : ObjectModule) in
