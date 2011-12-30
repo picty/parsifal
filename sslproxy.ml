@@ -57,9 +57,7 @@ let write_record o record =
   really_write o s 0 l
 
 let print_record name record =
-  print_endline name;
-  print_endline (String.concat "\n" (List.map (fun s -> "  " ^ s) (TlsRecord.RecordParser.to_string record)));
-  print_newline ()
+  Common.print (name::(List.map (fun s -> "  " ^ s) (TlsRecord.RecordParser.to_string record)))
 
 let handle_records state =
   let rec aux deep_parsed ready_to_go pending rest =

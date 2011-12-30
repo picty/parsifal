@@ -275,3 +275,11 @@ let hash_find ht name =
   with Not_found -> raise (NotFound name)
 
 let (-->) = hash_find
+
+
+
+(* trivial print/cat functions *)
+
+let endline = ref "\n"
+let print strs = print_string (String.concat !endline strs); print_string !endline
+let cat strs = String.concat !endline strs

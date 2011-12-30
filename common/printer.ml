@@ -21,14 +21,13 @@ module PrinterLib = struct
   let raw_display = ref false   (* Display objects as dictionnaries *)
   let indent = ref "  "         (* If we are multiline, here is the indent for each level *)    
   let separator = ref ", "      (* If not multiline, here is the separator *)
-  let endline = ref "\n"
   let resolve_names = ref true
 
   let params = [
     param_from_bool_ref "raw_display" raw_display;
     param_from_string_ref "indent" indent;
     param_from_string_ref "separator" separator;
-    param_from_string_ref "endline" endline;
+    param_from_string_ref "endline" Common.endline;
     param_from_bool_ref "resolve_names" resolve_names
   ]
 
@@ -106,7 +105,7 @@ module PrinterLib = struct
       | (V_Unit | V_Function _ | V_Stream _ | V_OutChannel _
 	    | V_Module _) as v -> [_single_line title ("<" ^ (string_of_type v) ^ ">")]
 
-  let string_of_value v = String.concat "\n" (_string_of_value None false v)
+  let string_of_value v = String.concat !endline (_string_of_value None false v)
 
 
   let functions = []
@@ -114,3 +113,4 @@ end
 
 module PrinterModule = MakeLibraryModule (PrinterLib)
 let _ = add_library_module ((module PrinterModule : Module))
+

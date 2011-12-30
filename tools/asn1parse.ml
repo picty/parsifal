@@ -101,7 +101,7 @@ let inputs = match !files with
 let parse_input pstate =
   while not (eos pstate) do
     let o = parse pstate in
-    output_string stdout (String.concat "\n" (string_of_object o))
+    Common.print (string_of_object o)
   done
 
 
@@ -219,7 +219,7 @@ let rec asn1parse_input depth pstate =
 let parse_and_validate_cert cons pstate =
   while not (eos pstate) do
     let o = constrained_parse cons pstate in
-    print_endline (String.concat "\n" (string_of_certificate (Some "Certificate") o))
+    Common.print (string_of_certificate (Some "Certificate") o)
   done;;
 
 

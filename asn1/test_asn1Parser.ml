@@ -13,7 +13,7 @@ let _ =
       (string_of_header_raw c isC t) (String.length remaining) (Common.hexdump remaining);
 
     let o = exact_parse None s in
-    Printf.printf "%s" (String.concat "\n" (string_of_object o))
+    Common.print (string_of_object o)
   with
     | OutOfBounds s ->
       output_string stderr ("Out of bounds in " ^ s ^ ")")

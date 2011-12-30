@@ -19,7 +19,7 @@ let _binstr input = V_BinaryString (eval_as_string input)
 
 
 let print args =
-  print_string ((String.concat !PrinterLib.separator (List.map (PrinterLib.string_of_value) args)) ^ !PrinterLib.endline);
+  print (List.map (PrinterLib.string_of_value) args);
   V_Unit
 
 let length = function

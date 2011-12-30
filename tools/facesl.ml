@@ -36,7 +36,7 @@ let interactive_loop () =
       try
 	let res = interpret_string [global_env] (input_line stdin) in
 	if res != V_Unit
-	then print_endline (String.concat "\n" (PrinterLib._string_of_value None true res));
+	then Common.print (PrinterLib._string_of_value None true res);
 	flush stdout
       with
 	| NotImplemented msg -> output_string stderr ("Not implemented (" ^ msg ^ ")\n"); flush stderr

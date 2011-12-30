@@ -179,7 +179,7 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
 
   (* dump / to_string should be constructed with apply *)
   let dump_aux obj = V_BinaryString (Parser.dump obj)
-  let to_string_aux obj = V_String (String.concat "\n" (Parser.to_string obj))
+  let to_string_aux obj = V_String (Common.cat (Parser.to_string obj))
   let to_string_indent_aux obj = V_List (List.map (fun x -> V_String x) (Parser.to_string obj))
 
   let populate_param (param_name, getter, setter) =
