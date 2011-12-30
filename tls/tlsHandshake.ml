@@ -125,46 +125,32 @@ let dump_hello_extensions = function
   | v -> dump_varlen_list dump_uint16 dump_hello_extension v
 
 
-let client_hello_description = [
-  ("version", parse_protocol_version, dumpv_uint16);
-  ("random", parse_bin_string 32, eval_as_string);
-  ("session_id", parse_varlen_bin_string pop_byte, dump_varlen_string dump_uint8);
-  ("cipher_suites", lift_list (pop_varlen_list "Cipher suites" pop_uint16 parse_uint16), dump_varlen_list dump_uint16 dumpv_uint16);
-  ("compression_methods", lift_list (pop_varlen_list "Compression methods" pop_byte parse_uint8), dump_varlen_list dump_uint8 dumpv_uint8);
-  ("extensions", parse_hello_extensions, dump_hello_extensions)
+let client_hello_description = BinaryRecord.mk_desc [
+  ("version", parse_protocol_version, dumpv_uint16, None);
+  ("random", parse_bin_string 32, eval_as_string, raw_hex);
+  ("session_id", parse_varlen_bin_string pop_byte, dump_varlen_string dump_uint8, raw_hex);
+  ("cipher_suites", lift_list (pop_varlen_list "Cipher suites" pop_uint16 parse_uint16),
+                    dump_varlen_list dump_uint16 dumpv_uint16, hex_int_list 4);
+  ("compression_methods", lift_list (pop_varlen_list "Compression methods" pop_byte parse_uint8),
+                          dump_varlen_list dump_uint8 dumpv_uint8, hex_int_list 2);
+  ("extensions", parse_hello_extensions, dump_hello_extensions, None)
 ]
 
-let server_hello_description = [
-  ("version", parse_protocol_version, dumpv_uint16);
-  ("random", parse_bin_string 32, eval_as_string);
-  ("session_id", parse_varlen_bin_string pop_byte, eval_as_string);
-  ("cipher_suite", parse_uint16, dumpv_uint16);
-  ("compression_method", parse_uint8, dumpv_uint8);
-  ("extensions", parse_hello_extensions, dump_hello_extension)
+let server_hello_description = BinaryRecord.mk_desc [
+  ("version", parse_protocol_version, dumpv_uint16, None);
+  ("random", parse_bin_string 32, eval_as_string, raw_hex);
+  ("session_id", parse_varlen_bin_string pop_byte, eval_as_string, raw_hex);
+  ("cipher_suite", parse_uint16, dumpv_uint16, hex_int 4);
+  ("compression_method", parse_uint8, dumpv_uint8, hex_int 2);
+  ("extensions", parse_hello_extensions, dump_hello_extension, None)
 ]
 
 
 let parse_client_hello pstate = V_Dict (BinaryRecord.parse client_hello_description pstate)
-let string_of_client_hello ch =
-  let content =
-    [ "protocol version: " ^ (protocol_version_string_of_int (eval_as_int (ch --> "version")));
-      "random: " ^ (hexdump (eval_as_string (ch --> "random")));
-      "session id: " ^ (hexdump (eval_as_string (ch --> "session_id")));
-      "cipher suites: " ^ (String.concat ", " (List.map (fun x -> hexdump_int 4 (eval_as_int x)) (eval_as_list (ch --> "cipher_suites"))));
-      "compression methods: " ^ (String.concat ", " (List.map (fun x -> hexdump_int 2 (eval_as_int x)) (eval_as_list (ch --> "compression_methods")))) ]
-    (* TODO: Extensions ... *)
-  in PrinterLib._string_of_strlist (Some "Client Hello") indent_only content
+let string_of_client_hello ch = BinaryRecord.to_string (Some "Client Hello") client_hello_description ch
 
 let parse_server_hello pstate = V_Dict (BinaryRecord.parse server_hello_description pstate)
-let string_of_server_hello sh =
-  let content =
-    [ "protocol version: " ^ (protocol_version_string_of_int (eval_as_int (sh --> "version")));
-      "random: " ^ (hexdump (eval_as_string (sh --> "random")));
-      "session id: " ^ (hexdump (eval_as_string (sh --> "session_id")));
-      "cipher suites: " ^ (hexdump_int 4 (eval_as_int (sh --> "cipher_suite")));
-      "compression methods: " ^ (hexdump_int 2 (eval_as_int (sh --> "compression_method"))) ]
-    (* TODO: Extensions ... *)
-  in PrinterLib._string_of_strlist (Some "Server Hello") indent_only content
+let string_of_server_hello sh = BinaryRecord.to_string (Some "Server Hello") server_hello_description sh
 
 
 

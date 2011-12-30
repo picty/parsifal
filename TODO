@@ -42,7 +42,8 @@ v0.1 (jan. 2012)
    * Create simple PKI tools to create a RSA key, sign, verify, encrypt, decrypt, handle a simple PKI (rsa tool)
    * Passive TLS_Proxy
  - Software engineering
-   * Expand binaryRecord to handle update (when using enumerated for example) and to_String.
+   * Rethink _string_of_value: the options should always be present and we should be able to set a "raw" flag (quotes, 0x) and to override some cases (a function would be called and if it is OK, we take its return value, else we do as usual)
+   * Expand binaryRecord to handle update (when using enumerated for example).
    * Use V_Unit = None to handle optional fields.
 
 

@@ -2,6 +2,7 @@ open Common
 open Types
 open Modules
 open ParsingEngine
+open Printer
 
 let parse_uint8 = lift_int pop_uint8
 let dumpv_uint8 value = String.make 1 (char_of_int (eval_as_int value land 0xff))
@@ -30,38 +31,68 @@ let dump_varlen_list dump_len dump_content value =
   (dump_len n) ^ content_str
 
 
+let raw_hex = Some (fun v -> V_String (hexdump (eval_as_string v)))
+let hex_int n = Some (fun v -> V_String (hexdump_int n (eval_as_int v)))
+let hex_int_list n =
+  Some (fun v -> V_List (List.map (fun x -> V_String (hexdump_int n (eval_as_int x))) (eval_as_list v)))
+
 module BinaryRecord = struct
   type parse_function = parsing_state -> value
   type dump_function = value -> string
-  type parsing_constraint = string * parse_function * dump_function
+  type tostring_function = value -> value
+
+  type parsing_constraint = {
+    pc_name : string;
+    pc_parse : parse_function;
+    pc_dump : dump_function;
+    pc_tostring : tostring_function
+  }
   type description = parsing_constraint list
+
+  let rec mk_desc = function
+    | [] -> []
+    | (n, p, d, None)::r ->
+      {pc_name = n; pc_parse = p; pc_dump = d; pc_tostring = Common.identity}::(mk_desc r)
+    | (n, p, d, Some tr)::r ->
+      {pc_name = n; pc_parse = p; pc_dump = d; pc_tostring = tr}::(mk_desc r)
 
   let parse desc pstate =
     let res = Hashtbl.create (List.length desc) in
     let rec parse_aux = function
       | [] -> res
-      | (name, parse_fun, _)::r ->
-	let v = parse_fun pstate in
-	Hashtbl.add res name v;
+      | cons::r ->
+	let v = cons.pc_parse pstate in
+	Hashtbl.add res cons.pc_name v;
 	parse_aux r
     in parse_aux desc
 
   let dump desc dict =
     let rec dump_aux = function
       | [] -> ""
-      | (name, _, dump_fun)::r ->
-	let v = hash_find dict name in
-	(dump_fun v) ^ (dump_aux r)
+      | cons::r ->
+	let v = hash_find dict cons.pc_name in
+	(cons.pc_dump v) ^ (dump_aux r)
     in dump_aux desc
 
+  let to_string title desc dict =
+    let rec to_string_aux = function
+      | [] -> []
+      | cons::r ->
+	let v = hash_find dict cons.pc_name in
+	let v_str = PrinterLib._string_of_value (Some cons.pc_name) false (cons.pc_tostring v) in
+	v_str::(to_string_aux r)
+    in
+    let content, _ = PrinterLib.flatten_strlist (to_string_aux desc) in
+    PrinterLib._string_of_strlist title (list_options !PrinterLib.separator true) content
+
   let enrich desc o (d : (string, value) Hashtbl.t) =
-    let enrich_aux (n, _, _) = Hashtbl.replace d n (Hashtbl.find o n) in
+    let enrich_aux cons = Hashtbl.replace d cons.pc_name (Hashtbl.find o cons.pc_name) in
     List.iter enrich_aux desc
 
   let update desc (d : (string, value) Hashtbl.t) =
     let n_fields = List.length (desc) in
     let new_obj = Hashtbl.create n_fields in
-    let update_aux (n, _, _) = Hashtbl.replace new_obj n (hash_find d n) in
+    let update_aux cons = Hashtbl.replace new_obj cons.pc_name (hash_find d cons.pc_name) in
     List.iter update_aux (desc);
     new_obj
 end
@@ -83,5 +114,8 @@ module MakeBinaryRecordParserInterface = functor (Interface : BinaryRecordInterf
   let enrich = BinaryRecord.enrich Interface.description
   let update = BinaryRecord.update Interface.description
 
-  let to_string o = Printer.PrinterLib._string_of_value (Some name) true (V_Dict o)
+  let to_string o =
+    if !PrinterLib.raw_display
+    then PrinterLib._string_of_value (Some name) true (V_Dict o)
+    else BinaryRecord.to_string (Some name) Interface.description o
 end
