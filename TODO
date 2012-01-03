@@ -1,30 +1,49 @@
-v0.1 (jan. 2012)
+v0.1 (feb. 2012)
+ - Have a bugzilla to put all this stuff
+
+ - X509
+   * Add a cert store object
+     + hashtable of certs
+     + a name and a trust flag
+   * Code construct_chains/check_chains in caml
+     + add decoration directly to the certificate object (origin[s], trust)?
+     + x509_chain should be an object module
+       - list of decorated certs (trust, origin [Mozilla store, cert n in chain])
+       - global attributes (enriched by check/chains with args [laxist, trusted store])
+     + Low level functions
+       - prepare_candidates (H : DN hashes -> certs)
+       - find_next_candidate (H, current, options [use KI?])
+       - check_link (subject, issuer)
+     + Chain construction (chain up until now + pool of available certs [chain + trusted certs + untrusted certs])
+       - avoid loops!
+     + Chain checks (which can take trusted certificate stores to decorate the chain object)
+       - validity span
+       - check subject/issuer (+ *UniqueIdentifiers?)
+       - signature
+       - is there a trusted cert in the chain constructed
+       - algos used
+       - SKI/AKI could be relaxed (Applications are not required to verify that key identifiers match when performing certification path validation)
+       - BC/
+       - functions to check usage/name of the chain
+       - use SAN/AIA/CRLDP/KU/EKU/NameConstraints or shout if a critical extension is not yet parsed
+     + TLS chain construction -> use construct_chain with different stores (untrusted, MS, FF)
+     + TLS chain analysis -> nCerts, nDupes, nUnused, nChains [+ characterisation]
+     + Graph construction (From a big pool of certs, try to create all the links...)
+   * Add SAN, AIA and CRLDP extensions
+   * Write code to parse DSA PK and Sig.
+   * Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
+   * Add a way to create a certificate object
+
  - Crypto
    * Add a is_prime as a C function (Rabbin Miller + PGCD with little p_i products)
    * Add a gen_rsa_key in Caml
 
  - FIND A NAME TO THIS PROJECT (FAceSL sucks!)
  - Have a Makefile-based build process!
+   * cmake-ocaml?
+   * ocamlmakefile?
    * ocamldep -I crypto -I asn1 -I common -I formats -I language -I tls -I tools [^_]*/*ml
- - X509
-   * Add SAN, AIA and CRLDP extensions
-   * Write code to parse DSA PK and Sig.
-   * Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
-   * Add a way to create a certificate object
  - TLS
-   * Code construct_chains in caml
-         Chain categorization
-          - Add signature
-          - Add trust store
-          - Avoid loops
-          - What is a chain -> create a new object
-            * a list of certificates, and for each
-              - origin (cert n in chain, Mozilla store, IE store)
-              - trusted
-          - validity span
-          - algos used
-          - subject
-   * Code to check chains against certificate stores
    * Enrich TLS parser.
    * fake_len -> can override computed len
    * tls.dump -> calls record.split if needed
@@ -50,6 +69,7 @@ v0.1 (jan. 2012)
 v0.2 (apr. 2012)
  - ASN1Constraints
    * Rewrite the code to be simpler and value-oriented?
+ - OCSP and CRL parsers!
  - X509
    * Clean up code about X509_Algorithm, ATV, AccessDescription, QualifierInfo
    * Add a catalog of all warnings (id, severity, msg, where (possibly recursive where)) / use specific warnings for each interesting X.509 warnings.
@@ -75,6 +95,7 @@ v0.2 (apr. 2012)
  - Write some tests to check in browsers
    * certificates with extensions containing images
    * certificates signing each other (A <-> B)
+ - PKCS#11 client (prospective)
 
 
 v0.3 (jul. 2012)
@@ -89,6 +110,7 @@ v0.3 (jul. 2012)
  - Crypto
    * Clean up crypto code from polar -> only keep the code really used.
    * Rewrite CBC in Caml (we need to be able to keep a C object with the current context).
+ - PKCS#11 ressource (prospective)
 
 
 v1.0 (oct 2012)
@@ -104,6 +126,18 @@ v1.0 (oct 2012)
    * s_client
    * s_server
    * tls_proxy
+ - Crypto
+   * ECC (see seccure project)
+   * Shamir Secret Sharing (see ssss project)
+
+
+Offer the same services as NSS/openssl:
+ - SSLv2/SSLv3/TLSv1/TLSv1.1/TLSv1.2
+ - PKCS#1 #3 #5 #7 #8 #9 #10 #11 #12
+ - S/MIME
+ - X.509v3/OCSP/CRL
+ - RSA/DSA/ECDSA/DH/ECDH/AES/3DES/DES/RC2/RC4/SHA1/SHA2/MD2/MD5/HMAC
+ - PRNG
 
 
 Checks on certs / chains
@@ -112,6 +146,8 @@ Checks on certs / chains
 
 
 Long Term... it could also be moved upstairs...
+
+- Objects : should they have two dictionaries, plus a list of relevant fields (to have stg like @modified)
 
 - Encoding
   * 2022 -> Simple ASCII (NumericString, PrintableString, VisibleString, IA5String)
