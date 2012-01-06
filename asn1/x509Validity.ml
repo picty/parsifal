@@ -92,13 +92,29 @@ let datetime_constraint : datetime asn1_constraint =
   in Complex_cons aux
 
 
-let string_of_datetime title dt =
-  PrinterLib._single_line title 
-    (Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d%s"
-       dt.year dt.month dt.day dt.hour dt.minute
-       (Common.pop_option dt.second 0)
-       (Common.pop_option dt.second_fraction ""))
+let _string_of_datetime dt =
+  Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d%s"
+    dt.year dt.month dt.day dt.hour dt.minute
+    (Common.pop_option dt.second 0)
+    (Common.pop_option dt.second_fraction "")
 
+let string_of_datetime title dt =
+  PrinterLib._single_line title (_string_of_datetime dt)
+
+let tm_of_datetime dt =
+  let open Unix in {
+    tm_sec = (Common.pop_option dt.second 0);
+    tm_min = dt.minute; tm_hour = dt.hour;
+    tm_mday = dt.day; tm_mon = dt.month - 1; tm_year = dt.year - 1900;
+    tm_wday = 0; tm_yday = 0; tm_isdst = false
+  }
+
+let datetime_of_tm tm =
+  let open Unix in {
+    second = Some (tm.tm_sec); second_fraction = None;
+    minute = tm.tm_min; hour = tm.tm_hour;
+    day = tm.tm_mday; month = tm.tm_mon + 1; year = tm.tm_year + 1900
+  }
 
 module DateTimeParser = struct
   type t = datetime
