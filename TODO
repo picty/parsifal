@@ -48,6 +48,8 @@ v0.1 (jan. 2012)
 
 
 v0.2 (apr. 2012)
+ - ASN1Constraints
+   * Rewrite the code to be simpler and value-oriented?
  - X509
    * Clean up code about X509_Algorithm, ATV, AccessDescription, QualifierInfo
    * Add a catalog of all warnings (id, severity, msg, where (possibly recursive where)) / use specific warnings for each interesting X.509 warnings.
@@ -55,7 +57,7 @@ v0.2 (apr. 2012)
    * Clean up the toString architecture which still stinks
    * Add functions to be able to change a cert and recompute the signature easily
  - Language
-   * Document native functions (help field?)
+   * Document native functions (with a help field?)
    * Add new primitive types (IPv4, IPv6, int32, int64, etc.)
  - Tools
    * Begin a GUI for PKI tools

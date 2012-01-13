@@ -282,6 +282,38 @@ let _ = register_extension nsCertType_oid "nsCertType" mkNSCertType dump_NSCertT
 
 
 
+(* Certificate Policies *)
+
+let certifcatePolicies_oid = [85;29;32]
+let anyPolicy_oid = [85;29;32;0]
+
+let mkPolicyInformation content =
+  let res = Hashtbl.create 2 in
+  match content with
+    | [{a_content = OId oid}] ->
+      Hashtbl.replace res "policyIdentifier" (Asn1Parser.value_of_oid oid);
+      V_Dict res
+    | [{a_content = OId oid}; o] ->
+      Hashtbl.replace res "policyIdentifier" (Asn1Parser.value_of_oid oid);
+      Hashtbl.replace res "policyQualifiers" (Asn1Module.register o);
+      V_Dict res
+    | _ -> V_Unit
+let policyIdentifier_cons = validating_parser_simple_cons C_Universal false 6 "policyIdentifier" der_to_oid
+let policyInformation_content_cons = {
+  severity_if_too_many_objects = s_speclightlyviolated;
+  constraint_list = [policyIdentifier_cons, s_speclightlyviolated; Anything Common.identity, s_ok]
+}
+let policyInformation_cons = custom_seq_cons C_Universal 16 "policyInformation" mkPolicyInformation policyInformation_content_cons
+
+let certificatePolicies_cons = seqOf_cons (lift_list Common.identity) "certificatePolicies" policyInformation_cons (AtLeast (1, s_speclightlyviolated))
+
+let dump_CertificatePolicies v = raise (NotImplemented "dump_CertificatePolicies")
+
+let _ =
+  register_oid anyPolicy_oid "anyPolicy";
+  register_extension certifcatePolicies_oid "certificatePolicies" certificatePolicies_cons dump_CertificatePolicies
+
+
 (*
 
 (* CRL Distribution Point *)
