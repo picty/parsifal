@@ -183,8 +183,8 @@ module Pkcs1Lib = struct
   let pkcs1_sign h m n d =
     V_BinaryString (raw_sign 1 (eval_as_string h) (eval_as_string m) (eval_as_string n) (eval_as_string d))
 
-  let pkcs1_verify m s n d =
-    V_Bool (raw_verify 1 (eval_as_string m) (eval_as_string s) (eval_as_string n) (eval_as_string d))
+  let pkcs1_verify m s n e =
+    V_Bool (raw_verify 1 (eval_as_string m) (eval_as_string s) (eval_as_string n) (eval_as_string e))
 
   let functions = [
     "encrypt", NativeFun (four_value_fun pkcs1_encrypt);
