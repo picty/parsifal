@@ -59,6 +59,9 @@ let random_int s max =
   if max < 0 then raise (Common.WrongParameter "random_int expect a positive max");
   let len = n_bytes (max - 1) in
 
+  (* TODO: Add an optimisation here to mask some bits: it is possible
+     to have only one execution of the loop *)
+
   let rec aux () =
     let tmp = ref 0
     and rnd = random_string s len in
