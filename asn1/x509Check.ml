@@ -149,11 +149,22 @@ let common_checks = [
 ]
 
 
+let print_asn1_error sev (err, pstate_str) =
+  Printf.printf "  [ASN1 error (%s)] %s inside %s\n" (string_of_severity sev) (strerror err) pstate_str
+
+let print_asn1_errors tab =
+  for i=s_fatal downto s_ok do
+    List.iter (print_asn1_error i) (List.rev tab.(i))
+  done
+
 let check_input (name, content) =
   Printf.printf "%s:\n" name;
-  let pstate = pstate_of_string (Some name) content in
+  let error_table = Array.create (s_fatal + 1) [] in
+  let ehf = recording_error_handling_function error_table in
+  let pstate = _pstate_of_string ehf (Some name) content in
   try
     let cert = X509.parse pstate in
+    print_asn1_errors error_table;
     let res = List.fold_left (process_check cert) OK common_checks in
     Printf.printf "Result: %s\n\n" (string_of_check_result res)
   with

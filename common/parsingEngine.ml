@@ -260,6 +260,12 @@ let default_error_handling_function tolerance minDisplay err sev pstate =
   end
 
 
+let recording_error_handling_function tab err sev pstate =
+  if sev >= 0 && sev <= s_fatal
+  then tab.(sev) <- (err, string_of_pstate pstate)::(tab.(sev));
+  if sev >= s_fatal || sev < 0
+  then raise (ParsingError (err, sev, pstate))
+
 
 
 (*********************)
