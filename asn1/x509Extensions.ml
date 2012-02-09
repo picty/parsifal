@@ -43,25 +43,25 @@ let extension_content_constraint = {
   ]
 }
 
-let deep_parse_ext id s =
+let deep_parse_ext ehf id s =
   if not !parse_extensions then V_BinaryString s else
     try
       let ext_cons, _ = Hashtbl.find extension_directory id in
-      let pstate = pstate_of_string (Some (string_of_oid id)) s in
+      let pstate = _pstate_of_string ehf (Some (string_of_oid id)) s in
       constrained_parse_def ext_cons s_speclightlyviolated (V_BinaryString s) pstate
     with Not_found -> V_BinaryString s
 
-let extract_ext = function
+let extract_ext pstate = function
   | [OId id; Boolean b; String (s, true)] ->
-    { e_id = id; e_critical = Some b; e_content = deep_parse_ext id s }
+    { e_id = id; e_critical = Some b; e_content = deep_parse_ext pstate id s }
   | [OId id; String (s, true)] ->
-    { e_id = id; e_critical = None; e_content = deep_parse_ext id s }
+    { e_id = id; e_critical = None; e_content = deep_parse_ext pstate id s }
   | _ -> empty_extension
 
 
-let extension_constraint = Simple_cons (C_Universal, true, 16, "Extension",
-					parse_constrained_sequence extract_ext extension_content_constraint)
-let extensions_constraint = seqOf_cons Common.identity "Extensions" extension_constraint (AtLeast (1, s_speclightlyviolated))
+let extension_constraint ehf = Simple_cons (C_Universal, true, 16, "Extension",
+					    parse_constrained_sequence (extract_ext ehf) extension_content_constraint)
+let extensions_constraint ehf = seqOf_cons Common.identity "Extensions" (extension_constraint ehf) (AtLeast (1, s_speclightlyviolated))
 
 
 (* TODO: Improve this *)
@@ -80,7 +80,7 @@ module ExtensionParser = struct
   type t = extension
   let params = []
 
-  let parse = constrained_parse extension_constraint
+  let parse pstate = constrained_parse (extension_constraint pstate.ehf) pstate
 
   let dump ext = raise (NotImplemented "extension.dump")
 

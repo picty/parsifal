@@ -56,7 +56,7 @@ let parse_tbs_certificate pstate =
 
   let extensions =
     constrained_parse_opt (Simple_cons (C_ContextSpecific, true, 3, "Extensions container",
-					parse_sequenceof List.hd extensions_constraint
+					parse_sequenceof List.hd (extensions_constraint pstate.ehf)
 					  (Exactly (1, s_speclightlyviolated)))) s_ok pstate in
 
   let effective_version = match version with
