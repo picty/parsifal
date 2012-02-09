@@ -130,7 +130,7 @@ let extract_bc l =
   end;
   V_Dict res
 
-let mkBasicConstraints = Simple_cons (C_Universal, true, 16, "basicConstraints",
+let mkBasicConstraints = Simple_cons (C_Universal, true, 16, "basicConstraints_content",
 				      parse_constrained_sequence extract_bc bc_constraint)
 
 let dump_basicConstraints v =
@@ -167,7 +167,7 @@ let extract_KeyUsage pstate =
   let l = enumerated_from_raw_bit_string pstate keyUsage_values nBits content in
   V_List (List.map (fun x -> V_Enumerated (x, apply_desc keyUsage_values)) l)
 
-let mkKeyUsage = Simple_cons (C_Universal, false, 3, "keyUsage", extract_KeyUsage)
+let mkKeyUsage = Simple_cons (C_Universal, false, 3, "keyUsage_content", extract_KeyUsage)
 
 let dump_KeyUsage v = raise (NotImplemented "dump_KeyUsage")
 
@@ -180,7 +180,7 @@ let _ = register_extension keyUsage_oid "keyUsage" mkKeyUsage dump_KeyUsage
 let extKeyUsage_oid = [85;29;37]
 
 let extract_EKU l = V_List (List.map Asn1Parser.value_of_oid l)
-let mkExtKeyUsage = seqOf_cons extract_EKU "extendedKeyUsage" oid_cons (AtLeast (1, s_speclightlyviolated))
+let mkExtKeyUsage = seqOf_cons extract_EKU "extendedKeyUsage_content" oid_cons (AtLeast (1, s_speclightlyviolated))
 
 let dump_ExtKeyUsage v = raise (NotImplemented "dump_ExtKeyUsage")
 
@@ -193,7 +193,7 @@ let _ = register_extension extKeyUsage_oid "extendedKeyUsage" mkExtKeyUsage dump
 
 let subjectKeyIdentifier_oid = [85;29;14]
 
-let mkSKI = Simple_cons (C_Universal, false, 4, "subjectKeyIdentifier",
+let mkSKI = Simple_cons (C_Universal, false, 4, "subjectKeyIdentifier_content",
 			 fun pstate -> V_BinaryString (pop_string pstate))
 
 let dump_SKI v = dump (mk_object' "" C_Universal 4 (String (eval_as_string v, true)))
@@ -234,7 +234,7 @@ let extract_aki aki =
   extract_key_identifier aki;
   V_Dict res
 
-let mkAKI = Simple_cons (C_Universal, true, 16, "authorityKeyIdentifier",
+let mkAKI = Simple_cons (C_Universal, true, 16, "authorityKeyIdentifier_content",
 			 parse_constrained_sequence extract_aki aki_constraint)
 
 let dump_AKI v = raise (NotImplemented "dump_AKI")
@@ -247,7 +247,7 @@ let _ = register_extension authorityKeyIdentifier_oid "authorityKeyIdentifier" m
 
 let nsComment_oid = [96;16;840;1;113730;1;13]
 
-let mkNSComment = Simple_cons (C_Universal, false, 22, "nsComment", fun pstate -> V_String (pop_string pstate))
+let mkNSComment = Simple_cons (C_Universal, false, 22, "nsComment_content", fun pstate -> V_String (pop_string pstate))
 
 let dump_NSComment v = dump (mk_object' "" C_Universal 22 (String (eval_as_string v, false)))
 
@@ -274,7 +274,7 @@ let extract_NSCertType pstate =
   let l = enumerated_from_raw_bit_string pstate nsCertType_values nBits content in
   V_List (List.map (fun x -> V_Enumerated (x, apply_desc nsCertType_values)) l)
 
-let mkNSCertType = Simple_cons (C_Universal, false, 3, "nsCertType", extract_NSCertType)
+let mkNSCertType = Simple_cons (C_Universal, false, 3, "nsCertType_content", extract_NSCertType)
 
 let dump_NSCertType v = raise (NotImplemented "dump_NSCertType")
 
@@ -305,7 +305,7 @@ let policyInformation_content_cons = {
 }
 let policyInformation_cons = custom_seq_cons C_Universal 16 "policyInformation" mkPolicyInformation policyInformation_content_cons
 
-let certificatePolicies_cons = seqOf_cons (lift_list Common.identity) "certificatePolicies" policyInformation_cons (AtLeast (1, s_speclightlyviolated))
+let certificatePolicies_cons = seqOf_cons (lift_list Common.identity) "certificatePolicies_content" policyInformation_cons (AtLeast (1, s_speclightlyviolated))
 
 let dump_CertificatePolicies v = raise (NotImplemented "dump_CertificatePolicies")
 
