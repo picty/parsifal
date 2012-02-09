@@ -34,10 +34,6 @@ v0.1 (feb. 2012)
    * Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
    * Add a way to create a certificate object
 
- - Crypto
-   * Add a is_prime as a C function (Rabbin Miller + PGCD with little p_i products)
-   * Add a gen_rsa_key in Caml
-
  - FIND A NAME TO THIS PROJECT (FAceSL sucks!)
  - Have a Makefile-based build process!
    * cmake-ocaml?
@@ -53,7 +49,7 @@ v0.1 (feb. 2012)
    * Add encode/decode for gzip
    * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
  - Tools
-   * x509check
+   * x509check (enrich the x509 object before analysing!)
    * chaincheck
    * servercheck (cert + ciphersuites?)
    * Finalize asn1parse / x509 programs with more checks
@@ -70,6 +66,9 @@ v0.2 (apr. 2012)
  - ASN1Constraints
    * Rewrite the code to be simpler and value-oriented?
  - OCSP and CRL parsers!
+ - Crypto
+   * Add a is_prime as a C function (Rabbin Miller + PGCD with little p_i products)
+   * Add a gen_rsa_key in Caml
  - X509
    * Clean up code about X509_Algorithm, ATV, AccessDescription, QualifierInfo
    * Add a catalog of all warnings (id, severity, msg, where (possibly recursive where)) / use specific warnings for each interesting X.509 warnings.

@@ -1,7 +1,10 @@
+open Common
+open Types
 open ParsingEngine
 open X509
 open X509Misc
 open X509Validity
+open X509PublicKey
 
 
 let binary = ref false
@@ -42,17 +45,17 @@ let binary_contents =
   List.map extract_binary_content open_files
 
 
-type check_result = OK | KO | Bof
+type check_result = OK | Bof | KO
 
 let string_of_check_result = function
   | OK -> "OK"
-  | KO -> "KO"
   | Bof -> "Bof"
+  | KO -> "KO"
 
 let int_of_check_result = function
   | OK -> 0
-  | KO -> 1
-  | Bof -> 2
+  | Bof -> 1
+  | KO -> 2
 
 let worst_res r1 r2 = if (int_of_check_result r2) > (int_of_check_result r1) then r1 else r2
 
@@ -127,6 +130,22 @@ let check_validity_in_month cert =
   (string_of_int nMonths) ^ " months", OK
 
 
+(* We expect public key to be known *)
+let check_public_key cert =
+  let pki = cert.tbs.pk_info in
+  let pka = Asn1.string_of_oid (pki.pk_algo.oo_id) in
+  match pka with
+    (* TODO: Factor this? *)
+    | "rsaEncryption" ->
+      let n = eval_as_string (hash_find (eval_as_dict pki.public_key) "n") in
+(*      let e = eval_as_string (hash_find (eval_as_dict pki.public_key) "e") in *)
+      let n_len = String.length n in
+      let n_reallen = if n.[0] = '\x00' then n_len - 1 else n_len in
+      "RSA " ^ (string_of_int (n_reallen * 8)), OK
+    | _ -> pka, KO
+
+
+
 let process_check cert current_res (name, f) =
   Printf.printf "  %s" name;
   let str, res = f cert in
@@ -146,6 +165,7 @@ let common_checks = [
   "                      ", (fun cert -> check_datetime cert.tbs.validity.not_after);
   "Current validity", check_validity_now;
   "How long the certificate is valid", check_validity_in_month;
+  "Public key", check_public_key;
 ]
 
 
