@@ -6,6 +6,7 @@ open TlsRecord
 open TlsHandshake
 open TlsAlert
 open TlsChangeCipherSpec
+open TlsHeartbeat
 
 
   
@@ -39,6 +40,7 @@ module TlsLib = struct
 	      | 0x14 -> [ChangeCipherSpecModule.parse [V_String name; msg.content]]
 	      | 0x15 ->	[AlertModule.parse [V_String name; msg.content]]
 	      | 0x16 ->	HandshakeModule.parse_all [V_String name; msg.content]
+	      | 0x18 -> [HeartbeatModule.parse [V_String name; msg.content]]
 	      | _ -> [msg.content]
 	  with ((OutOfBounds _ | ParsingError _) as e) ->
 	    if laxist
