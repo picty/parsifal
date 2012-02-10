@@ -1,4 +1,4 @@
-<common> or <language> or <asn1> or <tls> or <formats> or <tools> or <crypto> or <bgp>: include
+<common> or <language> or <asn1> or <tls> or <formats> or <tools> or <crypto> or <bgp> or <analysis>: include
 
 <tools/facesl.{byte,native}>: use_str, use_crypto
 
