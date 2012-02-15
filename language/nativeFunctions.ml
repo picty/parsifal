@@ -13,7 +13,8 @@ let to_string input = V_String (PrinterLib.string_of_value input)
 
 let _str input = V_String (eval_as_string input)
 let _bigint = function
-  | V_Int _ -> raise (NotImplemented "int -> big_int through _bigint")
+  (* TODO: Improve this with a computation of the length! *)
+  | V_Int i -> V_Bigint (hexparse (hexdump_int 8 i))
   | s -> V_Bigint (eval_as_string s)
 let _binstr input = V_BinaryString (eval_as_string input)
 
@@ -349,6 +350,16 @@ let concat_strings sep l =
 
 let pow x e n =
   V_Bigint (Crypto.exp_mod (eval_as_string x) (eval_as_string e) (eval_as_string n))
+let gcd a b =
+  V_Bigint (Crypto.gcd (eval_as_string a) (eval_as_string b))
+let lcm a b =
+  V_Bigint (Crypto.lcm (eval_as_string a) (eval_as_string b))
+let divq a b =
+  V_Bigint (Crypto.divq (eval_as_string a) (eval_as_string b))
+let mul a b =
+  V_Bigint (Crypto.mul (eval_as_string a) (eval_as_string b))
+let is_prime p =
+  V_Bool (Crypto.is_prime (eval_as_string p))
 
 
 (* Network *)
@@ -487,6 +498,11 @@ let _ =
   add_native "hmac_sha256" (lift_two_to_one_string (Crypto.hmac Crypto.sha256));
 
   add_native "pow" (three_value_fun pow);
+  add_native "gcd" (two_value_fun gcd);
+  add_native "lcm" (two_value_fun lcm);
+  add_native "divq" (two_value_fun divq);
+  add_native "mul" (two_value_fun mul);
+  add_native "is_prime" (one_value_fun is_prime);
 
   add_native "aes_cbc_raw_encrypt" (lift_three_to_one_string Crypto.aes_cbc_raw_encrypt);
   add_native "aes_cbc_raw_decrypt" (lift_three_to_one_string Crypto.aes_cbc_raw_decrypt);

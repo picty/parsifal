@@ -7,6 +7,11 @@ external sha384_512sum : string -> bool -> string = "sha384_512sum"
 external aes_cbc : bool -> string -> string -> string -> string = "aes_cbc"
 
 external exp_mod : string -> string -> string -> string = "exp_mod"
+external gcd : string -> string -> string = "gcd"
+external lcm : string -> string -> string = "lcm"
+external divq : string -> string -> string = "divq"
+external mul : string -> string -> string = "mul"
+external is_prime : string -> bool = "is_prime"
 
 
 (* Exception for the crypto code *)

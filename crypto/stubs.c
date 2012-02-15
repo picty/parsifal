@@ -206,3 +206,139 @@ value exp_mod (value caml_x, value caml_e, value caml_n) {
  error:
   caml_failwith ("Not enough memory");
 }
+
+
+
+value gcd (value caml_a, value caml_b) {
+  CAMLparam2 (caml_a, caml_b);
+  CAMLlocal1 (caml_res);
+
+  mpz_t a, b;
+  size_t res_len;
+  int res;
+
+  if (!os2ip (&a, caml_a))
+    goto error;
+  if (!os2ip (&b, caml_b))
+    goto free_a;
+
+  mpz_gcd (a, a, b);
+  res_len = (mpz_sizeinbase (a, 16) + 1) / 2;
+  res = i2osp (&caml_res, a, res_len);
+  mpz_clear (b); mpz_clear (a);
+  if (!res)
+    caml_failwith ("Not enough memory");
+  else
+    CAMLreturn (caml_res);
+
+ free_a:
+  mpz_clear (a);
+ error:
+  caml_failwith ("Not enough memory");
+}
+
+
+value lcm (value caml_a, value caml_b) {
+  CAMLparam2 (caml_a, caml_b);
+  CAMLlocal1 (caml_res);
+
+  mpz_t a, b;
+  size_t res_len;
+  int res;
+
+  if (!os2ip (&a, caml_a))
+    goto error;
+  if (!os2ip (&b, caml_b))
+    goto free_a;
+
+  mpz_lcm (a, a, b);
+  res_len = (mpz_sizeinbase (a, 16) + 1) / 2;
+  res = i2osp (&caml_res, a, res_len);
+  mpz_clear (b); mpz_clear (a);
+  if (!res)
+    caml_failwith ("Not enough memory");
+  else
+    CAMLreturn (caml_res);
+
+ free_a:
+  mpz_clear (a);
+ error:
+  caml_failwith ("Not enough memory");
+}
+
+
+value divq (value caml_a, value caml_b) {
+  CAMLparam2 (caml_a, caml_b);
+  CAMLlocal1 (caml_res);
+
+  mpz_t a, b;
+  size_t res_len;
+  int res;
+
+  if (!os2ip (&a, caml_a))
+    goto error;
+  if (!os2ip (&b, caml_b))
+    goto free_a;
+
+  mpz_fdiv_q (a, a, b);
+  res_len = (mpz_sizeinbase (a, 16) + 1) / 2;
+  res = i2osp (&caml_res, a, res_len);
+  mpz_clear (b); mpz_clear (a);
+  if (!res)
+    caml_failwith ("Not enough memory");
+  else
+    CAMLreturn (caml_res);
+
+ free_a:
+  mpz_clear (a);
+ error:
+  caml_failwith ("Not enough memory");
+}
+
+
+value mul (value caml_a, value caml_b) {
+  CAMLparam2 (caml_a, caml_b);
+  CAMLlocal1 (caml_res);
+
+  mpz_t a, b;
+  size_t res_len;
+  int res;
+
+  if (!os2ip (&a, caml_a))
+    goto error;
+  if (!os2ip (&b, caml_b))
+    goto free_a;
+
+  mpz_mul (a, a, b);
+  res_len = (mpz_sizeinbase (a, 16) + 1) / 2;
+  res = i2osp (&caml_res, a, res_len);
+  mpz_clear (b); mpz_clear (a);
+  if (!res)
+    caml_failwith ("Not enough memory");
+  else
+    CAMLreturn (caml_res);
+
+ free_a:
+  mpz_clear (a);
+ error:
+  caml_failwith ("Not enough memory");
+}
+
+
+value is_prime (value caml_p) {
+  CAMLparam1 (caml_p);
+  CAMLlocal1 (caml_res);
+
+  mpz_t p;
+  int res;
+
+  if (!os2ip (&p, caml_p))
+    goto error;
+
+  res = mpz_probab_prime_p (p, 10) > 0;
+  mpz_clear (p);
+  CAMLreturn (Val_bool (res));
+
+ error:
+  caml_failwith ("Not enough memory");
+}

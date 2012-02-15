@@ -67,7 +67,7 @@ v0.2 (apr. 2012)
    * Rewrite the code to be simpler and value-oriented?
  - OCSP and CRL parsers!
  - Crypto
-   * Add a is_prime as a C function (Rabbin Miller + PGCD with little p_i products)
+   * Rewrite is_prime properly (Rabbin Miller + PGCD with little p_i products)
    * Add a gen_rsa_key in Caml
  - X509
    * Clean up code about X509_Algorithm, ATV, AccessDescription, QualifierInfo
