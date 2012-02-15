@@ -33,6 +33,7 @@ and value =
 
   | V_List of value list
   | V_Dict of (string, value) Hashtbl.t
+  (* TODO: Separate V_Stream from V_FileDesc? *)
   | V_Stream of string * char Stream.t * Unix.file_descr option
   | V_OutChannel of string * out_channel
 

@@ -299,6 +299,11 @@ let read_some i max =
       in V_BinaryString (read_bytes (eval_as_int max))
     | _ -> raise (NotImplemented "read_some on a generic stream")
 
+let read_line i =
+  let (_, s, _) = eval_as_stream i in
+  if eos s
+  then V_Unit
+  else V_String (pop_line s)
 
 let encode format input = match (eval_as_string format) with
   | "hex" -> V_String (hexdump (eval_as_string input))
@@ -469,6 +474,7 @@ let _ =
   add_native "output" (two_value_fun output);
   add_native "flush" (one_value_fun outflush);
   add_native "read_some" (two_value_fun read_some);
+  add_native "read_line" (one_value_fun read_line);
   add_native "read_all" (one_value_fun read_all);
 
   add_native "encode" (two_value_fun encode);
