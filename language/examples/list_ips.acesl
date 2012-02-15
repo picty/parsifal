@@ -4,7 +4,8 @@ list_ips := function (path) {
   f := open (path);
   while f do
     a := answer_dump.parse (f);
-    print (a.ip, a.port, length (a.content));
+//    print (a.ip, a.port, length (a.content));
+    print (a.ip);
    done
 };
 
