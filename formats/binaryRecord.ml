@@ -32,9 +32,9 @@ let dump_varlen_list dump_len dump_content value =
 
 
 let raw_hex = Some (fun v -> V_String (hexdump (eval_as_string v)))
-let hex_int n = Some (fun v -> V_String (hexdump_int n (eval_as_int v)))
+let hex_int n = Some (fun v -> V_String (hexdump_int_n n (eval_as_int v)))
 let hex_int_list n =
-  Some (fun v -> V_List (List.map (fun x -> V_String (hexdump_int n (eval_as_int x))) (eval_as_list v)))
+  Some (fun v -> V_List (List.map (fun x -> V_String (hexdump_int_n n (eval_as_int x))) (eval_as_list v)))
 
 module BinaryRecord = struct
   type parse_function = parsing_state -> value

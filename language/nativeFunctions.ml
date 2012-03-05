@@ -14,7 +14,7 @@ let to_string input = V_String (PrinterLib.string_of_value input)
 let _str input = V_String (eval_as_string input)
 let _bigint = function
   (* TODO: Improve this with a computation of the length! *)
-  | V_Int i -> V_Bigint (hexparse (hexdump_int 8 i))
+  | V_Int i -> V_Bigint (hexparse (hexdump_int_n 8 i))
   | s -> V_Bigint (eval_as_string s)
 let _binstr input = V_BinaryString (eval_as_string input)
 
@@ -36,7 +36,7 @@ let length = function
   | _ -> raise (ContentError "String or list expected")
 
 let as_hexa_int n_digits i =
-  V_String (hexdump_int (eval_as_int n_digits) (eval_as_int i))
+  V_String (hexdump_int_n (eval_as_int n_digits) (eval_as_int i))
 
 let error_msg fatal msg =
   output_string stderr ((eval_as_string msg) ^ "\n");

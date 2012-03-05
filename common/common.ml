@@ -116,7 +116,7 @@ let hexparse s =
   end
 
 
-let hexdump_int len x =
+let hexdump_int_n len x =
   let res = String.make len ' ' in
   let rec aux i pos = match pos with
     | -1 ->
@@ -129,6 +129,14 @@ let hexdump_int len x =
   aux x (len - 1);
   res
 
+let hexdump_int x =
+  let rec count_hexachars accu = function
+    | 0 -> if accu = 0 then 1 else accu
+    | remain -> count_hexachars (accu + 1) (remain lsr 4)
+  in
+  hexdump_int_n (count_hexachars 0 x) x
+
+
 let string_of_int_list l =
   let n = List.length l in
   let res = String.make n ' ' in
@@ -140,7 +148,7 @@ let string_of_int_list l =
   in aux 0 l
 
 
-let pop_int s offset n =
+let intopt_of_str s offset n =
   let content = String.sub s offset n in
   try
     Some (int_of_string content)

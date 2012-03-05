@@ -29,9 +29,9 @@ let pop_datetime four_digit_year pstate =
 
   let year_of_string () =
     if four_digit_year
-    then Common.pop_int s 0 4
+    then Common.intopt_of_str s 0 4
     else begin
-      match Common.pop_int s 0 2 with
+      match Common.intopt_of_str s 0 2 with
 	| None -> None
 	| Some x -> Some ((if x < 50 then 2000 else 1900) + x)
     end
@@ -45,7 +45,7 @@ let pop_datetime four_digit_year pstate =
       then asn1_emit NotInNormalForm None (Some "Time field should end with a Z") pstate;
       None, None
     end else begin
-      let ss = Common.pop_int s expected_len 2 in
+      let ss = Common.intopt_of_str s expected_len 2 in
       let sfrac = match ss with
 	| None ->
 	  asn1_emit NotInNormalForm None (Some "Missing seconds") pstate;
@@ -65,12 +65,13 @@ let pop_datetime four_digit_year pstate =
     empty_datetime
   in
 
+(* TODO: Is it necessary to use intopt_of_str? *)
   if n < expected_len then invalid_date () else begin
     let year = year_of_string () in
-    let month = Common.pop_int s year_len 2 in
-    let day = Common.pop_int s (2 + year_len) 2 in
-    let hour = Common.pop_int s (4 + year_len) 2 in
-    let minute = Common.pop_int s (6 + year_len) 2 in
+    let month = Common.intopt_of_str s year_len 2 in
+    let day = Common.intopt_of_str s (2 + year_len) 2 in
+    let hour = Common.intopt_of_str s (4 + year_len) 2 in
+    let minute = Common.intopt_of_str  s (6 + year_len) 2 in
     match year, month, day, hour, minute with
       | Some y, Some m, Some d, Some hh, Some mm ->
 	let ss, sfrac = second_of_string () in
