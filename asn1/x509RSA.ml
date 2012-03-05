@@ -10,6 +10,7 @@ open X509PublicKey
 open X509Signature
 
 
+let sha256WithRSAEncryption_oid = [42;840;113549;1;1;11]
 let sha1WithRSAEncryption_oid = [42;840;113549;1;1;5]
 let rsaEncryption_oid = [42;840;113549;1;1;1]
 
@@ -38,6 +39,9 @@ let parse_rsa_signature nBits s =
 let _ =
   register_oid sha1WithRSAEncryption_oid "sha1WithRSAEncryption";
   Hashtbl.add object_directory (SigAlgo, sha1WithRSAEncryption_oid) (null_obj_cons, s_benign);
+
+  register_oid sha256WithRSAEncryption_oid "sha256WithRSAEncryption";
+  Hashtbl.add object_directory (SigAlgo, sha256WithRSAEncryption_oid) (null_obj_cons, s_benign);
 
   register_oid rsaEncryption_oid "rsaEncryption";
   Hashtbl.add object_directory (PubKeyAlgo, rsaEncryption_oid) (null_obj_cons, s_benign);
