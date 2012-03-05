@@ -15,7 +15,7 @@ while f do
         output (stderr, "invalid answer in $filename.\n");
         return 2;
     fi;
-    if answer.ip = ip then
+    if to_string (answer.ip) = ip then
         out := open_out ("$ip.dump");
         output (out, answer_dump.dump (answer));
         flush (out);
