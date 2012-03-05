@@ -18,6 +18,9 @@ TLS_v1_CLIENT_HELLO := decode ("hex",
                       '00147777772e69736563706172746e6572732e636f6d000a00080' ++
                       '006001700180019000b0002010000230000');
 MY_CLIENT_HELLO := decode ("hex","160301002d010000290301000000000000000000000000000000000000000000000000000000000000000000000200350100");
+if exists (getenv ("SSL2")) then
+	MY_CLIENT_HELLO := SSL_v2_CLIENT_HELLO;
+fi;
 
 get_tls_answer := function (addr, port, client_hello) {
     local l;
