@@ -1,6 +1,6 @@
 exception NotFound of string
 exception IntegerOverflow
-exception FormatError
+exception FormatError of string
 exception UnexpectedError of string
 exception WrongParameter of string
 
@@ -105,14 +105,14 @@ let hexdump_with_separators separator s =
 
 let hexparse s =
   let len = String.length s in
-  if len mod 2 = 1 then raise FormatError else begin
+  if len mod 2 = 1 then raise (FormatError "hex string should have an even number of chars") else begin
     try
       let res = String.make (len / 2) ' ' in
       for i = 0 to ((len / 2) - 1) do
 	res.[i] <- char_of_int (int_of_string ("0x" ^ String.sub s (i * 2) 2))
       done;
       res
-    with Failure "int_of_string" -> raise FormatError
+    with Failure "int_of_string" -> raise (FormatError "invalid hex character")
   end
 
 
@@ -216,11 +216,11 @@ let dump_uint24 x =
   string_of_int_list [(x lsr 16) land 0xff; (x lsr 8) land 0xff; x land 0xff]
 
 let dump_uint16 x =
-  if x > 65535 then failwith "Integer overflow";
+  if x > 65535 then raise IntegerOverflow;
   string_of_int_list [x lsr 8; x land 0xff]
 
 let dump_uint8 x =
-  if x > 255 then failwith "Integer overflow";
+  if x > 255 then raise IntegerOverflow;
   String.make 1 (char_of_int x)
 
 
