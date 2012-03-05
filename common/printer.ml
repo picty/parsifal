@@ -94,7 +94,8 @@ module PrinterLib = struct
 	let module M = (val (hash_find object_modules n) : ObjectModule) in
 	if not !raw_display && (Hashtbl.mem M.static_params "to_string_indent") then begin
 	  let content = match (Hashtbl.find M.static_params "to_string_indent") with
-	    | V_Function (NativeFun f) -> List.map eval_as_string (eval_as_list (f [v]))
+(* TODO !!!! *)
+(*	    | V_Function (NativeFun f) -> List.map eval_as_string (eval_as_list (f [v])) *)
 	    | _ -> raise (ContentError "to_string_indent should be a native function")
 	  in content
 	  end else begin

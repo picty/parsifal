@@ -79,10 +79,10 @@ module RandomLib = struct
   let params = []
 
   let functions = [
-    "seed", NativeFun (one_value_fun (fun s -> state.seed (eval_as_string s); V_Unit));
-    "refresh", NativeFun (one_value_fun (fun s -> state.refresh (eval_as_string s); V_Unit));
-    "int", NativeFun (one_value_fun (fun max -> V_Int (random_int state (eval_as_int max))));
-    "string", NativeFun (one_value_fun (fun len -> V_BinaryString (random_string state (eval_as_int len))))
+    "seed", one_value_fun (fun s -> state.seed (eval_as_string s); V_Unit);
+    "refresh", one_value_fun (fun s -> state.refresh (eval_as_string s); V_Unit);
+    "int", one_value_fun (fun max -> V_Int (random_int state (eval_as_int max)));
+    "string", one_value_fun (fun len -> V_BinaryString (random_string state (eval_as_int len)))
   ]
 end
 

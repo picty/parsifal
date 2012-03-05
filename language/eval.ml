@@ -68,7 +68,7 @@ and eval_exp env exp =
     | E_Function (arg_names, e) ->
       let na = List.length arg_names in
       let new_env = Hashtbl.create (2 * na) in
-      V_Function (InterpretedFun (new_env::env, arg_names, e))
+      V_Function (SimpleFun (na, [], interpret_function new_env env arg_names e))
     | E_Local ids ->
       let inner_env = match env with
 	| [] -> raise (NotFound "Internal mayhem: no environment!")
@@ -113,26 +113,41 @@ and eval_exp env exp =
     | E_Continue -> raise Continue
     | E_Break -> raise Break
 
+and interpret_function saved_env envs arg_names body args =
+  let local_env = Hashtbl.copy saved_env in
+  let rec instanciate_and_eval = function
+    | [], [] -> begin
+      try
+	eval_exps (local_env::envs) body
+      with
+	| ReturnValue v -> v
+    end
+    | name::names, value::values ->
+      Hashtbl.replace local_env name value;
+      instanciate_and_eval (names, values)
+    | _ -> raise WrongNumberOfArguments
+  in instanciate_and_eval (arg_names, args)
+
 and eval_function env f args = match f with
-  | NativeFun f -> f args
-  | NativeFunWithEnv f -> f env args
-  | InterpretedFun (saved_env::r, arg_names, body) ->
-    let local_env = Hashtbl.copy saved_env in
-    let rec instanciate_and_eval = function
-      | [], [] -> begin
-	try
-	  eval_exps (local_env::r) body
-	with
-	  | ReturnValue v -> v
-      end
-      | remaining_names, [] ->
-	V_Function (InterpretedFun (local_env::r, remaining_names, body))
-      | name::names, value::values ->
-	Hashtbl.replace local_env name value;
-	instanciate_and_eval (names, values)
-      | _ -> raise WrongNumberOfArguments
-    in instanciate_and_eval (arg_names, args)
-  | InterpretedFun _ -> failwith "eval_function called on an InterpretedFun with an empty saved_environment"
+  | SimpleFun (expected_args, partial_args, f) ->
+    let nargs = List.length args in
+    if nargs = expected_args
+    then f (partial_args@args)
+    else if nargs < expected_args
+    then V_Function (SimpleFun (expected_args - nargs, partial_args@args, f))
+    else raise WrongNumberOfArguments
+
+  | EnvFun (expected_args, partial_args, f) ->
+    let nargs = List.length args in
+    if nargs = expected_args
+    then f env (partial_args@args)
+    else if nargs < expected_args
+    then V_Function (EnvFun (expected_args - nargs, partial_args@args, f))
+    else raise WrongNumberOfArguments
+
+  | VargsFun f -> f args
+
+  | VargsEnvFun f -> f env args
 
 and eval_equality env a b =
   let rec equal_list = function
@@ -167,14 +182,15 @@ and eval_equality env a b =
 	  eval_equality env (V_List (List.map snd l1)) (V_List (List.map snd l2))
 
       | V_Module (n1), V_Module (n2) -> n1 = n2
-      | (V_Object (n1, r1, d1)) as o1, (V_Object (n2, r2, d2) as o2) ->
+      | (V_Object (n1, r1, d1)) as _o1, (V_Object (n2, r2, d2) as _o2) ->
 	if n1 <> n2 then false else begin
 	  if r1 = r2 then true
 	  else begin
 	    let module M = (val (hash_find object_modules n1) : ObjectModule) in
 	    if Hashtbl.mem M.static_params "equals" then begin
 	      match (Hashtbl.find M.static_params "equals") with
-		| V_Function (NativeFun f) -> eval_as_bool (f [o1; o2])
+(* TODO !!!! *)
+(*		| V_Function (NativeFun f) -> eval_as_bool (f [o1; o2]) *)
 		| _ -> raise (ContentError "equals should be a native function")
 	    end else begin
 	      M.enrich r1 d1;

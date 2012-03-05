@@ -3,7 +3,6 @@
 (*********)
 
 open Common
-open Language
 
 
 (* Value, function and environment types *)
@@ -12,9 +11,10 @@ open Language
 type object_ref = ObjectRef of int;;
 
 type function_sort =
-  | NativeFun of (value list -> value)
-  | NativeFunWithEnv of (environment -> value list -> value)
-  | InterpretedFun of (environment * string list * expression list)
+  | SimpleFun of int * value list * (value list -> value)
+  | EnvFun of int * value list * (environment -> value list -> value)
+  | VargsFun of (value list -> value)
+  | VargsEnvFun of (environment -> value list -> value)
 
 and getter = unit -> value
 and setter = value -> unit
@@ -182,7 +182,7 @@ let string_of_type = function
   | V_BitString _ -> "bit_string"
   | V_Bigint _ -> "big_int"
   | V_IPv4 _ -> "ipv4"
-  | V_Function _ -> "function"  (* TODO: nature, arity? *)
+  | V_Function _ -> "function"  (* TODO !!!! : nature, arity? *)
 
   | V_List _ -> "list"
   | V_Dict d -> "dict"
@@ -235,65 +235,73 @@ let rec unsetv env name = match env with
 
 (* Native function helpers *)
 
-let zero_value_fun f = function
-  | [] -> f ()
-  | _ -> raise WrongNumberOfArguments
+let zero_value_fun f =
+  let apply = function
+    | [] -> f ()
+    | _ -> raise WrongNumberOfArguments
+  in V_Function (SimpleFun (0, [], apply))
 
-let zero_value_fun_with_env f env = function
-  | [] -> f env
-  | _ -> raise WrongNumberOfArguments
+let zero_value_fun_with_env f =
+  let apply env = function
+    | [] -> f env
+    | _ -> raise WrongNumberOfArguments
+  in V_Function (EnvFun (0, [], apply))
 
-let one_value_fun f = function
-  | [e] -> f e
-  | _ -> raise WrongNumberOfArguments
 
-let one_value_fun_with_env f env = function
-  | [e] -> f env e
-  | _ -> raise WrongNumberOfArguments
+let one_value_fun f =
+  let apply = function
+    | [e] -> f e
+    | _ -> raise WrongNumberOfArguments
+  in V_Function (SimpleFun (1, [], apply))
 
-let one_string_fun_with_env f env = function
-  | [e] -> f env (eval_as_string e)
-  | _ -> raise WrongNumberOfArguments
+let one_value_fun_with_env f =
+  let apply env = function
+    | [e] -> f env e
+    | _ -> raise WrongNumberOfArguments
+  in V_Function (EnvFun (1, [], apply))
 
-let two_value_fun f = function
-  | [e1; e2] -> f e1 e2
-  | [e1] -> V_Function (NativeFun (one_value_fun (f e1)))
-  | _ -> raise WrongNumberOfArguments
+let one_string_fun_with_env f =
+  let apply env = function
+    | [e] -> f env (eval_as_string e)
+    | _ -> raise WrongNumberOfArguments
+  in V_Function (EnvFun (1, [], apply))
 
-let two_value_fun_with_env f env = function
-  | [e1; e2] -> f env e1 e2
-  | [e1] -> V_Function (NativeFunWithEnv (one_value_fun_with_env (fun env -> f env e1)))
-  | _ -> raise WrongNumberOfArguments
 
-let three_value_fun f = function
-  | [e1; e2; e3] -> f e1 e2 e3
-  | [e1; e2] -> V_Function (NativeFun (one_value_fun (f e1 e2)))
-  | [e1] -> V_Function (NativeFun (two_value_fun (f e1)))
-  | _ -> raise WrongNumberOfArguments
+let two_value_fun f =
+  let apply = function
+    | [e1; e2] -> f e1 e2
+    | _ -> raise WrongNumberOfArguments
+  in V_Function (SimpleFun (2, [], apply))
 
-let three_value_fun_with_env f env = function
-  | [e1; e2; e3] -> f env e1 e2 e3
-  | [e1; e2] -> V_Function (NativeFunWithEnv (one_value_fun_with_env (fun env -> f env e1 e2)))
-  | [e1] -> V_Function (NativeFunWithEnv (two_value_fun_with_env (fun env -> f env e1)))
-  | _ -> raise WrongNumberOfArguments
+let two_value_fun_with_env f =
+  let apply env = function
+    | [e1; e2] -> f env e1 e2
+    | _ -> raise WrongNumberOfArguments
+  in V_Function (EnvFun (2, [], apply))
 
-let four_value_fun f = function
-  | [e1; e2; e3; e4] -> f e1 e2 e3 e4
-  | [e1; e2; e3] -> V_Function (NativeFun (one_value_fun (f e1 e2 e3)))
-  | [e1; e2] -> V_Function (NativeFun (two_value_fun (f e1 e2)))
-  | [e1] -> V_Function (NativeFun (three_value_fun (f e1)))
-  | _ -> raise WrongNumberOfArguments
 
-let five_value_fun f = function
-  | [e1; e2; e3; e4; e5] -> f e1 e2 e3 e4 e5
-  | [e1; e2; e3; e4] -> V_Function (NativeFun (one_value_fun (f e1 e2 e3 e4)))
-  | [e1; e2; e3] -> V_Function (NativeFun (two_value_fun (f e1 e2 e3)))
-  | [e1; e2] -> V_Function (NativeFun (three_value_fun (f e1 e2)))
-  | [e1] -> V_Function (NativeFun (four_value_fun (f e1)))
-  | _ -> raise WrongNumberOfArguments
+let three_value_fun f =
+  let apply = function
+    | [e1; e2; e3] -> f e1 e2 e3
+    | _ -> raise WrongNumberOfArguments
+  in V_Function (SimpleFun (3, [], apply))
 
-let add_native name f =
-  Hashtbl.replace global_env name (V_Function (NativeFun f))
+let three_value_fun_with_env f =
+  let apply env = function
+    | [e1; e2; e3] -> f env e1 e2 e3
+    | _ -> raise WrongNumberOfArguments
+  in V_Function (EnvFun (3, [], apply))
 
-let add_native_with_env name f =
-  Hashtbl.replace global_env name (V_Function (NativeFunWithEnv f))
+
+let four_value_fun f =
+  let apply = function
+    | [e1; e2; e3; e4] -> f e1 e2 e3 e4
+    | _ -> raise WrongNumberOfArguments
+  in V_Function (SimpleFun (4, [], apply))
+
+
+let five_value_fun f =
+  let apply = function
+    | [e1; e2; e3; e4; e5] -> f e1 e2 e3 e4 e5
+    | _ -> raise WrongNumberOfArguments
+  in V_Function (SimpleFun (5, [], apply))

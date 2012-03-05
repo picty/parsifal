@@ -116,7 +116,8 @@ module HeartbeatParser = struct
 
   let params = []
   let functions = [
-    ("mk_type", fun _ -> one_value_fun make_heartbeat_type);
+(* TODO !!!! *)
+(*    ("mk_type", fun _ -> one_value_fun make_heartbeat_type); *)
   ]
 end
 

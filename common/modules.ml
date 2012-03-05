@@ -41,8 +41,8 @@ module type ParserInterface = sig
   val name : string
   val params : (string * getter option * setter option) list
 
-  (* For the moment, we only work with NativeFuns *)
-  val functions : (string * ((value -> t) * (t -> value) -> value list -> value)) list
+  (* For the moment, we only work with EnvFuns *)
+  val functions : (string * ((value -> t) * (t -> value) -> value list -> value) * int option) list
 
   val parse : parsing_state -> t
   val dump : t -> string
@@ -186,23 +186,25 @@ module MakeParserModule = functor (Parser : ParserInterface) -> struct
     Hashtbl.replace param_getters param_name (pop_option getter (no_getter param_name));
     Hashtbl.replace param_setters param_name (pop_option setter no_setter)
 
-  let populate_static_param (param_name, v) =
-    Hashtbl.replace static_params param_name v
+  let populate_static_param = Hashtbl.replace static_params
 
-  let populate_fun (fun_name, f) =
-    Hashtbl.replace static_params fun_name (V_Function (NativeFun (f)))
+  let populate_fun (fun_name, f, nargs) =
+    let real_f = f (pop_object, register) in
+    match nargs with
+      | None -> populate_static_param fun_name (V_Function (VargsFun real_f))
+      | Some n -> populate_static_param fun_name (V_Function (SimpleFun (n, [], real_f)))
 
   let init () =
     List.iter populate_param Parser.params;
-    populate_static_param ("name", V_String name);
+    populate_static_param "name" (V_String name);
     populate_param ("object_count", Some object_count, None);
 
-    populate_fun ("parse", parse);
-    populate_fun ("make", one_value_fun make);
-    populate_fun ("dump", one_value_fun (apply dump_aux));
-    populate_fun ("to_string", one_value_fun (apply to_string_aux));
-    populate_fun ("to_string_indent", one_value_fun (apply to_string_indent_aux));
-    List.iter (fun (n, f) -> populate_fun (n, f (pop_object, register))) Parser.functions;
+    populate_static_param "parse" (V_Function (VargsFun parse));
+    populate_static_param "make" (one_value_fun make);
+    populate_static_param "dump" (one_value_fun (apply dump_aux));
+    populate_static_param "to_string" (one_value_fun (apply to_string_aux));
+    populate_static_param "to_string_indent" (one_value_fun (apply to_string_indent_aux));
+    List.iter populate_fun Parser.functions;
     ()
 
     (* TODO: Add a _dict or _params magic objects ? Remove all _ ? *)

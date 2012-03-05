@@ -139,7 +139,7 @@ module RecordParser = struct
     | _ -> raise WrongNumberOfArguments
 
   let params = []
-  let functions = ["merge", wrapped_merge]
+  let functions = ["merge", wrapped_merge, Some 1]
 end
 
 module RecordModule = MakeParserModule (RecordParser)

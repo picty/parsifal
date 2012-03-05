@@ -417,106 +417,106 @@ let lift_two_to_one_string f =
 
 let _ =
   (* Generic functions *)
-  add_native "unit" (fun _ -> V_Unit);
-  add_native "typeof" (one_value_fun typeof);
-  add_native "to_string" (one_value_fun to_string);
-  add_native "_str" (one_value_fun _str);
-  add_native "_bigint" (one_value_fun _bigint);
-  add_native "_binstr" (one_value_fun _binstr);
-  add_native "print" print;
-  add_native "length" (one_value_fun length);
-  add_native_with_env "eval" (one_string_fun_with_env interpret_string);
-  add_native "as_hexa_int" (two_value_fun as_hexa_int);
-  add_native "exit" (one_value_fun (fun v -> raise (Exit v)));
-  add_native "warning" (one_value_fun (error_msg false));
-  add_native "fatal_error" (one_value_fun (error_msg true));
+  Hashtbl.replace global_env "unit" (zero_value_fun (fun _ -> V_Unit));
+  Hashtbl.replace global_env "typeof" (one_value_fun typeof);
+  Hashtbl.replace global_env "to_string" (one_value_fun to_string);
+  Hashtbl.replace global_env "_str" (one_value_fun _str);
+  Hashtbl.replace global_env "_bigint" (one_value_fun _bigint);
+  Hashtbl.replace global_env "_binstr" (one_value_fun _binstr);
+  Hashtbl.replace global_env "print" (V_Function (VargsFun print));
+  Hashtbl.replace global_env "length" (one_value_fun length);
+  Hashtbl.replace global_env "eval" (one_string_fun_with_env interpret_string);
+  Hashtbl.replace global_env "as_hexa_int" (two_value_fun as_hexa_int);
+  Hashtbl.replace global_env "exit" (one_value_fun (fun v -> raise (Exit v)));
+  Hashtbl.replace global_env "warning" (one_value_fun (error_msg false));
+  Hashtbl.replace global_env "fatal_error" (one_value_fun (error_msg true));
 
   (* Conversion functions *)
-  add_native "bigint" (one_value_fun mk_bigint);
-  add_native "bitstring" (two_value_fun mk_bitstring);
-  add_native "ipv4" (one_value_fun mk_ipv4);
+  Hashtbl.replace global_env "bigint" (one_value_fun mk_bigint);
+  Hashtbl.replace global_env "bitstring" (two_value_fun mk_bitstring);
+  Hashtbl.replace global_env "ipv4" (one_value_fun mk_ipv4);
 
   (* Environment handling *)
-  add_native_with_env "current_environment" (zero_value_fun_with_env current_environment);
+  Hashtbl.replace global_env "current_environment" (zero_value_fun_with_env current_environment);
 
   (* List and set functions *)
-  add_native "head" (one_value_fun head);
-  add_native "tail" (one_value_fun tail);
-  add_native "nth" (two_value_fun nth);
-  add_native "list" (one_value_fun import_list);
-  add_native "set" import_set;
-  add_native "rev" (one_value_fun rev);
-  add_native "range" range;
+  Hashtbl.replace global_env "head" (one_value_fun head);
+  Hashtbl.replace global_env "tail" (one_value_fun tail);
+  Hashtbl.replace global_env "nth" (two_value_fun nth);
+  Hashtbl.replace global_env "list" (one_value_fun import_list);
+  Hashtbl.replace global_env "set" (V_Function (VargsFun import_set));
+  Hashtbl.replace global_env "rev" (one_value_fun rev);
+  Hashtbl.replace global_env "range" (V_Function (VargsFun range));
 
   (* Dict functions *)
-  add_native "dict" hash_make;
-  add_native "dget" (two_value_fun hash_get);
-  add_native "dget_def" (three_value_fun hash_get_def);
-  add_native "dget_all" (two_value_fun hash_get_all);
-  add_native "dadd" (three_value_fun (hash_set true));
-  add_native "dset" (three_value_fun (hash_set false));
-  add_native "dunset" (two_value_fun hash_unset);
-  add_native "make_lookup" (one_value_fun (make_lookup));
-  add_native_with_env "print_stats" print_stats;
+  Hashtbl.replace global_env "dict" (V_Function (VargsFun hash_make));
+  Hashtbl.replace global_env "dget" (two_value_fun hash_get);
+  Hashtbl.replace global_env "dget_def" (three_value_fun hash_get_def);
+  Hashtbl.replace global_env "dget_all" (two_value_fun hash_get_all);
+  Hashtbl.replace global_env "dadd" (three_value_fun (hash_set true));
+  Hashtbl.replace global_env "dset" (three_value_fun (hash_set false));
+  Hashtbl.replace global_env "dunset" (two_value_fun hash_unset);
+  Hashtbl.replace global_env "make_lookup" (one_value_fun (make_lookup));
+  Hashtbl.replace global_env "print_stats" (V_Function (VargsEnvFun print_stats));
 
   (* Iterable functions *)
-  add_native_with_env "filter" (two_value_fun_with_env filter);
-  add_native_with_env "map" (two_value_fun_with_env map);
-  add_native_with_env "iter" (two_value_fun_with_env iter);
-  add_native_with_env "iteri" (two_value_fun_with_env iteri);
-  add_native_with_env "foreach" (three_value_fun_with_env foreach);
+  Hashtbl.replace global_env "filter" (two_value_fun_with_env filter);
+  Hashtbl.replace global_env "map" (two_value_fun_with_env map);
+  Hashtbl.replace global_env "iter" (two_value_fun_with_env iter);
+  Hashtbl.replace global_env "iteri" (two_value_fun_with_env iteri);
+  Hashtbl.replace global_env "foreach" (three_value_fun_with_env foreach);
 
   (* File and string functions *)
-  add_native "open" (one_value_fun open_file);
-  add_native "open_out" (one_value_fun open_out);
+  Hashtbl.replace global_env "open" (one_value_fun open_file);
+  Hashtbl.replace global_env "open_out" (one_value_fun open_out);
   Hashtbl.replace global_env "stdout" (V_OutChannel ("(stdout)", stdout));
   Hashtbl.replace global_env "stderr" (V_OutChannel ("(stderr)", stderr));
-  add_native "output" (two_value_fun output);
-  add_native "flush" (one_value_fun outflush);
-  add_native "read_some" (two_value_fun read_some);
-  add_native "read_line" (one_value_fun read_line);
-  add_native "read_all" (one_value_fun read_all);
+  Hashtbl.replace global_env "output" (two_value_fun output);
+  Hashtbl.replace global_env "flush" (one_value_fun outflush);
+  Hashtbl.replace global_env "read_some" (two_value_fun read_some);
+  Hashtbl.replace global_env "read_line" (one_value_fun read_line);
+  Hashtbl.replace global_env "read_all" (one_value_fun read_all);
 
-  add_native "encode" (two_value_fun encode);
-  add_native "decode" (two_value_fun decode);
-  add_native "base64_encode" (two_value_fun base64_encode);
-  add_native "base64_decode" (two_value_fun base64_decode);
-  add_native "stream" (two_value_fun stream_of_string);
-  add_native "concat" (two_value_fun concat_strings);
+  Hashtbl.replace global_env "encode" (two_value_fun encode);
+  Hashtbl.replace global_env "decode" (two_value_fun decode);
+  Hashtbl.replace global_env "base64_encode" (two_value_fun base64_encode);
+  Hashtbl.replace global_env "base64_decode" (two_value_fun base64_decode);
+  Hashtbl.replace global_env "stream" (two_value_fun stream_of_string);
+  Hashtbl.replace global_env "concat" (two_value_fun concat_strings);
 
   (* Dynamic loading *)
-  add_native_with_env "load" (one_string_fun_with_env load_script);
+  Hashtbl.replace global_env "load" (one_string_fun_with_env load_script);
 
   (* OS interface *)
-  add_native "getenv" (one_value_fun getenv);
+  Hashtbl.replace global_env "getenv" (one_value_fun getenv);
 
   (* Crypto *)
   (* TODO: factorize this with a register hash fun -> OId, <hash>sum, hmac_<hash>, RSA_signature_with? *)
-  add_native "md5sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
-  add_native "sha1sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha1sum (eval_as_string x))));
-  add_native "sha224sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha224sum (eval_as_string x))));
-  add_native "sha256sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha256sum (eval_as_string x))));
-  add_native "sha384sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha384sum (eval_as_string x))));
-  add_native "sha512sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha512sum (eval_as_string x))));
+  Hashtbl.replace global_env "md5sum" (one_value_fun (fun x -> V_BinaryString (Crypto.md5sum (eval_as_string x))));
+  Hashtbl.replace global_env "sha1sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha1sum (eval_as_string x))));
+  Hashtbl.replace global_env "sha224sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha224sum (eval_as_string x))));
+  Hashtbl.replace global_env "sha256sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha256sum (eval_as_string x))));
+  Hashtbl.replace global_env "sha384sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha384sum (eval_as_string x))));
+  Hashtbl.replace global_env "sha512sum" (one_value_fun (fun x -> V_BinaryString (Crypto.sha512sum (eval_as_string x))));
 
-  add_native "hmac_md5" (lift_two_to_one_string (Crypto.hmac Crypto.md5));
-  add_native "hmac_sha1" (lift_two_to_one_string (Crypto.hmac Crypto.sha1));
-  add_native "hmac_sha256" (lift_two_to_one_string (Crypto.hmac Crypto.sha256));
+  Hashtbl.replace global_env "hmac_md5" (lift_two_to_one_string (Crypto.hmac Crypto.md5));
+  Hashtbl.replace global_env "hmac_sha1" (lift_two_to_one_string (Crypto.hmac Crypto.sha1));
+  Hashtbl.replace global_env "hmac_sha256" (lift_two_to_one_string (Crypto.hmac Crypto.sha256));
 
-  add_native "pow" (three_value_fun pow);
-  add_native "gcd" (two_value_fun gcd);
-  add_native "lcm" (two_value_fun lcm);
-  add_native "divq" (two_value_fun divq);
-  add_native "mul" (two_value_fun mul);
-  add_native "is_prime" (one_value_fun is_prime);
+  Hashtbl.replace global_env "pow" (three_value_fun pow);
+  Hashtbl.replace global_env "gcd" (two_value_fun gcd);
+  Hashtbl.replace global_env "lcm" (two_value_fun lcm);
+  Hashtbl.replace global_env "divq" (two_value_fun divq);
+  Hashtbl.replace global_env "mul" (two_value_fun mul);
+  Hashtbl.replace global_env "is_prime" (one_value_fun is_prime);
 
-  add_native "aes_cbc_raw_encrypt" (lift_three_to_one_string Crypto.aes_cbc_raw_encrypt);
-  add_native "aes_cbc_raw_decrypt" (lift_three_to_one_string Crypto.aes_cbc_raw_decrypt);
-  add_native "aes_cbc_encrypt" (lift_three_to_one_string Crypto.aes_cbc_encrypt);
-  add_native "aes_cbc_decrypt" (lift_three_to_one_string Crypto.aes_cbc_decrypt);
+  Hashtbl.replace global_env "aes_cbc_raw_encrypt" (lift_three_to_one_string Crypto.aes_cbc_raw_encrypt);
+  Hashtbl.replace global_env "aes_cbc_raw_decrypt" (lift_three_to_one_string Crypto.aes_cbc_raw_decrypt);
+  Hashtbl.replace global_env "aes_cbc_encrypt" (lift_three_to_one_string Crypto.aes_cbc_encrypt);
+  Hashtbl.replace global_env "aes_cbc_decrypt" (lift_three_to_one_string Crypto.aes_cbc_decrypt);
 
   (* Network *)
-  add_native "socket" (two_value_fun channels_of_socket);
-  add_native "wait_for_input" (two_value_fun wait_for_input);
-  add_native "wait" (one_value_fun wait);
+  Hashtbl.replace global_env "socket" (two_value_fun channels_of_socket);
+  Hashtbl.replace global_env "wait_for_input" (two_value_fun wait_for_input);
+  Hashtbl.replace global_env "wait" (one_value_fun wait);
   ()

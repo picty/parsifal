@@ -160,8 +160,9 @@ module AlertParser = struct
 
   let params = []
   let functions = [
-    ("mk_level", fun _ -> one_value_fun make_alert_level);
-    ("mk_type", fun _ -> one_value_fun make_alert_type)
+(* TODO !!!! *)
+(*    ("mk_level", fun _ -> one_value_fun make_alert_level);
+    ("mk_type", fun _ -> one_value_fun make_alert_type) *)
   ]
 end
 
