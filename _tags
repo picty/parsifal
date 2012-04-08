@@ -4,3 +4,4 @@
 
 "crypto/test_crypto.native": use_crypto
 <crypto/*.c>: crypto_implem
+<analysis/extract_csv.native>: use_crypto
