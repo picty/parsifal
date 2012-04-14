@@ -12,10 +12,10 @@ open TlsHandshake
 type tls_record_errors =
   | UnexpectedContentType
 
-let tls_alert_errors_strings =
+let tls_record_errors_strings =
   [| (UnexpectedContentType, s_benign, "Unexpected content type") |]
 
-let tls_record_emit = register_module_errors_and_make_emit_function "tlsAlert" tls_alert_errors_strings
+let tls_record_emit = register_module_errors_and_make_emit_function "tlsRecord" tls_record_errors_strings
 
 
 

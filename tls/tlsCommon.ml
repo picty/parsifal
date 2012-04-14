@@ -7,7 +7,7 @@ open ParsingEngine
 type protocol_version = int
 
 let protocol_version_string_of_int = function
-  | 0x0200 -> "SSLv2"
+  | 0x0002 -> "SSLv2"
   | 0x0300 -> "SSLv3"
   | 0x0301 -> "TLSv1.0"
   | 0x0302 -> "TLSv1.1"
