@@ -88,6 +88,7 @@ let extract_header pstate =
 
 
 type ssl2Msg =
+  | Error of int
   | ClientHello of (protocol_version * int list * string * string)
   | ServerHello of (bool * int * protocol_version * string * int list * string)
   | UnknownMsg of string
@@ -119,6 +120,7 @@ let parse pstate =
   let (t, real_len, pad_len) = extract_header pstate in
   let new_pstate = go_down pstate (message_type_string_of_int t) real_len in
   let res = match t with
+    | 0 -> Error (pop_uint16 new_pstate)
     | 1 -> parse_client_hello new_pstate
     | 4 -> parse_server_hello new_pstate
     | _ -> UnknownMsg (pop_string new_pstate)
