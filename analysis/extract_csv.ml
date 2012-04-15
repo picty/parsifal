@@ -113,6 +113,17 @@ let get_type cs shdone record =
   end
 
 
+let print_alert uid msg_type al at =
+  Printf.printf "AnswerTypes:%s:%d:Alert\n" uid msg_type;
+  Printf.printf "Alerts:%s:%d:%d\n" uid al at
+
+
+let print_serverhello ssl2 uid msg_type v cs exts =
+  Printf.printf "AnswerTypes:%s:%d:%s\n" uid msg_type (if ssl2 then "SSL2" else "Handshake");
+  Printf.printf "ServerHellos:%s:%4.4x:%4.4x\n" uid v cs;
+  List.iter (fun e -> Printf.printf "ServerHelloExtensions:%s:%d\n" uid e) exts
+
+
 let rec print_hsmsg uid = function
   | (Certificates certs)::r ->
     let sums = List.map (fun s -> hexdump (Crypto.sha1sum s)) certs in
@@ -143,6 +154,7 @@ let _ =
 
       let name = get_name answer in
       let campaign = eval_as_int (answer --> "client_hello_type") in
+      let msg_type = eval_as_int (answer --> "msg_type") in
       let ip = get_ip answer in
       let unique_id = hexdump (Crypto.sha1sum ((string_of_int campaign) ^ ":" ^ name ^ ":" ^ ip)) in
 
@@ -157,16 +169,24 @@ let _ =
 
       begin
 	match content_types with
-	  | (Alert (al, at))::_ -> 
-	    Printf.printf "AnswerTypes:%s:Alert\n" unique_id;
-	    Printf.printf "Alerts:%s:%d:%d\n" unique_id al at;
+	  | (Alert (al, at))::_ -> print_alert unique_id msg_type al at;
 	  | (ServerHello (v, cs, exts))::r ->
-	    Printf.printf "AnswerTypes:%s:Handshake\n" unique_id;
-	    Printf.printf "ServerHellos:%s:%4.4x:%4.4x\n" unique_id v cs;
-	    List.iter (fun e -> Printf.printf "ServerHelloExtensions:%s:%d\n" unique_id e) exts;
+	    print_serverhello false unique_id msg_type v cs exts;
 	    print_hsmsg unique_id r
 	  | _ ->
-	    Printf.printf "AnswerTypes:%s:Junk\n" unique_id;
+	    begin
+	      let ssl2_pstate = pstate_of_string (Some name) (eval_as_string (answer --> "content")) in
+	      let res = 
+		try Some (Ssl2.parse ssl2_pstate)
+		with _ -> None
+	      in
+	      match res with
+		| Some (Ssl2.Error err) -> print_alert unique_id msg_type (err lsr 8) (err land 0xff)
+		| Some (Ssl2.ServerHello (_session_id_hit, _cert_type, v, cert, cs::_, _connection_id)) ->
+		  print_serverhello true unique_id msg_type v cs [];
+		  print_hsmsg unique_id [Certificates [cert]];
+		| _ -> Printf.printf "AnswerTypes:%s:%d:Junk\n" unique_id msg_type;
+	    end
       end
     done
   with
