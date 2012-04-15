@@ -89,6 +89,7 @@ let extract_header pstate =
 
 type ssl2Msg =
   | ClientHello of (protocol_version * int list * string * string)
+  | ServerHello of (bool * int * protocol_version * string * int list * string)
   | UnknownMsg of string
 
 let parse_client_hello pstate =
@@ -101,15 +102,25 @@ let parse_client_hello pstate =
   let challenge = pop_fixedlen_string challenge_len pstate in
   ClientHello (version, ciphersuites, sid, challenge) 
 
+let parse_server_hello pstate =
+  let session_id_hit = (pop_byte pstate) <> 0 in
+  let cert_type = pop_byte pstate in
+  let version = pop_uint16 pstate in
+  let cert_len = pop_uint16 pstate in
+  let cs_len = pop_uint16 pstate in
+  let cid_len = pop_uint16 pstate in
+  let cert = pop_fixedlen_string cert_len pstate in
+  let ciphersuites = pop_fixedlen_list "Cipher suites" cs_len pop_uint24 pstate in
+  let connection_id = pop_fixedlen_string cid_len pstate in
+  ServerHello (session_id_hit, cert_type, version, cert, ciphersuites, connection_id)
+
 
 let parse pstate =
   let (t, real_len, pad_len) = extract_header pstate in
   let new_pstate = go_down pstate (message_type_string_of_int t) real_len in
   let res = match t with
     | 1 -> parse_client_hello new_pstate
-    (*    | 2 -> parse_server_hello pstate
-	  | 11 -> parse_certificate_msg pstate
-	  | 0 | 14 -> V_Unit*)
+    | 4 -> parse_server_hello new_pstate
     | _ -> UnknownMsg (pop_string new_pstate)
   in
   assert_eos new_pstate;

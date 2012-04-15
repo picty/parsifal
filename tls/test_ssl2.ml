@@ -18,6 +18,10 @@ let _ =
 	  Printf.printf "ClientHello\n";
 	  Printf.printf "  Protocol version: %s\n" (TlsCommon.protocol_version_string_of_int proto);
 	  Printf.printf "  Ciphersuites:\n    %s\n" (String.concat "\n    " (List.map (hexdump_int_n 6) cs));
+	| ServerHello (_session_id_hit, _cert_type, proto, _cert, cs, _connection_id) ->
+	  Printf.printf "ServerHello\n";
+	  Printf.printf "  Protocol version: %s\n" (TlsCommon.protocol_version_string_of_int proto);
+	  Printf.printf "  Ciphersuites:\n    %s\n" (String.concat "\n    " (List.map (hexdump_int_n 6) cs));
 	| UnknownMsg s ->
 	  Printf.printf "Unknown...\n"
     done
