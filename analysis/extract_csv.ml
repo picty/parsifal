@@ -31,8 +31,8 @@ let ecdhe_suites =
 
 type msg =
   | Junk
-  | Alert of int * int
-  | ServerHello of int * int * int list
+  | Alert of int * int * int
+  | ServerHello of int * int * int * int list
   | Certificates of string list
   | DHE_SKE of string * string * string
   | ECDHE_SKE of string
@@ -42,31 +42,31 @@ type msg =
   | Other_HS of int
 
 
+let mk_uid answer answer_number =
+  let ip_part = hexdump (eval_as_ipv4 (answer --> "ip")) in
+  let campaign_part = hexdump_int_n 2 (eval_as_int (answer --> "client_hello_type")) in
+  let res = ip_part ^ campaign_part ^ (hexdump_int_n 6 !answer_number) in
+  incr answer_number;
+  res
+
+let mk_hash s =
+  String.sub (hexdump (Crypto.sha1sum s)) 0 16
 
 
-
-let get_name answer =
-  let name = eval_as_string (answer --> "name") in
-  if String.length name = 0
-  then Common.string_of_ip4 (eval_as_ipv4 (answer --> "ip"))
-  else name
-
-let get_ip answer = Common.string_of_ip4 (eval_as_ipv4 (answer --> "ip"))
-
-let string_of_type = function
-  | Junk -> "Junk"
-  | Alert (al, at) ->
-    "A(" ^ (string_of_int al) ^ "," ^ (string_of_int at) ^ ")"
-  | ServerHello (v, cs, exts) ->
-    "SH(" ^ (hexdump_int_n 4 v) ^ "," ^ (hexdump_int_n 4 cs) ^ ",{" ^
-      (String.concat ";" (List.map string_of_int exts)) ^  "})"
-  | Certificates certs -> "Certs(" ^ (string_of_int (List.length certs)) ^ ")"
-  | CertificateRequest -> "CertReq"
-  | DHE_SKE (_, _, _) -> "SKE(DHE)"
-  | ECDHE_SKE _ -> "SKE(ECDHE)"
-  | Other_SKE _ -> "SKE"
-  | ServerHelloDone -> "SHD"
-  | Other_HS hs_type -> "HS" ^ (string_of_int hs_type)
+(* let string_of_type = function *)
+(*   | Junk -> "Junk" *)
+(*   | Alert (al, at) -> *)
+(*     "A(" ^ (string_of_int al) ^ "," ^ (string_of_int at) ^ ")" *)
+(*   | ServerHello (v, cs, exts) -> *)
+(*     "SH(" ^ (hexdump_int_n 4 v) ^ "," ^ (hexdump_int_n 4 cs) ^ ",{" ^ *)
+(*       (String.concat ";" (List.map string_of_int exts)) ^  "})" *)
+(*   | Certificates certs -> "Certs(" ^ (string_of_int (List.length certs)) ^ ")" *)
+(*   | CertificateRequest -> "CertReq" *)
+(*   | DHE_SKE (_, _, _) -> "SKE(DHE)" *)
+(*   | ECDHE_SKE _ -> "SKE(ECDHE)" *)
+(*   | Other_SKE _ -> "SKE" *)
+(*   | ServerHelloDone -> "SHD" *)
+(*   | Other_HS hs_type -> "HS" ^ (string_of_int hs_type) *)
 
 
 let get_type cs shdone record =
@@ -86,7 +86,7 @@ let get_type cs shdone record =
 		| _ -> []
 	      in
 	      cs := Some ciphersuite;
-	      ServerHello (version, ciphersuite, extensions)
+	      ServerHello (record.version, version, ciphersuite, extensions)
 	    | 11 -> Certificates (List.map eval_as_string (eval_as_list hs_msg))
 	    | 12 -> begin
 	      match !cs with
@@ -106,28 +106,28 @@ let get_type cs shdone record =
       | 21 -> begin
 	try
 	  let (al, at) = AlertModule.pop_object record.content in
-	  Alert (al, at)
+	  Alert (record.version, al, at)
 	with _ -> shdone := true; Junk
       end
       | _ -> shdone := true; Junk
   end
 
 
-let print_alert uid msg_type al at =
-  Printf.printf "AnswerTypes:%s:%d:Alert\n" uid msg_type;
-  Printf.printf "Alerts:%s:%d:%d\n" uid al at
+let print_alert uid v al at =
+  Printf.printf "AnswerTypes:%s:A\n" uid;
+  Printf.printf "Alerts:%s:%4.4x:%d:%d\n" uid v al at
 
 
-let print_serverhello ssl2 uid msg_type v cs exts =
-  Printf.printf "AnswerTypes:%s:%d:%s\n" uid msg_type (if ssl2 then "SSL2" else "Handshake");
-  Printf.printf "ServerHellos:%s:%4.4x:%4.4x\n" uid v cs;
+let print_serverhello ssl2 uid ext_v v cs exts =
+  Printf.printf "AnswerTypes:%s:%s\n" uid (if ssl2 then "2" else "H");
+  Printf.printf "ServerHellos:%s:%4.4x:%4.4x:%4.4x\n" uid ext_v v cs;
   List.iter (fun e -> Printf.printf "ServerHelloExtensions:%s:%d\n" uid e) exts
 
 
 let rec print_hsmsg uid = function
   | (Certificates certs)::r ->
-    let sums = List.map (fun s -> hexdump (Crypto.sha1sum s)) certs in
-    let certificate_chain_id = hexdump (Crypto.sha1sum (String.concat "" sums)) in
+    let sums = List.map mk_hash certs in
+    let certificate_chain_id = mk_hash (String.concat "" sums) in
     Printf.printf "CertificateChains:%s:%s\n" uid certificate_chain_id;
     let rec aux i = function
       | c::rc, s::rs ->
@@ -149,17 +149,15 @@ let _ =
   minDisplay := s_specfatallyviolated;
   
   try
+    let answer_number = ref 0 in
     while not (eos pstate) do
       let answer = BinaryRecord.parse AnswerDump.description pstate in
+      let uid = mk_uid answer answer_number in
 
-      let name = get_name answer in
-      let campaign = eval_as_int (answer --> "client_hello_type") in
-      let msg_type = eval_as_int (answer --> "msg_type") in
-      let ip = get_ip answer in
-      let unique_id = hexdump (Crypto.sha1sum ((string_of_int campaign) ^ ":" ^ name ^ ":" ^ ip)) in
-
-      Printf.printf "UniqueIds:%3.3d:%s:%s:%s\n" campaign name ip unique_id;
-
+      let name = eval_as_string (answer --> "name") in
+      if String.length name > 0
+      then Printf.printf "Names:%s:%s\n" uid name;
+      
       let tls_pstate = pstate_of_string (Some name) (eval_as_string (answer --> "content")) in
       let records, error = Tls.TlsLib.shallow_parse_records tls_pstate in
       let parsed_recs = Tls.TlsLib._deep_parse_aux name records true in
@@ -169,10 +167,10 @@ let _ =
 
       begin
 	match content_types with
-	  | (Alert (al, at))::_ -> print_alert unique_id msg_type al at;
-	  | (ServerHello (v, cs, exts))::r ->
-	    print_serverhello false unique_id msg_type v cs exts;
-	    print_hsmsg unique_id r
+	  | (Alert (version, al, at))::_ -> print_alert uid version al at;
+	  | (ServerHello (external_version, version, cs, exts))::r ->
+	    print_serverhello false uid external_version version cs exts;
+	    print_hsmsg uid r
 	  | _ ->
 	    begin
 	      let ssl2_pstate = pstate_of_string (Some name) (eval_as_string (answer --> "content")) in
@@ -181,11 +179,11 @@ let _ =
 		with _ -> None
 	      in
 	      match res with
-		| Some (Ssl2.Error err) -> print_alert unique_id msg_type (err lsr 8) (err land 0xff)
+		| Some (Ssl2.Error err) -> print_alert uid 0x0002 (err lsr 8) (err land 0xff)
 		| Some (Ssl2.ServerHello (_session_id_hit, _cert_type, v, cert, cs::_, _connection_id)) ->
-		  print_serverhello true unique_id msg_type v cs [];
-		  print_hsmsg unique_id [Certificates [cert]];
-		| _ -> Printf.printf "AnswerTypes:%s:%d:Junk\n" unique_id msg_type;
+		  print_serverhello true uid 0x0002 v cs [];
+		  print_hsmsg uid [Certificates [cert]];
+		| _ -> Printf.printf "AnswerTypes:%s:J\n" uid;
 	    end
       end
     done
