@@ -2,3 +2,7 @@
 _build
 *.native
 bazar
+*.cmi
+*.cmo
+*.cmx
+*.o
