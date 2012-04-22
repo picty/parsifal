@@ -1,0 +1,13 @@
+let answer_dump_d = [
+  "ip", FT_IPv4;
+  "port", FT_Integer (IT_UInt16);
+  "name", FT_String (VarLen IT_UInt16);
+  "client_hello_type", FT_Integer (IT_UInt8);
+  "msg_type", FT_Integer (IT_UInt8);
+  "content", FT_String (VarLen IT_UInt32)
+]
+
+let descriptions = [
+  "answer_dump", answer_dump_d;
+]
+

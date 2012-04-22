@@ -49,12 +49,11 @@ let mk_enum_of_int (name, enum, unknown) =
   print_newline ()
 
 
-(* name, choices, default if any, name of the "Unknown" if any *)
-let handle_enum choice =
-  mk_ctors choice;
-  mk_string_of_enum choice;
-  mk_int_of_enum choice;
-  mk_enum_of_int choice;
+let handle_enum (enum : enum) =
+  mk_ctors enum;
+  mk_string_of_enum enum;
+  mk_int_of_enum enum;
+  mk_enum_of_int enum;
   print_newline ()
 
 
