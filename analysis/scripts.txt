@@ -8,9 +8,12 @@ campaign=005_July_2011_TLS1_EXT_RENEG; for i in $(seq 0 255); do echo $i; /home/
 
  - Local cleanup
 
-for i in *.txt; do sort -u $i > $i.sorted && mv $i.sorted $i; done
+for i in *.txt; do
+    echo -n "Working on $i... "
+    sort -u $i > $i.sorted && mv $i.sorted $i && echo "OK"
+done
 
-for i in CertificateChains CertificateContents Certificates Alerts UniqueIds AnswerTypes ServerHellos ServerHelloExtensions; do
+for i in CertificateChains CertificateContents Certificates Alerts AnswerTypes ServerHellos ServerHelloExtensions; do
     echo -n "Working on $i... "
     sort -T /srv/yeye/tmp -mu $i-[0-9]*txt > $i-merged.txt && mv $i-merged.txt $i.txt && rm $i-[0-9]*txt && echo "OK"
 done
