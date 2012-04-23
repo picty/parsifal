@@ -7,6 +7,14 @@ open TlsRecord
 open TlsHandshake
 
 
+let rec acceptable_versions min max = match min, max with
+  | 0x0002, 0x0002 -> [0x0002]
+  | 0x0002, _ -> 0x0002::(acceptable_versions 0x3000 max)
+  | _ ->
+    if min = max
+    then [min]
+    else min::(acceptable_versions (min+1) max)
+
 
 let _ =
   let pstate = pstate_of_channel "(stdin)" stdin in
@@ -34,6 +42,11 @@ let _ =
 	      List.iter (fun cs -> Printf.printf "  %4.4x\n" cs) ciphersuites;
 	      Printf.printf "Extensions\n";
 	      List.iter (fun e -> Printf.printf "  %4.4x\n" e) extensions;
+
+	      Printf.printf "acceptable_versions=\"\\(%s\\)\"\n"
+		(String.concat "\\|" (List.map (hexdump_int_n 4) (acceptable_versions vmin vmax)));
+	      Printf.printf "acceptable_suites=\"\\(%s\\)\"\n" (String.concat "\\|" (List.map (hexdump_int_n 4) ciphersuites));
+	      Printf.printf "acceptable_extensions=\"\\(%s\\)\"\n" (String.concat "\\|" ("NO"::(List.map (hexdump_int_n 4) extensions)));
 	      exit 0
 	    | _ -> failwith ""
 	end
