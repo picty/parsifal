@@ -43,8 +43,11 @@ let _ =
 	      Printf.printf "Extensions\n";
 	      List.iter (fun e -> Printf.printf "  %4.4x\n" e) extensions;
 
+	      let versions = acceptable_versions 0x0300 vmax in
 	      Printf.printf "acceptable_versions=\"\\(%s\\)\"\n"
-		(String.concat "\\|" (List.map (hexdump_int_n 4) (acceptable_versions vmin vmax)));
+		(String.concat "\\|" (List.map (hexdump_int_n 4) versions));
+	      Printf.printf "acceptable_sh_versions=\"\\(%s\\)\"\n"
+		(String.concat "\\|" (List.map (fun v -> (hexdump_int_n 4 v) ^ ":" ^ (hexdump_int_n 4 v)) versions));
 	      Printf.printf "acceptable_suites=\"\\(%s\\)\"\n" (String.concat "\\|" (List.map (hexdump_int_n 4) ciphersuites));
 	      Printf.printf "acceptable_extensions=\"\\(%s\\)\"\n" (String.concat "\\|" ("NO"::(List.map (hexdump_int_n 4) extensions)));
 	      exit 0
