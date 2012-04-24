@@ -47,110 +47,14 @@ type chain_type =
   | CT_Complete of int * unordered_chain_details
   | CT_Incomplete
 
-(* Add EV and DN *)
+(* Add DN *)
 type chain_details = {
   chain_type  : chain_type;
   validity    : string * string;
   key_quality : keytype_t;
   _hostname   : string;
-  _ev_cps     : string option;
+  ev_cps      : bool;
 }
-
-
-
-(* Chain finalization *)
-
-let wrong_chain cert = {
-  chain_type = CT_Incomplete;
-  validity = cert.not_before, cert.not_after;
-  key_quality = cert.keytype;
-  _hostname = "";
-  _ev_cps = None
-}
-
-let empty_chain () = {
-  chain_type = CT_Incomplete;
-  validity = "", "";
-  key_quality = UnknownKeyType;
-  _hostname = "";
-  _ev_cps = None
-}
-
-let rec is_rfc_compliant chain_sent chain_built =
-  match chain_sent, chain_built with
-    | [], [] -> true, true
-    | [], [c] -> true, false
-    | a::r, b::s when a = b -> is_rfc_compliant r s
-    | _, _ -> false, false
-
-let date_of_str s =
-  match List.map int_of_string (string_split '-' s) with
-    | [y; m; d] -> (y, m, d)
-    | _ -> failwith "Wrong date"
-
-let rec mk_validity = function
-  | []   -> "", ""
-  | [c]  -> (c.not_before, c.not_after)
-  | c::r ->
-    let nb, na = mk_validity r in
-    (max c.not_before nb, min c.not_after na)
-
-let rec mk_key_quality = function
-  | []   -> UnknownKeyType
-  | [c]  -> c.keytype
-  | c::r ->
-    match c.keytype, (mk_key_quality r) with
-      | RSA n1, RSA n2 -> RSA (min n1 n2)
-      | RSA n1, PartialRSA n2
-      | PartialRSA n1, RSA n2 -> PartialRSA (min n1 n2)
-      | RSA n, _ | _, RSA n | _, PartialRSA n -> PartialRSA n
-      | DSA, DSA -> DSA
-      | _, _ -> UnknownKeyType
-
-let build_chain chain_sent chain_built n_dups n_out n_unused =
-  let rfc_compliant, root_included = is_rfc_compliant chain_sent chain_built
-  and len_sent = List.length chain_sent
-  and len = List.length chain_built in
-  let t = match (List.hd (List.rev chain_built)).trust, rfc_compliant with
-    | Trusted _, true   -> CT_Perfect (len, root_included)
-    | Trusted _, false  -> CT_Trusted (len, { n_dups = n_dups; n_outside = n_out; n_unused = n_unused; n_sent = len_sent })
-    | NotTrusted, true  -> CT_CompleteRFC (len, root_included)
-    | NotTrusted, false -> CT_Complete (len, { n_dups = n_dups; n_outside = n_out; n_unused = n_unused; n_sent = len_sent })
-  in
-  {
-    chain_type = t;
-    validity = mk_validity chain_built;
-    key_quality = mk_key_quality chain_built;
-    _hostname = "";
-    _ev_cps = None
-  }
-
-let string_of_chain_type t =
-  let c, l = match t with
-    | CT_Perfect (n, true)      -> "P", [n; n; 0; 0; 0]
-    | CT_Perfect (n, false)     -> "P", [n-1; n; 0; 0; 0]
-    | CT_Trusted (n, x)         -> "T", [x.n_sent; n; x.n_dups; x.n_outside; x.n_unused]
-    | CT_CompleteRFC (n, true)  -> "R", [n; n; 0; 0; 0]
-    | CT_CompleteRFC (n, false) -> "R", [n-1; n; 0; 0; 0]
-    | CT_Complete (n, x)        -> "C", [x.n_sent; n; x.n_dups; x.n_outside; x.n_unused]
-    | CT_Incomplete             -> "I", [0; 0; 0; 0; 0]
-  in
-  String.concat ":" (c::(List.map string_of_int l))
-
-let string_of_keytype = function
-  | RSA n -> "RSA:" ^ (string_of_int n)
-  | PartialRSA n -> "rsa:" ^ (string_of_int n)
-  | DSA -> "DSA:0"
-  | UnknownKeyType -> "Unknown:0"
-
-let string_of_chain_details d =
-  String.concat ":" [
-    string_of_chain_type d.chain_type;
-    fst d.validity; snd d.validity;
-    string_of_keytype d.key_quality;
-    d._hostname;
-    Common.pop_option d._ev_cps ""
-  ]
 
 
 
@@ -159,6 +63,7 @@ let string_of_chain_details d =
 let cert_by_id = Hashtbl.create 10000000
 let cert_by_subject = Hashtbl.create 10000000
 let dn_by_id = Hashtbl.create 10000000
+let ev_by_oid = Hashtbl.create 100
 
 let find h hname key =
   try Hashtbl.find h key
@@ -187,6 +92,27 @@ let load_dns filename =
     done
   with End_of_file ->
     close_in dns;
+    Printf.fprintf stderr "done\n";
+    flush stderr
+
+let load_evs filename =
+  Printf.fprintf stderr "Loading %s..." filename;
+  flush stderr;
+  let evs = open_in filename in
+  try
+    while true do
+      let line = input_line evs in
+      match string_split ':' line with
+	| [dn_s; oid] ->
+	  let dn_id = mk_id dn_s in
+	  Hashtbl.replace ev_by_oid oid dn_id
+	| [id_s] ->
+	  let dn_id = mk_id id_s in
+	  Hashtbl.replace dn_by_id dn_id ""
+	| _ -> failwith ("Wrong ev line \"" ^ line ^ "\"")
+    done
+  with End_of_file ->
+    close_in evs;
     Printf.fprintf stderr "done\n";
     flush stderr
 
@@ -239,6 +165,108 @@ let load_certs filename trusted =
     close_in certs;
     Printf.fprintf stderr "done\n";
     flush stderr
+
+
+(* Chain finalization *)
+
+let wrong_chain cert = {
+  chain_type = CT_Incomplete;
+  validity = cert.not_before, cert.not_after;
+  key_quality = cert.keytype;
+  _hostname = "";
+  ev_cps = false
+}
+
+let empty_chain () = {
+  chain_type = CT_Incomplete;
+  validity = "", "";
+  key_quality = UnknownKeyType;
+  _hostname = "";
+  ev_cps = false
+}
+
+let rec is_rfc_compliant chain_sent chain_built =
+  match chain_sent, chain_built with
+    | [], [] -> true, true
+    | [], [c] -> true, false
+    | a::r, b::s when a = b -> is_rfc_compliant r s
+    | _, _ -> false, false
+
+let date_of_str s =
+  match List.map int_of_string (string_split '-' s) with
+    | [y; m; d] -> (y, m, d)
+    | _ -> failwith "Wrong date"
+
+let rec mk_validity = function
+  | []   -> "", ""
+  | [c]  -> (c.not_before, c.not_after)
+  | c::r ->
+    let nb, na = mk_validity r in
+    (max c.not_before nb, min c.not_after na)
+
+let rec mk_key_quality = function
+  | []   -> UnknownKeyType
+  | [c]  -> c.keytype
+  | c::r ->
+    match c.keytype, (mk_key_quality r) with
+      | RSA n1, RSA n2 -> RSA (min n1 n2)
+      | RSA n1, PartialRSA n2
+      | PartialRSA n1, RSA n2 -> PartialRSA (min n1 n2)
+      | RSA n, _ | _, RSA n | _, PartialRSA n -> PartialRSA n
+      | DSA, DSA -> DSA
+      | _, _ -> UnknownKeyType
+
+let find_ev_dn oid =
+  try Hashtbl.find ev_by_oid oid
+  with Not_found -> ""
+
+let build_chain chain_sent chain_built n_dups n_out n_unused =
+  let rfc_compliant, root_included = is_rfc_compliant chain_sent chain_built
+  and len_sent = List.length chain_sent
+  and len = List.length chain_built
+  and root = List.hd (List.rev chain_built) in
+  let t = match root.trust, rfc_compliant with
+    | Trusted _, true   -> CT_Perfect (len, root_included)
+    | Trusted _, false  -> CT_Trusted (len, { n_dups = n_dups; n_outside = n_out; n_unused = n_unused; n_sent = len_sent })
+    | NotTrusted, true  -> CT_CompleteRFC (len, root_included)
+    | NotTrusted, false -> CT_Complete (len, { n_dups = n_dups; n_outside = n_out; n_unused = n_unused; n_sent = len_sent })
+  and expected_ev_dns = List.map find_ev_dn ((List.hd chain_built).cert_policies)
+  in
+  {
+    chain_type = t;
+    validity = mk_validity chain_built;
+    key_quality = mk_key_quality chain_built;
+    _hostname = "";
+    ev_cps = List.mem root.subject_id expected_ev_dns
+  }
+
+let string_of_chain_type t =
+  let c, l = match t with
+    | CT_Perfect (n, true)      -> "P", [n; n; 0; 0; 0]
+    | CT_Perfect (n, false)     -> "P", [n-1; n; 0; 0; 0]
+    | CT_Trusted (n, x)         -> "T", [x.n_sent; n; x.n_dups; x.n_outside; x.n_unused]
+    | CT_CompleteRFC (n, true)  -> "R", [n; n; 0; 0; 0]
+    | CT_CompleteRFC (n, false) -> "R", [n-1; n; 0; 0; 0]
+    | CT_Complete (n, x)        -> "C", [x.n_sent; n; x.n_dups; x.n_outside; x.n_unused]
+    | CT_Incomplete             -> "I", [0; 0; 0; 0; 0]
+  in
+  String.concat ":" (c::(List.map string_of_int l))
+
+let string_of_keytype = function
+  | RSA n -> "RSA:" ^ (string_of_int n)
+  | PartialRSA n -> "rsa:" ^ (string_of_int n)
+  | DSA -> "DSA:0"
+  | UnknownKeyType -> "Unknown:0"
+
+let string_of_chain_details d =
+  String.concat ":" [
+    string_of_chain_type d.chain_type;
+    fst d.validity; snd d.validity;
+    string_of_keytype d.key_quality;
+    d._hostname;
+    if d.ev_cps then "1" else "0"
+  ]
+
 
 
 (* Chain construction and check *)
@@ -384,6 +412,7 @@ let _ =
   load_dns "trusted-DistinguishedNames.txt";
   load_certs "trusted-CertificateParsed.txt" true;
   load_certs "CertificateParsed.txt" false;
+  load_evs "ExtendedValidation.txt";
 
   Printf.fprintf stderr "%d dns loaded\n" (Hashtbl.length dn_by_id);
   Printf.fprintf stderr "%d certificates loaded\n" (Hashtbl.length cert_by_id);
