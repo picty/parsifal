@@ -8,6 +8,7 @@ let string_split c s =
       if offset < len then [String.sub s offset (len - offset)] else [""]
   in aux 0
 
+let mk_id s = Common.hexparse s
 
 
 (* Types *)
@@ -22,9 +23,7 @@ type cert_parsed = {
   notbefore : string;
   notafter : string;
   issuer_id : string;
-  issuer : string;
   subject_id : string;
-  subject : string;
   keytype : keytype_t;
   ca : bool;
   ski : string;
@@ -33,6 +32,30 @@ type cert_parsed = {
   cert_policies : string list;
   trust : trust_t
 }
+
+type chain_parsed = cert_parsed list
+
+(* type unordered_chain_details = { *)
+(*   n_dups : int; *)
+(*   n_outside : int; *)
+(*   n_unused : int; *)
+(* } *)
+
+(* type chain_type = *)
+(*   | CT_Perfect of int * bool *)
+(*   | CT_Trusted of int * unordered_chain_details *)
+(*   | CT_CompleteRFC of int * bool *)
+(*   | CT_Complete of int * unordered_chain_details *)
+(*   | CT_Incomplete *)
+
+(* type chain_details = { *)
+(*   chain_built : cert_parsed list; *)
+(*   chain_type  : chain_type *)
+(*   not_before  : string *)
+(*   not_after   : string *)
+(*   hostname    : string *)
+(* } *)
+
 
 type chain_details = {
   chain_built : cert_parsed list;
@@ -45,16 +68,13 @@ type chain_details = {
   (* valdity, etc. *)
 }
 
-type chain_parsed = cert_parsed list
-
-
 
 (* Globals *)
 
-let cert_by_id = Hashtbl.create 1000
-let cert_by_subject = Hashtbl.create 1000
-let chain_by_id = Hashtbl.create 1000
-let dn_by_id = Hashtbl.create 1000
+let cert_by_id = Hashtbl.create 10000000
+let cert_by_subject = Hashtbl.create 10000000
+let chain_by_id = Hashtbl.create 10000000
+let dn_by_id = Hashtbl.create 10000000
 
 let find h hname key =
   try Hashtbl.find h key
@@ -74,10 +94,10 @@ let load_dns filename =
       let line = input_line dns in
       match string_split ':' line with
 	| [id_s; dn_s] ->
-	  let dn_id = Common.hexparse id_s in
+	  let dn_id = mk_id id_s in
 	  Hashtbl.replace dn_by_id dn_id dn_s
 	| [id_s] ->
-	  let dn_id = Common.hexparse id_s in
+	  let dn_id = mk_id id_s in
 	  Hashtbl.replace dn_by_id dn_id ""
 	| _ -> failwith ("Wrong dn line \"" ^ line ^ "\"")
     done
@@ -89,15 +109,15 @@ let add_cert cert_line trust_info =
   match string_split ':' cert_line with
     | [id_s; ver_s; ser_s; nb_s; na_s; _; iss_s; sub_s;
        key_s; _; ksz_s; ca_s; ski_s; akiser_s; aki_s; cps_s] ->
-      let id = Common.hexparse id_s
+      let id = mk_id id_s
       and version = match ver_s with "" -> 1 | _ -> int_of_string ver_s
       and keytype = match key_s, ksz_s with
 	| "RSA", sz -> RSA (int_of_string sz)
 	| "DSA", _  -> DSA
 	| _         -> UnknownKeyType
       and ca = match ca_s with "Yes" | "MostlyYes" -> true | _ -> false
-      and i_id = Common.hexparse iss_s
-      and s_id = Common.hexparse sub_s in
+      and i_id = mk_id iss_s
+      and s_id = mk_id sub_s in
       let content = {
 	cert_id = id;
 	version = version;
@@ -105,9 +125,7 @@ let add_cert cert_line trust_info =
 	notbefore = nb_s;
 	notafter = na_s;
 	issuer_id = i_id;
-	issuer = find_dn_by_id i_id;
 	subject_id = s_id;
-	subject = find_dn_by_id s_id;
 	keytype = keytype;
 	ca = ca;
 	ski = Common.hexparse ski_s;
@@ -130,7 +148,7 @@ let load_certs filename trusted =
   let trust_info = if trusted then Trusted [] else NotTrusted in
   try
     while true do
-      add_cert (input_line certs) trust_info
+      add_cert (input_line certs) trust_info;
     done
   with End_of_file ->
     close_in certs;
@@ -146,8 +164,8 @@ let load_chains filename =
     while true do
       match Common.string_split ':' (input_line chains) with
 	| [chain_s; _; cert_s] ->
-	  let chain_id = Common.hexparse chain_s
-	  and cert_id = Hashtbl.find cert_by_id (Common.hexparse cert_s) in
+	  let chain_id = mk_id chain_s
+	  and cert_id = mk_id cert_s in
 	  if !current_id <> chain_id
 	  then begin
 	    if !current <> []
@@ -168,11 +186,11 @@ let load_chains filename =
 
 (* Chain construction and check *)
 
-let check_link subject issuer end_entity =
+let check_link subject issuer =
   (subject.issuer_id = issuer.subject_id) &&
     (subject.aki_serial = "" || subject.aki_serial = issuer.serial) &&
     (subject.aki_ki = "" || subject.aki_ki = issuer.ski) &&
-    ((end_entity && subject.cert_id = issuer.cert_id) || subject.ca)
+    issuer.ca
 
 let clean_chain c =
   let certs_seen = Hashtbl.create 10 in
@@ -215,34 +233,41 @@ let filter_out c l =
       else aux (x::accu) r
   in aux [] l
 
+
+let empty_dn = Common.hexparse "da39a3ee5e6b4b0d"
+
 let rec step used n_outside chain_so_far next remaining_certs =
-  if check_link next next (chain_so_far = [])
+  if check_link next next
   then Some ((List.rev (next::chain_so_far)), n_outside)
   else begin
     let expected_iss = next.issuer_id in
-
-    let inchain_candidates = List.filter
-      (fun c -> (c.subject_id = expected_iss) && (not (List.mem c.cert_id used)))
-      remaining_certs
-    and outside_candidates = List.filter
-      (fun c -> (not (List.mem c remaining_certs)) && (not (List.mem c.cert_id used)))
-      (Hashtbl.find_all cert_by_subject expected_iss)
-    in
-   let rec next_step new_n_outside new_chain current = function
-      | [] -> current
-      | cert::r ->
-	let x = step (cert.cert_id::used) new_n_outside new_chain cert
-	  (filter_out cert remaining_certs)
-	in
-	let new_current = match current, x with
-	 | None, _ -> x
-	 | _, None -> current
-	 | Some a, Some b -> Some (return_better_chain a b)
-	in
-	next_step new_n_outside new_chain new_current r
-    in
-    let after_inchain = next_step n_outside (next::chain_so_far) None inchain_candidates in
-    next_step (n_outside + 1) (next::chain_so_far) after_inchain outside_candidates
+    if expected_iss = empty_dn then None else begin
+      let rec next_step new_n_outside new_chain current = function
+	| [] -> current
+	| cert::r ->
+	  let x = step (cert.cert_id::used) new_n_outside new_chain cert
+	    (filter_out cert remaining_certs)
+	  in
+	  let new_current = match current, x with
+	    | None, _ -> x
+	    | _, None -> current
+	    | Some a, Some b -> Some (return_better_chain a b)
+	  in
+	  next_step new_n_outside new_chain new_current r
+      in
+      let inchain_candidates = List.filter
+	(fun c -> (c.subject_id = expected_iss) && (not (List.mem c.cert_id used)) && (check_link next c))
+	remaining_certs
+      in
+      match next_step n_outside (next::chain_so_far) None inchain_candidates with
+	| (Some (_, nout)) as res when nout = n_outside -> res
+	| tmp_res ->
+	  let outside_candidates = List.filter
+	    (fun c -> (not (List.mem c remaining_certs)) && (not (List.mem c.cert_id used)) && (check_link next c))
+	    (Hashtbl.find_all cert_by_subject expected_iss)
+	  in
+	  next_step (n_outside + 1) (next::chain_so_far) tmp_res outside_candidates
+    end
   end
 
 
@@ -254,9 +279,10 @@ let rec is_rfc_compliant chain_sent chain_built =
     | _, _ -> false
 
 
-let analyse_chain chain =
+let analyse_chain chain_ids =
+  let chain = List.map (Hashtbl.find cert_by_id) chain_ids in
   let n_dups, clean_chain = clean_chain chain in
-  match chain with
+  match clean_chain with
     | [] -> None
     | first::r ->
       match step [first.cert_id] 0 [] first r with
@@ -275,22 +301,25 @@ let analyse_chain chain =
 (*     # Compute validities, chain quality (Algos, RSA keysizes, validity) *)
 
 
-let _ =
-  load_dns "108-DistinguishedNames.txt";
-  load_dns "trusted-DistinguishedNames.txt";
-  load_certs "trusted-CertificateParsed.txt" true;
-  load_certs "108-CertificateParsed.txt" false;
-  load_chains "108-Certificates.txt"
-
-(* Add a list of EV certificate policies extensions *)
 
 
-let res = Array.make 7 0
+let res = Array.make 8 0
 let titles = [|"nok"; "trusted"; "malformed_trusted"; "transvalid_trusted";
-	       "rfc_compliant"; "malformed"; "transvalid_malformed"|]
+	       "rfc_compliant"; "malformed"; "transvalid_malformed"; "total"|]
+let witness = Array.make 8 None
+
+let print_results () =
+  for i = 0 to (Array.length titles) - 1 do
+    let witness_str = match witness.(i) with
+      | None -> "NONE"
+      | Some i -> Common.hexdump i
+    in
+    Printf.printf "%20s : %10d (%s)\n" titles.(i) res.(i) witness_str;
+  done;
+  print_newline ();
+  flush stdout
 
 let analyse_and_count i chain =
-  Printf.printf "Analysing %s... " (Common.hexdump i); flush stdout;
   let idx = match analyse_chain chain with
     | None -> 0
     | Some { rfc_compliant = true; trusted = Trusted _ } -> 1
@@ -300,11 +329,25 @@ let analyse_and_count i chain =
     | Some { n_outside = 0 } -> 5
     | Some _ -> 6
   in
-  Printf.printf "%d\n" idx;
-  res.(idx) <- res.(idx) + 1
+  let value = res.(idx) + 1 in
+  res.(idx) <- value;
+  if value = 1 then witness.(idx) <- Some i;
+  let total = res.(7) + 1 in
+  res.(7) <- res.(7) + 1;
+  if (total mod 10000) = 0 then print_results ()
+
 
 let _ =
+(*  load_dns "108-DistinguishedNames.txt"; *)
+  load_dns "trusted-DistinguishedNames.txt";
+  load_certs "trusted-CertificateParsed.txt" true;
+  load_certs "108-CertificateParsed.txt" false;
+  load_chains "108-Certificates.txt";
+
+  Printf.printf "%d dns loaded\n" (Hashtbl.length dn_by_id);
+  Printf.printf "%d chains loaded\n" (Hashtbl.length chain_by_id);
+  Printf.printf "%d certificates loaded\n" (Hashtbl.length cert_by_id);
+  flush stdout;
+
   Hashtbl.iter analyse_and_count chain_by_id;
-    for i = 0 to 6 do
-      Printf.printf "%20s : %d\n" titles.(i) res.(i);
-    done
+  print_results ();
