@@ -13,15 +13,15 @@ let mk_id s = Common.hexparse s
 
 (* Types *)
 
-type keytype_t = RSA of int | DSA | UnknownKeyType
+type keytype_t = RSA of int | PartialRSA of int | DSA | UnknownKeyType
 type trust_t = NotTrusted | Trusted of string list
 
 type cert_parsed = {
   cert_id : string;
   version : int;
   serial : string;
-  notbefore : string;
-  notafter : string;
+  not_before : string;
+  not_after : string;
   issuer_id : string;
   subject_id : string;
   keytype : keytype_t;
@@ -33,47 +33,131 @@ type cert_parsed = {
   trust : trust_t
 }
 
-type chain_parsed = cert_parsed list
-
-(* type unordered_chain_details = { *)
-(*   n_dups : int; *)
-(*   n_outside : int; *)
-(*   n_unused : int; *)
-(* } *)
-
-(* type chain_type = *)
-(*   | CT_Perfect of int * bool *)
-(*   | CT_Trusted of int * unordered_chain_details *)
-(*   | CT_CompleteRFC of int * bool *)
-(*   | CT_Complete of int * unordered_chain_details *)
-(*   | CT_Incomplete *)
-
-(* type chain_details = { *)
-(*   chain_built : cert_parsed list; *)
-(*   chain_type  : chain_type *)
-(*   not_before  : string *)
-(*   not_after   : string *)
-(*   hostname    : string *)
-(* } *)
-
-
-type chain_details = {
-  chain_built : cert_parsed list;
+type unordered_chain_details = {
   n_dups : int;
   n_outside : int;
   n_unused : int;
-  n_total : int;
-  rfc_compliant : bool;
-  trusted : trust_t;
-  (* valdity, etc. *)
+  n_sent : int;
 }
+
+type chain_type =
+  | CT_Perfect of int * bool
+  | CT_Trusted of int * unordered_chain_details
+  | CT_CompleteRFC of int * bool
+  | CT_Complete of int * unordered_chain_details
+  | CT_Incomplete
+
+(* Add EV and DN *)
+type chain_details = {
+  chain_type  : chain_type;
+  validity    : string * string;
+  key_quality : keytype_t;
+  _hostname   : string;
+  _ev_cps     : string option;
+}
+
+
+
+(* Chain finalization *)
+
+let wrong_chain cert = {
+  chain_type = CT_Incomplete;
+  validity = cert.not_before, cert.not_after;
+  key_quality = cert.keytype;
+  _hostname = "";
+  _ev_cps = None
+}
+
+let empty_chain () = {
+  chain_type = CT_Incomplete;
+  validity = "", "";
+  key_quality = UnknownKeyType;
+  _hostname = "";
+  _ev_cps = None
+}
+
+let rec is_rfc_compliant chain_sent chain_built =
+  match chain_sent, chain_built with
+    | [], [] -> true, true
+    | [], [c] -> true, false
+    | a::r, b::s when a = b -> is_rfc_compliant r s
+    | _, _ -> false, false
+
+let date_of_str s =
+  match List.map int_of_string (string_split '-' s) with
+    | [y; m; d] -> (y, m, d)
+    | _ -> failwith "Wrong date"
+
+let rec mk_validity = function
+  | []   -> "", ""
+  | [c]  -> (c.not_before, c.not_after)
+  | c::r ->
+    let nb, na = mk_validity r in
+    (max c.not_before nb, min c.not_after na)
+
+let rec mk_key_quality = function
+  | []   -> UnknownKeyType
+  | [c]  -> c.keytype
+  | c::r ->
+    match c.keytype, (mk_key_quality r) with
+      | RSA n1, RSA n2 -> RSA (min n1 n2)
+      | RSA n1, PartialRSA n2
+      | PartialRSA n1, RSA n2 -> PartialRSA (min n1 n2)
+      | RSA n, _ | _, RSA n | _, PartialRSA n -> PartialRSA n
+      | DSA, DSA -> DSA
+      | _, _ -> UnknownKeyType
+
+let build_chain chain_sent chain_built n_dups n_out n_unused =
+  let rfc_compliant, root_included = is_rfc_compliant chain_sent chain_built
+  and len_sent = List.length chain_sent
+  and len = List.length chain_built in
+  let t = match (List.hd (List.rev chain_built)).trust, rfc_compliant with
+    | Trusted _, true   -> CT_Perfect (len, root_included)
+    | Trusted _, false  -> CT_Trusted (len, { n_dups = n_dups; n_outside = n_out; n_unused = n_unused; n_sent = len_sent })
+    | NotTrusted, true  -> CT_CompleteRFC (len, root_included)
+    | NotTrusted, false -> CT_Complete (len, { n_dups = n_dups; n_outside = n_out; n_unused = n_unused; n_sent = len_sent })
+  in
+  {
+    chain_type = t;
+    validity = mk_validity chain_built;
+    key_quality = mk_key_quality chain_built;
+    _hostname = "";
+    _ev_cps = None
+  }
+
+let string_of_chain_type t =
+  let c, l = match t with
+    | CT_Perfect (n, true)      -> "P", [n; n; 0; 0; 0]
+    | CT_Perfect (n, false)     -> "P", [n-1; n; 0; 0; 0]
+    | CT_Trusted (n, x)         -> "T", [x.n_sent; n; x.n_dups; x.n_outside; x.n_unused]
+    | CT_CompleteRFC (n, true)  -> "R", [n; n; 0; 0; 0]
+    | CT_CompleteRFC (n, false) -> "R", [n-1; n; 0; 0; 0]
+    | CT_Complete (n, x)        -> "C", [x.n_sent; n; x.n_dups; x.n_outside; x.n_unused]
+    | CT_Incomplete             -> "I", [0; 0; 0; 0; 0]
+  in
+  String.concat ":" (c::(List.map string_of_int l))
+
+let string_of_keytype = function
+  | RSA n -> "RSA:" ^ (string_of_int n)
+  | PartialRSA n -> "rsa:" ^ (string_of_int n)
+  | DSA -> "DSA:0"
+  | UnknownKeyType -> "Unknown:0"
+
+let string_of_chain_details d =
+  String.concat ":" [
+    string_of_chain_type d.chain_type;
+    fst d.validity; snd d.validity;
+    string_of_keytype d.key_quality;
+    d._hostname;
+    Common.pop_option d._ev_cps ""
+  ]
+
 
 
 (* Globals *)
 
 let cert_by_id = Hashtbl.create 10000000
 let cert_by_subject = Hashtbl.create 10000000
-let chain_by_id = Hashtbl.create 10000000
 let dn_by_id = Hashtbl.create 10000000
 
 let find h hname key =
@@ -86,8 +170,8 @@ let find_dn_by_id = find dn_by_id "dn_by_id"
 (* Load functions *)
 
 let load_dns filename =
-  Printf.printf "Loading %s... " filename;
-  flush stdout;
+  Printf.fprintf stderr "Loading %s... " filename;
+  flush stderr;
   let dns = open_in filename in
   try
     while true do
@@ -103,7 +187,8 @@ let load_dns filename =
     done
   with End_of_file ->
     close_in dns;
-    Printf.printf "done\n"
+    Printf.fprintf stderr "done\n";
+    flush stderr
 
 let add_cert cert_line trust_info =
   match string_split ':' cert_line with
@@ -122,8 +207,8 @@ let add_cert cert_line trust_info =
 	cert_id = id;
 	version = version;
 	serial = Common.hexparse ser_s;
-	notbefore = nb_s;
-	notafter = na_s;
+	not_before = nb_s;
+	not_after = na_s;
 	issuer_id = i_id;
 	subject_id = s_id;
 	keytype = keytype;
@@ -142,8 +227,8 @@ let add_cert cert_line trust_info =
     | l -> failwith ("Wrong certificate line \"" ^ cert_line ^ "\", " ^ (string_of_int (List.length l)))
 
 let load_certs filename trusted =
-  Printf.printf "Loading %s... " filename;
-  flush stdout;
+  Printf.fprintf stderr "Loading %s... " filename;
+  flush stderr;
   let certs = open_in filename in
   let trust_info = if trusted then Trusted [] else NotTrusted in
   try
@@ -152,36 +237,8 @@ let load_certs filename trusted =
     done
   with End_of_file ->
     close_in certs;
-    Printf.printf "done\n"
-
-let load_chains filename =
-  Printf.printf "Loading %s... " filename;
-  flush stdout;
-  let chains = open_in filename in
-  let current = ref [] in
-  let current_id = ref "" in
-  try
-    while true do
-      match Common.string_split ':' (input_line chains) with
-	| [chain_s; _; cert_s] ->
-	  let chain_id = mk_id chain_s
-	  and cert_id = mk_id cert_s in
-	  if !current_id <> chain_id
-	  then begin
-	    if !current <> []
-	    then Hashtbl.replace chain_by_id !current_id (List.rev !current);
-	    current := [cert_id];
-	    current_id := chain_id
-	  end else current := cert_id::(!current)
-	| _ -> failwith "Wrong chain line"
-    done
-  with End_of_file ->
-    if !current <> []
-    then Hashtbl.replace chain_by_id !current_id (List.rev !current);
-    close_in chains;
-    Printf.printf "done\n";
-    flush stdout
-
+    Printf.fprintf stderr "done\n";
+    flush stderr
 
 
 (* Chain construction and check *)
@@ -193,17 +250,13 @@ let check_link subject issuer =
     issuer.ca
 
 let clean_chain c =
-  let certs_seen = Hashtbl.create 10 in
-  let rec filter_dups n_dups accu = function
+  let rec filter_dups n_dups ids_seen accu = function
     | [] -> n_dups, List.rev accu
     | cert::r ->
-      if Hashtbl.mem certs_seen cert.cert_id
-      then filter_dups (n_dups + 1) accu r
-      else begin
-	Hashtbl.add certs_seen cert.cert_id ();
-	filter_dups n_dups (cert::accu) r
-      end
-  in filter_dups 0 [] c
+      if List.mem cert.cert_id ids_seen
+      then filter_dups (n_dups + 1) ids_seen accu r
+      else filter_dups n_dups (cert.cert_id::ids_seen) (cert::accu) r
+  in filter_dups 0 [] [] c
 
 let is_trusted c = (List.hd (List.rev c)).trust <> NotTrusted
 
@@ -242,6 +295,17 @@ let rec step used n_outside chain_so_far next remaining_certs =
   else begin
     let expected_iss = next.issuer_id in
     if expected_iss = empty_dn then None else begin
+
+      let filter_inchain c =
+	(c.subject_id = expected_iss) &&
+	  (not (List.mem c.cert_id used)) &&
+	  (check_link next c)
+      and filter_outside c =
+	(not (List.mem c remaining_certs)) &&
+	  (not (List.mem c.cert_id used)) &&
+	  (check_link next c)
+      in
+
       let rec next_step new_n_outside new_chain current = function
 	| [] -> current
 	| cert::r ->
@@ -255,99 +319,74 @@ let rec step used n_outside chain_so_far next remaining_certs =
 	  in
 	  next_step new_n_outside new_chain new_current r
       in
-      let inchain_candidates = List.filter
-	(fun c -> (c.subject_id = expected_iss) && (not (List.mem c.cert_id used)) && (check_link next c))
-	remaining_certs
-      in
+
+      let inchain_candidates = List.filter filter_inchain remaining_certs in
       match next_step n_outside (next::chain_so_far) None inchain_candidates with
 	| (Some (_, nout)) as res when nout = n_outside -> res
 	| tmp_res ->
-	  let outside_candidates = List.filter
-	    (fun c -> (not (List.mem c remaining_certs)) && (not (List.mem c.cert_id used)) && (check_link next c))
-	    (Hashtbl.find_all cert_by_subject expected_iss)
-	  in
+	  let cool_subjects = Hashtbl.find_all cert_by_subject expected_iss in
+	  let outside_candidates = List.filter filter_outside cool_subjects in
 	  next_step (n_outside + 1) (next::chain_so_far) tmp_res outside_candidates
     end
   end
 
 
-let rec is_rfc_compliant chain_sent chain_built =
-  match chain_sent, chain_built with
-    | [], [] -> true
-    | [], [c] -> true
-    | a::r, b::s -> a = b && is_rfc_compliant r s
-    | _, _ -> false
 
+let foreach_chain f filename =
+  let chains = open_in filename in
+  let current = ref [] in
+  let current_id = ref "" in
+  try
+    while true do
+      match Common.string_split ':' (input_line chains) with
+	| [chain_s; _; cert_s] ->
+	  let chain_id = mk_id chain_s
+	  and cert_id = mk_id cert_s in
+	  if !current_id <> chain_id
+	  then begin
+	    if !current <> []
+	    then f !current_id (List.rev !current);
+	    current := [cert_id];
+	    current_id := chain_id
+	  end else current := cert_id::(!current)
+	| _ -> failwith "Wrong chain line"
+    done
+  with End_of_file ->
+    if !current <> []
+    then f !current_id (List.rev !current);
+    close_in chains
+
+let rec certs_of_ids = function
+  | [] -> []
+  | id::r ->
+    try (Hashtbl.find cert_by_id id)::(certs_of_ids r)
+    with Not_found -> certs_of_ids r
 
 let analyse_chain chain_ids =
-  let chain = List.map (Hashtbl.find cert_by_id) chain_ids in
-  let n_dups, clean_chain = clean_chain chain in
+  let chain_sent = certs_of_ids chain_ids in
+  let n_dups, clean_chain = clean_chain chain_sent in
   match clean_chain with
-    | [] -> None
+    | [] -> empty_chain ()
     | first::r ->
       match step [first.cert_id] 0 [] first r with
-	| Some (ch, n_out) ->
-	  Some { chain_built = ch;
-		 n_dups = n_dups;
-		 n_outside = n_out;
-		 n_unused = (List.length clean_chain) + n_out - (List.length ch);
-		 n_total = List.length clean_chain;
-		 rfc_compliant = is_rfc_compliant chain ch;
-		 trusted = (List.hd (List.rev ch)).trust
-	       }
-	| None -> None
-(*     # Add info on the end entity cert (EV ext? DN type?) *)
-(*     # Enrich : is_valid_in_FF, is_EV *)
-(*     # Compute validities, chain quality (Algos, RSA keysizes, validity) *)
+	| Some (chain_built, n_out) ->
+	  let n_unused = (List.length clean_chain) + n_out - (List.length chain_built) in
+	  build_chain chain_sent chain_built n_dups n_out n_unused
+	| None -> wrong_chain first
 
 
-
-
-let res = Array.make 8 0
-let titles = [|"nok"; "trusted"; "malformed_trusted"; "transvalid_trusted";
-	       "rfc_compliant"; "malformed"; "transvalid_malformed"; "total"|]
-let witness = Array.make 8 None
-
-let print_results () =
-  for i = 0 to (Array.length titles) - 1 do
-    let witness_str = match witness.(i) with
-      | None -> "NONE"
-      | Some i -> Common.hexdump i
-    in
-    Printf.printf "%20s : %10d (%s)\n" titles.(i) res.(i) witness_str;
-  done;
-  print_newline ();
-  flush stdout
-
-let analyse_and_count i chain =
-  let idx = match analyse_chain chain with
-    | None -> 0
-    | Some { rfc_compliant = true; trusted = Trusted _ } -> 1
-    | Some { n_outside = 0; trusted = Trusted _ } -> 2
-    | Some { trusted = Trusted _ } -> 3
-    | Some { rfc_compliant = true } -> 4
-    | Some { n_outside = 0 } -> 5
-    | Some _ -> 6
-  in
-  let value = res.(idx) + 1 in
-  res.(idx) <- value;
-  if value = 1 then witness.(idx) <- Some i;
-  let total = res.(7) + 1 in
-  res.(7) <- res.(7) + 1;
-  if (total mod 10000) = 0 then print_results ()
-
+let analyse_and_print i chain =
+  let details = analyse_chain chain in
+  Printf.printf "%s:%s\n" (Common.hexdump i) (string_of_chain_details details)
 
 let _ =
 (*  load_dns "108-DistinguishedNames.txt"; *)
   load_dns "trusted-DistinguishedNames.txt";
   load_certs "trusted-CertificateParsed.txt" true;
-  load_certs "108-CertificateParsed.txt" false;
-  load_chains "108-Certificates.txt";
+  load_certs "CertificateParsed.txt" false;
 
-  Printf.printf "%d dns loaded\n" (Hashtbl.length dn_by_id);
-  Printf.printf "%d chains loaded\n" (Hashtbl.length chain_by_id);
-  Printf.printf "%d certificates loaded\n" (Hashtbl.length cert_by_id);
-  flush stdout;
+  Printf.fprintf stderr "%d dns loaded\n" (Hashtbl.length dn_by_id);
+  Printf.fprintf stderr "%d certificates loaded\n" (Hashtbl.length cert_by_id);
+  flush stderr;
 
-  Hashtbl.iter analyse_and_count chain_by_id;
-  print_results ();
+  foreach_chain analyse_and_print "Certificates.txt"
