@@ -334,29 +334,28 @@ let rec step used n_outside chain_so_far next remaining_certs =
 	  (check_link next c)
       in
 
-      let rec next_step new_n_outside new_chain current = function
-	| [] -> current
-	| cert::r ->
-	  let x = step (cert.cert_id::used) new_n_outside new_chain cert
-	    (filter_out cert remaining_certs)
-	  in
-	  let new_current = match current, x with
-	    | None, _ -> x
-	    | _, None -> current
-	    | Some a, Some b -> Some (return_better_chain a b)
-	  in
-	  next_step new_n_outside new_chain new_current r
-      in
-
       let inchain_candidates = List.filter filter_inchain remaining_certs in
-      match next_step n_outside (next::chain_so_far) None inchain_candidates with
+      match next_step used n_outside (next::chain_so_far) None remaining_certs inchain_candidates with
 	| (Some (_, nout)) as res when nout = n_outside -> res
 	| tmp_res ->
 	  let cool_subjects = Hashtbl.find_all cert_by_subject expected_iss in
 	  let outside_candidates = List.filter filter_outside cool_subjects in
-	  next_step (n_outside + 1) (next::chain_so_far) tmp_res outside_candidates
+	  next_step used (n_outside + 1) (next::chain_so_far) tmp_res remaining_certs outside_candidates
     end
   end
+
+and next_step used new_n_outside new_chain current_res remaining_certs = function
+  | [] -> current_res
+  | cert::r ->
+    let x = step (cert.cert_id::used) new_n_outside new_chain cert
+      (filter_out cert remaining_certs)
+    in
+    let new_res = match current_res, x with
+      | None, _ -> x
+      | _, None -> current_res
+      | Some a, Some b -> Some (return_better_chain a b)
+    in
+    next_step used new_n_outside new_chain new_res remaining_certs r
 
 
 
