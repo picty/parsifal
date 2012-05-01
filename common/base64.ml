@@ -120,7 +120,7 @@ let from_base64 expected_title s =
     let l_len = String.length l in
     let start_str = if is_begin then "-----BEGIN " else "-----END " in
     let start_len = String.length start_str in
-    if (String.sub l 0 start_len) = start_str && (String.sub l (l_len - 5) 5) = "-----"
+    if (l_len > start_len) && (String.sub l 0 start_len) = start_str && (String.sub l (l_len - 5) 5) = "-----"
     then Some (String.sub l start_len (l_len - 5 - start_len))
     else None
   in
