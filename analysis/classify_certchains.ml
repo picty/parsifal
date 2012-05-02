@@ -14,7 +14,6 @@ let mk_id s = Common.hexparse s
 (* Types *)
 
 type keytype_t = RSA of int | PartialRSA of int | DSA | UnknownKeyType
-type trust_t = NotTrusted | Trusted of string list
 
 type cert_parsed = {
   cert_id : string;
@@ -30,7 +29,7 @@ type cert_parsed = {
   aki_serial : string;
   aki_ki : string;
   cert_policies : string list;
-  trust : trust_t
+  cert_trust : bool
 }
 
 type unordered_chain_details = {
@@ -42,9 +41,9 @@ type unordered_chain_details = {
 
 type chain_type =
   | CT_Perfect of int * bool
-  | CT_Trusted of int * unordered_chain_details
+  | CT_Trusted of int * bool * unordered_chain_details
   | CT_CompleteRFC of int * bool
-  | CT_Complete of int * unordered_chain_details
+  | CT_Complete of int * bool * unordered_chain_details
   | CT_Incomplete
 
 (* Add DN *)
@@ -143,7 +142,7 @@ let add_cert cert_line trust_info =
 	aki_serial = Common.hexparse akiser_s;
 	aki_ki = Common.hexparse aki_s;
 	cert_policies = string_split ',' cps_s;
-	trust = trust_info
+	cert_trust = trust_info
       } in
       if not (Hashtbl.mem cert_by_id id)
       then begin
@@ -152,11 +151,10 @@ let add_cert cert_line trust_info =
       end
     | l -> failwith ("Wrong certificate line \"" ^ cert_line ^ "\", " ^ (string_of_int (List.length l)))
 
-let load_certs filename trusted =
+let load_certs filename trust_info =
   Printf.fprintf stderr "Loading %s... " filename;
   flush stderr;
   let certs = open_in filename in
-  let trust_info = if trusted then Trusted [] else NotTrusted in
   try
     while true do
       add_cert (input_line certs) trust_info;
@@ -192,6 +190,10 @@ let rec is_rfc_compliant chain_sent chain_built =
     | a::r, b::s when a = b -> is_rfc_compliant r s
     | _, _ -> false, false
 
+let is_root_included chain_sent chain_built =
+  let root_cert = List.hd (List.rev chain_built) in
+  List.mem root_cert chain_sent
+
 let date_of_str s =
   match List.map int_of_string (string_split '-' s) with
     | [y; m; d] -> (y, m, d)
@@ -225,11 +227,13 @@ let build_chain chain_sent chain_built n_dups n_out n_unused =
   and len_sent = List.length chain_sent
   and len = List.length chain_built
   and root = List.hd (List.rev chain_built) in
-  let t = match root.trust, rfc_compliant with
-    | Trusted _, true   -> CT_Perfect (len, root_included)
-    | Trusted _, false  -> CT_Trusted (len, { n_dups = n_dups; n_outside = n_out; n_unused = n_unused; n_sent = len_sent })
-    | NotTrusted, true  -> CT_CompleteRFC (len, root_included)
-    | NotTrusted, false -> CT_Complete (len, { n_dups = n_dups; n_outside = n_out; n_unused = n_unused; n_sent = len_sent })
+  let t = match root.cert_trust, rfc_compliant with
+    | true, true   -> CT_Perfect (len, root_included)
+    | true, false  -> CT_Trusted (len, is_root_included chain_sent chain_built,
+				       { n_dups = n_dups; n_outside = n_out; n_unused = n_unused; n_sent = len_sent })
+    | false, true  -> CT_CompleteRFC (len, root_included)
+    | false, false -> CT_Complete (len, is_root_included chain_sent chain_built,
+				        { n_dups = n_dups; n_outside = n_out; n_unused = n_unused; n_sent = len_sent })
   and expected_ev_dns = List.map find_ev_dn ((List.hd chain_built).cert_policies)
   in
   {
@@ -244,10 +248,22 @@ let string_of_chain_type t =
   let c, l = match t with
     | CT_Perfect (n, true)      -> "P", [n; n; 0; 0; 0]
     | CT_Perfect (n, false)     -> "P", [n-1; n; 0; 0; 0]
-    | CT_Trusted (n, x)         -> "T", [x.n_sent; n; x.n_dups; x.n_outside; x.n_unused]
+
+    | CT_Trusted (n, root_inside, x) ->
+      let trusted_or_transvalid = match root_inside, x.n_outside with
+	| true, 0 | false, 1 -> "T"
+	| _ -> "t"
+      in trusted_or_transvalid, [x.n_sent; n; x.n_dups; x.n_outside; x.n_unused]
+
     | CT_CompleteRFC (n, true)  -> "R", [n; n; 0; 0; 0]
     | CT_CompleteRFC (n, false) -> "R", [n-1; n; 0; 0; 0]
-    | CT_Complete (n, x)        -> "C", [x.n_sent; n; x.n_dups; x.n_outside; x.n_unused]
+
+    | CT_Complete (n, root_inside, x) ->
+      let complete_or_transvalid = match root_inside, x.n_outside with
+	| true, 0 | false, 1 -> "C"
+	| _ -> "c"
+      in complete_or_transvalid, [x.n_sent; n; x.n_dups; x.n_outside; x.n_unused]
+
     | CT_Incomplete             -> "I", [0; 0; 0; 0; 0]
   in
   String.concat ":" (c::(List.map string_of_int l))
@@ -286,7 +302,7 @@ let clean_chain c =
       else filter_dups n_dups (cert.cert_id::ids_seen) (cert::accu) r
   in filter_dups 0 [] [] c
 
-let is_trusted c = (List.hd (List.rev c)).trust <> NotTrusted
+let is_trusted c = (List.hd (List.rev c)).cert_trust
 
 let return_better_chain a b =
   let (csf1, out1) = a
