@@ -1,1 +1,28 @@
 Pourquoi 9e1ad06e85471672 n'est pas dans CertificateParsed???
+
+Prendre en compte correctement les certificats invalides dans les chaînes, en particulier lorsqu'il s'agit du premier !
+
+^13721a05fb731bdc -> I:3:0:0:0
+13721a05fb731bdc:0:fd561b196365a32d
+13721a05fb731bdc:1:7c4656c3061f7f4c
+13721a05fb731bdc:2:08d8529eddb2ca81
+
+^22cfd4c37fdcc63d -> T:3:2:0:0:2
+22cfd4c37fdcc63d:0:0497ca5ba3155c06
+22cfd4c37fdcc63d:1:7c4656c3061f7f4c
+22cfd4c37fdcc63d:2:c2ed2e504a189eb2
+
+^3d936a11686c4062 -> I:2:0:0:0
+3d936a11686c4062:0:4669cd9da5aa275a
+3d936a11686c4062:1:6471ee44959f3db7
+
+^7aeeb045ea1f4e8e -> t:3:3:0:2:2
+7aeeb045ea1f4e8e:0:299557f24f60a719
+7aeeb045ea1f4e8e:1:933b24228d90f692
+7aeeb045ea1f4e8e:2:de70f4e2116f7fdc
+
+0497ca5ba3155c06 -> Broken
+fd561b196365a32d -> Broken
+4669cd9da5aa275a -> Broken
+933b24228d90f692 -> Broken
+c2ed2e504a189eb2 -> Broken
