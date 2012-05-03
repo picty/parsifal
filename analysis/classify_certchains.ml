@@ -44,7 +44,7 @@ type chain_type =
   | CT_Trusted of int * bool * unordered_chain_details
   | CT_CompleteRFC of int * bool
   | CT_Complete of int * bool * unordered_chain_details
-  | CT_Incomplete
+  | CT_Incomplete of int
 
 (* Add DN *)
 type chain_details = {
@@ -167,8 +167,8 @@ let load_certs filename trust_info =
 
 (* Chain finalization *)
 
-let wrong_chain cert = {
-  chain_type = CT_Incomplete;
+let wrong_chain cert n = {
+  chain_type = CT_Incomplete n;
   validity = cert.not_before, cert.not_after;
   key_quality = cert.keytype;
   _hostname = "";
@@ -176,7 +176,7 @@ let wrong_chain cert = {
 }
 
 let empty_chain () = {
-  chain_type = CT_Incomplete;
+  chain_type = CT_Incomplete 0;
   validity = "", "";
   key_quality = UnknownKeyType;
   _hostname = "";
@@ -264,7 +264,7 @@ let string_of_chain_type t =
 	| _ -> "c"
       in complete_or_transvalid, [x.n_sent; n; x.n_dups; x.n_outside; x.n_unused]
 
-    | CT_Incomplete             -> "I", [0; 0; 0; 0; 0]
+    | CT_Incomplete n           -> "I", [n; 0; 0; 0; 0]
   in
   String.concat ":" (c::(List.map string_of_int l))
 
@@ -415,7 +415,7 @@ let analyse_chain chain_ids =
 	| Some (chain_built, n_out) ->
 	  let n_unused = (List.length clean_chain) + n_out - (List.length chain_built) in
 	  build_chain chain_sent chain_built n_dups n_out n_unused
-	| None -> wrong_chain first
+	| None -> wrong_chain first (List.length chain_sent)
 
 
 let analyse_and_print i chain =
