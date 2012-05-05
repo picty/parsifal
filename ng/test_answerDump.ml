@@ -63,4 +63,8 @@ let _ =
     (int_of_char answer.ip.[2]) (int_of_char answer.ip.[3]) answer.port;
   Printf.printf "ClientHelloType: %d\n" answer.client_hello_type;
   Printf.printf "MessageType: %d\n" answer.msg_type;
-  Printf.printf "Content Length: %d\n" (String.length answer.content)
+  Printf.printf "Content Length: %d\n" (String.length answer.content);
+
+  if dump_answer_dump answer = dump
+  then print_endline "Yes!"
+  else print_endline "NO!"

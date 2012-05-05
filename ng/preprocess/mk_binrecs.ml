@@ -25,8 +25,30 @@ let rec parse_fun_of_field_type name = function
     "parse_varlen_list \"" ^ name ^ "\" " ^ (parse_fun_of_field_type name (FT_Integer int_t)) ^
     " (" ^ (ocaml_type_of_field_type subtype) ^ ")"
   | FT_List (Remaining, subtype) ->
-    "parse_rem_list (" ^ (ocaml_type_of_field_type subtype) ^ ")"
+    "parse_rem_list (" ^ (parse_fun_of_field_type name subtype) ^ ")"
   | FT_Custom t -> "parse_" ^ t
+
+let rec dump_fun_of_field_type = function
+  | FT_Char -> "dump_char"
+  | FT_Integer IT_UInt8 -> "dump_uint8"
+  | FT_Integer IT_UInt16 -> "dump_uint16"
+  | FT_Integer IT_UInt24 -> "dump_uint24"
+  | FT_Integer IT_UInt32 -> "dump_uint32"
+
+  | FT_String (VarLen int_t) ->
+    "dump_varlen_string " ^ (dump_fun_of_field_type (FT_Integer int_t))
+  | FT_IPv4
+  | FT_IPv6
+  | FT_String _ -> "dump_string"
+
+  | FT_List (VarLen int_t, subtype) ->
+    "dump_varlen_list " ^ (dump_fun_of_field_type (FT_Integer int_t)) ^
+    " (" ^ (dump_fun_of_field_type subtype) ^ ")"
+  | FT_List (_, subtype) ->
+    "dump_list (" ^ (dump_fun_of_field_type subtype) ^ ")"
+
+  | FT_Custom t -> "dump_" ^ t
+
 
 let mk_desc_type (name, fields) =
   Printf.printf "type %s = {\n" name;
@@ -46,13 +68,24 @@ let mk_parse_fun (name, fields) =
   List.iter parse_aux fields;
   print_endline "  {";
   List.iter mkrec_aux fields;
-  print_endline "  }\n\n"
+  print_endline "  }\n"
+
+
+let mk_dump_fun (name, fields) =
+  Printf.printf "let dump_%s %s =\n" name name;
+  let dump_aux (fn, ft) =
+    Printf.sprintf "  %s %s.%s" (dump_fun_of_field_type ft) name fn
+  in
+  print_endline (String.concat " ^ \n" (List.map dump_aux fields));
+  print_endline "\n"
 
 
 let handle_desc (desc : description) =
-  print_endline "open ParsingEngine\n";
+  print_endline "open ParsingEngine";
+  print_endline "open DumpingEngine\n";
   mk_desc_type desc;
   mk_parse_fun desc;
+  mk_dump_fun desc;
   print_newline ()
 
 

@@ -110,12 +110,12 @@ let parse_varlen_string name len_fun input =
   get_out input new_input;
   res
 
-let dump_bytes n input =
+let drop_bytes n input =
   if input.cur_offset + n <= input.cur_length
   then input.cur_offset <- input.cur_offset + n
   else raise (OutOfBounds input)
 
-let dump_rem_bytes input =
+let drop_rem_bytes input =
   input.cur_offset <- input.cur_length
 
 let eos input =

@@ -1,14 +1,16 @@
 ENUMS = asn1Enums.ml
 BINRECS = answerDump.ml
 ASN1RECS = rSAPrivateKey.ml
-SOURCES = asn1Engine.ml parsingEngine.ml rSAPrivateKey.ml test_answerDump.ml
+SOURCES = asn1Engine.ml parsingEngine.ml dumpingEngine.ml \
+	$(ENUMS) $(BINRECS) $(ASN1RECS) \
+	test_answerDump.ml
 
 TEST_PROGRAMS = test_answerDump.native
+PROGRAMS = $(TEST_PROGRAMS)
 
+all:
 
-all: dep
-
-check: dep $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS)
+check: $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS)
 
 
 dep : Makefile.depend Makefile.native-depend
@@ -55,8 +57,8 @@ clean:
 Makefile.depend: Makefile $(ENUMS) $(BINRECS) $(ASN1RECS) $(SOURCES)
 	ocamldep $^ > $@
 
-Makefile.native-depend: Makefile.depend $(TEST_PROGRAMS)
-	./native_deps.py $^ > $@
+Makefile.native-depend: Makefile.depend
+	./native_deps.py $^ $(PROGRAMS) > $@
 
 -include Makefile.depend
 -include Makefile.native-depend

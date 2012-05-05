@@ -2,10 +2,11 @@
 *.cmi
 *.cmo
 Makefile.depend
+Makefile.native-depend
 *.mk_enums.ml
 asn1Enums.ml
 *.mk_binrecs.ml
 answerDump.ml
 *.mk_asn1.ml *~ *.o
 rSAPrivateKey.ml
-test_answerDump.native
+test_answerDump
