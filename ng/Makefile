@@ -6,13 +6,17 @@ SOURCES = asn1Engine.ml parsingEngine.ml rSAPrivateKey.ml test_answerDump.ml
 TEST_PROGRAMS = test_answerDump.native
 
 
-all: $(ENUMS)
+all: dep
 
-dep : Makefile.depend
+check: dep $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS)
+
+
+dep : Makefile.depend Makefile.native-depend
 
 
 clean:
-	rm -f Makefile.depend $(ENUMS) $(BINRECS) $(ASN1RECS) *.cmx *.cmi *.cmo *.mk_enums.ml *.mk_binrecs.ml *.mk_asn1.ml *~ *.o
+	rm -f Makefile.depend Makefile.native-depend $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS) \
+              *.cmx *.cmi *.cmo *.mk_enums.ml *.mk_binrecs.ml *.mk_asn1.ml *~ *.o
 
 
 
@@ -44,8 +48,15 @@ clean:
 %.cmo: %.ml
 	ocamlc -c $^
 
+%.native:
+	ocamlopt -o $@ $^
+
 
 Makefile.depend: Makefile $(ENUMS) $(BINRECS) $(ASN1RECS) $(SOURCES)
-	ocamldep $^ > Makefile.depend
+	ocamldep $^ > $@
+
+Makefile.native-depend: Makefile.depend $(TEST_PROGRAMS)
+	./native_deps.py $^ > $@
 
 -include Makefile.depend
+-include Makefile.native-depend
