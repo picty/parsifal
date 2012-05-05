@@ -1,0 +1,16 @@
+let rsa_private_key_a = [
+  "version", AT_Integer, None;
+  "modulus", AT_Integer, None;
+  "publicExponent", AT_Integer, None;
+  "privateExponent", AT_Integer, None;
+  "prime1", AT_Integer, None;
+  "prime2", AT_Integer, None;
+  "exponent1", AT_Integer, None;
+  "exponent2", AT_Integer, None;
+  "coefficient", AT_Integer, None;
+]
+
+let descriptions = [
+  "rsa_private_key", rsa_private_key_a, None;
+]
+
