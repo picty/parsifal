@@ -8,6 +8,8 @@ type string_input = {
 }
 
 exception OutOfBounds of string_input
+exception UnexptedTrailingBytes of string_input
+exception EmptyHistory
 
 let input_of_string name s =
   {
@@ -18,6 +20,23 @@ let input_of_string name s =
     cur_length = String.length s;
     history = []
   }
+
+let get_in input name len =
+  if input.cur_offset + len <= input.cur_length
+  then {
+    str = input.str;
+    cur_name = name;
+    cur_base = input.cur_base + input.cur_offset;
+    cur_offset = 0;
+    cur_length = len;
+    history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history
+  } else raise (OutOfBounds input)
+
+let get_out old_input input =
+  if input.cur_offset < input.cur_length
+  then raise (UnexptedTrailingBytes input)
+  else old_input.cur_offset <- old_input.cur_offset + input.cur_length
+
 
 (* Integer parsing *)
 
@@ -84,9 +103,12 @@ let parse_rem_string input =
   input.cur_offset <- input.cur_length;
   res
 
-let parse_varlen_string len_fun input =
+let parse_varlen_string name len_fun input =
   let n = len_fun input in
-  parse_string n input
+  let new_input = get_in input name n in
+  let res = parse_string n new_input in
+  get_out input new_input;
+  res
 
 let dump_bytes n input =
   if input.cur_offset + n <= input.cur_length
@@ -111,9 +133,12 @@ let parse_list n parse_fun input =
       aux (x::accu) (i-1)
   in aux [] n
 
-let parse_varlen_list len_fun parse_fun input =
+let parse_varlen_list name len_fun parse_fun input =
   let n = len_fun input in
-  parse_list n parse_fun input
+  let new_input = get_in input name n in
+  let res = parse_list n parse_fun new_input in
+  get_out input new_input;
+  res
 
 let parse_rem_list parse_fun input =
   let rec aux accu =

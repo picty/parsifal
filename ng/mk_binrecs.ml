@@ -39,7 +39,7 @@ let mk_desc_type (name, fields) =
 
 let mk_parse_fun (name, fields) =
   Printf.printf "let parse_%s input =\n" name;
-  let parse_aux (fn, ft) =    
+  let parse_aux (fn, ft) =
     Printf.printf "  let _%s = %s input in\n" fn (parse_fun_of_field_type ft)
   in
   let mkrec_aux (fn, ft) = Printf.printf "    %s = _%s;\n" fn fn in
