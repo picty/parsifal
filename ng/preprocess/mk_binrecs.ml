@@ -7,7 +7,7 @@ let rec ocaml_type_of_field_type = function
     "(" ^ (ocaml_type_of_field_type subtype) ^ ") list"
   | FT_Custom t -> t
 
-let rec parse_fun_of_field_type = function
+let rec parse_fun_of_field_type name = function
   | FT_Char -> "parse_char"
   | FT_Integer IT_UInt8 -> "parse_uint8"
   | FT_Integer IT_UInt16 -> "parse_uint16"
@@ -17,12 +17,12 @@ let rec parse_fun_of_field_type = function
   | FT_IPv6 -> "parse_string 16"
   | FT_String (FixedLen n) -> "parse_string " ^ (string_of_int n)
   | FT_String (VarLen int_t) ->
-    "parse_varlen_string " ^ (parse_fun_of_field_type (FT_Integer int_t))
+    "parse_varlen_string \"" ^ name ^ "\" " ^ (parse_fun_of_field_type name (FT_Integer int_t))
   | FT_String Remaining -> "parse_rem_string"
   | FT_List (FixedLen n, subtype) ->
-    "parse_list " ^ (string_of_int n) ^ " (" ^ (ocaml_type_of_field_type subtype) ^ ")"
+    "parse_list " ^ (string_of_int n) ^ " (" ^ (parse_fun_of_field_type name subtype) ^ ")"
   | FT_List (VarLen int_t, subtype) ->
-    "parse_varlen_list " ^ (parse_fun_of_field_type (FT_Integer int_t)) ^
+    "parse_varlen_list \"" ^ name ^ "\" " ^ (parse_fun_of_field_type name (FT_Integer int_t)) ^
     " (" ^ (ocaml_type_of_field_type subtype) ^ ")"
   | FT_List (Remaining, subtype) ->
     "parse_rem_list (" ^ (ocaml_type_of_field_type subtype) ^ ")"
@@ -40,7 +40,7 @@ let mk_desc_type (name, fields) =
 let mk_parse_fun (name, fields) =
   Printf.printf "let parse_%s input =\n" name;
   let parse_aux (fn, ft) =
-    Printf.printf "  let _%s = %s input in\n" fn (parse_fun_of_field_type ft)
+    Printf.printf "  let _%s = %s input in\n" fn (parse_fun_of_field_type name ft)
   in
   let mkrec_aux (fn, ft) = Printf.printf "    %s = _%s;\n" fn fn in
   List.iter parse_aux fields;
