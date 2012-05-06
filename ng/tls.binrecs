@@ -4,6 +4,12 @@ let tls_record_d = [
   "content", FT_String (VarLen IT_UInt16), false
 ]
 
+let tls_alert_d = [
+  "alert_level", FT_Enum (IT_UInt8, "TlsEnums", "tls_alert_level"), false;
+  "alert_type", FT_Enum (IT_UInt8, "TlsEnums", "tls_alert_type"), false
+]
+
 let descriptions = [
   "tls_record", tls_record_d;
+  "tls_alert", tls_alert_d;
 ]

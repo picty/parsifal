@@ -14,6 +14,39 @@ let tls_content_types = [
   0x18, "RT_Heartbeat", "Heartbeat";
 ]
 
+let tls_alert_levels = [
+  1, "AL_Warning", "Warning";
+  2, "AL_Fatal", "Fatal";
+]
+
+let tls_alert_types = [
+  0,  "AT_CloseNotify", "CloseNotify";
+  10, "AT_UnexpectedMessage", "UnexpectedMessage";
+  20, "AT_BadRecordMAC", "BadRecordMAC";
+  21, "AT_DecryptionFailed", "DecryptionFailed";   (* Reserved *)
+  22, "AT_RecordOverflow", "RecordOverflow";
+  30, "AT_DecompressionFailure", "DecompressionFailure";
+  40, "AT_HandshakeFailure", "HandshakeFailure";
+  41, "AT_NoCertificate", "NoCertificate";         (* Reserved *)
+  42, "AT_BadCertificate", "BadCertificate";
+  43, "AT_UnsupportedCertificate", "UnsupportedCertificate";
+  44, "AT_CertificateRevoked", "CertificateRevoked";
+  45, "AT_CertificateExpired", "CertificateExpired";
+  46, "AT_CertificateUnknown", "CertificateUnknown";
+  47, "AT_IllegalParameter", "IllegalParameter";
+  48, "AT_UnknownCA", "UnknownCA";
+  49, "AT_AccessDenied", "AccessDenied";
+  50, "AT_DecodeError", "DecodeError";
+  51, "AT_DecryptError", "DecryptError";
+  60, "AT_ExportRestriction", "ExportRestriction"; (* Reserved *)
+  70, "AT_ProtocolVersion", "ProtocolVersion";
+  71, "AT_InsufficientSecurity", "InsufficientSecurity";
+  80, "AT_InternalError", "InternalError";
+  90, "AT_UserCanceled", "UserCanceled";
+  100,"AT_NoRenegotiation", "NoRenegotiation";
+  110,"AT_UnsupportedExtension", "UnsupportedExtension";
+]
+
 let hs_message_types = [
   0,  "HT_HelloRequest", "HelloRequest";
   1,  "HT_ClientHello", "ClientHello";
@@ -31,6 +64,8 @@ let hs_message_types = [
 let enums = [
   "tls_version", tls_versions, UnknownVal "V_Unknown";
   "tls_content_type", tls_content_types, UnknownVal "RT_Unknown";
+  "tls_alert_level", tls_alert_levels, UnknownVal "AL_Unknown";
+  "tls_alert_type", tls_alert_types, UnknownVal "AT_Unknown";
   "hs_message_type", hs_message_types, UnknownVal "HT_Unknown";
 ]
 
