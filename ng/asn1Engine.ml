@@ -130,7 +130,7 @@ let parse_der_null input =
   if not (eos input)
   then begin
     emit NullNotInNormalForm input
-    dump_rem_bytes input;
+    drop_rem_bytes input;
   end
 
 (* OId *)
