@@ -30,10 +30,10 @@ let rec parse_fun_of_field_type name = function
 
   | FT_IPv4 -> "parse_string 4"
   | FT_IPv6 -> "parse_string 16"
-  | FT_String (FixedLen n) -> "parse_string " ^ (string_of_int n)
-  | FT_String (VarLen int_t) ->
+  | FT_String (FixedLen n, _) -> "parse_string " ^ (string_of_int n)
+  | FT_String (VarLen int_t, _) ->
     Printf.sprintf "parse_varlen_string \"%s\" parse_uint%d" name (int_size int_t)
-  | FT_String (Remaining) -> "parse_rem_string"
+  | FT_String (Remaining, _) -> "parse_rem_string"
 
   | FT_List (FixedLen n, subtype) ->
     Printf.sprintf "parse_list %d (%s)" n (parse_fun_of_field_type name subtype)
@@ -51,7 +51,7 @@ let rec dump_fun_of_field_type = function
   | FT_Enum (int_type, module_name, type_name) ->
     Printf.sprintf "(fun v -> dump_uint%d (%s.int_of_%s v))" (int_size int_type) module_name type_name
 
-  | FT_String (VarLen int_t) ->
+  | FT_String (VarLen int_t, _) ->
     Printf.sprintf "dump_varlen_string dump_uint%d" (int_size int_t)
   | FT_IPv4
   | FT_IPv6
