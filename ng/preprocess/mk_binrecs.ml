@@ -1,6 +1,7 @@
 let rec ocaml_type_of_field_type = function
   | FT_Char -> "char"
   | FT_Integer _ -> "int"
+  | FT_Enum (_, module_name, type_name) -> module_name ^ "." ^ type_name
   | FT_IPv4 | FT_IPv6 -> "string"
   | FT_String _ -> "string"
   | FT_List (_, subtype) ->
@@ -13,6 +14,11 @@ let rec parse_fun_of_field_type name = function
   | FT_Integer IT_UInt16 -> "parse_uint16"
   | FT_Integer IT_UInt24 -> "parse_uint24"
   | FT_Integer IT_UInt32 -> "parse_uint32"
+
+  | FT_Enum (int_type, module_name, type_name) ->
+    let int_parse_fun = parse_fun_of_field_type name (FT_Integer int_type) in
+    Printf.sprintf "(fun input -> %s.%s_of_int (%s input))" module_name type_name int_parse_fun
+
   | FT_IPv4 -> "parse_string 4"
   | FT_IPv6 -> "parse_string 16"
   | FT_String (FixedLen n) -> "parse_string " ^ (string_of_int n)
@@ -34,6 +40,10 @@ let rec dump_fun_of_field_type = function
   | FT_Integer IT_UInt16 -> "dump_uint16"
   | FT_Integer IT_UInt24 -> "dump_uint24"
   | FT_Integer IT_UInt32 -> "dump_uint32"
+
+  | FT_Enum (int_type, module_name, type_name) ->
+    let int_dump_fun = dump_fun_of_field_type (FT_Integer int_type) in
+    Printf.sprintf "(fun v -> %s (%s.int_of_%s v))" int_dump_fun module_name type_name
 
   | FT_String (VarLen int_t) ->
     "dump_varlen_string " ^ (dump_fun_of_field_type (FT_Integer int_t))

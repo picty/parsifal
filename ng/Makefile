@@ -1,11 +1,12 @@
 ENUMS = asn1Enums.ml tlsEnums.ml
-BINRECS = answerDump.ml
+BINRECS = answerDump.ml tls.ml
 ASN1RECS = rSAPrivateKey.ml
 SOURCES = asn1Engine.ml parsingEngine.ml dumpingEngine.ml \
 	$(ENUMS) $(BINRECS) $(ASN1RECS) \
-	test_answerDump.ml
+	common.ml \
+	test_answerDump.ml test_tls_record.ml
 
-TEST_PROGRAMS = test_answerDump.native
+TEST_PROGRAMS = test_answerDump.native test_tls_record.native
 PROGRAMS = $(TEST_PROGRAMS)
 
 all:

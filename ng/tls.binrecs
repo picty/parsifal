@@ -1,0 +1,9 @@
+let tls_record_d = [
+  "content_type", FT_Enum (IT_UInt8, "TlsEnums", "tls_content_type");
+  "record_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version");
+  "content", FT_String (VarLen IT_UInt16)
+]
+
+let descriptions = [
+  "tls_record", tls_record_d;
+]

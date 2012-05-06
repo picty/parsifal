@@ -14,6 +14,7 @@ type field_len =
 type field_type =
   | FT_Char
   | FT_Integer of integer_type
+  | FT_Enum of integer_type * string * string
   | FT_IPv4
   | FT_IPv6
   | FT_String of field_len
