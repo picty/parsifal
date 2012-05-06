@@ -1,3 +1,9 @@
+let int_size = function
+  | IT_UInt8 -> 8
+  | IT_UInt16 -> 16
+  | IT_UInt24 -> 24
+  | IT_UInt32 -> 32
+
 let rec ocaml_type_of_field_type = function
   | FT_Char -> "char"
   | FT_Integer _ -> "int"
@@ -16,52 +22,45 @@ let ocaml_type_of_field_type_and_options t optional =
 
 let rec parse_fun_of_field_type name = function
   | FT_Char -> "parse_char"
-  | FT_Integer IT_UInt8 -> "parse_uint8"
-  | FT_Integer IT_UInt16 -> "parse_uint16"
-  | FT_Integer IT_UInt24 -> "parse_uint24"
-  | FT_Integer IT_UInt32 -> "parse_uint32"
+  | FT_Integer it ->
+    Printf.sprintf "parse_uint%d" (int_size it)
 
   | FT_Enum (int_type, module_name, type_name) ->
-    let int_parse_fun = parse_fun_of_field_type name (FT_Integer int_type) in
-    Printf.sprintf "(fun input -> %s.%s_of_int (%s input))" module_name type_name int_parse_fun
+    Printf.sprintf "(fun input -> %s.%s_of_int (parse_uint%d input))" module_name type_name (int_size int_type)
 
   | FT_IPv4 -> "parse_string 4"
   | FT_IPv6 -> "parse_string 16"
   | FT_String (FixedLen n) -> "parse_string " ^ (string_of_int n)
   | FT_String (VarLen int_t) ->
-    "parse_varlen_string \"" ^ name ^ "\" " ^ (parse_fun_of_field_type name (FT_Integer int_t))
-  | FT_String Remaining -> "parse_rem_string"
+    Printf.sprintf "parse_varlen_string \"%s\" parse_uint%d" name (int_size int_t)
+  | FT_String (Remaining) -> "parse_rem_string"
+
   | FT_List (FixedLen n, subtype) ->
-    "parse_list " ^ (string_of_int n) ^ " (" ^ (parse_fun_of_field_type name subtype) ^ ")"
+    Printf.sprintf "parse_list %d (%s)" n (parse_fun_of_field_type name subtype)
   | FT_List (VarLen int_t, subtype) ->
-    "parse_varlen_list \"" ^ name ^ "\" " ^ (parse_fun_of_field_type name (FT_Integer int_t)) ^
-    " (" ^ (ocaml_type_of_field_type subtype) ^ ")"
+    Printf.sprintf "parse_varlen_list \"%s\" parse_uint%d (%s)" name (int_size int_t) (ocaml_type_of_field_type subtype)
   | FT_List (Remaining, subtype) ->
-    "parse_rem_list (" ^ (parse_fun_of_field_type name subtype) ^ ")"
+    Printf.sprintf "parse_rem_list (%s)" (parse_fun_of_field_type name subtype)
+
   | FT_Custom t -> "parse_" ^ t
 
 let rec dump_fun_of_field_type = function
   | FT_Char -> "dump_char"
-  | FT_Integer IT_UInt8 -> "dump_uint8"
-  | FT_Integer IT_UInt16 -> "dump_uint16"
-  | FT_Integer IT_UInt24 -> "dump_uint24"
-  | FT_Integer IT_UInt32 -> "dump_uint32"
+  | FT_Integer it -> Printf.sprintf "dump_uint%d" (int_size it)
 
   | FT_Enum (int_type, module_name, type_name) ->
-    let int_dump_fun = dump_fun_of_field_type (FT_Integer int_type) in
-    Printf.sprintf "(fun v -> %s (%s.int_of_%s v))" int_dump_fun module_name type_name
+    Printf.sprintf "(fun v -> dump_uint%d (%s.int_of_%s v))" (int_size int_type) module_name type_name
 
   | FT_String (VarLen int_t) ->
-    "dump_varlen_string " ^ (dump_fun_of_field_type (FT_Integer int_t))
+    Printf.sprintf "dump_varlen_string dump_uint%d" (int_size int_t)
   | FT_IPv4
   | FT_IPv6
   | FT_String _ -> "dump_string"
 
   | FT_List (VarLen int_t, subtype) ->
-    "dump_varlen_list " ^ (dump_fun_of_field_type (FT_Integer int_t)) ^
-    " (" ^ (dump_fun_of_field_type subtype) ^ ")"
+    Printf.sprintf "dump_varlen_list dump_uint%d (%s)" (int_size int_t) (dump_fun_of_field_type subtype)
   | FT_List (_, subtype) ->
-    "dump_list (" ^ (dump_fun_of_field_type subtype) ^ ")"
+    Printf.sprintf "dump_list (%s)" (dump_fun_of_field_type subtype)
 
   | FT_Custom t -> "dump_" ^ t
 
@@ -100,9 +99,9 @@ let mk_dump_fun (name, fields) =
       (Printf.sprintf "  begin\n") ^
       (Printf.sprintf "    match %s.%s with\n" name fn) ^
       (Printf.sprintf "      | None -> ()\n") ^
-      (Printf.sprintf "      | Some x -> %s x\n" (dump_fun_of_field_type ft)) ^ 
+      (Printf.sprintf "      | Some x -> %s x\n" (dump_fun_of_field_type ft)) ^
       (Printf.sprintf "  end\n")
-    end 
+    end
     else Printf.sprintf "  %s %s.%s" (dump_fun_of_field_type ft) name fn
   in
   print_endline (String.concat " ^ \n" (List.map dump_aux fields));
