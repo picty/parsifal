@@ -1,4 +1,4 @@
-ENUMS = asn1Enums.ml
+ENUMS = asn1Enums.ml tlsEnums.ml
 BINRECS = answerDump.ml
 ASN1RECS = rSAPrivateKey.ml
 SOURCES = asn1Engine.ml parsingEngine.ml dumpingEngine.ml \
