@@ -1,7 +1,7 @@
 let tls_record_d = [
-  "content_type", FT_Enum (IT_UInt8, "TlsEnums", "tls_content_type");
-  "record_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version");
-  "content", FT_String (VarLen IT_UInt16)
+  "content_type", FT_Enum (IT_UInt8, "TlsEnums", "tls_content_type"), false;
+  "record_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
+  "content", FT_String (VarLen IT_UInt16), false
 ]
 
 let descriptions = [

@@ -8,6 +8,12 @@ let rec ocaml_type_of_field_type = function
     "(" ^ (ocaml_type_of_field_type subtype) ^ ") list"
   | FT_Custom t -> t
 
+let ocaml_type_of_field_type_and_options t optional =
+  let type_string = ocaml_type_of_field_type t in
+  if optional
+  then Printf.sprintf "(%s) option" type_string
+  else type_string
+
 let rec parse_fun_of_field_type name = function
   | FT_Char -> "parse_char"
   | FT_Integer IT_UInt8 -> "parse_uint8"
@@ -62,8 +68,8 @@ let rec dump_fun_of_field_type = function
 
 let mk_desc_type (name, fields) =
   Printf.printf "type %s = {\n" name;
-  let aux (fn, ft) =
-    Printf.printf "  %s : %s;\n" fn (ocaml_type_of_field_type ft)
+  let aux (fn, ft, fo) =
+    Printf.printf "  %s : %s;\n" fn (ocaml_type_of_field_type_and_options ft fo)
   in
   List.iter aux fields;
   print_endline "}\n\n"
@@ -71,10 +77,15 @@ let mk_desc_type (name, fields) =
 
 let mk_parse_fun (name, fields) =
   Printf.printf "let parse_%s input =\n" name;
-  let parse_aux (fn, ft) =
-    Printf.printf "  let _%s = %s input in\n" fn (parse_fun_of_field_type name ft)
+  let parse_aux (fn, ft, fo) =
+    if fo
+    then begin
+      Printf.printf "  let _%s = if eos input then None\n" fn;
+      Printf.printf "            else Some (%s input) in\n" (parse_fun_of_field_type name ft)
+    end
+    else Printf.printf "  let _%s = %s input in\n" fn (parse_fun_of_field_type name ft)
   in
-  let mkrec_aux (fn, ft) = Printf.printf "    %s = _%s;\n" fn fn in
+  let mkrec_aux (fn, _, _) = Printf.printf "    %s = _%s;\n" fn fn in
   List.iter parse_aux fields;
   print_endline "  {";
   List.iter mkrec_aux fields;
@@ -83,8 +94,16 @@ let mk_parse_fun (name, fields) =
 
 let mk_dump_fun (name, fields) =
   Printf.printf "let dump_%s %s =\n" name name;
-  let dump_aux (fn, ft) =
-    Printf.sprintf "  %s %s.%s" (dump_fun_of_field_type ft) name fn
+  let dump_aux (fn, ft, fo) =
+    if fo
+    then begin
+      (Printf.sprintf "  begin\n") ^
+      (Printf.sprintf "    match %s.%s with\n" name fn) ^
+      (Printf.sprintf "      | None -> ()\n") ^
+      (Printf.sprintf "      | Some x -> %s x\n" (dump_fun_of_field_type ft)) ^ 
+      (Printf.sprintf "  end\n")
+    end 
+    else Printf.sprintf "  %s %s.%s" (dump_fun_of_field_type ft) name fn
   in
   print_endline (String.concat " ^ \n" (List.map dump_aux fields));
   print_endline "\n"

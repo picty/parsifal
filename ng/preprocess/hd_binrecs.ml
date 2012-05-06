@@ -23,6 +23,6 @@ type field_type =
 
 (* TODO: Add options for lists (AtLeast, AtMost) and for options *)
 
-type field_desc = field_name * field_type
+type field_desc = field_name * field_type * bool
 
 type description = string * field_desc list
