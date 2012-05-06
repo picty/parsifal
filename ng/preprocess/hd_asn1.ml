@@ -2,6 +2,7 @@ type field_name = string
 
 type field_type =
   | AT_Boolean
+  | AT_SmallInteger
   | AT_Integer
 (*  | AT_BitString *)
 (*  | AT_EnumeratedBitString *)

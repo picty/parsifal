@@ -1,5 +1,5 @@
 let rsa_private_key_a = [
-  "version", AT_Integer, None;
+  "version", AT_SmallInteger, None;
   "modulus", AT_Integer, None;
   "publicExponent", AT_Integer, None;
   "privateExponent", AT_Integer, None;

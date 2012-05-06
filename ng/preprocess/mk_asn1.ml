@@ -1,5 +1,6 @@
 let rec ocaml_type_of_field_type = function
   | AT_Boolean -> "bool"
+  | AT_SmallInteger -> "int"
   | AT_Integer -> "string"
   | AT_Null -> "unit"
   | AT_OId -> "int list"
@@ -8,6 +9,7 @@ let rec ocaml_type_of_field_type = function
 
 let rec parse_fun_of_field_type = function
   | AT_Boolean -> "parse_der_bool"
+  | AT_SmallInteger -> "parse_der_smallint"
   | AT_Integer -> "parse_der_int"
   | AT_Null -> "parse_der_null"
   | AT_OId -> "parse_der_oid"
@@ -17,6 +19,7 @@ let rec parse_fun_of_field_type = function
 
 let default_header = function
   | AT_Boolean -> "AH_Simple (C_Universal, false, T_Boolean)"
+  | AT_SmallInteger
   | AT_Integer -> "AH_Simple (C_Universal, false, T_Integer)"
   | AT_Null -> "AH_Simple (C_Universal, false, T_Null)"
   | AT_OId -> "AH_Simple (C_Universal, false, T_OId)"

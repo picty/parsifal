@@ -7,10 +7,11 @@ type asn1_exception =
   | IntegerNotInNormalForm
   | NullNotInNormalForm
   | OIdNotInNormalForm
+  | IntegerOverflow
 
 exception Asn1Exception of (asn1_exception * string_input)
 
-let emit e i = raise (Asn1Exception (e, i))
+let emit _fatal e i = raise (Asn1Exception (e, i))
 
 
 type expected_header =
@@ -70,10 +71,10 @@ let check_header header_constraint input c isC t =
   match header_constraint with
     | AH_Simple (exp_c, exp_isC, exp_t) ->
       if c <> exp_c || isC <> exp_isC || t <> exp_t
-      then emit (UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t))) input
+      then emit true (UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t))) input
     | AH_Complex check_fun ->
       if not (check_fun c isC t)
-      then emit (UnexpectedHeader ((c, isC, t), None)) input
+      then emit true (UnexpectedHeader ((c, isC, t), None)) input
 
 let extract_asn1_object input name header_constraint parse_content =
   let _offset = input.cur_base + input.cur_offset in
@@ -94,12 +95,12 @@ let extract_asn1_object input name header_constraint parse_content =
 let parse_der_boolean input =
   let value = parse_rem_list parse_uint8 input in
   match value with
-    | [] -> emit BooleanNotInNormalForm input
+    | [] -> emit false BooleanNotInNormalForm input
       false
     | [0] -> false
     | [255] -> true
     | v::_ ->
-      emit BooleanNotInNormalForm input
+      emit false BooleanNotInNormalForm input
       (v <> 0)
 
 
@@ -115,13 +116,27 @@ let parse_der_int input =
   in
   begin
     match two_first_chars with
-      | [] -> emit IntegerNotInNormalForm input
+      | [] -> emit false IntegerNotInNormalForm input
       | x::y::_ ->
 	if (x = 0xff) || ((x = 0) && (y land 0x80) = 0)
-	then emit IntegerNotInNormalForm input
+	then emit false IntegerNotInNormalForm input
       | _ -> ()
   end;
   l
+
+
+let parse_der_smallint input =
+  let integer_s = parse_der_int input in
+  let len = String.length integer_s in
+  if (len > 0 && (int_of_char (integer_s.[0]) land 0x80) = 0x80) || (len > 4)
+  then emit true IntegerOverflow input
+  else begin
+    let rec int_of_binstr accu i =
+      if i >= len
+      then accu
+      else int_of_binstr ((accu lsl 8) + (int_of_char integer_s.[i])) (i+1)
+    in int_of_binstr 0 0
+  end
 
 
 (* Null *)
@@ -129,7 +144,7 @@ let parse_der_int input =
 let parse_der_null input =
   if not (eos input)
   then begin
-    emit NullNotInNormalForm input
+    emit false NullNotInNormalForm input
     drop_rem_bytes input;
   end
 
@@ -153,7 +168,7 @@ let parse_der_oid input =
 	let next = parse_subid input in
 	next::(aux ())
       with OutOfBounds _ ->
-	emit OIdNotInNormalForm input;
+	emit false OIdNotInNormalForm input;
 	[]
     end
   in
