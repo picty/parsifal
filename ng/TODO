@@ -1,0 +1,9 @@
+ - Add a pretty string for field names?
+ - Add Arguments (refs to be fed to parse functions)
+ - Add Choice functions
+
+ - Write some Lwt_parser manually?
+ - Add a way to constrain a binrec (length of 2^14 in TlsRecord)
+ - mk_binrecs.mk_parse_fun: add a way to check eos is reached
+
+ - Add unit tests

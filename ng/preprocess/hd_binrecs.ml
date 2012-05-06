@@ -17,7 +17,7 @@ type field_type =
   | FT_Enum of integer_type * string * string
   | FT_IPv4
   | FT_IPv6
-  | FT_String of field_len
+  | FT_String of field_len * bool
   | FT_List of field_len * field_type
   | FT_Custom of string
 

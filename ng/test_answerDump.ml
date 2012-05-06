@@ -58,13 +58,7 @@ let dump = "\x6c\x6b\x2e\xf1\x01\xbb\x00\x00\x00\x00\x00\x00\x03\x34\x16\x03"^
 let _ =
   let input = input_of_string "Test" dump in
   let answer = parse_answer_dump input in
-  Printf.printf "%d.%d.%d.%d:%d\n"
-    (int_of_char answer.ip.[0]) (int_of_char answer.ip.[1])
-    (int_of_char answer.ip.[2]) (int_of_char answer.ip.[3]) answer.port;
-  Printf.printf "ClientHelloType: %d\n" answer.client_hello_type;
-  Printf.printf "MessageType: %d\n" answer.msg_type;
-  Printf.printf "Content Length: %d\n" (String.length answer.content);
-
+  print_endline (print_answer_dump "" "AnswerDump" answer);
   if dump_answer_dump answer = dump
   then print_endline "Yes!"
   else print_endline "NO!"

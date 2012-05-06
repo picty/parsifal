@@ -64,6 +64,25 @@ let rec dump_fun_of_field_type = function
 
   | FT_Custom t -> "dump_" ^ t
 
+let rec print_fun_of_field_type = function
+  | FT_Char -> "print_char"
+  | FT_Integer it -> Printf.sprintf "print_uint %d" (int_size it)
+
+  | FT_Enum (int_type, module_name, type_name) ->
+    Printf.sprintf "(fun i s v -> print_enum (%s.string_of_%s) (%s.int_of_%s) %d i s v)"
+      module_name type_name module_name type_name (int_size int_type)
+
+  | FT_String (_, true) -> "print_binstring"
+  | FT_String (_, false) -> "print_string"
+
+  | FT_IPv4 -> "print_ipv4"
+  | FT_IPv6 -> "print_ipv6"
+
+  | FT_List (_, subtype) ->
+    Printf.sprintf "print_list (%s)" (print_fun_of_field_type subtype)
+
+  | FT_Custom t -> "print_" ^ t
+
 
 let mk_desc_type (name, fields) =
   Printf.printf "type %s = {\n" name;
@@ -100,7 +119,7 @@ let mk_dump_fun (name, fields) =
       (Printf.sprintf "    match %s.%s with\n" name fn) ^
       (Printf.sprintf "      | None -> ()\n") ^
       (Printf.sprintf "      | Some x -> %s x\n" (dump_fun_of_field_type ft)) ^
-      (Printf.sprintf "  end\n")
+      (Printf.sprintf "  end")
     end
     else Printf.sprintf "  %s %s.%s" (dump_fun_of_field_type ft) name fn
   in
@@ -108,12 +127,33 @@ let mk_dump_fun (name, fields) =
   print_endline "\n"
 
 
+let mk_print_fun (name, fields) =
+  let print_aux (fn, ft, fo) =
+    if fo
+    then begin
+      (Printf.sprintf "  begin\n") ^
+      (Printf.sprintf "    match %s.%s with\n" name fn) ^
+      (Printf.sprintf "      | None -> ()\n") ^
+      (Printf.sprintf "      | Some x -> %s new_indent \"%s\" x\n" (print_fun_of_field_type ft) fn) ^
+      (Printf.sprintf "  end")
+    end
+    else Printf.sprintf "  (%s new_indent \"%s\" %s.%s)" (print_fun_of_field_type ft) fn name fn
+  in
+  Printf.printf "let print_%s indent name %s =\n" name name;
+  print_endline "  let new_indent = indent ^ \"  \" in";
+  print_endline "  (Printf.sprintf \"%s%s {\\n\" indent name) ^";
+  print_endline ((String.concat " ^\n" (List.map print_aux fields)) ^ " ^");
+  print_endline "  (Printf.sprintf \"%s}\\n\" indent)\n"
+
+
 let handle_desc (desc : description) =
   print_endline "open ParsingEngine";
   print_endline "open DumpingEngine\n";
+  print_endline "open PrintingEngine\n";
   mk_desc_type desc;
   mk_parse_fun desc;
   mk_dump_fun desc;
+  mk_print_fun desc;
   print_newline ()
 
 

@@ -1,10 +1,10 @@
 let answer_dump_d = [
   "ip", FT_IPv4, false;
   "port", FT_Integer (IT_UInt16), false;
-  "name", FT_String (VarLen IT_UInt16), false;
+  "name", FT_String (VarLen IT_UInt16, false), false;
   "client_hello_type", FT_Integer (IT_UInt8), false;
   "msg_type", FT_Integer (IT_UInt8), false;
-  "content", FT_String (VarLen IT_UInt32), false
+  "content", FT_String (VarLen IT_UInt32, true), false
 ]
 
 let descriptions = [
