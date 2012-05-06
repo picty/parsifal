@@ -7,3 +7,61 @@
  - mk_binrecs.mk_parse_fun: add a way to check eos is reached
 
  - Add unit tests
+
+
+ - Put files into directories
+ - Have a functional Makefile
+
+ - check-ssl-server (ajouter d'autres tests ?)
+   * vérifier versions acceptées
+   * versions préférée (avec CH SSLv2 et CH TLS divers)
+   * vérifier l'intolérance de version (CH 0x03ff)
+
+   * vérifier les suites acceptées
+   * suites préférées (en fonction du CH SSLv2 etc)
+
+   * compression acceptées
+
+   * extension acceptées
+   * intolérance aux extensions
+
+   * qualité du ServerRandom
+
+   * reprise de session : session id / session ticket
+
+   * incohérence entre Record.version et ClientHello.version (intolérance et qualité des réponses)
+
+   * qualité du groupe DHE
+   * qualité du param DHE choisi
+   * qualité du groupe ECDHE
+   * qualité du param ECDHE choisi
+   * compatibilité avec les EC
+
+   * acceptation du SNI ?
+
+   * acceptation de la renégo
+   * renégo sécurisée
+
+   * truc anti-downgrade dans le CKE
+     - première fois
+     - en cas de changement après renégo / reprise de session
+
+   * support d'1 message HS en plusieurs record
+   * support de plusieurs messages HS en 1 record
+
+   * certificats ?!
+     - numéro de série
+     - certs dupliqués
+     - certs non utilisés
+     - certs manquant
+     - algos / tailles de clé
+     - extensions X.509
+       + basic constraints
+       + KU, EKU, nsCertType
+       + Certificate Polices et EV
+       + SKI / AKI
+     - qualité des DNs
+     - dénomination correcte du serveur (CN + SAN)
+     - dates de validité
+     - révocation
+
