@@ -14,9 +14,30 @@ let handshake_msg_d = [
   "handshake_content", FT_String (VarLen IT_UInt24, true), false;
 ]
 
+let client_hello_d = [
+  "client_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
+  "client_random", FT_String (FixedLen 32, true), false;
+  "client_session_id", FT_String (VarLen IT_UInt8, true), false;
+  "ciphersuites", FT_List (VarLen IT_UInt16, FT_Integer IT_UInt16), false;
+  "compression_methods", FT_List (VarLen IT_UInt8, FT_Integer IT_UInt8), false;
+  "client_extensions", FT_String (VarLen IT_UInt16, true), false;           (* TODO *)
+]
+
+let server_hello_d = [
+  "server_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
+  "server_random", FT_String (FixedLen 32, true), false;
+  "server_session_id", FT_String (VarLen IT_UInt8, true), false;
+  "ciphersuite", FT_Integer IT_UInt16, false;
+  "compression_method", FT_Integer IT_UInt8, false;
+  "server_extensions", FT_String (VarLen IT_UInt16, true), false;           (* TODO *)
+]
+
+
 
 let descriptions = [
   "tls_record", tls_record_d;
   "tls_alert", tls_alert_d;
   "handshake_msg", handshake_msg_d;
+  "client_hello", client_hello_d;
+  "server_hello", server_hello_d;
 ]
