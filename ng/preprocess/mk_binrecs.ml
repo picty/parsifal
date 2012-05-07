@@ -12,7 +12,7 @@ let rec ocaml_type_of_field_type = function
   | FT_String _ -> "string"
   | FT_List (_, subtype) ->
     "(" ^ (ocaml_type_of_field_type subtype) ^ ") list"
-  | FT_Custom t -> t
+  | FT_Custom (module_name, type_name) -> module_name ^ "." ^ type_name
 
 let ocaml_type_of_field_type_and_options t optional =
   let type_string = ocaml_type_of_field_type t in
@@ -42,7 +42,7 @@ let rec parse_fun_of_field_type name = function
   | FT_List (Remaining, subtype) ->
     Printf.sprintf "parse_rem_list (%s)" (parse_fun_of_field_type name subtype)
 
-  | FT_Custom t -> "parse_" ^ t
+  | FT_Custom (module_name, type_name) -> module_name ^ ".parse_" ^ type_name
 
 let rec dump_fun_of_field_type = function
   | FT_Char -> "dump_char"
@@ -62,7 +62,7 @@ let rec dump_fun_of_field_type = function
   | FT_List (_, subtype) ->
     Printf.sprintf "dump_list (%s)" (dump_fun_of_field_type subtype)
 
-  | FT_Custom t -> "dump_" ^ t
+  | FT_Custom (module_name, type_name) -> module_name ^ ".dump_" ^ type_name
 
 let rec print_fun_of_field_type = function
   | FT_Char -> "print_char"
@@ -81,7 +81,7 @@ let rec print_fun_of_field_type = function
   | FT_List (_, subtype) ->
     Printf.sprintf "print_list (%s)" (print_fun_of_field_type subtype)
 
-  | FT_Custom t -> "print_" ^ t
+  | FT_Custom (module_name, type_name) -> module_name ^ ".print_" ^ type_name
 
 
 let mk_desc_type (name, fields) =

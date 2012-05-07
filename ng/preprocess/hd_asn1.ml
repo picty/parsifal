@@ -10,7 +10,7 @@ type field_type =
   | AT_OId
 (*  | AT_String *)
   | AT_Primitive
-  | AT_Custom of string
+  | AT_Custom of string * string
 
 type expected_header_string = string option
 

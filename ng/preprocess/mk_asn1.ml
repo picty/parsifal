@@ -5,7 +5,7 @@ let rec ocaml_type_of_field_type = function
   | AT_Null -> "unit"
   | AT_OId -> "int list"
   | AT_Primitive -> "string"
-  | AT_Custom t -> t
+  | AT_Custom (module_name, type_name) -> module_name ^ "." ^ type_name
 
 let rec parse_fun_of_field_type = function
   | AT_Boolean -> "parse_der_bool"
@@ -14,7 +14,7 @@ let rec parse_fun_of_field_type = function
   | AT_Null -> "parse_der_null"
   | AT_OId -> "parse_der_oid"
   | AT_Primitive -> "parse_string"
-  | AT_Custom t -> "parse_" ^ t ^ "_content"
+  | AT_Custom (module_name, type_name) -> module_name ^ ".parse_" ^ type_name ^ "_content"
 
 
 let default_header = function
@@ -47,8 +47,8 @@ let mk_parse_fun (name, fields, header_expected) =
   Printf.printf "let parse_%s_content input =\n" name;
   let parse_aux (fn, ft, fh) =
     match ft, fh with
-      | AT_Custom t, None ->
-	Printf.printf "  let _%s = parse_%s input in\n" fn t
+      | AT_Custom (module_name, type_name), None ->
+	Printf.printf "  let _%s = %s.parse_%s input in\n" fn module_name type_name
       | _ -> 
 	let hdr_constraint = header_constraint fh ft
 	and parse_fun = parse_fun_of_field_type ft in
