@@ -38,7 +38,7 @@ let rec parse_fun_of_field_type name = function
   | FT_List (FixedLen n, subtype) ->
     Printf.sprintf "parse_list %d (%s)" n (parse_fun_of_field_type name subtype)
   | FT_List (VarLen int_t, subtype) ->
-    Printf.sprintf "parse_varlen_list \"%s\" parse_uint%d (%s)" name (int_size int_t) (ocaml_type_of_field_type subtype)
+    Printf.sprintf "parse_varlen_list \"%s\" parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
   | FT_List (Remaining, subtype) ->
     Printf.sprintf "parse_rem_list (%s)" (parse_fun_of_field_type name subtype)
 
@@ -99,9 +99,9 @@ let mk_parse_fun (name, fields) =
     if fo
     then begin
       Printf.printf "  let _%s = if eos input then None\n" fn;
-      Printf.printf "            else Some (%s input) in\n" (parse_fun_of_field_type name ft)
+      Printf.printf "            else Some (%s input) in\n" (parse_fun_of_field_type fn ft)
     end
-    else Printf.printf "  let _%s = %s input in\n" fn (parse_fun_of_field_type name ft)
+    else Printf.printf "  let _%s = %s input in\n" fn (parse_fun_of_field_type fn ft)
   in
   let mkrec_aux (fn, _, _) = Printf.printf "    %s = _%s;\n" fn fn in
   List.iter parse_aux fields;

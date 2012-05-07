@@ -47,5 +47,6 @@ let dump_list dump_fun l =
   String.concat "" (List.map dump_fun l)
 
 let dump_varlen_list len_fun dump_fun l =
-  let n = List.length l in
-  (len_fun n) ^ (dump_list dump_fun l)
+  let res = dump_list dump_fun l in
+  let n = String.length res in
+  (len_fun n) ^ res
