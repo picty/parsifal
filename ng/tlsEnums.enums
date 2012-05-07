@@ -7,11 +7,11 @@ let tls_versions = [
 ]
 
 let tls_content_types = [
-  0x14, "RT_ChangeCipherSpec", "ChangeCipherSpec";
-  0x15, "RT_Alert", "Alert";
-  0x16, "RT_Handshake", "Handshake";
-  0x17, "RT_ApplicationData", "ApplicationData";
-  0x18, "RT_Heartbeat", "Heartbeat";
+  0x14, "CT_ChangeCipherSpec", "ChangeCipherSpec";
+  0x15, "CT_Alert", "Alert";
+  0x16, "CT_Handshake", "Handshake";
+  0x17, "CT_ApplicationData", "ApplicationData";
+  0x18, "CT_Heartbeat", "Heartbeat";
 ]
 
 let tls_alert_levels = [
