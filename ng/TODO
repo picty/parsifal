@@ -1,8 +1,15 @@
+TODO
+ - Add UTCTime / ValidityTime handling
+ - Add support for ObjectIdentifiers
+ - Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm support
+ - Write some Lwt_parser manually?
+
+Improvements
  - Add code to auto-generate choice
  - Add a pretty string for field names?
- - Write some Lwt_parser manually?
  - Add a way to constrain a binrec (length of 2^14 in TlsRecord)
  - mk_binrecs.mk_parse_fun: add a way to check eos is reached
+
 
  - Add unit tests
 
