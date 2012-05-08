@@ -66,14 +66,14 @@ let mk_parse_fun (name, fields, header_expected) =
 
 
 let handle_desc (desc : description) =
-  print_endline "open Asn1Enums";
-  print_endline "open ParsingEngine";
-  print_endline "open Asn1Engine\n";
   mk_desc_type desc;
   mk_parse_fun desc;
   print_newline ()
 
 
 let _ =
+  print_endline "open Asn1Enums";
+  print_endline "open ParsingEngine";
+  print_endline "open Asn1Engine\n";
   List.iter handle_desc descriptions
 
