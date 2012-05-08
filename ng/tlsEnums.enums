@@ -63,7 +63,7 @@ let hs_message_types = [
 
 let enums = [
   "tls_version", tls_versions, UnknownVal "V_Unknown";
-  "tls_content_type", tls_content_types, UnknownVal "RT_Unknown";
+  "tls_content_type", tls_content_types, UnknownVal "CT_Unknown";
   "tls_alert_level", tls_alert_levels, UnknownVal "AL_Unknown";
   "tls_alert_type", tls_alert_types, UnknownVal "AT_Unknown";
   "hs_message_type", hs_message_types, UnknownVal "HT_Unknown";
