@@ -12,6 +12,7 @@ let rec ocaml_type_of_field_type = function
   | FT_String _ -> "string"
   | FT_List (_, subtype) ->
     "(" ^ (ocaml_type_of_field_type subtype) ^ ") list"
+  | FT_Container (_, subtype) -> ocaml_type_of_field_type subtype
   | FT_Custom (module_name, type_name) -> module_name ^ "." ^ type_name
 
 let ocaml_type_of_field_type_and_options t optional =
@@ -41,6 +42,8 @@ let rec parse_fun_of_field_type name = function
     Printf.sprintf "parse_varlen_list \"%s\" parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
   | FT_List (Remaining, subtype) ->
     Printf.sprintf "parse_rem_list (%s)" (parse_fun_of_field_type name subtype)
+  | FT_Container (int_t, subtype) ->
+    Printf.sprintf "parse_container \"%s\" parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
 
   | FT_Custom (module_name, type_name) -> module_name ^ ".parse_" ^ type_name
 
@@ -61,6 +64,8 @@ let rec dump_fun_of_field_type = function
     Printf.sprintf "dump_varlen_list dump_uint%d (%s)" (int_size int_t) (dump_fun_of_field_type subtype)
   | FT_List (_, subtype) ->
     Printf.sprintf "dump_list (%s)" (dump_fun_of_field_type subtype)
+  | FT_Container (int_t, subtype) ->
+    Printf.sprintf "dump_container dump_uint%d (%s)" (int_size int_t) (dump_fun_of_field_type subtype)
 
   | FT_Custom (module_name, type_name) -> module_name ^ ".dump_" ^ type_name
 
@@ -81,6 +86,7 @@ let rec print_fun_of_field_type = function
   | FT_List (_, subtype) ->
     Printf.sprintf "print_list (%s)" (print_fun_of_field_type subtype)
 
+  | FT_Container (_, subtype) -> print_fun_of_field_type subtype
   | FT_Custom (module_name, type_name) -> module_name ^ ".print_" ^ type_name
 
 

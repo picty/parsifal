@@ -149,3 +149,10 @@ let parse_varlen_list name len_fun parse_fun input =
   let res = parse_rem_list parse_fun new_input in
   get_out input new_input;
   res
+
+let parse_container name len_fun parse_fun input =
+  let n = len_fun input in
+  let new_input = get_in input name n in
+  let res = parse_fun new_input in
+  get_out input new_input;
+  res
