@@ -123,7 +123,7 @@ let mk_dump_fun (name, fields) =
     then begin
       (Printf.sprintf "  begin\n") ^
       (Printf.sprintf "    match %s.%s with\n" name fn) ^
-      (Printf.sprintf "      | None -> ()\n") ^
+      (Printf.sprintf "      | None -> \"\"\n") ^
       (Printf.sprintf "      | Some x -> %s x\n" (dump_fun_of_field_type ft)) ^
       (Printf.sprintf "  end")
     end
@@ -139,7 +139,7 @@ let mk_print_fun (name, fields) =
     then begin
       (Printf.sprintf "  begin\n") ^
       (Printf.sprintf "    match %s.%s with\n" name fn) ^
-      (Printf.sprintf "      | None -> ()\n") ^
+      (Printf.sprintf "      | None -> \"\"\n") ^
       (Printf.sprintf "      | Some x -> %s new_indent \"%s\" x\n" (print_fun_of_field_type ft) fn) ^
       (Printf.sprintf "  end")
     end
@@ -154,7 +154,7 @@ let mk_print_fun (name, fields) =
 
 let handle_desc (desc : description) =
   print_endline "open ParsingEngine";
-  print_endline "open DumpingEngine\n";
+  print_endline "open DumpingEngine";
   print_endline "open PrintingEngine\n";
   mk_desc_type desc;
   mk_parse_fun desc;

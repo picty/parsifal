@@ -32,6 +32,6 @@ let print_ipv6 indent name s =
 (* List printing *)
 
 let print_list print_fun indent name l =
-  (Printf.sprintf "%s%ss {\n" indent name) ^
+  (Printf.sprintf "%s%s {\n" indent name) ^
   (String.concat "" (List.map (fun x -> print_fun (indent ^ "  ") name x) l)) ^
   (Printf.sprintf "%s}\n" indent)
