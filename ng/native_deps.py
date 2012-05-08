@@ -5,10 +5,16 @@ import sys
 
 depend_file = sys.argv[1]
 dependencies = dict ()
+previous_line = ""
 
 for line in open (depend_file):
-  (target, deps) = line.split (":")
-  dependencies[target] = filter (lambda s : len (s) > 0, map (lambda s : s.strip(), deps.split (" ")))
+  line = (previous_line + line).strip()
+  if line[-1] == '\\':
+    previous_line = line[:-1].strip()
+  else:
+    (target, deps) = line.split (":")
+    dependencies[target] = filter (lambda s : len (s) > 0, map (lambda s : s.strip(), deps.split (" ")))
+    previous_line = ""
 
 
 def step (result, cur_step):
