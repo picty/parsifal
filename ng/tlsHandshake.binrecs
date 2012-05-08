@@ -1,3 +1,9 @@
+let signature_and_hash_algorithm_d = [
+  "hash_algorithm", FT_Enum (IT_UInt8, "TlsEnums", "hash_algorithm"), false;
+  "signature_algorithm", FT_Enum (IT_UInt8, "TlsEnums", "signature_algorithm"), false;
+]
+
+
 let client_hello_d = [
   "client_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
   "client_random", FT_String (FixedLen 32, true), false;
@@ -16,9 +22,23 @@ let server_hello_d = [
   "server_extensions", FT_String (VarLen IT_UInt16, true), true;    (* TODO *)
 ]
 
+let certificates_d = [
+  "certificate_list", FT_List (VarLen IT_UInt24, FT_String (VarLen IT_UInt24, true)), false
+]
 
+let certificate_request_d = [
+  "certificate_types", FT_Enum (IT_UInt8, "TlsEnums", "client_certificate_type"), false;
+  "supported_signature_algorithms", FT_List (VarLen IT_UInt16, FT_Custom (None, "signature_and_hash_algorithm", [])), false;
+  "certificate_authorities", FT_List (VarLen IT_UInt16, FT_String (VarLen IT_UInt16, true)), false;
+]
+	
 
 let descriptions = [
+  "signature_and_hash_algorithm", signature_and_hash_algorithm_d;
+
+  "hello_request", [];
   "client_hello", client_hello_d;
   "server_hello", server_hello_d;
+  "certificates", certificates_d;
+  "certificate_request", certificate_request_d;
 ]

@@ -60,12 +60,44 @@ let hs_message_types = [
   20, "HT_Finished", "Finished";
 ]
 
+let client_certificate_types = [
+  1,  "CCT_RSASign", "RSASign";
+  2,  "CCT_DSSSign", "DSSSign";
+  3,  "CCT_RSAFixedDH", "RSAFixedDH";
+  4,  "CCT_DSSFixedDH", "DSSFixedDH";
+  5,  "CCT_RSAEphemeralDH", "RSAEphemeralDH";   (* RESERVED *)
+  6,  "CCT_DSSEphemeralDH", "DSSEphemeralDH";   (* RESERVED *)
+  20, "CCT_FortezzaDMS", "FortezzaDMS";         (* RESERVED *)
+]
+
+let hash_algorithms = [
+  0,  "HA_None", "None";
+  1,  "HA_MD5", "MD5";
+  2,  "HA_SHA1", "SHA1";
+  3,  "HA_SHA224", "SHA224";
+  4,  "HA_SHA256", "SHA256";
+  5,  "HA_SHA384", "SHA384";
+  6,  "HA_SHA512", "SHA512";
+]
+
+let signature_algorithms = [
+  0,  "SA_Anonymous", "Anonymous";
+  1,  "SA_RSA", "RSA";
+  2,  "SA_DSA", "DSA";
+  3,  "SA_ECDSA", "ECDSA";
+]
+
 
 let enums = [
   "tls_version", tls_versions, UnknownVal "V_Unknown";
   "tls_content_type", tls_content_types, UnknownVal "CT_Unknown";
   "tls_alert_level", tls_alert_levels, UnknownVal "AL_Unknown";
   "tls_alert_type", tls_alert_types, UnknownVal "AT_Unknown";
+
   "hs_message_type", hs_message_types, UnknownVal "HT_Unknown";
+
+  "client_certificate_type", client_certificate_types, UnknownVal "CCT_Unknown";
+  "hash_algorithm", hash_algorithms, UnknownVal "HA_Unknown";
+  "signature_algorithm", signature_algorithms, UnknownVal "SA_Unknown";
 ]
 

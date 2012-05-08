@@ -1,5 +1,8 @@
 open ParsingEngine
 open AnswerDump
+open Tls
+open TlsEnums
+
 
 let dump = "\x6c\x6b\x2e\xf1\x01\xbb\x00\x00\x00\x00\x00\x00\x03\x34\x16\x03"^
   "\x01\x00\x4a\x02\x00\x00\x46\x03\x01\x4c\x57\x55\x7e\xc0\x5e\x00"^
@@ -61,4 +64,16 @@ let _ =
   print_endline (print_answer_dump "" "AnswerDump" answer);
   if dump_answer_dump answer = dump
   then print_endline "Yes!"
-  else print_endline "NO!"
+  else print_endline "NO!";
+
+  let s = answer.content in
+  let input = input_of_string "TLS Record" s in
+  let tls_record = parse_tls_record input in
+  print_endline (print_tls_record "" "TLS_Record" tls_record);
+  if tls_record.content_type = CT_Handshake then begin
+    let hs_msg = parse_handshake_msg (input_of_string "Handshake" tls_record.record_content) in
+    print_endline (print_handshake_msg "  " "Handshake message" hs_msg)
+  end;
+  if dump_tls_record tls_record = s
+  then print_endline "Yes!"
+  else print_endline "NO!";
