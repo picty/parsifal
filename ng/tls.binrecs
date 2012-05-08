@@ -11,7 +11,7 @@ let tls_alert_d = [
 
 let handshake_msg_d = [
   "handshake_type", FT_Enum (IT_UInt8, "TlsEnums", "hs_message_type"), false;
-  "handshake_content", FT_Container (IT_UInt24, FT_Custom ("TlsChoices", "handshake_content", ["_handshake_type"])), false;
+  "handshake_content", FT_Container (IT_UInt24, FT_Custom (Some "TlsChoices", "handshake_content", ["_handshake_type"])), false;
 ]
 
 

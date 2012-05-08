@@ -4,6 +4,10 @@ let int_size = function
   | IT_UInt24 -> 24
   | IT_UInt32 -> 32
 
+let mk_module_prefix = function
+  | None -> ""
+  | Some module_name -> module_name ^ "."
+
 let rec ocaml_type_of_field_type = function
   | FT_Char -> "char"
   | FT_Integer _ -> "int"
@@ -13,7 +17,7 @@ let rec ocaml_type_of_field_type = function
   | FT_List (_, subtype) ->
     "(" ^ (ocaml_type_of_field_type subtype) ^ ") list"
   | FT_Container (_, subtype) -> ocaml_type_of_field_type subtype
-  | FT_Custom (module_name, type_name, _) -> module_name ^ "." ^ type_name
+  | FT_Custom (module_name, type_name, _) -> (mk_module_prefix module_name) ^ type_name
 
 let ocaml_type_of_field_type_and_options t optional =
   let type_string = ocaml_type_of_field_type t in
@@ -46,7 +50,7 @@ let rec parse_fun_of_field_type name = function
     Printf.sprintf "parse_container \"%s\" parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
 
   | FT_Custom (module_name, type_name, parse_fun_args) ->
-    String.concat " " ((module_name ^ ".parse_" ^ type_name)::parse_fun_args)
+    String.concat " " (((mk_module_prefix module_name) ^ "parse_" ^ type_name)::parse_fun_args)
 
 let rec dump_fun_of_field_type = function
   | FT_Char -> "dump_char"
@@ -68,7 +72,7 @@ let rec dump_fun_of_field_type = function
   | FT_Container (int_t, subtype) ->
     Printf.sprintf "dump_container dump_uint%d (%s)" (int_size int_t) (dump_fun_of_field_type subtype)
 
-  | FT_Custom (module_name, type_name, _) -> module_name ^ ".dump_" ^ type_name
+  | FT_Custom (module_name, type_name, _) -> (mk_module_prefix module_name) ^ "dump_" ^ type_name
 
 let rec print_fun_of_field_type = function
   | FT_Char -> "print_char"
@@ -89,7 +93,7 @@ let rec print_fun_of_field_type = function
 
   | FT_Container (_, subtype) -> print_fun_of_field_type subtype
 
-  | FT_Custom (module_name, type_name, _) -> module_name ^ ".print_" ^ type_name
+  | FT_Custom (module_name, type_name, _) -> (mk_module_prefix module_name) ^ "print_" ^ type_name
 
 
 let mk_desc_type (name, fields) =
