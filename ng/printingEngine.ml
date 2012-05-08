@@ -7,9 +7,8 @@ let print_uint sz indent name v =
 let print_char indent name c =
   Printf.sprintf "%s%s: %c (%2.2x)\n" indent name c (int_of_char c)
 
-let print_enum string_of_val int_of_val sz indent name v =
-  let size = sz / 4 in
-  Printf.sprintf "%s%s: %s (%*.*x)\n" indent name (string_of_val v) size size (int_of_val v)
+let print_enum string_of_val int_of_val nchars indent name v =
+  Printf.sprintf "%s%s: %s (%*.*x)\n" indent name (string_of_val v) nchars nchars (int_of_val v)
 
 
 (* String printing *)

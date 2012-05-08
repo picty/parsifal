@@ -48,14 +48,21 @@ let mk_enum_of_int (name, enum, unknown) =
   end;
   print_newline ()
 
+let mk_parse_dump_print_funs (name, _, _) =
+  Printf.printf "let parse_%s parse_int input = %s_of_int (parse_int input)\n" name name;
+  Printf.printf "let dump_%s dump_int v = dump_int (int_of_%s v)\n" name name;
+  Printf.printf "let print_%s = print_enum string_of_%s int_of_%s\n" name name name
+
 
 let handle_enum (enum : enum) =
   mk_ctors enum;
   mk_string_of_enum enum;
   mk_int_of_enum enum;
   mk_enum_of_int enum;
+  mk_parse_dump_print_funs enum;
   print_newline ()
 
 
 let _ =
+  print_endline "open PrintingEngine\n";
   List.iter handle_enum enums

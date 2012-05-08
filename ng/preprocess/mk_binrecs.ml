@@ -31,7 +31,7 @@ let rec parse_fun_of_field_type name = function
     Printf.sprintf "parse_uint%d" (int_size it)
 
   | FT_Enum (int_type, module_name, type_name) ->
-    Printf.sprintf "(fun input -> %s.%s_of_int (parse_uint%d input))" module_name type_name (int_size int_type)
+    Printf.sprintf "%s.parse_%s parse_uint%d" module_name type_name (int_size int_type)
 
   | FT_IPv4 -> "parse_string 4"
   | FT_IPv6 -> "parse_string 16"
@@ -57,7 +57,7 @@ let rec dump_fun_of_field_type = function
   | FT_Integer it -> Printf.sprintf "dump_uint%d" (int_size it)
 
   | FT_Enum (int_type, module_name, type_name) ->
-    Printf.sprintf "(fun v -> dump_uint%d (%s.int_of_%s v))" (int_size int_type) module_name type_name
+    Printf.sprintf "%s.dump_%s dump_uint%d" module_name type_name (int_size int_type)
 
   | FT_String (VarLen int_t, _) ->
     Printf.sprintf "dump_varlen_string dump_uint%d" (int_size int_t)
@@ -79,8 +79,7 @@ let rec print_fun_of_field_type = function
   | FT_Integer it -> Printf.sprintf "print_uint %d" (int_size it)
 
   | FT_Enum (int_type, module_name, type_name) ->
-    Printf.sprintf "(fun i s v -> print_enum (%s.string_of_%s) (%s.int_of_%s) %d i s v)"
-      module_name type_name module_name type_name (int_size int_type)
+    Printf.sprintf "%s.print_%s %d" module_name type_name ((int_size int_type) / 4)
 
   | FT_String (_, true) -> "print_binstring"
   | FT_String (_, false) -> "print_string"
