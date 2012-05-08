@@ -1,6 +1,7 @@
+ - Write a parse/dump/print helper in mk_enums to help mk_binrecs
+ - Add code to auto-generate choice
+
  - Add a pretty string for field names?
- - Add Arguments (refs to be fed to parse functions)
- - Add Choice functions
 
  - Write some Lwt_parser manually?
  - Add a way to constrain a binrec (length of 2^14 in TlsRecord)

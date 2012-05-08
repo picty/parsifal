@@ -20,7 +20,7 @@ type field_type =
   | FT_String of field_len * bool
   | FT_List of field_len * field_type
   | FT_Container of integer_type * field_type
-  | FT_Custom of string * string
+  | FT_Custom of string * string * string list
 
 (* TODO: Add options for lists (AtLeast, AtMost) and for options *)
 
