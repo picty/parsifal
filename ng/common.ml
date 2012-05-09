@@ -1,5 +1,8 @@
 open Unix
 
+exception NotImplemented of string
+
+
 let get_file_content filename =
   let f = open_in filename in
   let fd = descr_of_in_channel f in

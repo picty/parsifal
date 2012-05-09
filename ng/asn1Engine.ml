@@ -20,9 +20,9 @@ type expected_header =
 
 
 
-(*********************)
-(* Parsing functions *)
-(*********************)
+(*******************************)
+(* Parsing / dumping functions *)
+(*******************************)
 
 (* Header *)
 
@@ -103,6 +103,10 @@ let parse_der_boolean input =
       emit false BooleanNotInNormalForm input
       (v <> 0)
 
+let dump_der_boolean = function
+  | true -> String.make 1 '\xff'
+  | false -> String.make 1 '\x00'
+
 
 (* Integer *)
 
@@ -124,6 +128,8 @@ let parse_der_int input =
   end;
   l
 
+let dump_der_int s = s
+
 
 let parse_der_smallint input =
   let integer_s = parse_der_int input in
@@ -138,6 +144,9 @@ let parse_der_smallint input =
     in int_of_binstr 0 0
   end
 
+let dump_der_smallint i =
+  raise NotImplemented "dump_der_smallint"
+
 
 (* Null *)
 
@@ -147,6 +156,9 @@ let parse_der_null input =
     emit false NullNotInNormalForm input
     drop_rem_bytes input;
   end
+
+let dump_der_null () = ""
+
 
 (* OId *)
 
