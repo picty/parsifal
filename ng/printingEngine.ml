@@ -25,7 +25,13 @@ let print_ipv4 indent name s =
   Printf.sprintf "%s%s: %s\n" indent name res
 
 let print_ipv6 indent name s =
-  failwith "Not implemented: print_ipv6"
+  let res = String.make 39 ':' in
+  for i = 0 to 15 do
+    let x = int_of_char (String.get s i) in
+    res.[(i / 2) + i * 2] <- Common.hexa_char.[(x lsr 4) land 0xf];
+    res.[(i / 2) + i * 2 + 1] <- Common.hexa_char.[x land 0xf];
+  done;
+  res
 
 
 (* List printing *)

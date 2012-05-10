@@ -1,3 +1,4 @@
+open Common
 open Asn1Enums
 open ParsingEngine
 
@@ -19,10 +20,6 @@ type expected_header =
   | AH_Complex of (asn1_class -> bool -> asn1_tag -> bool)
 
 
-
-(*******************************)
-(* Parsing / dumping functions *)
-(*******************************)
 
 (* Header *)
 
@@ -90,6 +87,38 @@ let extract_asn1_object input name header_constraint parse_content =
 
 
 
+let dump_header c isC t =
+  let t_int = int_of_asn1_tag t in
+  if t_int >= 0x1f then raise (NotImplemented "long type");
+  let h = ((int_of_asn1_class c) lsl 6) lor
+    (if isC then 0x20 else 0) lor t_int in
+  String.make 1 (char_of_int h)
+
+let dump_length l =
+  let rec compute_len accu = function
+    | 0 -> accu
+    | lg -> compute_len (accu + 1) (lg lsr 8)
+  in
+  let rec aux res i = function
+    | 0 -> ()
+    | lg ->
+      res.[i] <- char_of_int (lg land 0xff);
+      aux res (i+1) (lg lsr 8)
+  in
+  if l < 0x80
+  then String.make 1 (char_of_int l)
+  else
+    let len_len = compute_len 0 l in
+    let res = String.make (len_len + 1) (char_of_int len_len) in
+    aux res 1 l;
+    res
+
+let dump_asn1_object c isC t dump_content v =
+  let content_dumped = dump_content v in
+  (dump_header c isC t) ^ (dump_length (String.length content_dumped)) ^ content_dumped
+
+
+
 (* Boolean *)
 
 let parse_der_boolean input =
@@ -145,7 +174,7 @@ let parse_der_smallint input =
   end
 
 let dump_der_smallint i =
-  raise NotImplemented "dump_der_smallint"
+  raise (NotImplemented "dump_der_smallint")
 
 
 (* Null *)
@@ -185,6 +214,17 @@ let parse_der_oid input =
     end
   in
   aux ()
+
+(* let subid_to_charlist id = *)
+(*   let rec aux accu x = *)
+(*     if x = 0 *)
+(*     then accu *)
+(*     else aux (((x land 0x7f) lor 0x80)::accu) (x lsr 7) *)
+(*   in aux [id land 0x7f] (id lsr 7) *)
+
+(* let oid_to_der idlist = *)
+(*   let cll = List.map subid_to_charlist idlist in *)
+(*   string_of_int_list (List.flatten cll) *)
 
 
 (* (\* Bit String *\) *)
@@ -422,62 +462,8 @@ let parse_der_oid input =
 
 
 
-(* (\********************\) *)
-(* (\* Content DER dump *\) *)
-(* (\********************\) *)
-
-(* (\* Header *\) *)
-
-(* let dump_class c = *)
-(*   match c with *)
-(*     | C_Universal -> 0 *)
-(*     | C_Application -> 0x40 *)
-(*     | C_ContextSpecific -> 0x80 *)
-(*     | C_Private -> 0xc0 *)
-
-(* let dump_isConstructed isC = *)
-(*   if isC then 0x20 else 0 *)
-
-(* let dump_longtype t = *)
-(*   failwith "long type not implemented" *)
-
-(* let dump_header (c : asn1_class) (isC : bool) (t : int) : string = *)
-(*   let t' = if t < 0x1f then t else 0x1f in *)
-(*   let h = (dump_class c) lor (dump_isConstructed isC) lor t' in *)
-(*   let res = String.make 1 (char_of_int h) in *)
-(*   if t' = 0x1f *)
-(*   then res ^ dump_longtype t *)
-(*   else res *)
-
-(* let dump_length l = *)
-(*   let rec aux accu = function *)
-(*     | 0 -> accu *)
-(*     | lg -> aux ((lg land 0xff)::accu) (lg lsr 8) *)
-(*   in *)
-(*   if l < 0x80 *)
-(*   then String.make 1 (char_of_int l) *)
-(*   else begin *)
-(*     let x = aux [] l in *)
-(*     let prefix = ((List.length x) lor 0x80) in *)
-(*     string_of_int_list (prefix::x) *)
-(*   end *)
 
 
-(* (\* object dump functions *\) *)
-    
-(* let boolean_to_der b = *)
-(*   if b then "\xff" else "\x00" *)
-
-(* let subid_to_charlist id = *)
-(*   let rec aux accu x = *)
-(*     if x = 0 *)
-(*     then accu *)
-(*     else aux (((x land 0x7f) lor 0x80)::accu) (x lsr 7) *)
-(*   in aux [id land 0x7f] (id lsr 7) *)
-
-(* let oid_to_der idlist = *)
-(*   let cll = List.map subid_to_charlist idlist in *)
-(*   string_of_int_list (List.flatten cll) *)
 
 (* let bitstring_to_der nBits s = *)
 (*   let prefix = String.make 1 (char_of_int nBits) in *)
