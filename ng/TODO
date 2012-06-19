@@ -1,8 +1,8 @@
 TODO
  - Add UTCTime / ValidityTime handling
  - Add support for ObjectIdentifiers
- - Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm support
- - Write some Lwt_parser manually?
+ - Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
+ - Write some Lwt_parser manually for answer dumps?
 
 Improvements
  - Add code to auto-generate choice

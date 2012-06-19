@@ -11,6 +11,9 @@ exception OutOfBounds of string_input
 exception UnexptedTrailingBytes of string_input
 exception EmptyHistory
 
+let emit_eos_expected _fatal i = raise (UnexptedTrailingBytes i)
+
+
 let input_of_string name s =
   {
     str = s;
@@ -120,6 +123,9 @@ let drop_rem_bytes input =
 
 let eos input =
   input.cur_offset >= input.cur_length
+
+let check_empty_input fatal input =
+  if not (eos input) then emit_eos_expected fatal input
 
 
 
