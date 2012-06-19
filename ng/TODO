@@ -9,6 +9,7 @@ Improvements
  - Add a pretty string for field names?
  - Add a way to constrain a binrec (length of 2^14 in TlsRecord)
  - mk_binrecs.mk_parse_fun: add a way to check eos is reached
+ - Rethink the exception system?
 
 
  - Add unit tests

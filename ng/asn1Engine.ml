@@ -9,6 +9,7 @@ type asn1_exception =
   | NullNotInNormalForm
   | OIdNotInNormalForm
   | IntegerOverflow
+  | InvalidUTCTime
 
 exception Asn1Exception of (asn1_exception * string_input)
 
@@ -124,7 +125,8 @@ let dump_asn1_object c isC t dump_content v =
 let parse_der_boolean input =
   let value = parse_rem_list parse_uint8 input in
   match value with
-    | [] -> emit false BooleanNotInNormalForm input
+    | [] ->
+      emit false BooleanNotInNormalForm input;
       false
     | [0] -> false
     | [255] -> true
@@ -289,11 +291,41 @@ let parse_der_oid input =
 (*       else BitString (nBits, content) *)
 
 
-(* (\* Octet String *\) *)
+(* Octet String *)
 
-(* (\* TODO: Add constraints *\) *)
-(* let der_to_octetstring binary pstate = *)
-(*   String (pop_string pstate, binary) *)
+let no_constraint s = s
+
+let utc_time_re =
+  Str.regexp "^\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
+let generalized_time_re =
+  Str.regexp "^\\([0-9][0-9][0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
+
+let time_constraint re s input =
+  try
+    if Str.string_match re s 0 then begin
+      let y = int_of_string (Str.matched_group 1 s)
+      and m = int_of_string (Str.matched_group 2 s)
+      and d = int_of_string (Str.matched_group 3 s)
+      and hh = int_of_string (Str.matched_group 4 s)
+      and mm = int_of_string (Str.matched_group 5 s)
+      and ss = int_of_string (Str.matched_group 6 s) in
+      if m = 0 || m > 12 || d = 0 || d > 31 || hh >= 24 || mm > 59 || ss > 59
+      then emit false InvalidUTCTime input;
+      (y, m, d, hh, mm, ss)
+    end else raise Not_found
+  with _ ->
+    emit true InvalidUTCTime input;
+    (0,0,0,0,0,0)
+
+let utc_time_constraint = time_constraint utc_time_re
+let generalized_time_constraint = time_constraint generalized_time_re
+
+let parse_der_octetstring apply_constraints input =
+  let res = parse_rem_string input in
+  apply_constraints res input
+
+
+let dump_der_octetstring s = s
 
 
 (* (\* Constructed and global function *\) *)
