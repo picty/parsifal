@@ -4,6 +4,7 @@ open Lwt
 open Unix
 
 open ParsingEngine
+open DumpingEngine
 open LwtParsingEngine
 open Common
 open TlsEnums
@@ -62,15 +63,16 @@ let rec forward_stupid state i o =
 let rec forward_not_so_stupid state i o =
   lwt_parse_tls_content_type lwt_parse_uint8 i >>= fun content_type ->
   Printf.printf "%s: %s\n" state.name (string_of_tls_content_type content_type);
-  flush stdout;
+  really_write o (String.make 1 (char_of_int (int_of_tls_content_type content_type))) 0 1 >>= fun () ->
   lwt_parse_tls_version lwt_parse_uint16 i >>= fun record_version ->
   Printf.printf "%s: %s\n" state.name (string_of_tls_version record_version);
-  flush stdout;
-  lwt_parse_varlen_string "record_content" lwt_parse_uint16 i >>= fun record_content ->
+  really_write o (dump_tls_version dump_uint16 record_version) 0 2 >>= fun () ->
+  forward_stupid state i o
+(*  lwt_parse_varlen_string "record_content" lwt_parse_uint16 i >>= fun record_content ->
   Printf.printf "%s: %d bytes\n" state.name (String.length record_content);
-  flush stdout;
-(*   really_write o (String.make 1 (char_of_int c)) 0 1 >>= fun () -> *)
-  forward_not_so_stupid state i o
+  let res = dump_varlen_string dump_uint16 record_content in
+  really_write o res 0 (String.length res) >>= fun () ->
+  forward_not_so_stupid state i o *)
 
 
 let new_socket () =
@@ -91,8 +93,8 @@ let rec accept sock =
   ignore
     (let out = new_socket () in
      Lwt_unix.connect out remote_addr >>= fun () ->
-     let io = forward_stupid (empty_state "C->S") (input_of_fd "Client socket" inp) out in
-     let oi = forward_stupid (empty_state "S->C") (input_of_fd "Server socket" out) inp in
+     let io = forward_not_so_stupid (empty_state "C->S") (input_of_fd "Client socket" inp) out in
+     let oi = forward_not_so_stupid (empty_state "S->C") (input_of_fd "Server socket" out) inp in
      io >>= fun () -> oi >>= fun () ->
      ignore (Lwt_unix.close out);
      ignore (Lwt_unix.close inp);
