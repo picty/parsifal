@@ -52,6 +52,34 @@ let rec parse_fun_of_field_type name = function
   | FT_Custom (module_name, type_name, parse_fun_args) ->
     String.concat " " (((mk_module_prefix module_name) ^ "parse_" ^ type_name)::parse_fun_args)
 
+let rec lwt_parse_fun_of_field_type name = function
+  | FT_Char -> "lwt_parse_char"
+  | FT_Integer it ->
+    Printf.sprintf "lwt_parse_uint%d" (int_size it)
+
+  | FT_Enum (int_type, module_name, type_name) ->
+    Printf.sprintf "%s.lwt_parse_%s lwt_parse_uint%d" module_name type_name (int_size int_type)
+
+  | FT_IPv4 -> "lwt_parse_string 4"
+  | FT_IPv6 -> "lwt_parse_string 16"
+  | FT_String (FixedLen n, _) -> "lwt_parse_string " ^ (string_of_int n)
+  | FT_String (VarLen int_t, _) ->
+    Printf.sprintf "lwt_parse_varlen_string \"%s\" lwt_parse_uint%d" name (int_size int_t)
+
+  | FT_List (FixedLen n, subtype) ->
+    Printf.sprintf "lwt_parse_list %d (%s)" n (parse_fun_of_field_type name subtype)
+  | FT_List (VarLen int_t, subtype) ->
+    Printf.sprintf "lwt_parse_varlen_list \"%s\" lwt_parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
+  | FT_Container (int_t, subtype) ->
+    Printf.sprintf "lwt_parse_container \"%s\" lwt_parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
+
+  | FT_Custom (module_name, type_name, parse_fun_args) ->
+    String.concat " " (((mk_module_prefix module_name) ^ "parse_" ^ type_name)::parse_fun_args)
+
+  | FT_String (Remaining, _)
+  | FT_List (Remaining, _) ->
+    failwith "Remaining string/list not supported for lwt"
+
 let rec dump_fun_of_field_type = function
   | FT_Char -> "dump_char"
   | FT_Integer it -> Printf.sprintf "dump_uint%d" (int_size it)
@@ -127,6 +155,27 @@ let mk_parse_fun (name, fields) =
     print_endline "  }\n"
   end
 
+let mk_lwt_parse_fun (name, fields) =
+  if fields = []
+  then Printf.printf "let lwt_parse_%s input = return ()\n" name
+  else begin
+    Printf.printf "let lwt_parse_%s input =\n" name;
+    let parse_aux (fn, ft, _fo) =
+      (* TODO: Really support optional fields *)
+      Printf.printf "  %s input >>= fun _%s ->\n" (lwt_parse_fun_of_field_type fn ft) fn
+    in
+    let mkrec_aux (fn, _, fo) =
+      (* TODO: Really support optional fields *)
+      if fo
+      then Printf.printf "    %s = Some _%s;\n" fn fn
+      else Printf.printf "    %s = _%s;\n" fn fn
+    in
+    List.iter parse_aux fields;
+    print_endline "  return {";
+    List.iter mkrec_aux fields;
+    print_endline "  }\n"
+  end
+
 let mk_dump_fun (name, fields) =
   if fields = []
   then Printf.printf "let dump_%s input = \"\"\n" name
@@ -172,16 +221,22 @@ let mk_print_fun (name, fields) =
   end
 
 
-let handle_desc (desc : description) =
+let handle_desc do_lwt (desc : description) =
   mk_desc_type desc;
   mk_parse_fun desc;
+  if do_lwt then mk_lwt_parse_fun desc;
   mk_dump_fun desc;
   mk_print_fun desc;
   print_newline ()
 
 
 let _ =
+  let do_lwt = true in
+  if do_lwt then begin
+    print_endline "open Lwt";
+    print_endline "open LwtParsingEngine"
+  end;
   print_endline "open ParsingEngine";
   print_endline "open DumpingEngine";
   print_endline "open PrintingEngine\n";
-  List.iter handle_desc descriptions
+  List.iter (handle_desc do_lwt) descriptions

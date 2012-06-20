@@ -19,5 +19,5 @@ let descriptions = [
   "tls_record", tls_record_d;
   "tls_alert", tls_alert_d;
   "handshake_msg", handshake_msg_d;
-    "change_cipher_spec", [];
+  "change_cipher_spec", [];
 ]
