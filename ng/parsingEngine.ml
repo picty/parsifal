@@ -109,7 +109,7 @@ let parse_rem_string input =
 let parse_varlen_string name len_fun input =
   let n = len_fun input in
   let new_input = get_in input name n in
-  let res = parse_string n new_input in
+  let res = parse_rem_string new_input in
   get_out input new_input;
   res
 
