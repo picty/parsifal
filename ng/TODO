@@ -1,4 +1,7 @@
 TODO
+ - Sort all the files present in AceSL-hg and co.
+ - Add MakefileV6
+ - Make repositories (asn1, tls, baseEngines, .generated)
  - Add UTCTime / ValidityTime handling
  - Add support for ObjectIdentifiers
  - Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
@@ -11,6 +14,13 @@ Improvements
  - mk_binrecs.mk_parse_fun: add a way to check eos is reached
  - Rethink the exception system?
 
+
+ - Write Integers as records with mutable values
+    * raw : string option
+    * bigint : Big_int.t option
+  + functions to manipulate them
+
+ - Write .mli files
 
  - Add unit tests
 
