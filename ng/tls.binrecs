@@ -9,6 +9,10 @@ let tls_alert_d = [
   "alert_type", FT_Enum (IT_UInt8, "TlsEnums", "tls_alert_type"), false
 ]
 
+let change_cipher_spec_d = [
+  "change_cipher_spec_value", FT_Enum (IT_UInt8, "TlsEnums", "change_cipher_spec_value"), false
+]
+
 let handshake_msg_d = [
   "handshake_type", FT_Enum (IT_UInt8, "TlsEnums", "hs_message_type"), false;
   "handshake_content", FT_Container (IT_UInt24, FT_Custom (Some "TlsChoices", "handshake_content", ["_handshake_type"])), false;
@@ -19,5 +23,5 @@ let descriptions = [
   "tls_record", tls_record_d;
   "tls_alert", tls_alert_d;
   "handshake_msg", handshake_msg_d;
-  "change_cipher_spec", [];
+  "change_cipher_spec", change_cipher_spec_d;
 ]
