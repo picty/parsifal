@@ -13,6 +13,8 @@ type handshake_content =
   | ServerHelloDone
   | Unparsed_HSContent of string
 
+(* TODO: ServerHelloDone should be coded as the hello_request in tlsHandshake.binrecs *)
+
 let parse_certificate = parse_varlen_string "Certificate" parse_uint24
 
 let parse_handshake_content handshake_type input =
