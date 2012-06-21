@@ -42,6 +42,14 @@ let rec forward state i o =
   lwt_parse_tls_record i >>= fun record ->
   print_string (print_tls_record "" state.name record);
   write_record o record >>= fun () ->
+  begin
+    match record.content_type, state.clear with
+      | CT_Handshake, true ->
+	let hs_msg = parse_handshake_msg (input_of_string "Handshake" record.record_content) in
+	print_string (print_handshake_msg "" state.name hs_msg)
+      | CT_ChangeCipherSpec, _ -> state.clear <- false
+      | _ -> ()
+  end;
   forward state i o
 (*  end else begin
     Lwt_unix.shutdown o Unix.SHUTDOWN_SEND;
