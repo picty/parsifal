@@ -33,7 +33,7 @@ let get_in input name len =
   return {
     str = s;
     cur_name = name;
-    cur_base = input.lwt_offset;
+    cur_base = 0;
     cur_offset = 0;
     cur_length = len;
     history = [input.lwt_name, input.lwt_offset, None]

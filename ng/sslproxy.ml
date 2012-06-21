@@ -11,7 +11,7 @@ open TlsEnums
 open Tls
 
 
-(* TODO: Handle Unix exceptions *)
+(* TODO: Handle exceptions in lwt code, and add timers *)
 
 
 type tls_state = {
@@ -23,25 +23,19 @@ let empty_state name =
   { name = name; clear = true }
 
 
-
-(* write l bytes of string s
- * starting at position p to file descriptor o.
- * Several calls to function Lwt_unix.write may
- * be needed as the system call may write less
- * than l bytes.
- *)
-let rec really_write o s p l =
+let rec _really_write o s p l =
   Lwt_unix.write o s p l >>= fun n ->
   if l = n then
     Lwt.return ()
   else
-    really_write o s (p + n) (l - n)
+    _really_write o s (p + n) (l - n)
+
+let really_write o s = _really_write o s 0 (String.length s)
 
 
 let write_record o record =
   let s = dump_tls_record record in
-  let l = String.length s in
-  really_write o s 0 l
+  really_write o s
 
 
 let rec forward state i o =
@@ -53,27 +47,6 @@ let rec forward state i o =
     Lwt_unix.shutdown o Unix.SHUTDOWN_SEND;
     Lwt.return ()
   end*)
-
-let rec forward_stupid state i o =
-  lwt_parse_uint8 i >>= fun c ->
-  Printf.printf "%2.2x" c;
-  really_write o (String.make 1 (char_of_int c)) 0 1 >>= fun () ->
-  forward_stupid state i o
-
-let rec forward_not_so_stupid state i o =
-  lwt_parse_tls_content_type lwt_parse_uint8 i >>= fun content_type ->
-  Printf.printf "%s: %s\n" state.name (string_of_tls_content_type content_type);
-  really_write o (String.make 1 (char_of_int (int_of_tls_content_type content_type))) 0 1 >>= fun () ->
-  lwt_parse_tls_version lwt_parse_uint16 i >>= fun record_version ->
-  Printf.printf "%s: %s\n" state.name (string_of_tls_version record_version);
-  really_write o (dump_tls_version dump_uint16 record_version) 0 2 >>= fun () ->
-  forward_stupid state i o
-(*  lwt_parse_varlen_string "record_content" lwt_parse_uint16 i >>= fun record_content ->
-  Printf.printf "%s: %d bytes\n" state.name (String.length record_content);
-  let res = dump_varlen_string dump_uint16 record_content in
-  really_write o res 0 (String.length res) >>= fun () ->
-  forward_not_so_stupid state i o *)
-
 
 let new_socket () =
   Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0
@@ -93,8 +66,8 @@ let rec accept sock =
   ignore
     (let out = new_socket () in
      Lwt_unix.connect out remote_addr >>= fun () ->
-     let io = forward_not_so_stupid (empty_state "C->S") (input_of_fd "Client socket" inp) out in
-     let oi = forward_not_so_stupid (empty_state "S->C") (input_of_fd "Server socket" out) inp in
+     let io = forward (empty_state "C->S") (input_of_fd "Client socket" inp) out in
+     let oi = forward (empty_state "S->C") (input_of_fd "Server socket" out) inp in
      io >>= fun () -> oi >>= fun () ->
      ignore (Lwt_unix.close out);
      ignore (Lwt_unix.close inp);
