@@ -22,6 +22,12 @@ let server_hello_d = [
   "server_extensions", FT_String (VarLen IT_UInt16, true), true;    (* TODO *)
 ]
 
+let new_session_ticket_d = [
+  "ticket_lifetime_hint", FT_Integer IT_UInt32, false;
+  "ticket", FT_String (VarLen IT_UInt16, true), false;
+]
+
+
 let certificates_d = [
   "certificate_list", FT_List (VarLen IT_UInt24, FT_String (VarLen IT_UInt24, true)), false
 ]
@@ -39,6 +45,8 @@ let descriptions = [
   "hello_request", [];
   "client_hello", client_hello_d;
   "server_hello", server_hello_d;
+  "new_session_ticket", new_session_ticket_d;
   "certificates", certificates_d;
   "certificate_request", certificate_request_d;
+  "server_hello_done", [];
 ]
