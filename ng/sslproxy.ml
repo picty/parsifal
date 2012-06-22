@@ -57,10 +57,7 @@ let rec forward state i o =
       | _ -> print_newline ()
   end;
   forward state i o
-(*  end else begin
-    Lwt_unix.shutdown o Unix.SHUTDOWN_SEND;
-    Lwt.return ()
-  end*)
+
 
 let new_socket () =
   Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0
@@ -71,10 +68,6 @@ let remote_addr =
   let inet_addr = host_entry.Unix.h_addr_list.(0) in
   Unix.ADDR_INET (inet_addr, 443)
 
-(* Start two threads to forward both input and output,
- * and wait for both threads to end.
- * Close file descriptors and exit
- *)
 let rec accept sock =
   Lwt_unix.accept sock >>= fun (inp, _) ->
   ignore
