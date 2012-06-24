@@ -1,0 +1,31 @@
+(* - Possible value of the "type"
+   - Constructor of the new type
+   - Module of the type inside the new type
+   - Type inside the new type
+*)
+
+let handshake_content_c = [
+  "HT_HelloRequest", "HelloRequest", Some "TlsHandshake", "hello_request";
+  "HT_ClientHello", "ClientHello", Some "TlsHandshake", "client_hello";
+  "HT_ServerHello", "ServerHello", Some "TlsHandshake", "server_hello";
+  "HT_NewSessionTicket", "NewSessionTicket", Some "TlsHandshake", "new_session_ticket";
+  "HT_Certicicate", "Certificate", Some "TlsHandshake", "certificates";
+  "HT_ServerHelloDone", "ServerHelloDone", Some "TlsHandshake", "server_hello_done";
+]
+
+
+
+(* - Module for the value to test
+   - Name of the field to test
+   - Choices
+   - Name of the "unparsed" constructor
+
+  TODO: Why not have a parameter to tell
+   - whether the choice should always be enriched
+   - the name of the Unparsed constructor
+ *)
+
+let choices = [
+  Some "TlsEnums", "handshake_type", handshake_content_c, "Unparsed_HSContent"
+]
+

@@ -1,24 +1,25 @@
 TODO
+ - Add code to auto-generate choices
+ - Group choices and descriptions -> then merge tls.binrecs, tlsChoices.choices and tlsHandshake.binrecs
  - Add support for TLS extensions (this should be laxist)
+ - Add UTCTime / ValidityTime handling
+ - Add support for ObjectIdentifiers
+ - Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
  - Parse certificates!
  - Parse DHE SKE (need for context)
  - Parce RSA and DHE SKE (need for context)
- - Parse NewSessionTicket
+ - mk_binrecs.mk_parse_fun: add a way to check eos is reached
+ - Add SSLv2 support
+ - Use lwt_parse_answer_dump and produce some easy statistics to confirm it works
 
  - Sort all the files present in AceSL-hg and co.
  - Add MakefileV6
  - Make repositories (asn1, tls, baseEngines, .generated)
- - Add UTCTime / ValidityTime handling
- - Add support for ObjectIdentifiers
- - Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
- - Write some Lwt_parser manually for answer dumps?
 
-Improvements
- - Add code to auto-generate choice
  - Add a pretty string for field names?
  - Add a way to constrain a binrec (length of 2^14 in TlsRecord)
- - mk_binrecs.mk_parse_fun: add a way to check eos is reached (but not always!)
  - Rethink the exception system?
+
 
 
  - Write Integers as records with mutable values
@@ -32,7 +33,8 @@ Improvements
 
 
  - Put files into directories
- - Have a functional Makefile
+
+
 
  - check-ssl-server (ajouter d'autres tests ?)
    * vérifier versions acceptées

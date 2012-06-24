@@ -50,7 +50,7 @@ let rec parse_fun_of_field_type name = function
     Printf.sprintf "parse_container \"%s\" parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
 
   | FT_Custom (module_name, type_name, parse_fun_args) ->
-    String.concat " " (((mk_module_prefix module_name) ^ "parse_" ^ type_name)::parse_fun_args)
+    String.concat " " (((mk_module_prefix module_name) ^ "parse_" ^ type_name)::"~context:ctx"::parse_fun_args)
 
 let rec lwt_parse_fun_of_field_type name = function
   | FT_Char -> "lwt_parse_char"
@@ -74,7 +74,7 @@ let rec lwt_parse_fun_of_field_type name = function
     Printf.sprintf "lwt_parse_container \"%s\" lwt_parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
 
   | FT_Custom (module_name, type_name, parse_fun_args) ->
-    String.concat " " (((mk_module_prefix module_name) ^ "parse_" ^ type_name)::parse_fun_args)
+    String.concat " " (((mk_module_prefix module_name) ^ "parse_" ^ type_name)::" ~context:ctx"::parse_fun_args)
 
   | FT_String (Remaining, _)
   | FT_List (Remaining, _) ->
@@ -137,9 +137,9 @@ let mk_desc_type (name, fields) =
 
 let mk_parse_fun (name, fields) =
   if fields = []
-  then Printf.printf "let parse_%s input = ()\n" name
+  then Printf.printf "let parse_%s ?context:(ctx=None) input = ()\n" name
   else begin
-    Printf.printf "let parse_%s input =\n" name;
+    Printf.printf "let parse_%s ?context:(ctx=None) input =\n" name;
     let parse_aux (fn, ft, fo) =
       if fo
       then begin
@@ -157,9 +157,9 @@ let mk_parse_fun (name, fields) =
 
 let mk_lwt_parse_fun (name, fields) =
   if fields = []
-  then Printf.printf "let lwt_parse_%s input = return ()\n" name
+  then Printf.printf "let lwt_parse_%s ?context:(ctx=None) input = return ()\n" name
   else begin
-    Printf.printf "let lwt_parse_%s input =\n" name;
+    Printf.printf "let lwt_parse_%s ?context:(ctx=None) input =\n" name;
     let parse_aux (fn, ft, _fo) =
       (* TODO: Really support optional fields *)
       Printf.printf "  %s input >>= fun _%s ->\n" (lwt_parse_fun_of_field_type fn ft) fn
