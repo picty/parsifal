@@ -1,12 +1,20 @@
+
+
+(* Generic functions *)
+
+let mk_module_prefix = function
+  | None -> ""
+  | Some module_name -> module_name ^ "."
+
+
+
+(* Records functions *)
+
 let int_size = function
   | IT_UInt8 -> 8
   | IT_UInt16 -> 16
   | IT_UInt24 -> 24
   | IT_UInt32 -> 32
-
-let mk_module_prefix = function
-  | None -> ""
-  | Some module_name -> module_name ^ "."
 
 let rec ocaml_type_of_field_type = function
   | FT_Char -> "char"
@@ -123,7 +131,8 @@ let rec print_fun_of_field_type = function
   | FT_Custom (module_name, type_name, _) -> (mk_module_prefix module_name) ^ "print_" ^ type_name
 
 
-let mk_desc_type (name, fields) =
+
+let mk_record_desc_type (name, fields) =
   if fields = []
   then Printf.printf "type %s = unit\n" name
   else begin
@@ -135,7 +144,7 @@ let mk_desc_type (name, fields) =
     print_endline "}\n\n"
   end
 
-let mk_parse_fun (name, fields) =
+let mk_record_parse_fun (name, fields) =
   if fields = []
   then Printf.printf "let parse_%s ?context:(ctx=None) input = ()\n" name
   else begin
@@ -155,7 +164,7 @@ let mk_parse_fun (name, fields) =
     print_endline "  }\n"
   end
 
-let mk_lwt_parse_fun (name, fields) =
+let mk_record_lwt_parse_fun (name, fields) =
   if fields = []
   then Printf.printf "let lwt_parse_%s ?context:(ctx=None) input = return ()\n" name
   else begin
@@ -176,7 +185,7 @@ let mk_lwt_parse_fun (name, fields) =
     print_endline "  }\n"
   end
 
-let mk_dump_fun (name, fields) =
+let mk_record_dump_fun (name, fields) =
   if fields = []
   then Printf.printf "let dump_%s input = \"\"\n" name
   else begin
@@ -196,7 +205,7 @@ let mk_dump_fun (name, fields) =
     print_endline "\n"
   end
 
-let mk_print_fun (name, fields) =
+let mk_record_print_fun (name, fields) =
   if fields = []
   then begin
     Printf.printf "let print_%s indent name %s =\n" name name;
@@ -221,13 +230,81 @@ let mk_print_fun (name, fields) =
   end
 
 
-let handle_desc do_lwt (desc : description) =
-  mk_desc_type desc;
-  mk_parse_fun desc;
-  if do_lwt then mk_lwt_parse_fun desc;
-  mk_dump_fun desc;
-  mk_print_fun desc;
+let handle_record_desc do_lwt (desc : record_description) =
+  mk_record_desc_type desc;
+  mk_record_parse_fun desc;
+  if do_lwt then mk_record_lwt_parse_fun desc;
+  mk_record_dump_fun desc;
+  mk_record_print_fun desc;
   print_newline ()
+
+
+
+(* Choices functions *)
+
+let mk_choice_type (name, _, choices, unparsed_cons) =
+  Printf.printf "let enrich_%s = ref true\n\n" name;
+  Printf.printf "type %s =\n" name;
+  let aux (_, cons, type_mod, type_name) =
+    Printf.printf "  | %s of %s%s\n" cons (mk_module_prefix type_mod) type_name
+  in
+  List.iter aux choices;
+  Printf.printf "  | %s of string\n\n" unparsed_cons
+
+let mk_choice_parse_fun (name, discr_module, choices, unparsed_cons) =
+  Printf.printf "let parse_%s ?context:(ctx=None) discriminator input =\n" name;
+  Printf.printf "  if !enrich_%s then begin\n" name;
+  Printf.printf "    match discriminator with\n";
+  let aux (discr_value, cons, type_mod, type_name) =
+    Printf.printf "      | %s%s -> %s (%sparse_%s ~context:ctx input)\n"
+      (mk_module_prefix discr_module) discr_value cons (mk_module_prefix type_mod) type_name
+  in
+  List.iter aux choices;
+  Printf.printf "      | _ -> %s (parse_rem_string input)\n" unparsed_cons;
+  Printf.printf "  end else %s (parse_rem_string input)\n\n" unparsed_cons
+
+let mk_choice_lwt_parse_fun (name, discr_module, choices, unparsed_cons) =
+  Printf.printf "let lwt_parse_%s ?context:(ctx=None) discriminator input =\n" name;
+  Printf.printf "  if !enrich_%s then begin\n" name;
+  Printf.printf "    match discriminator with\n";
+  let aux (discr_value, cons, type_mod, type_name) =
+    Printf.printf "      | %s%s -> %slwt_parse_%s ~context:ctx input >>= fun x -> return (%s x)\n"
+      (mk_module_prefix discr_module) discr_value (mk_module_prefix type_mod) type_name cons
+  in
+  List.iter aux choices;
+  Printf.printf "      | _ -> lwt_parse_rem_string input >>= fun x -> return (%s x)\n" unparsed_cons;
+  Printf.printf "  end else lwt_parse_rem_string input >>= fun x -> return (%s x)\n\n" unparsed_cons
+
+let mk_choice_dump_fun (name, _, choices, unparsed_cons) =
+  Printf.printf "let dump_%s = function\n" name;
+  let aux (_, cons, type_mod, type_name) =
+    Printf.printf "  | %s x -> %sdump_%s x\n" cons (mk_module_prefix type_mod) type_name
+  in
+  List.iter aux choices;
+  Printf.printf "  | %s s -> s\n\n" unparsed_cons
+
+let mk_choice_print_fun (name, _, choices, unparsed_cons) =
+  Printf.printf "let print_%s indent name = function\n" name;
+  let aux (_, cons, type_mod, type_name) =
+    Printf.printf "  | %s x -> %sprint_%s indent name x\n" cons (mk_module_prefix type_mod) type_name
+  in
+  List.iter aux choices;
+  Printf.printf "  | %s s -> print_binstring indent name s\n\n" unparsed_cons
+
+
+let handle_choice_desc do_lwt (choice : choice_description) =
+  mk_choice_type choice;
+  mk_choice_parse_fun choice;
+  if do_lwt then mk_choice_lwt_parse_fun choice;
+  mk_choice_dump_fun choice;
+  mk_choice_print_fun choice;
+  print_newline ()
+
+
+
+let handle_type_desc do_lwt = function
+  | Record r_d -> handle_record_desc do_lwt r_d
+  | Choice c_d -> handle_choice_desc do_lwt c_d
 
 
 let _ =
@@ -239,4 +316,4 @@ let _ =
   print_endline "open ParsingEngine";
   print_endline "open DumpingEngine";
   print_endline "open PrintingEngine\n";
-  List.iter (handle_desc do_lwt) descriptions
+  List.iter (handle_type_desc do_lwt) descriptions

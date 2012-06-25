@@ -7,7 +7,6 @@ let handshake_content_c = [
   "HT_ServerHelloDone", "ServerHelloDone", Some "TlsHandshake", "server_hello_done";
 ]
 
-let choices = [
-  "handshake_content", Some "TlsEnums", handshake_content_c, "Unparsed_HSContent"
+let descriptions = [
+  Choice ("handshake_content", Some "TlsEnums", handshake_content_c, "Unparsed_HSContent")
 ]
-

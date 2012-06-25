@@ -20,8 +20,8 @@ let handshake_msg_d = [
 
 
 let descriptions = [
-  "tls_record", tls_record_d;
-  "tls_alert", tls_alert_d;
-  "handshake_msg", handshake_msg_d;
-  "change_cipher_spec", change_cipher_spec_d;
+  Record ("tls_record",         tls_record_d);
+  Record ("tls_alert",          tls_alert_d);
+  Record ("handshake_msg",      handshake_msg_d);
+  Record ("change_cipher_spec", change_cipher_spec_d);
 ]

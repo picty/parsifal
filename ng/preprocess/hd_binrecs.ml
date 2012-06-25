@@ -1,10 +1,15 @@
-type field_name = string
+(* BINARY RECORDS *)
+
+
+(* Simple records (a.k.a structs) *)
 
 type integer_type =
   | IT_UInt8
   | IT_UInt16
   | IT_UInt24
   | IT_UInt32
+
+type field_name = string
 
 type field_len =
   | FixedLen of int
@@ -26,4 +31,22 @@ type field_type =
 
 type field_desc = field_name * field_type * bool
 
-type description = string * field_desc list
+type record_description = string * field_desc list
+
+
+
+
+(* Choices (a.k.a unions) *)
+
+(* Discrimating value, Constructor name, Constructor subtype (module + type name) *)
+type choice_desc = string * string * string option * string
+
+(* Type name, Module of the discriminating value, Choice list, Constructor if unparsed *)
+type choice_description = string * string option * choice_desc list * string
+
+
+
+
+type type_description =
+  | Record of record_description
+  | Choice of choice_description

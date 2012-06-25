@@ -40,13 +40,13 @@ let certificate_request_d = [
 	
 
 let descriptions = [
-  "signature_and_hash_algorithm", signature_and_hash_algorithm_d;
+  Record ("signature_and_hash_algorithm", signature_and_hash_algorithm_d);
 
-  "hello_request", [];
-  "client_hello", client_hello_d;
-  "server_hello", server_hello_d;
-  "new_session_ticket", new_session_ticket_d;
-  "certificates", certificates_d;
-  "certificate_request", certificate_request_d;
-  "server_hello_done", [];
+  Record ("hello_request",       []);
+  Record ("client_hello",        client_hello_d);
+  Record ("server_hello",        server_hello_d);
+  Record ("new_session_ticket",  new_session_ticket_d);
+  Record ("certificates",        certificates_d);
+  Record ("certificate_request", certificate_request_d);
+  Record ("server_hello_done",   []);
 ]

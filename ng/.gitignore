@@ -10,7 +10,6 @@ tlsEnums.ml
 answerDump.ml
 tls.ml
 tlsHandshake.ml
-*.mk_choices.ml
 tlsChoices.ml
 *.mk_asn1.ml
 *~

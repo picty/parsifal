@@ -90,6 +90,9 @@ let lwt_parse_string n input =
   input.lwt_offset <- input.lwt_offset + n;
   return s
 
+let lwt_parse_rem_string input =
+  fail (Failure "lwt_parse_rem_string not implemented")
+
 let lwt_parse_varlen_string name len_fun input =
   len_fun input >>= fun n ->
   get_in input name n >>= fun str_input ->
