@@ -1,3 +1,5 @@
+*~
+*.o
 *.cmx
 *.cmi
 *.cmo
@@ -9,10 +11,6 @@ tlsEnums.ml
 *.mk_binrecs.ml
 answerDump.ml
 tls.ml
-tlsHandshake.ml
-tlsChoices.ml
 *.mk_asn1.ml
-*~
-*.o
 rSAPrivateKey.ml
 test_answerDump

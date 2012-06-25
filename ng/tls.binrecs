@@ -1,3 +1,5 @@
+(* Simple TLS records *)
+
 let tls_record_d = [
   "content_type", FT_Enum (IT_UInt8, "TlsEnums", "tls_content_type"), false;
   "record_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
@@ -13,15 +15,79 @@ let change_cipher_spec_d = [
   "change_cipher_spec_value", FT_Enum (IT_UInt8, "TlsEnums", "change_cipher_spec_value"), false
 ]
 
-let handshake_msg_d = [
-  "handshake_type", FT_Enum (IT_UInt8, "TlsEnums", "hs_message_type"), false;
-  "handshake_content", FT_Container (IT_UInt24, FT_Custom (Some "TlsChoices", "handshake_content", ["_handshake_type"])), false;
+
+(* Handshake records and choices *)
+
+let signature_and_hash_algorithm_d = [
+  "hash_algorithm", FT_Enum (IT_UInt8, "TlsEnums", "hash_algorithm"), false;
+  "signature_algorithm", FT_Enum (IT_UInt8, "TlsEnums", "signature_algorithm"), false;
+]
+
+let client_hello_d = [
+  "client_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
+  "client_random", FT_String (FixedLen 32, true), false;
+  "client_session_id", FT_String (VarLen IT_UInt8, true), false;
+  "ciphersuites", FT_List (VarLen IT_UInt16, FT_Enum (IT_UInt16, "TlsEnums", "ciphersuite")), false;
+  "compression_methods", FT_List (VarLen IT_UInt8, FT_Enum (IT_UInt8, "TlsEnums", "compression_method")), false;
+  "client_extensions", FT_String (VarLen IT_UInt16, true), true;    (* TODO *)
+]
+
+let server_hello_d = [
+  "server_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
+  "server_random", FT_String (FixedLen 32, true), false;
+  "server_session_id", FT_String (VarLen IT_UInt8, true), false;
+  "ciphersuite", FT_Enum (IT_UInt16, "TlsEnums", "ciphersuite"), false;
+  "compression_method", FT_Enum (IT_UInt8, "TlsEnums", "compression_method"), false;
+  "server_extensions", FT_String (VarLen IT_UInt16, true), true;    (* TODO *)
+]
+
+let new_session_ticket_d = [
+  "ticket_lifetime_hint", FT_Integer IT_UInt32, false;
+  "ticket", FT_String (VarLen IT_UInt16, true), false;
 ]
 
 
+let certificates_d = [
+  "certificate_list", FT_List (VarLen IT_UInt24, FT_String (VarLen IT_UInt24, true)), false
+]
+
+let certificate_request_d = [
+  "certificate_types", FT_Enum (IT_UInt8, "TlsEnums", "client_certificate_type"), false;
+  "supported_signature_algorithms", FT_List (VarLen IT_UInt16, FT_Custom (None, "signature_and_hash_algorithm", [])), false;
+  "certificate_authorities", FT_List (VarLen IT_UInt16, FT_String (VarLen IT_UInt16, true)), false;
+]
+	
+
+let handshake_content_c = [
+  "HT_HelloRequest", "HelloRequest", None, "hello_request";
+  "HT_ClientHello", "ClientHello", None, "client_hello";
+  "HT_ServerHello", "ServerHello", None, "server_hello";
+  "HT_NewSessionTicket", "NewSessionTicket", None, "new_session_ticket";
+  "HT_Certificate", "Certificate", None, "certificates";
+  "HT_ServerHelloDone", "ServerHelloDone", None, "server_hello_done";
+]
+
+let handshake_msg_d = [
+  "handshake_type", FT_Enum (IT_UInt8, "TlsEnums", "hs_message_type"), false;
+  "handshake_content", FT_Container (IT_UInt24, FT_Custom (None, "handshake_content", ["_handshake_type"])), false;
+]
+
+
+
 let descriptions = [
+  Record ("signature_and_hash_algorithm", signature_and_hash_algorithm_d);
+
   Record ("tls_record",         tls_record_d);
   Record ("tls_alert",          tls_alert_d);
-  Record ("handshake_msg",      handshake_msg_d);
   Record ("change_cipher_spec", change_cipher_spec_d);
+
+  Record ("hello_request",       []);
+  Record ("client_hello",        client_hello_d);
+  Record ("server_hello",        server_hello_d);
+  Record ("new_session_ticket",  new_session_ticket_d);
+  Record ("certificates",        certificates_d);
+  Record ("certificate_request", certificate_request_d);
+  Record ("server_hello_done",   []);
+  Choice ("handshake_content",  Some "TlsEnums", handshake_content_c, "Unparsed_HSContent");
+  Record ("handshake_msg",      handshake_msg_d);
 ]

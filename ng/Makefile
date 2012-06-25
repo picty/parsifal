@@ -1,5 +1,5 @@
 ENUMS = asn1Enums.ml tlsEnums.ml
-BINRECS = answerDump.ml tls.ml tlsHandshake.ml tlsChoices.ml
+BINRECS = answerDump.ml tls.ml
 ASN1RECS = rSAPrivateKey.ml
 SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml printingEngine.ml \
 	$(ENUMS) $(BINRECS) $(CHOICES) $(ASN1RECS) \

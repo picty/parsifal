@@ -10,8 +10,6 @@ open LwtParsingEngine
 open Common
 open TlsEnums
 open Tls
-open TlsHandshake
-open TlsChoices
 
 
 let mk_client_hello v cs =
