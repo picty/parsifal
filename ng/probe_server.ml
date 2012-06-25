@@ -31,6 +31,8 @@ let mk_client_hello v cs =
 
 
 let handle_answer handle_hs handle_alert s =
+  let ctx = TlsContext.empty_context () in
+
   let hs_in, hs_out = Lwt_io.pipe ()
   and alert_in,alert_out = Lwt_io.pipe () in
   let hs_lwt_in = input_of_channel "Server handshake" hs_in
@@ -53,7 +55,7 @@ let handle_answer handle_hs handle_alert s =
   in
 
   let rec parse_hs_msgs () =
-    lwt_parse_handshake_msg hs_lwt_in >>= fun hs_msg ->
+    lwt_parse_handshake_msg ~context:(Some ctx) hs_lwt_in >>= fun hs_msg ->
     match handle_hs hs_msg with
       | None -> parse_hs_msgs ()
       | Some x -> return (Some x)
@@ -146,5 +148,5 @@ let ssl_scan addr suites =
 
 
 let _ =
-(*  Lwt_unix.run (main_simple_probe remote_addr [TLS_RSA_EXPORT_WITH_RC4_40_MD5; TLS_RSA_WITH_RC4_128_SHA; TLS_DHE_RSA_WITH_AES_128_CBC_SHA]) *)
-  Lwt_unix.run (ssl_scan remote_addr [TLS_RSA_EXPORT_WITH_RC4_40_MD5; TLS_RSA_WITH_RC4_128_SHA; TLS_DHE_RSA_WITH_AES_128_CBC_SHA; TLS_RSA_WITH_AES_256_CBC_SHA])
+  Lwt_unix.run (main_simple_probe remote_addr [TLS_RSA_EXPORT_WITH_RC4_40_MD5; TLS_RSA_WITH_RC4_128_SHA; TLS_DHE_RSA_WITH_AES_128_CBC_SHA])
+(*  Lwt_unix.run (ssl_scan remote_addr [TLS_RSA_EXPORT_WITH_RC4_40_MD5; TLS_RSA_WITH_RC4_128_SHA; TLS_DHE_RSA_WITH_AES_128_CBC_SHA; TLS_RSA_WITH_AES_256_CBC_SHA]) *)

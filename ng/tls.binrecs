@@ -51,6 +51,24 @@ let certificates_d = [
   "certificate_list", FT_List (VarLen IT_UInt24, FT_String (VarLen IT_UInt24, true)), false
 ]
 
+
+let server_dh_params_d = [
+  "dh_p", FT_String (VarLen IT_UInt16, true), false;
+  "dh_g", FT_String (VarLen IT_UInt16, true), false;
+  "dh_Ys", FT_String (VarLen IT_UInt16, true), false;
+]
+
+(* TODO: signature? *)
+let ske_dhe_params_d = [
+  "params", FT_Custom (None, "server_dh_params", []), false;
+  "signature", FT_String (Remaining, true), false;
+]
+
+let server_key_exchange_c = [
+  "KX_DHE", "SKE_DHE", None, "ske_dhe_params";
+]
+
+
 let certificate_request_d = [
   "certificate_types", FT_Enum (IT_UInt8, "TlsEnums", "client_certificate_type"), false;
   "supported_signature_algorithms", FT_List (VarLen IT_UInt16, FT_Custom (None, "signature_and_hash_algorithm", [])), false;
@@ -64,6 +82,8 @@ let handshake_content_c = [
   "HT_ServerHello", "ServerHello", None, "server_hello";
   "HT_NewSessionTicket", "NewSessionTicket", None, "new_session_ticket";
   "HT_Certificate", "Certificate", None, "certificates";
+  "HT_ServerKeyExchange", "ServerKeyExchange", None, "server_key_exchange";
+  "HT_CertificateRequest", "CertificateRequest", None, "certificate_request";
   "HT_ServerHelloDone", "ServerHelloDone", None, "server_hello_done";
 ]
 
@@ -86,6 +106,9 @@ let descriptions = [
   Record ("server_hello",        server_hello_d);
   Record ("new_session_ticket",  new_session_ticket_d);
   Record ("certificates",        certificates_d);
+  Record ("server_dh_params",    server_dh_params_d);
+  Record ("ske_dhe_params",      ske_dhe_params_d);
+  Choice ("server_key_exchange", Some "TlsContext", Implicit "TlsContext.extract_future_kx context", server_key_exchange_c, "Unparsed_SKEContent");
   Record ("certificate_request", certificate_request_d);
   Record ("server_hello_done",   []);
   Choice ("handshake_content",   Some "TlsEnums", Explicit ("handshake_type"), handshake_content_c, "Unparsed_HSContent");
