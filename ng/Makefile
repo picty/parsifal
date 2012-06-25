@@ -1,11 +1,10 @@
 ENUMS = asn1Enums.ml tlsEnums.ml
 BINRECS = answerDump.ml tls.ml tlsHandshake.ml
-CHOICES = tlsChoices-ng.ml
+CHOICES = tlsChoices.ml
 ASN1RECS = rSAPrivateKey.ml
 SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml printingEngine.ml \
 	$(ENUMS) $(BINRECS) $(CHOICES) $(ASN1RECS) \
 	common.ml \
-	tlsChoices.ml \
 	test_answerDump.ml test_tls_record.ml
 
 TEST_PROGRAMS = test_answerDump.native test_tls_record.native

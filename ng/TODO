@@ -1,5 +1,4 @@
 TODO
- - Add code to auto-generate choices
  - Group choices and descriptions -> then merge tls.binrecs, tlsChoices.choices and tlsHandshake.binrecs
  - Add support for TLS extensions (this should be laxist)
  - Add UTCTime / ValidityTime handling
