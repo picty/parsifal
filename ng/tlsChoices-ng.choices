@@ -1,5 +1,5 @@
 (* - Possible value of the "type"
-   - Constructor of the new type
+   - Constructor of the new sub-type
    - Module of the type inside the new type
    - Type inside the new type
 *)
@@ -15,8 +15,8 @@ let handshake_content_c = [
 
 
 
-(* - Module for the value to test
-   - Name of the field to test
+(* - Name of the new type
+   - Module to find the value of the discriminating field
    - Choices
    - Name of the "unparsed" constructor
 
@@ -26,6 +26,6 @@ let handshake_content_c = [
  *)
 
 let choices = [
-  Some "TlsEnums", "handshake_type", handshake_content_c, "Unparsed_HSContent"
+  "handshake_content", Some "TlsEnums", handshake_content_c, "Unparsed_HSContent"
 ]
 

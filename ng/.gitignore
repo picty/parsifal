@@ -10,6 +10,10 @@ tlsEnums.ml
 answerDump.ml
 tls.ml
 tlsHandshake.ml
-*.mk_asn1.ml *~ *.o
+*.mk_choices.ml
+tlsChoices-ng.ml
+*.mk_asn1.ml
+*~
+*.o
 rSAPrivateKey.ml
 test_answerDump

@@ -15,8 +15,6 @@ type handshake_content =
   | ServerHelloDone of server_hello_done
   | Unparsed_HSContent of string
 
-let parse_certificate = parse_varlen_string "Certificate" parse_uint24
-
 let parse_handshake_content ?context:(ctx=None) handshake_type input =
   if !enrich_handshake_messages then begin
     match handshake_type with
