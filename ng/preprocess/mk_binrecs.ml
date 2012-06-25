@@ -243,7 +243,7 @@ let handle_record_desc do_lwt (desc : record_description) =
 
 (* Choices functions *)
 
-let mk_choice_type (name, _, choices, unparsed_cons) =
+let mk_choice_type (name, _, _, choices, unparsed_cons) =
   Printf.printf "let enrich_%s = ref true\n\n" name;
   Printf.printf "type %s =\n" name;
   let aux (_, cons, type_mod, type_name) =
@@ -252,31 +252,44 @@ let mk_choice_type (name, _, choices, unparsed_cons) =
   List.iter aux choices;
   Printf.printf "  | %s of string\n\n" unparsed_cons
 
-let mk_choice_parse_fun (name, discr_module, choices, unparsed_cons) =
-  Printf.printf "let parse_%s ?context:(ctx=None) discriminator input =\n" name;
-  Printf.printf "  if !enrich_%s then begin\n" name;
-  Printf.printf "    match discriminator with\n";
-  let aux (discr_value, cons, type_mod, type_name) =
-    Printf.printf "      | %s%s -> %s (%sparse_%s ~context:ctx input)\n"
-      (mk_module_prefix discr_module) discr_value cons (mk_module_prefix type_mod) type_name
-  in
-  List.iter aux choices;
-  Printf.printf "      | _ -> %s (parse_rem_string input)\n" unparsed_cons;
-  Printf.printf "  end else %s (parse_rem_string input)\n\n" unparsed_cons
 
-let mk_choice_lwt_parse_fun (name, discr_module, choices, unparsed_cons) =
-  Printf.printf "let lwt_parse_%s ?context:(ctx=None) discriminator input =\n" name;
-  Printf.printf "  if !enrich_%s then begin\n" name;
-  Printf.printf "    match discriminator with\n";
-  let aux (discr_value, cons, type_mod, type_name) =
-    Printf.printf "      | %s%s -> %slwt_parse_%s ~context:ctx input >>= fun x -> return (%s x)\n"
-      (mk_module_prefix discr_module) discr_value (mk_module_prefix type_mod) type_name cons
-  in
-  List.iter aux choices;
-  Printf.printf "      | _ -> lwt_parse_rem_string \"\" input >>= fun x -> return (%s x)\n" unparsed_cons;
-  Printf.printf "  end else lwt_parse_rem_string \"\" input >>= fun x -> return (%s x)\n\n" unparsed_cons
+let mk_choice_parse_fun do_lwt (name, discr_module, discr, choices, unparsed_cons) =
+  let fun_name = if do_lwt then "lwt_parse" else "parse" in
 
-let mk_choice_dump_fun (name, _, choices, unparsed_cons) =
+  let discr_arg = match discr with
+    | Explicit s -> "discriminator "
+    | Implicit _ -> ""
+  in
+
+  let mk_line (discr_value, cons, type_mod, type_name) =
+    if do_lwt then
+      Printf.printf "      | %s%s -> %slwt_parse_%s ~context:ctx input >>= fun x -> return (%s x)\n"
+	(mk_module_prefix discr_module) discr_value (mk_module_prefix type_mod) type_name cons
+    else
+      Printf.printf "      | %s%s -> %s (%sparse_%s ~context:ctx input)\n"
+	(mk_module_prefix discr_module) discr_value cons (mk_module_prefix type_mod) type_name
+  and mk_default unparsed_cons =
+    if do_lwt then Printf.sprintf "lwt_parse_rem_string \"%s\" input >>= fun x -> return (%s x)" name unparsed_cons
+    else Printf.sprintf "%s (parse_rem_string input)" unparsed_cons
+  in
+
+  Printf.printf "let %s_%s ?context:(ctx=None) %sinput =\n" fun_name name discr_arg;
+  Printf.printf "  if !enrich_%s then begin\n" name;
+  begin
+    match discr with
+      | Explicit discr_value ->
+	Printf.printf "    match discriminator with\n";
+      | Implicit discr_expr ->
+	Printf.printf "    match ctx with\n";
+	Printf.printf "    | None -> %s\n" (mk_default unparsed_cons);
+	Printf.printf "    | Some context -> match %s with\n" discr_expr
+  end;
+  List.iter mk_line choices;
+  Printf.printf "      | _ -> %s\n" (mk_default unparsed_cons);
+  Printf.printf "  end else %s\n\n" (mk_default unparsed_cons)
+
+
+let mk_choice_dump_fun (name, _, _, choices, unparsed_cons) =
   Printf.printf "let dump_%s = function\n" name;
   let aux (_, cons, type_mod, type_name) =
     Printf.printf "  | %s x -> %sdump_%s x\n" cons (mk_module_prefix type_mod) type_name
@@ -284,7 +297,7 @@ let mk_choice_dump_fun (name, _, choices, unparsed_cons) =
   List.iter aux choices;
   Printf.printf "  | %s s -> s\n\n" unparsed_cons
 
-let mk_choice_print_fun (name, _, choices, unparsed_cons) =
+let mk_choice_print_fun (name, _, _, choices, unparsed_cons) =
   Printf.printf "let print_%s indent name = function\n" name;
   let aux (_, cons, type_mod, type_name) =
     Printf.printf "  | %s x -> %sprint_%s indent name x\n" cons (mk_module_prefix type_mod) type_name
@@ -295,8 +308,8 @@ let mk_choice_print_fun (name, _, choices, unparsed_cons) =
 
 let handle_choice_desc do_lwt (choice : choice_description) =
   mk_choice_type choice;
-  mk_choice_parse_fun choice;
-  if do_lwt then mk_choice_lwt_parse_fun choice;
+  mk_choice_parse_fun false choice;
+  if do_lwt then mk_choice_parse_fun true choice;
   mk_choice_dump_fun choice;
   mk_choice_print_fun choice;
   print_newline ()

@@ -38,11 +38,18 @@ type record_description = string * field_desc list
 
 (* Choices (a.k.a unions) *)
 
+type discriminator_type =
+  | Explicit of string  (* the discriminator will be given as an arg *)
+  | Implicit of string  (* the discriminator comes from the context *)
+(* If the discriminator is Implict x
+   - context is None -> Unparsed
+   - context is Some context -> the discriminator is context, whatever this means (generally "context.field") *)
+
 (* Discrimating value, Constructor name, Constructor subtype (module + type name) *)
 type choice_desc = string * string * string option * string
 
-(* Type name, Module of the discriminating value, Choice list, Constructor if unparsed *)
-type choice_description = string * string option * choice_desc list * string
+(* Type name, Module containing the discriminating values, Discriminator, Choice list, Constructor if unparsed *)
+type choice_description = string * string option * discriminator_type * choice_desc list * string
 
 
 

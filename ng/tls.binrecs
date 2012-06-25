@@ -88,6 +88,6 @@ let descriptions = [
   Record ("certificates",        certificates_d);
   Record ("certificate_request", certificate_request_d);
   Record ("server_hello_done",   []);
-  Choice ("handshake_content",  Some "TlsEnums", handshake_content_c, "Unparsed_HSContent");
-  Record ("handshake_msg",      handshake_msg_d);
+  Choice ("handshake_content",   Some "TlsEnums", Explicit ("handshake_type"), handshake_content_c, "Unparsed_HSContent");
+  Record ("handshake_msg",       handshake_msg_d);
 ]
