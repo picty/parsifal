@@ -1,5 +1,3 @@
-(* see https://github.com/avsm/ocaml-cohttpserver/blob/master/server/http_tcp_server.ml *)
-
 open Lwt
 open Lwt_io
 open Unix
@@ -8,7 +6,9 @@ open ParsingEngine
 open DumpingEngine
 open LwtParsingEngine
 open TlsEnums
+open TlsContext
 open Tls
+open TlsEngine
 
 
 let mk_client_hello v cs ?extensions:(exts=None) =
@@ -98,7 +98,7 @@ let print_hs ctx hs =
   match hs.handshake_type, hs.handshake_content with
   | HT_ServerHelloDone, _ -> Some ()
   | _, ServerHello { ciphersuite = cs } ->
-    ctx.TlsContext.future.TlsContext.ciphersuite <- cs;
+    ctx.future.s_ciphersuite <- cs;
     None
   | _ -> None
 
