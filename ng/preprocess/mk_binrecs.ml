@@ -73,20 +73,21 @@ let rec lwt_parse_fun_of_field_type name = function
   | FT_String (FixedLen n, _) -> "lwt_parse_string " ^ (string_of_int n)
   | FT_String (VarLen int_t, _) ->
     Printf.sprintf "lwt_parse_varlen_string \"%s\" lwt_parse_uint%d" name (int_size int_t)
+  | FT_String (Remaining, _) ->
+      Printf.sprintf "lwt_parse_rem_string \"%s\"" name
 
   | FT_List (FixedLen n, subtype) ->
     Printf.sprintf "lwt_parse_list %d (%s)" n (parse_fun_of_field_type name subtype)
   | FT_List (VarLen int_t, subtype) ->
     Printf.sprintf "lwt_parse_varlen_list \"%s\" lwt_parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
+  | FT_List (Remaining, subtype) ->
+    Printf.sprintf "lwt_parse_rem_list %s (%s)" name (parse_fun_of_field_type name subtype)
   | FT_Container (int_t, subtype) ->
     Printf.sprintf "lwt_parse_container \"%s\" lwt_parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
 
   | FT_Custom (module_name, type_name, parse_fun_args) ->
-    String.concat " " (((mk_module_prefix module_name) ^ "parse_" ^ type_name)::" ~context:ctx"::parse_fun_args)
+    String.concat " " (((mk_module_prefix module_name) ^ "lwt_parse_" ^ type_name)::" ~context:ctx"::parse_fun_args)
 
-  | FT_String (Remaining, _)
-  | FT_List (Remaining, _) ->
-    failwith "Remaining string/list not supported for lwt"
 
 let rec dump_fun_of_field_type = function
   | FT_Char -> "dump_char"
@@ -272,8 +273,8 @@ let mk_choice_lwt_parse_fun (name, discr_module, choices, unparsed_cons) =
       (mk_module_prefix discr_module) discr_value (mk_module_prefix type_mod) type_name cons
   in
   List.iter aux choices;
-  Printf.printf "      | _ -> lwt_parse_rem_string input >>= fun x -> return (%s x)\n" unparsed_cons;
-  Printf.printf "  end else lwt_parse_rem_string input >>= fun x -> return (%s x)\n\n" unparsed_cons
+  Printf.printf "      | _ -> lwt_parse_rem_string \"\" input >>= fun x -> return (%s x)\n" unparsed_cons;
+  Printf.printf "  end else lwt_parse_rem_string \"\" input >>= fun x -> return (%s x)\n\n" unparsed_cons
 
 let mk_choice_dump_fun (name, _, choices, unparsed_cons) =
   Printf.printf "let dump_%s = function\n" name;

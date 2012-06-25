@@ -90,7 +90,7 @@ let lwt_parse_string n input =
   input.lwt_offset <- input.lwt_offset + n;
   return s
 
-let lwt_parse_rem_string input =
+let lwt_parse_rem_string name input =
   fail (Failure "lwt_parse_rem_string not implemented")
 
 let lwt_parse_varlen_string name len_fun input =
@@ -116,6 +116,9 @@ let lwt_parse_list n parse_fun input =
       parse_fun input >>= fun x ->
       aux (x::accu) (i-1)
   in aux [] n
+
+let lwt_parse_rem_list name input =
+  fail (Failure "lwt_parse_rem_list not implemented")
 
 let lwt_parse_varlen_list name len_fun parse_fun input =
   len_fun input >>= fun n ->
