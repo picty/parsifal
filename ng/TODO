@@ -1,13 +1,13 @@
 TODO
- - Add a way to automagically enrich the context
-   (parse_server_hello should enrich future.ciphersuite for example)
-   (FT_Update of string ? -> FT_Update "context.future.ciphersuite <- _ciphersuite")
+ - Add a way to automagically enrich the context (tlsEngine with an automata)
  - Add support for TLS extensions (this should be laxist)
+ - Handle exceptions gracefully
  - Add UTCTime / ValidityTime handling
  - Add support for ObjectIdentifiers
  - Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
+ - Add a ciphersuite database
  - Parse certificates!
- - Parce RSA and DHE SKE (need for context)
+ - Write the automata
  - mk_binrecs.mk_parse_fun: add a way to check eos is reached
  - Add SSLv2 support
  - Use lwt_parse_answer_dump and produce some easy statistics to confirm it works
