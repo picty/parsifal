@@ -25,10 +25,8 @@ let input_of_channel name ch =
 
 let really_read ch len =
   let buf = String.make len ' ' in
-  try
-    Lwt_io.read_into_exactly ch buf 0 len >>= fun () ->
-    return buf
-  with End_of_file -> fail LwtOutOfBounds
+  Lwt_io.read_into_exactly ch buf 0 len >>= fun () ->
+  return buf
 
 let get_in input name len =
   really_read input.lwt_ch len >>= fun s ->
@@ -43,8 +41,11 @@ let get_in input name len =
 
 let get_out old_input input =
   if input.cur_offset < input.cur_length
-  then raise (UnexptedTrailingBytes input)
-  else old_input.lwt_offset <- old_input.lwt_offset + input.cur_length
+  then fail (UnexptedTrailingBytes input)
+  else begin
+    old_input.lwt_offset <- old_input.lwt_offset + input.cur_length;
+    return ()
+  end
 
 
 (* Integer parsing *)
@@ -97,7 +98,7 @@ let lwt_parse_varlen_string name len_fun input =
   len_fun input >>= fun n ->
   get_in input name n >>= fun str_input ->
   let res = parse_rem_string str_input in
-  get_out input str_input;
+  get_out input str_input >>= fun () ->
   return res
 
 let lwt_drop_bytes n input =
@@ -123,13 +124,13 @@ let lwt_parse_rem_list name input =
 let lwt_parse_varlen_list name len_fun parse_fun input =
   len_fun input >>= fun n ->
   get_in input name n >>= fun str_input ->
-  let res = parse_rem_list parse_fun str_input in
-  get_out input str_input;
+  wrap2 parse_rem_list parse_fun str_input >>= fun res ->
+  get_out input str_input >>= fun () ->
   return res
 
 let lwt_parse_container name len_fun parse_fun input =
   len_fun input >>= fun n ->
   get_in input name n >>= fun str_input ->
-  let res = parse_fun str_input in
-  get_out input str_input;
+  wrap1 parse_fun str_input >>= fun res ->
+  get_out input str_input >>= fun () ->
   return res

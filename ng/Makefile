@@ -10,7 +10,8 @@ SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml pr
 TEST_PROGRAMS = test_answerDump.native test_tls_record.native
 PROGRAMS = $(TEST_PROGRAMS)
 
-all:
+all: $(ENUMS) $(BINRECS) $(ASN1RECS)
+	ocamlbuild -cflags -I,+lwt -lflags -I,+lwt -libs unix,bigarray,lwt,lwt-unix test_answerDump.native test_tls_record.native sslproxy.native probe_server.native answer_stats.native
 
 check: $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS)
 
