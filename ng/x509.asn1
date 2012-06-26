@@ -12,15 +12,17 @@ let validity_a = [
   "notAfter",  AT_Custom (None, "time"), false, None;
 ]
 
-(* TODO *)
+(* TODO: should be enrichable *)
 let subjectPublicKeyInfo_a = [
+  "algorithm",        AT_Custom (None, "algorithmIdentifier"), false, None;
+  "subjectPublicKey", AT_BitString                           , false, None;
 ]
 
 (* TODO: Make extnValue depend on extnID, and have it enrichable *)
 let extension_a = [
-  "extnID",    AT_OId,         false;
-  "critical",  AT_Boolean,     true;
-  "extnValue", AT_String None, false;
+  "extnID",    AT_OId,         false, None;
+  "critical",  AT_Boolean,     true,  None;
+  "extnValue", AT_String None, false, Some "AH_Simple (C_Universal, false, T_OctetString)";
 ]
 
 (* TODO: Add constraints (optional, dependency on the version, at least one extension) *)
@@ -48,9 +50,11 @@ let certificate_a = [
 
 
 let descriptions = [
-  "algorithmIdentifier", algorithmIdentifier_a, Some "AH_Simple (C_Universal, true, T_Sequence)";
-  "name",                name_a,                Some "AH_Simple (C_Universal, true, T_Sequence)";
-  "validity",            validity_a,            Some "AH_Simple (C_Universal, true, T_Sequence)";
-  "tbsCertificate",      tbsCertificate_a,      Some "AH_Simple (C_Universal, true, T_Sequence)";
-  "certificate",         certificate_a,         Some "AH_Simple (C_Universal, true, T_Sequence)";
+  "algorithmIdentifier",  algorithmIdentifier_a,  Some "AH_Simple (C_Universal, true, T_Sequence)";
+  "name",                 name_a,                 Some "AH_Simple (C_Universal, true, T_Sequence)";
+  "validity",             validity_a,             Some "AH_Simple (C_Universal, true, T_Sequence)";
+  "subjectPublicKeyInfo", subjectPublicKeyInfo_a, Some "AH_Simple (C_Universal, true, T_Sequence)";
+  "extension",            extension_a,            Some "AH_Simple (C_Universal, true, T_Sequence)";
+  "tbsCertificate",       tbsCertificate_a,       Some "AH_Simple (C_Universal, true, T_Sequence)";
+  "certificate",          certificate_a,          Some "AH_Simple (C_Universal, true, T_Sequence)";
 ]
