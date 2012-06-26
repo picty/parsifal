@@ -5,13 +5,13 @@ SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml pr
 	$(ENUMS) $(BINRECS) $(CHOICES) $(ASN1RECS) \
 	common.ml \
 	tlsContext.ml \
-	test_answerDump.ml test_tls_record.ml
+	test_answerDump.ml test_tls_record.ml test_rsa_private_key.ml
 
 TEST_PROGRAMS = test_answerDump.native test_tls_record.native
 PROGRAMS = $(TEST_PROGRAMS)
 
 all: $(ENUMS) $(BINRECS) $(ASN1RECS)
-	ocamlbuild -cflags -I,+lwt -lflags -I,+lwt -libs unix,bigarray,lwt,lwt-unix test_answerDump.native test_tls_record.native sslproxy.native probe_server.native answer_stats.native
+	ocamlbuild -cflags -I,+lwt -lflags -I,+lwt -libs str,unix,bigarray,lwt,lwt-unix test_answerDump.native test_tls_record.native sslproxy.native probe_server.native answer_stats.native test_rsa_private_key.native
 
 check: $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS)
 

@@ -1,10 +1,14 @@
 TODO
+ - ASN.1: write parse_der_*
+ - ASN.1: handle constraints, optional fields, choices
+ - ASN.1: Add UTCTime / ValidityTime handling (choices)
+ - ASN.1: Add support for ObjectIdentifiers
+ - ASN.1: Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
+ - ASN.1: Add dump and print functions
+ - ASN.1: Add a generic parser (when we have no constraints)?
+
  - Add a way to automagically enrich the context (tlsEngine with an automata)
  - Add support for TLS extensions (this should be laxist)
- - Handle exceptions gracefully
- - Add UTCTime / ValidityTime handling
- - Add support for ObjectIdentifiers
- - Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
  - Add a ciphersuite database
  - Parse certificates!
  - Write the automata
@@ -20,6 +24,11 @@ TODO
  - Add a way to constrain a binrec (length of 2^14 in TlsRecord)
  - Rethink the exception system?
 
+ - Check if Lwt pipes are closed properly
+ - Rewrite get_in / get_out in lwtParsingEngine in case the length is too big (with a customizable threshold)
+   * it should use a pipe and call the lwt_parse function for the subtype.
+   * lwt_parse_*_list/string should take an optional parameter lwt?
+   * asn1 only implements DER so we should not need lwt_parse functions.
 
 
  - Write Integers as records with mutable values
