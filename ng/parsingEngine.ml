@@ -1,9 +1,9 @@
 type string_input = {
-  str : string;
+  mutable str : string;
   cur_name : string;
-  cur_base : int;
+  mutable cur_base : int;
   mutable cur_offset : int;
-  cur_length : int;
+  mutable cur_length : int;
   history : (string * int * int option) list
 }
 
@@ -22,11 +22,13 @@ type parsing_exception =
   | OutOfBounds
   | UnexptedTrailingBytes
   | EmptyHistory
+  | NonEmptyHistory
 
 let print_parsing_exception = function
   | OutOfBounds -> "OutOfBounds"
   | UnexptedTrailingBytes -> "UnexptedTrailingBytes"
   | EmptyHistory -> "EmptyHistory"
+  | NonEmptyHistory -> "NonEmptyHistory"
 
 exception ParsingException of parsing_exception * string_input
 
@@ -61,6 +63,24 @@ let get_out old_input input =
   if input.cur_offset < input.cur_length
   then raise (ParsingException (UnexptedTrailingBytes, input))
   else old_input.cur_offset <- old_input.cur_offset + input.cur_length
+
+let append_to_input input next_string =
+  if input.cur_base = 0 && input.history = [] then begin
+    input.str <- (String.sub input.str input.cur_offset (input.cur_length - input.cur_offset)) ^ next_string;
+    input.cur_offset <- 0;
+    input.cur_length <- String.length input.str
+  end else begin
+    input.str <- input.str ^ next_string;
+    input.cur_length <- input.cur_length + (String.length next_string);
+  end
+
+let drop_used_string input =
+  if input.cur_base = 0 && input.history = [] then begin
+    input.str <- (String.sub input.str input.cur_offset (input.cur_length - input.cur_offset));
+    input.cur_offset <- 0;
+    input.cur_length <- String.length input.str
+  end else raise (ParsingException (NonEmptyHistory, input))
+
 
 
 (* Integer parsing *)

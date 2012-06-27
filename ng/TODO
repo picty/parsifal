@@ -79,6 +79,8 @@ TODO
 
    * support d'1 message HS en plusieurs record
    * support de plusieurs messages HS en 1 record
+   * split en morceaux de moins de 10 octets / en morceaux de plus de 2^14 octets
+   * ajout de record vide
    * réaction à un message Alert au milieu de messages Handshake
    * réaction à un message Alert au milieu d'un message Handshake
    * réaction à des alerts fatales ou pas
