@@ -13,7 +13,20 @@ type asn1_exception =
 
 exception Asn1Exception of (asn1_exception * string_input)
 
-let emit _fatal e i = raise (Asn1Exception (e, i))
+let print_asn1_exception = function
+  | UnexpectedHeader _ -> "UnexpectedHeader"  (* TODO *)
+  | BooleanNotInNormalForm -> "BooleanNotInNormalForm"
+  | IntegerNotInNormalForm -> "IntegerNotInNormalForm"
+  | NullNotInNormalForm -> "NullNotInNormalForm"
+  | OIdNotInNormalForm -> "OIdNotInNormalForm"
+  | IntegerOverflow -> "IntegerOverflow"
+  | InvalidUTCTime -> "InvalidUTCTime"
+
+
+let emit fatal e i =
+  if fatal
+  then raise (Asn1Exception (e, i))
+  else Printf.fprintf stderr "%s in %s\n" (print_asn1_exception e) (print_string_input i)
 
 
 type expected_header =
@@ -69,10 +82,10 @@ let check_header header_constraint input c isC t =
   match header_constraint with
     | AH_Simple (exp_c, exp_isC, exp_t) ->
       if c <> exp_c || isC <> exp_isC || t <> exp_t
-      then emit true (UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t))) input
+      then raise (Asn1Exception (UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t)), input))
     | AH_Complex check_fun ->
       if not (check_fun c isC t)
-      then emit true (UnexpectedHeader ((c, isC, t), None)) input
+      then raise (Asn1Exception (UnexpectedHeader ((c, isC, t), None), input))
 
 let extract_asn1_object input name header_constraint parse_content =
   let _offset = input.cur_base + input.cur_offset in
@@ -131,7 +144,7 @@ let parse_der_boolean input =
     | [0] -> false
     | [255] -> true
     | v::_ ->
-      emit false BooleanNotInNormalForm input
+      emit false BooleanNotInNormalForm input;
       (v <> 0)
 
 let dump_der_boolean = function
@@ -166,7 +179,7 @@ let parse_der_smallint input =
   let integer_s = parse_der_int input in
   let len = String.length integer_s in
   if (len > 0 && (int_of_char (integer_s.[0]) land 0x80) = 0x80) || (len > 4)
-  then emit true IntegerOverflow input
+  then raise (Asn1Exception (IntegerOverflow, input))
   else begin
     let rec int_of_binstr accu i =
       if i >= len
@@ -184,7 +197,7 @@ let dump_der_smallint i =
 let parse_der_null input =
   if not (eos input)
   then begin
-    emit false NullNotInNormalForm input
+    emit false NullNotInNormalForm input;
     drop_rem_bytes input;
   end
 
@@ -210,8 +223,8 @@ let parse_der_oid input =
       try
 	let next = parse_subid input in
 	next::(aux ())
-      with OutOfBounds _ ->
-	emit false OIdNotInNormalForm input;
+      with ParsingException (OutOfBounds, i) ->
+	emit false OIdNotInNormalForm i;
 	[]
     end
   in
@@ -312,10 +325,8 @@ let time_constraint re s input =
       if m = 0 || m > 12 || d = 0 || d > 31 || hh >= 24 || mm > 59 || ss > 59
       then emit false InvalidUTCTime input;
       (y, m, d, hh, mm, ss)
-    end else raise Not_found
-  with _ ->
-    emit true InvalidUTCTime input;
-    (0,0,0,0,0,0)
+    end else raise (Asn1Exception (InvalidUTCTime, input))
+  with _ -> raise (Asn1Exception (InvalidUTCTime, input))
 
 let utc_time_constraint = time_constraint utc_time_re
 let generalized_time_constraint = time_constraint generalized_time_re

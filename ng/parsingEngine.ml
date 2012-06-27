@@ -7,11 +7,33 @@ type string_input = {
   history : (string * int * int option) list
 }
 
-exception OutOfBounds of string_input
-exception UnexptedTrailingBytes of string_input
-exception EmptyHistory
+let print_string_input i =
+  let rec print_history accu = function
+    | [] -> String.concat ", " (List.rev accu)
+    | (n, o, None)::r ->
+      print_history ((Printf.sprintf "%s (%d/?)" n o)::accu) r
+    | (n, o, Some l)::r ->
+      print_history ((Printf.sprintf "%s (%d/%d)" n o l)::accu) r
+  in
+  Printf.sprintf "%s (%d/%d) [%s]" i.cur_name i.cur_offset i.cur_length (print_history [] i.history)
 
-let emit_eos_expected _fatal i = raise (UnexptedTrailingBytes i)
+
+type parsing_exception =
+  | OutOfBounds
+  | UnexptedTrailingBytes
+  | EmptyHistory
+
+let print_parsing_exception = function
+  | OutOfBounds -> "OutOfBounds"
+  | UnexptedTrailingBytes -> "UnexptedTrailingBytes"
+  | EmptyHistory -> "EmptyHistory"
+
+exception ParsingException of parsing_exception * string_input
+
+let emit_parsing_exception fatal e i =
+  if fatal
+  then raise (ParsingException (e, i))
+  else Printf.fprintf stderr "%s in %s\n" (print_parsing_exception e) (print_string_input i)
 
 
 let input_of_string name s =
@@ -33,11 +55,11 @@ let get_in input name len =
     cur_offset = 0;
     cur_length = len;
     history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history
-  } else raise (OutOfBounds input)
+  } else raise (ParsingException (OutOfBounds, input))
 
 let get_out old_input input =
   if input.cur_offset < input.cur_length
-  then raise (UnexptedTrailingBytes input)
+  then raise (ParsingException (UnexptedTrailingBytes, input))
   else old_input.cur_offset <- old_input.cur_offset + input.cur_length
 
 
@@ -48,14 +70,14 @@ let parse_uint8 input =
     let res = int_of_char (input.str.[input.cur_base + input.cur_offset]) in
     input.cur_offset <- input.cur_offset + 1;
     res
-  end else raise (OutOfBounds input)
+  end else raise (ParsingException (OutOfBounds, input))
 
 let parse_char input =
   if input.cur_offset < input.cur_length then begin
     let res = input.str.[input.cur_base + input.cur_offset] in
     input.cur_offset <- input.cur_offset + 1;
     res
-  end else raise (OutOfBounds input)
+  end else raise (ParsingException (OutOfBounds, input))
 
 let parse_uint16 input =
   if input.cur_offset + 2 <= input.cur_length then begin
@@ -65,7 +87,7 @@ let parse_uint16 input =
     in
     input.cur_offset <- input.cur_offset + 2;
     res
-  end else raise (OutOfBounds input)
+  end else raise (ParsingException (OutOfBounds, input))
 
 let parse_uint24 input =
   if input.cur_offset + 3 <= input.cur_length then begin
@@ -76,7 +98,7 @@ let parse_uint24 input =
     in
     input.cur_offset <- input.cur_offset + 3;
     res
-  end else raise (OutOfBounds input)
+  end else raise (ParsingException (OutOfBounds, input))
 
 let parse_uint32 input =
   if input.cur_offset + 2 <= input.cur_length then begin
@@ -88,7 +110,7 @@ let parse_uint32 input =
     in
     input.cur_offset <- input.cur_offset + 4;
     res
-  end else raise (OutOfBounds input)
+  end else raise (ParsingException (OutOfBounds, input))
 
 
 
@@ -99,7 +121,7 @@ let parse_string n input =
     let res = String.sub input.str (input.cur_base + input.cur_offset) n in
     input.cur_offset <- input.cur_offset + n;
     res
-  end else raise (OutOfBounds input)
+  end else raise (ParsingException (OutOfBounds, input))
 
 let parse_rem_string input =
   let res = String.sub input.str (input.cur_base + input.cur_offset) (input.cur_length - input.cur_offset) in
@@ -116,7 +138,7 @@ let parse_varlen_string name len_fun input =
 let drop_bytes n input =
   if input.cur_offset + n <= input.cur_length
   then input.cur_offset <- input.cur_offset + n
-  else raise (OutOfBounds input)
+  else raise (ParsingException (OutOfBounds, input))
 
 let drop_rem_bytes input =
   input.cur_offset <- input.cur_length
@@ -125,7 +147,7 @@ let eos input =
   input.cur_offset >= input.cur_length
 
 let check_empty_input fatal input =
-  if not (eos input) then emit_eos_expected fatal input
+  if not (eos input) then emit_parsing_exception fatal UnexptedTrailingBytes input
 
 
 

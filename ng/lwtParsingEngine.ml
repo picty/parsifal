@@ -1,3 +1,4 @@
+open Common
 open Lwt
 open ParsingEngine
 
@@ -7,7 +8,23 @@ type lwt_input = {
   mutable lwt_offset : int;
 }
 
-exception LwtOutOfBounds
+let print_lwt_input i =
+  Printf.sprintf "%s (%d/?)" i.lwt_name i.lwt_offset
+
+
+type lwt_parsing_exception =
+  | LwtOutOfBounds
+
+let print_parsing_exception = function
+  | LwtOutOfBounds -> "OutOfBounds"
+
+exception LwtParsingException of lwt_parsing_exception * lwt_input
+
+let emit_parsing_exception fatal e i =
+  if fatal
+  then raise (LwtParsingException (e,i))
+  else Printf.fprintf stderr "%s in %s\n" (print_parsing_exception e) (print_lwt_input i)
+
 
 let input_of_fd name fd =
   {
@@ -41,7 +58,7 @@ let get_in input name len =
 
 let get_out old_input input =
   if input.cur_offset < input.cur_length
-  then fail (UnexptedTrailingBytes input)
+  then fail (ParsingException (UnexptedTrailingBytes, input))
   else begin
     old_input.lwt_offset <- old_input.lwt_offset + input.cur_length;
     return ()
@@ -92,7 +109,7 @@ let lwt_parse_string n input =
   return s
 
 let lwt_parse_rem_string name input =
-  fail (Failure "lwt_parse_rem_string not implemented")
+  fail (NotImplemented "lwt_parse_rem_string")
 
 let lwt_parse_varlen_string name len_fun input =
   len_fun input >>= fun n ->
@@ -119,7 +136,7 @@ let lwt_parse_list n parse_fun input =
   in aux [] n
 
 let lwt_parse_rem_list name input =
-  fail (Failure "lwt_parse_rem_list not implemented")
+  fail (NotImplemented "lwt_parse_rem_list")
 
 let lwt_parse_varlen_list name len_fun parse_fun input =
   len_fun input >>= fun n ->
