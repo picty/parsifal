@@ -1,28 +1,32 @@
-open Unix
+open Lwt
+open Lwt_unix
 open Sys
 open ParsingEngine
+open LwtParsingEngine
 open TlsEnums
 open Tls
 
-let get_file_content filename =
-  let f = open_in filename in
-  let fd = descr_of_in_channel f in
-  let stats = fstat fd in
-  let len = stats.st_size in
-  let res = String.make len ' ' in
-  really_input f res 0 len;
-  res
+let do_stg () =
+  Lwt_unix.openfile Sys.argv.(1) [O_RDONLY] 0o640 >>= fun fd ->
+  let input = input_of_fd "TLS Record" fd in
+  enrich_record_content := true;
+  lwt_parse_tls_record input >>= fun tls_record ->
+  Lwt_io.printf "%s" (print_tls_record "" "TLS_Record" tls_record) >>= fun () ->
+  let res = dump_tls_record tls_record in
+  wrap1 parse_tls_record (input_of_string "" res) >>= fun tls_record2 ->
+  if res = dump_tls_record tls_record2
+  then return (Common.hexdump res)
+  else fail (Failure "dump (parse (res)) is not idempotent")
+
+let catcher = function
+  | ParsingException (e, i) ->
+    return (Printf.sprintf "%s in %s" (ParsingEngine.print_parsing_exception e)
+	      (ParsingEngine.print_string_input i))
+  | e -> return (Printexc.to_string e)
+
+
+let main = catch do_stg catcher
 
 let _ =
-  let s = get_file_content Sys.argv.(1) in
-  let input = input_of_string "TLS Record" s in
-  let tls_record = parse_tls_record input in
-  print_endline (print_tls_record "" "TLS_Record" tls_record);
-  if tls_record.content_type = CT_Handshake then begin
-    let hs_msg = parse_handshake_msg (input_of_string "Handshake" (dump_record_content tls_record.record_content)) in
-    print_endline (print_handshake_msg "  " "Handshake message" hs_msg)
-  end;
-  if dump_tls_record tls_record = s
-  then print_endline "Yes!"
-  else print_endline "NO!";
+  print_endline (Lwt_main.run main)
 
