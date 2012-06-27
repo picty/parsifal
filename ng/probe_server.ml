@@ -12,22 +12,26 @@ open Tls
 
 
 let mk_client_hello v cs =
-  let ch_hs_msg = {
-    handshake_type = HT_ClientHello;
-    handshake_content = ClientHello {
-      client_version = v;
-      client_random = String.make 32 '\x00';
-      client_session_id = "";
-      ciphersuites = cs;
-      compression_methods = [CM_Null];
-      client_extensions = None
-    }
-  } in {
+  {
     content_type = CT_Handshake;
     record_version = V_TLSv1;
-    record_content = dump_handshake_msg ch_hs_msg
+    record_content = Handshake {
+      handshake_type = HT_ClientHello;
+      handshake_content = ClientHello {
+	client_version = v;
+	client_random = String.make 32 '\x00';
+	client_session_id = "";
+	ciphersuites = cs;
+	compression_methods = [CM_Null];
+	client_extensions = None
+      }
+    }
   }
 
+
+let write_exactly o record_contet =
+  let s = dump_record_content record_contet in
+  write_from_exactly  o s 0 (String.length s)
 
 let handle_answer handle_hs handle_alert s =
   let ctx = TlsContext.empty_context () in
@@ -41,10 +45,8 @@ let handle_answer handle_hs handle_alert s =
     lwt_parse_tls_record s >>= fun record ->
     begin
       match record.content_type with
-	| CT_Handshake ->
-	  write_from_exactly hs_out record.record_content 0 (String.length record.record_content)
-	| CT_Alert ->
-	  write_from_exactly alert_out record.record_content 0 (String.length record.record_content)
+	| CT_Handshake -> write_exactly hs_out record.record_content
+	| CT_Alert -> write_exactly alert_out record.record_content
 	| _ -> fail (Failure "??")
     end >>= fun () ->
     timed_read_answers ()

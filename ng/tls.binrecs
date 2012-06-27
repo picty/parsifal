@@ -1,11 +1,5 @@
 (* Simple TLS records *)
 
-let tls_record_d = [
-  "content_type", FT_Enum (IT_UInt8, "TlsEnums", "tls_content_type"), false;
-  "record_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
-  "record_content", FT_String (VarLen IT_UInt16, true), false
-]
-
 let tls_alert_d = [
   "alert_level", FT_Enum (IT_UInt8, "TlsEnums", "tls_alert_level"), false;
   "alert_type", FT_Enum (IT_UInt8, "TlsEnums", "tls_alert_type"), false
@@ -93,13 +87,29 @@ let handshake_msg_d = [
 ]
 
 
+(* TLS record *)
+
+let record_content_c = [
+  "CT_Alert", "Alert", FT_Custom (None, "tls_alert", []);
+  "CT_Handshake", "Handshake", FT_Custom (None, "handshake_msg", []);
+  "CT_ChangeCipherSpec", "ChangeCipherSpec", FT_Custom (None, "change_cipher_spec", []);
+  "CT_ApplicationData", "ApplicationData", FT_String (Remaining, true)
+]
+
+let tls_record_d = [
+  "content_type", FT_Enum (IT_UInt8, "TlsEnums", "tls_content_type"), false;
+  "record_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
+  "record_content", FT_Container (IT_UInt16, FT_Custom (None, "record_content", ["_content_type"])), false;
+]
+
+
+
 
 let descriptions = [
   Record ("signature_and_hash_algorithm", signature_and_hash_algorithm_d);
 
-  Record ("tls_record",         tls_record_d);
-  Record ("tls_alert",          tls_alert_d);
-  Record ("change_cipher_spec", change_cipher_spec_d);
+  Record ("tls_alert",           tls_alert_d);
+  Record ("change_cipher_spec",  change_cipher_spec_d);
 
   Record ("hello_request",       []);
   Record ("client_hello",        client_hello_d);
@@ -113,4 +123,7 @@ let descriptions = [
   Record ("server_hello_done",   []);
   Choice ("handshake_content",   Some "TlsEnums", Explicit ("handshake_type"), handshake_content_c, "Unparsed_HSContent", true);
   Record ("handshake_msg",       handshake_msg_d);
+
+  Choice ("record_content",      Some "TlsEnums", Explicit ("content_type"), record_content_c, "Unparsed_Record", false);
+  Record ("tls_record",          tls_record_d);
 ]

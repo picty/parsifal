@@ -44,14 +44,14 @@ let rec forward state i o =
   begin
     match record.content_type, state.clear with
       | CT_Handshake, true ->
-	let hs_msg = parse_handshake_msg (input_of_string "Handshake" record.record_content) in
+	let hs_msg = parse_handshake_msg (input_of_string "Handshake" (dump_record_content record.record_content)) in
 	print_endline (print_handshake_msg "  " "Handshake content" hs_msg)
       | CT_ChangeCipherSpec, true ->
-	let hs_msg = parse_change_cipher_spec (input_of_string "CCS" record.record_content) in
+	let hs_msg = parse_change_cipher_spec (input_of_string "CCS" (dump_record_content record.record_content)) in
 	print_endline (print_change_cipher_spec "  " "CCS content" hs_msg);
 	state.clear <- false
       | CT_Alert, true ->
-	let hs_msg = parse_tls_alert (input_of_string "Alert" record.record_content) in
+	let hs_msg = parse_tls_alert (input_of_string "Alert" (dump_record_content record.record_content)) in
 	print_endline (print_tls_alert "  " "Alert content" hs_msg)
       | _ -> print_newline ()
   end;
