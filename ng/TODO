@@ -42,11 +42,8 @@ TODO
  - Add unit tests
 
 
- - Put files into directories
 
-
-
- - check-ssl-server (ajouter d'autres tests ?)
+ - check-ssl-server
    * vérifier versions acceptées
    * versions préférée (avec CH SSLv2 et CH TLS divers)
    * vérifier l'intolérance de version (CH 0x03ff)
@@ -82,6 +79,9 @@ TODO
 
    * support d'1 message HS en plusieurs record
    * support de plusieurs messages HS en 1 record
+   * réaction à un message Alert au milieu de messages Handshake
+   * réaction à un message Alert au milieu d'un message Handshake
+   * réaction à des alerts fatales ou pas
 
    * certificats ?!
      - numéro de série
