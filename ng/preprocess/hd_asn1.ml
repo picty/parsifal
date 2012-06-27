@@ -1,5 +1,7 @@
 type field_name = string
 
+type expected_header_string = string option
+
 type field_type =
   | AT_Boolean
   | AT_SmallInteger
@@ -8,18 +10,18 @@ type field_type =
 (*  | AT_EnumeratedBitString *)
   | AT_Null
   | AT_OId
-(* constraints on Strings: None -> no_constraint, Some s -> $s_constraint *)
+  (* AT_String (constraints : None -> no_constraint, Some s -> $s_constraint) *)
   | AT_String of string option
   | AT_Primitive
-  | AT_Container of field_type
-  | AT_List of field_type
+  | AT_Container of expected_header_string * field_type
+  (* AT_SequenceOf (name of the sequence [default is proposed_name_list], min, max, sub_type, sub_header) *)
+  | AT_SequenceOf of string option * int option * int option * expected_header_string * field_type
+  | AT_SetOf of string option * int option * int option * expected_header_string * field_type
+
   | AT_Custom of string option * string
   | AT_Anything
 
-type expected_header_string = string option
-
 (* TODO: Add constraints
-    - list length
     - optional fields SHOULDs and SHOULDNOTs
 *)
 

@@ -1,28 +1,29 @@
 TODO
- - ASN.1: write parse_der_*
  - ASN.1: handle constraints, optional fields, choices
  - ASN.1: Add UTCTime / ValidityTime handling (choices)
+ - ASN.1: Add stg to have parse_distinguished_name (we need aliases for sequences of and sets of)
  - ASN.1: Add support for ObjectIdentifiers
  - ASN.1: Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
  - ASN.1: Add dump and print functions
- - ASN.1: Add a generic parser (when we have no constraints)?
+
+ - BinRecs: Create enrichable fields (either strings or custom ?? + a reference to tell what to do)
+ - BinRecs: add a way to check eos is reached
 
  - Add a way to automagically enrich the context (tlsEngine with an automata)
  - Add support for TLS extensions (this should be laxist)
  - Add a ciphersuite database
- - Parse certificates!
  - Write the automata
- - mk_binrecs.mk_parse_fun: add a way to check eos is reached
  - Add SSLv2 support
  - Use lwt_parse_answer_dump and produce some easy statistics to confirm it works
 
  - Sort all the files present in AceSL-hg and co.
  - Add MakefileV6
- - Make repositories (asn1, tls, baseEngines, .generated)
+ - Make directories (asn1, tls, baseEngines, .generated)
 
- - Add a pretty string for field names?
  - Add a way to constrain a binrec (length of 2^14 in TlsRecord)
  - Rethink the exception system?
+
+ - Learn how to pretty print Caml code (and stop using Printf ;-))
 
  - Check if Lwt pipes are closed properly
  - Rewrite get_in / get_out in lwtParsingEngine in case the length is too big (with a customizable threshold)

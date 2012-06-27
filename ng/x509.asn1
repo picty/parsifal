@@ -1,15 +1,21 @@
 (* TODO: algorithmIdentifier should rely on Objects written in x509Util.ml *)
 let algorithmIdentifier_a = [
+  "algorithmId",     AT_OId,      false, None;
+  "algorithmParams", AT_Anything, false, None
 ]
 
 (* TODO: name should rely on Objects written in x509Util.ml *)
-let name_a = [
+let atv_a = [
+  "attributeType",  AT_OId,      false, None;
+  "attributeValue", AT_Anything, false, None
 ]
 
 (* TODO: time should be written in x509Util.ml *)
 let validity_a = [
-  "notBefore", AT_Custom (None, "time"), false, None;
-  "notAfter",  AT_Custom (None, "time"), false, None;
+(*  "notBefore", AT_Custom (None, "time"), false, None;
+  "notAfter",  AT_Custom (None, "time"), false, None; *)
+  "notBefore", AT_Anything, false, None;
+  "notAfter",  AT_Anything, false, None;
 ]
 
 (* TODO: should be enrichable *)
@@ -25,20 +31,26 @@ let extension_a = [
   "extnValue", AT_String None, false, Some "AH_Simple (C_Universal, false, T_OctetString)";
 ]
 
-(* TODO: Add constraints (optional, dependency on the version, at least one extension) *)
+
+let dn_type = AT_SequenceOf (Some "distinguished_name", None, None, None,
+                AT_SetOf (Some "rdn", Some 1, None, None,
+                  AT_Custom (None, "atv")))
+
+(* TODO: Add constraints (optional, dependency on the version) *)
 let tbsCertificate_a = [
-  "version",              AT_Container AT_Integer,                  true,  Some "AH_Simple (C_ContextSpecific, false, T_Unknown 0)";
+  "version",              AT_Container (None,
+                            AT_Integer),                            true,  Some "AH_Simple (C_ContextSpecific, true, T_Unknown 0)";
   "serialNumber",         AT_Integer,                               false, None;
   "signature",            AT_Custom (None, "algorithmIdentifier"),  false, None;
-  "issuer",               AT_Custom (None, "name"),                 false, None;
+  "issuer",               dn_type,                                  false, None;
   "validity",             AT_Custom (None, "validity"),             false, None;
-  "subject",              AT_Custom (None, "name"),                 false, None;
+  "subject",              dn_type,                                  false, None;
   "subjectPublicKeyInfo", AT_Custom (None, "subjectPublicKeyInfo"), false, None;
   "issuerUniqueID",       AT_BitString,                             true,  Some "AH_Simple (C_ContextSpecific, false, T_Unknown 1)";
   "subjectUniqueID",      AT_BitString,                             true,  Some "AH_Simple (C_ContextSpecific, false, T_Unknown 2)";
-  "extensions",           AT_Container (
-                            AT_List (
-                              AT_Custom (None, "extension"))),     true,  Some "AH_Simple (C_ContextSpecific, false, T_Unknown 3)";
+  "extensions",           AT_Container (None,
+                            AT_SequenceOf (Some "extension_list", Some 1, None, None,
+                              AT_Custom (None, "extension"))),     true,  Some "AH_Simple (C_ContextSpecific, true, T_Unknown 3)";
 ]
 
 let certificate_a = [
@@ -51,7 +63,7 @@ let certificate_a = [
 
 let descriptions = [
   "algorithmIdentifier",  algorithmIdentifier_a,  Some "AH_Simple (C_Universal, true, T_Sequence)";
-  "name",                 name_a,                 Some "AH_Simple (C_Universal, true, T_Sequence)";
+  "atv",                  atv_a,                 Some "AH_Simple (C_Universal, true, T_Sequence)";
   "validity",             validity_a,             Some "AH_Simple (C_Universal, true, T_Sequence)";
   "subjectPublicKeyInfo", subjectPublicKeyInfo_a, Some "AH_Simple (C_Universal, true, T_Sequence)";
   "extension",            extension_a,            Some "AH_Simple (C_Universal, true, T_Sequence)";

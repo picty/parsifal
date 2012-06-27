@@ -1,6 +1,11 @@
 exception NotImplemented of string
 
 
+let pop_opt default = function
+  | None -> default
+  | Some x -> x
+
+
 let hexa_char = "0123456789abcdef"
 
 let hexdump s =

@@ -30,6 +30,8 @@ type asn1_exception =
   | BitStringNotInNormalForm of string
   | InvalidUTCTime
   | UnknownUniversalObject of bool * asn1_tag
+  | TooFewObjects of int * int
+  | TooManyObjects of int * int
 
 exception Asn1Exception of (asn1_exception * string_input)
 
@@ -47,6 +49,10 @@ let print_asn1_exception = function
   | InvalidUTCTime -> "InvalidUTCTime"
   | UnknownUniversalObject (isC, t) ->
     Printf.sprintf "UnknownUniversalObject (%s)" (print_header (C_Universal, isC, t))
+  | TooFewObjects (x, exp_x) ->
+    Printf.sprintf "Too few objects (%d instead of %d)" x exp_x
+  | TooManyObjects (x, exp_x) ->
+    Printf.sprintf "Too many objects (%d instead of %d)" x exp_x
 
 
 let emit fatal e i =
@@ -78,7 +84,7 @@ let extract_longtype input : asn1_tag  =
     if (byte land 0x80) = 0
     then new_accu
     else aux new_accu
-  in asn1_tag_of_int (aux 0)
+  in T_Unknown (aux 0)
 
 let extract_header input : (asn1_class * bool * asn1_tag) =
   let hdr = parse_uint8 input in
@@ -87,8 +93,11 @@ let extract_header input : (asn1_class * bool * asn1_tag) =
   let hdr_t = hdr land 31 in
   let t =
     if (hdr_t < 0x1f)
-    then asn1_tag_of_int hdr_t
-    else extract_longtype input
+    then begin
+      if c = C_Universal
+      then asn1_tag_of_int hdr_t
+      else T_Unknown hdr_t
+    end else extract_longtype input
   in (c, isC, t)
 
 let extract_length input =
@@ -113,7 +122,7 @@ let check_header header_constraint input c isC t =
       if not (check_fun c isC t)
       then raise (Asn1Exception (UnexpectedHeader ((c, isC, t), None), input))
 
-let extract_asn1_object input name header_constraint parse_content =
+let extract_asn1_object name header_constraint parse_content input =
   let _offset = input.cur_base + input.cur_offset in
   let old_cur_offset = input.cur_offset in
   let c, isC, t = extract_header input in
@@ -256,6 +265,8 @@ let parse_der_oid input =
   in
   aux ()
 
+(* TODO: dump_der_oid *)
+
 (* let subid_to_charlist id = *)
 (*   let rec aux accu x = *)
 (*     if x = 0 *)
@@ -284,6 +295,7 @@ let parse_der_bitstring input =
   (* TODO: Check the trailing bits are zeroed. *)
   (nBits, content)
 
+(* TODO: Enumerated Bit Strings *)
 
 (* let apply_desc desc i = *)
 (*   if i >= 0 && i < Array.length desc *)
@@ -322,6 +334,7 @@ let parse_der_bitstring input =
 (*   let bits = extract_bit_list content in *)
 (*   name_bits pstate desc bits *)
 
+(* TODO: dump_der_bitstring *)
 
 (* let der_to_bitstring description pstate = *)
 (*   let nBits, content = raw_der_to_bitstring pstate in *)
@@ -371,6 +384,27 @@ let parse_der_octetstring_s apply_constraints input =
 
 let dump_der_octetstring s = s
 
+
+
+(* Sequence/Set of *)
+
+let parse_der_list name header_constraint min max parse_content input =
+  let rec parse_aux accu =
+    if eos input
+    then List.rev accu
+    else
+      let next = extract_asn1_object name header_constraint parse_content input in
+      parse_aux (next::accu)
+  in
+  let res = parse_aux [] in
+  let len = List.length res in
+  let real_min = pop_opt len min
+  and real_max = pop_opt len max in
+  if len < real_min then emit false (TooFewObjects (len, real_min)) input;
+  if len > real_max then emit false (TooManyObjects (len, real_max)) input;
+  res
+
+(* TODO: dump_der_list *)
 
 
 
@@ -453,6 +487,7 @@ and parse_der_constructed input =
       parse_aux (next::accu)
   in parse_aux []
 
+(* TODO: dump_asn1_object *)
 
 
 
