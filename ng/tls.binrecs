@@ -65,7 +65,7 @@ let ske_dhe_params_d = [
 ]
 
 let server_key_exchange_c = [
-  "KX_DHE", "SKE_DHE", None, "ske_dhe_params";
+  "KX_DHE", "SKE_DHE", FT_Custom (None, "ske_dhe_params", []);
 ]
 
 
@@ -77,14 +77,14 @@ let certificate_request_d = [
 	
 
 let handshake_content_c = [
-  "HT_HelloRequest", "HelloRequest", None, "hello_request";
-  "HT_ClientHello", "ClientHello", None, "client_hello";
-  "HT_ServerHello", "ServerHello", None, "server_hello";
-  "HT_NewSessionTicket", "NewSessionTicket", None, "new_session_ticket";
-  "HT_Certificate", "Certificate", None, "certificates";
-  "HT_ServerKeyExchange", "ServerKeyExchange", None, "server_key_exchange";
-  "HT_CertificateRequest", "CertificateRequest", None, "certificate_request";
-  "HT_ServerHelloDone", "ServerHelloDone", None, "server_hello_done";
+  "HT_HelloRequest", "HelloRequest", FT_Custom (None, "hello_request", []);
+  "HT_ClientHello", "ClientHello", FT_Custom (None, "client_hello", []);
+  "HT_ServerHello", "ServerHello", FT_Custom (None, "server_hello", []);
+  "HT_NewSessionTicket", "NewSessionTicket", FT_Custom (None, "new_session_ticket", []);
+  "HT_Certificate", "Certificate", FT_Custom (None, "certificates", []);
+  "HT_ServerKeyExchange", "ServerKeyExchange", FT_Custom (None, "server_key_exchange", []);
+  "HT_CertificateRequest", "CertificateRequest", FT_Custom (None, "certificate_request", []);
+  "HT_ServerHelloDone", "ServerHelloDone", FT_Custom (None, "server_hello_done", []);
 ]
 
 let handshake_msg_d = [
@@ -108,9 +108,9 @@ let descriptions = [
   Record ("certificates",        certificates_d);
   Record ("server_dh_params",    server_dh_params_d);
   Record ("ske_dhe_params",      ske_dhe_params_d);
-  Choice ("server_key_exchange", Some "TlsContext", Implicit "TlsContext.extract_future_kx context", server_key_exchange_c, "Unparsed_SKEContent");
+  Choice ("server_key_exchange", Some "TlsContext", Implicit "TlsContext.extract_future_kx context", server_key_exchange_c, "Unparsed_SKEContent", true);
   Record ("certificate_request", certificate_request_d);
   Record ("server_hello_done",   []);
-  Choice ("handshake_content",   Some "TlsEnums", Explicit ("handshake_type"), handshake_content_c, "Unparsed_HSContent");
+  Choice ("handshake_content",   Some "TlsEnums", Explicit ("handshake_type"), handshake_content_c, "Unparsed_HSContent", true);
   Record ("handshake_msg",       handshake_msg_d);
 ]

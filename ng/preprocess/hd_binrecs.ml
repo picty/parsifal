@@ -46,10 +46,10 @@ type discriminator_type =
    - context is Some context -> the discriminator is context, whatever this means (generally "context.field") *)
 
 (* Discrimating value, Constructor name, Constructor subtype (module + type name) *)
-type choice_desc = string * string * string option * string
+type choice_desc = string * string * field_type
 
-(* Type name, Module containing the discriminating values, Discriminator, Choice list, Constructor if unparsed *)
-type choice_description = string * string option * discriminator_type * choice_desc list * string
+(* Type name, Module containing the discriminating values, Discriminator, Choice list, Constructor if unparsed, Default value of the enrich ref *)
+type choice_description = string * string option * discriminator_type * choice_desc list * string * bool
 
 
 
