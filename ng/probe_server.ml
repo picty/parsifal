@@ -7,7 +7,6 @@ open Unix
 open ParsingEngine
 open DumpingEngine
 open LwtParsingEngine
-open Common
 open TlsEnums
 open Tls
 

@@ -1,4 +1,3 @@
-open Common
 open Lwt
 open ParsingEngine
 
@@ -109,7 +108,7 @@ let lwt_parse_string n input =
   return s
 
 let lwt_parse_rem_string name input =
-  fail (NotImplemented "lwt_parse_rem_string")
+  fail (Common.NotImplemented "lwt_parse_rem_string")
 
 let lwt_parse_varlen_string name len_fun input =
   len_fun input >>= fun n ->
@@ -136,7 +135,7 @@ let lwt_parse_list n parse_fun input =
   in aux [] n
 
 let lwt_parse_rem_list name input =
-  fail (NotImplemented "lwt_parse_rem_list")
+  fail (Common.NotImplemented "lwt_parse_rem_list")
 
 let lwt_parse_varlen_list name len_fun parse_fun input =
   len_fun input >>= fun n ->

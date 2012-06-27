@@ -45,17 +45,17 @@ let rec parse_fun_of_field_type name = function
   | FT_IPv6 -> "parse_string 16"
   | FT_String (FixedLen n, _) -> "parse_string " ^ (string_of_int n)
   | FT_String (VarLen int_t, _) ->
-    Printf.sprintf "parse_varlen_string \"%s\" parse_uint%d" name (int_size int_t)
+    Printf.sprintf "parse_varlen_string \"%s\" parse_uint%d" (quote_string name) (int_size int_t)
   | FT_String (Remaining, _) -> "parse_rem_string"
 
   | FT_List (FixedLen n, subtype) ->
     Printf.sprintf "parse_list %d (%s)" n (parse_fun_of_field_type name subtype)
   | FT_List (VarLen int_t, subtype) ->
-    Printf.sprintf "parse_varlen_list \"%s\" parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
+    Printf.sprintf "parse_varlen_list \"%s\" parse_uint%d (%s)" (quote_string name) (int_size int_t) (parse_fun_of_field_type name subtype)
   | FT_List (Remaining, subtype) ->
     Printf.sprintf "parse_rem_list (%s)" (parse_fun_of_field_type name subtype)
   | FT_Container (int_t, subtype) ->
-    Printf.sprintf "parse_container \"%s\" parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
+    Printf.sprintf "parse_container \"%s\" parse_uint%d (%s)" (quote_string name) (int_size int_t) (parse_fun_of_field_type name subtype)
 
   | FT_Custom (module_name, type_name, parse_fun_args) ->
     String.concat " " (((mk_module_prefix module_name) ^ "parse_" ^ type_name)::"~context:ctx"::parse_fun_args)
@@ -72,18 +72,18 @@ let rec lwt_parse_fun_of_field_type name = function
   | FT_IPv6 -> "lwt_parse_string 16"
   | FT_String (FixedLen n, _) -> "lwt_parse_string " ^ (string_of_int n)
   | FT_String (VarLen int_t, _) ->
-    Printf.sprintf "lwt_parse_varlen_string \"%s\" lwt_parse_uint%d" name (int_size int_t)
+    Printf.sprintf "lwt_parse_varlen_string \"%s\" lwt_parse_uint%d" (quote_string name) (int_size int_t)
   | FT_String (Remaining, _) ->
-      Printf.sprintf "lwt_parse_rem_string \"%s\"" name
+      Printf.sprintf "lwt_parse_rem_string \"%s\"" (quote_string name)
 
   | FT_List (FixedLen n, subtype) ->
     Printf.sprintf "lwt_parse_list %d (%s)" n (parse_fun_of_field_type name subtype)
   | FT_List (VarLen int_t, subtype) ->
-    Printf.sprintf "lwt_parse_varlen_list \"%s\" lwt_parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
+    Printf.sprintf "lwt_parse_varlen_list \"%s\" lwt_parse_uint%d (%s)" (quote_string name) (int_size int_t) (parse_fun_of_field_type name subtype)
   | FT_List (Remaining, subtype) ->
     Printf.sprintf "lwt_parse_rem_list %s (%s)" name (parse_fun_of_field_type name subtype)
   | FT_Container (int_t, subtype) ->
-    Printf.sprintf "lwt_parse_container \"%s\" lwt_parse_uint%d (%s)" name (int_size int_t) (parse_fun_of_field_type name subtype)
+    Printf.sprintf "lwt_parse_container \"%s\" lwt_parse_uint%d (%s)" (quote_string name) (int_size int_t) (parse_fun_of_field_type name subtype)
 
   | FT_Custom (module_name, type_name, parse_fun_args) ->
     String.concat " " (((mk_module_prefix module_name) ^ "lwt_parse_" ^ type_name)::" ~context:ctx"::parse_fun_args)
@@ -218,10 +218,10 @@ let mk_record_print_fun (name, fields) =
 	(Printf.sprintf "  begin\n") ^
         (Printf.sprintf "    match %s.%s with\n" name fn) ^
 	(Printf.sprintf "      | None -> \"\"\n") ^
-        (Printf.sprintf "      | Some x -> %s new_indent \"%s\" x\n" (print_fun_of_field_type ft) fn) ^
+        (Printf.sprintf "      | Some x -> %s new_indent \"%s\" x\n" (print_fun_of_field_type ft) (quote_string fn)) ^
         (Printf.sprintf "  end")
       end
-      else Printf.sprintf "  (%s new_indent \"%s\" %s.%s)" (print_fun_of_field_type ft) fn name fn
+      else Printf.sprintf "  (%s new_indent \"%s\" %s.%s)" (print_fun_of_field_type ft) (quote_string fn) name fn
     in
     Printf.printf "let print_%s indent name %s =\n" name name;
     print_endline "  let new_indent = indent ^ \"  \" in";
@@ -269,7 +269,7 @@ let mk_choice_parse_fun do_lwt (name, discr_module, discr, choices, unparsed_con
       Printf.printf "      | %s%s -> %s (%sparse_%s ~context:ctx input)\n"
 	(mk_module_prefix discr_module) discr_value cons (mk_module_prefix type_mod) type_name
   and mk_default unparsed_cons =
-    if do_lwt then Printf.sprintf "lwt_parse_rem_string \"%s\" input >>= fun x -> return (%s x)" name unparsed_cons
+    if do_lwt then Printf.sprintf "lwt_parse_rem_string \"%s\" input >>= fun x -> return (%s x)" (quote_string name) unparsed_cons
     else Printf.sprintf "%s (parse_rem_string input)" unparsed_cons
   in
 

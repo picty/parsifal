@@ -16,7 +16,7 @@ let mk_ctors (name, enum, unknown) =
 
 let mk_string_of_enum (name, enum, unknown) =
   Printf.printf "let string_of_%s = function\n" name;
-  let aux (_, ctor, n) = Printf.printf "  | %s -> \"%s\"\n" ctor n in
+  let aux (_, ctor, n) = Printf.printf "  | %s -> \"%s\"\n" ctor (quote_string n) in
   List.iter aux enum;
   begin
     match unknown with

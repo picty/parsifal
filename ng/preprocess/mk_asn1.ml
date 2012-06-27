@@ -89,7 +89,8 @@ let mk_parse_fun (name, fields, header_expected) =
 	| _ -> 
 	  let hdr_constraint = header_constraint fh ft
 	  and parse_fun = parse_fun_of_field_type ft in
-	  Printf.printf "%slet _%s = extract_asn1_object input \"%s\" (%s) (%s) in\n" indent fn fn hdr_constraint parse_fun
+	  Printf.printf "%slet _%s = extract_asn1_object input \"%s\" (%s) (%s) in\n"
+	    indent fn (quote_string fn) hdr_constraint parse_fun
     end;
     if fo then begin
       Printf.printf "    Some _%s\n" fn;
@@ -107,7 +108,8 @@ let mk_parse_fun (name, fields, header_expected) =
 
   Printf.printf "let parse_%s input =\n" name;
   let hdr_constraint = external_header_constraint header_expected in
-  Printf.printf "  extract_asn1_object input \"%s\" (%s) (parse_%s_content)\n\n" name hdr_constraint name
+  Printf.printf "  extract_asn1_object input \"%s\" (%s) (parse_%s_content)\n\n"
+    (quote_string name) hdr_constraint name
 
 
 let handle_desc (desc : description) =
