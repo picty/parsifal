@@ -88,6 +88,9 @@ let write_record o record =
   let s = dump_tls_record record in
   really_write o s
 
+let write_record_by_chunks o record size =
+  let recs = TlsUtil.split_record record size in
+  Lwt_list.iter_s (write_record o) recs
 
 
 let print_hs hs =
@@ -124,7 +127,7 @@ let send_and_receive v cs addr hs_fun alert_fun =
   let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   let ch = mk_client_hello v cs in
   Lwt_unix.connect s addr >>= fun () ->
-  write_record s ch >>= fun () ->
+  write_record_by_chunks s ch 1 >>= fun () ->
   handle_answer hs_fun alert_fun (input_of_fd "Server" s)
 
 
