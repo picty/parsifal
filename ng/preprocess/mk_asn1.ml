@@ -20,6 +20,7 @@ let rec _ocaml_type_of_field_type = function
   | AT_Container sub_type -> _ocaml_type_of_field_type sub_type
   | AT_List sub_type -> (_ocaml_type_of_field_type sub_type) ^ " list"
   | AT_Custom (module_name, type_name) -> (mk_module_prefix module_name) ^ type_name
+  | AT_Anything -> "asn1_object"
 
 let ocaml_type_of_field_type fo ft =
   let type_string = _ocaml_type_of_field_type ft in
@@ -40,6 +41,7 @@ let rec parse_fun_of_field_type = function
   | AT_Container subtype -> "parse_der_container (" ^ (parse_fun_of_field_type subtype) ^ ")"
   | AT_List subtype -> "parse_der_list (" ^ (parse_fun_of_field_type subtype) ^ ")"
   | AT_Custom (module_name, type_name) -> (mk_module_prefix module_name) ^ "parse_" ^ type_name ^ "_content"
+  | AT_Anything -> "parse_asn1_object"
 
 
 let default_header = function
@@ -51,7 +53,7 @@ let default_header = function
   | AT_OId -> "AH_Simple (C_Universal, false, T_OId)"
   | AT_Container _ | AT_List _ ->
     "AH_Simple (C_Universal, true, T_Sequence)"
-  | AT_String _ | AT_Primitive | AT_Custom _ ->
+  | AT_String _ | AT_Primitive | AT_Custom _ | AT_Anything ->
     failwith "No default header there"
 
 let header_constraint header_expected field_type =

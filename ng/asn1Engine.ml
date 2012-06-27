@@ -2,25 +2,51 @@ open Common
 open Asn1Enums
 open ParsingEngine
 
+
+let prim_or_cons = function false -> "prim" | true -> "cons"
+let print_header = function
+  | (C_Universal, false, (T_EndOfContents | T_Boolean | T_Integer | T_BitString | T_OctetString | 
+                          T_Null | T_OId | T_ObjectDescriptor | T_External | T_Real | T_Enumerated |
+                          T_EmbeddedPDV | T_UTF8String | T_RelativeOId | T_NumericString |
+                          T_PrintableString | T_T61String | T_VideoString | T_IA5String |
+                          T_UTCTime | T_GeneralizedTime | T_GraphicString | T_VisibleString |
+                          T_GeneralString | T_UniversalString | T_UnspecifiedCharacterString |
+                          T_BMPString as t)) -> string_of_asn1_tag t
+
+  | (C_Universal, true, (T_Sequence | T_Set as t)) -> string_of_asn1_tag t
+  | C_Universal, isC, t -> Printf.sprintf "[UNIV %d] %s" (int_of_asn1_tag t) (prim_or_cons isC)
+  | C_Application, isC, t -> Printf.sprintf "[APP %d] %s" (int_of_asn1_tag t) (prim_or_cons isC)
+  | C_ContextSpecific, isC, t -> Printf.sprintf "[%d] %s" (int_of_asn1_tag t) (prim_or_cons isC)
+  | C_Private, isC, t -> Printf.sprintf "[PRIVATE %d] %s" (int_of_asn1_tag t) (prim_or_cons isC)
+
+
 type asn1_exception =
   | UnexpectedHeader of (asn1_class * bool * asn1_tag) * (asn1_class * bool * asn1_tag) option
   | BooleanNotInNormalForm
   | IntegerNotInNormalForm
+  | IntegerOverflow
   | NullNotInNormalForm
   | OIdNotInNormalForm
-  | IntegerOverflow
+  | BitStringNotInNormalForm of string
   | InvalidUTCTime
+  | UnknownUniversalObject of bool * asn1_tag
 
 exception Asn1Exception of (asn1_exception * string_input)
 
 let print_asn1_exception = function
-  | UnexpectedHeader _ -> "UnexpectedHeader"  (* TODO *)
+  | UnexpectedHeader (h, None) ->
+    Printf.sprintf "UnexpectedHeader (%s)" (print_header h)
+  | UnexpectedHeader (h, Some exp_h) ->
+    Printf.sprintf "UnexpectedHeader (%s instead of %s)" (print_header h) (print_header exp_h)
   | BooleanNotInNormalForm -> "BooleanNotInNormalForm"
   | IntegerNotInNormalForm -> "IntegerNotInNormalForm"
+  | IntegerOverflow -> "IntegerOverflow"
   | NullNotInNormalForm -> "NullNotInNormalForm"
   | OIdNotInNormalForm -> "OIdNotInNormalForm"
-  | IntegerOverflow -> "IntegerOverflow"
+  | BitStringNotInNormalForm details -> "BitStringNotInNormalForm (" ^ details ^ ")"
   | InvalidUTCTime -> "InvalidUTCTime"
+  | UnknownUniversalObject (isC, t) ->
+    Printf.sprintf "UnknownUniversalObject (%s)" (print_header (C_Universal, isC, t))
 
 
 let emit fatal e i =
@@ -242,23 +268,26 @@ let parse_der_oid input =
 (*   string_of_int_list (List.flatten cll) *)
 
 
-(* (\* Bit String *\) *)
+(* Bit String *)
+
+let parse_der_bitstring input =
+  let nBits =
+    if eos input then begin
+      emit false (BitStringNotInNormalForm "empty") input;
+      0
+    end else parse_uint8 input
+  in
+  let content = parse_rem_string input in
+  let len = (String.length content) * 8 - nBits in
+  if len < 0
+  then emit false (BitStringNotInNormalForm "invalid length") input;
+  (* TODO: Check the trailing bits are zeroed. *)
+  (nBits, content)
+
 
 (* let apply_desc desc i = *)
 (*   if i >= 0 && i < Array.length desc *)
 (*   then desc.(i) else raise (OutOfBounds "apply_desc") *)
-
-(* let raw_der_to_bitstring pstate = *)
-(*   let nBits = *)
-(*     if eos pstate then begin *)
-(*       asn1_emit NotInNormalForm None (Some "empty bit string") pstate; *)
-(*       0 *)
-(*     end else pop_byte pstate *)
-(*   in *)
-(*   let content = pop_string pstate in *)
-(*   let len = (String.length content) * 8 - nBits in *)
-(*   if len < 0 then asn1_emit InvalidBitStringLength None (Some (string_of_int len)) pstate; *)
-(*   (nBits, content) *)
 
 (* let extract_bit_list s = *)
 (*   let n = String.length s in *)
@@ -306,7 +335,7 @@ let parse_der_oid input =
 
 (* Octet String *)
 
-let no_constraint s = s
+let no_constraint s _ = s
 
 let utc_time_re =
   Str.regexp "^\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
@@ -335,90 +364,96 @@ let parse_der_octetstring apply_constraints input =
   let res = parse_rem_string input in
   apply_constraints res input
 
+let parse_der_octetstring_s apply_constraints input =
+  let res = parse_rem_string input in
+  ignore (apply_constraints res input);
+  res
 
 let dump_der_octetstring s = s
 
 
-(* (\* Constructed and global function *\) *)
-
-(* let rec der_to_constructed pstate = *)
-(*   let rec parse_aux () = *)
-(*     if eos pstate *)
-(*     then [] *)
-(*     else *)
-(*       let next = parse pstate in *)
-(*       next::(parse_aux ()) *)
-(*   in *)
-(*   Constructed (parse_aux ()) *)
-    
-(* and choose_parse_fun pstate (c : asn1_class) (isC : bool) (t : int) : parse_function = *)
-(*   match c with *)
-(*     | C_Universal when t >= 0 && t < Array.length universal_tag_map -> begin *)
-(*       match (universal_tag_map.(t), isC) with *)
-(* 	| (T_Boolean, false) -> der_to_boolean *)
-(* 	| (T_Integer, false) -> der_to_int *)
-	  
-(* 	| (T_Null, false) -> der_to_null *)
-	  
-(* 	| (T_OId, false) -> der_to_oid *)
-	  
-(* 	| (T_BitString, false) -> der_to_bitstring None *)
-	  
-(* 	| (T_OctetString, false) -> der_to_octetstring true *)
-
-(* 	| ( T_UTF8String, false) *)
-(* 	| ( T_NumericString, false) *)
-(* 	| ( T_PrintableString, false) *)
-(* 	| ( T_T61String, false) *)
-(* 	| ( T_VideoString, false) *)
-(* 	| ( T_IA5String, false) *)
-(* 	| ( T_UTCTime, false) *)
-(* 	| ( T_GeneralizedTime, false) *)
-(* 	| ( T_GraphicString, false) *)
-(* 	| ( T_VisibleString, false) *)
-(* 	| ( T_GeneralString, false) *)
-(* 	| ( T_UniversalString, false) *)
-(* 	| ( T_UnspecifiedCharacterString, false) *)
-(* 	| ( T_BMPString, false) -> der_to_octetstring false *)
-	  
-(* 	| (T_Sequence, true) *)
-(* 	| (T_Set, true) -> der_to_constructed *)
-	  
-(* 	| (_, false) -> *)
-(* 	  asn1_emit UnknownPrimitiveUniversal None (Some (string_of_int t)) pstate; *)
-(* 	  der_to_octetstring true *)
-
-(* 	| (_, true) -> *)
-(* 	  asn1_emit UnknownConstructedUniversal None (Some (string_of_int t)) pstate; *)
-(* 	  der_to_constructed *)
-(*     end *)
-      
-(*     | C_Universal -> *)
-(*       asn1_emit (if isC then UnknownConstructedUniversal else UnknownPrimitiveUniversal) *)
-(* 	None (Some (string_of_int t)) pstate; *)
-(*       if isC then der_to_constructed else der_to_octetstring true *)
-
-(*     | _ -> if isC then der_to_constructed else der_to_octetstring true *)
-      
-(* and parse pstate : asn1_object = *)
-(*   let offset = pstate.previous_offset + pstate.cur_offset in *)
-(*   let (c, isC, t) = extract_header pstate in *)
-(*   let new_pstate = extract_length pstate (string_of_header_pretty c isC t) in *)
-(*   let hlen = new_pstate.previous_offset - offset in *)
-(*   let len = pop_option new_pstate.cur_length (-1) in *)
-(*   let parse_fun = choose_parse_fun pstate c isC t in *)
-(*   let res = mk_object (string_of_header_pretty c isC t) *)
-(*     c t offset hlen len (parse_fun new_pstate) in *)
-(*   if not (eos new_pstate) then asn1_emit UnexpectedJunk None None pstate; *)
-(*   res *)
 
 
-(* let exact_parse name str : asn1_object = *)
-(*   let pstate = pstate_of_string name str in *)
-(*   let res = parse pstate in *)
-(*   if not (eos pstate) *)
-(*   then failwith "Trailing bytes at the end of the string" *)
-(*   else res *)
+(* Generic ASN.1 Object *)
+
+type asn1_object = {
+  a_class : asn1_class;
+  a_tag : asn1_tag;
+  a_content : asn1_content;
+}
+
+and asn1_content =
+  | Boolean of bool
+  | Integer of string
+  | BitString of int * string
+(*  | EnumeratedBitString of (int list) * bitstring_description *)
+  | Null
+  | OId of int list
+  | String of (string * bool)       (* bool : isBinary *)
+  | Constructed of asn1_object list
+
+
+let rec parse_asn1_object input =
+  let _offset = input.cur_base + input.cur_offset in
+  let old_cur_offset = input.cur_offset in
+  let c, isC, t = extract_header input in
+  let len = extract_length input in
+  let _hlen = input.cur_offset - old_cur_offset in
+  let new_input = get_in input (print_header (c, isC, t)) len in
+  let content = match c, isC, t with
+    | (C_Universal, false, T_Boolean) -> Boolean (parse_der_boolean new_input)
+    | (C_Universal, false, T_Integer) -> Integer (parse_der_int new_input)
+    | (C_Universal, false, T_Null) -> parse_der_null new_input; Null
+    | (C_Universal, false, T_OId) -> OId (parse_der_oid new_input)
+    | (C_Universal, false, T_BitString) -> let nBits, s = parse_der_bitstring input in BitString (nBits, s)
+    | (C_Universal, false, T_OctetString) -> String (parse_der_octetstring no_constraint new_input, true)
+
+    | (C_Universal, false, T_UTF8String)
+    | (C_Universal, false, T_NumericString)
+    | (C_Universal, false, T_PrintableString)
+    | (C_Universal, false, T_T61String)
+    | (C_Universal, false, T_VideoString)
+    | (C_Universal, false, T_IA5String) -> String (parse_der_octetstring no_constraint new_input, false) (* TODO *)
+    | (C_Universal, false, T_UTCTime) -> String (parse_der_octetstring_s utc_time_constraint new_input, false)
+    | (C_Universal, false, T_GeneralizedTime) -> String (parse_der_octetstring_s generalized_time_constraint new_input, false)
+    | (C_Universal, false, T_GraphicString)
+    | (C_Universal, false, T_VisibleString)
+    | (C_Universal, false, T_GeneralString)
+    | (C_Universal, false, T_UniversalString)
+    | (C_Universal, false, T_UnspecifiedCharacterString)
+    | (C_Universal, false, T_BMPString) -> String (parse_der_octetstring no_constraint input, false) (* TODO *)
+
+    | (C_Universal, true, T_Sequence)
+    | (C_Universal, true, T_Set) -> Constructed (parse_der_constructed new_input)
+
+    | (C_Universal, false, t) ->
+      emit false (UnknownUniversalObject (false, t)) new_input;
+      String (parse_der_octetstring no_constraint new_input, true)
+
+    | (C_Universal, true, t) ->
+      emit false (UnknownUniversalObject (true, t)) new_input;
+      Constructed (parse_der_constructed new_input)
+
+    | (_, false, _) -> String (parse_der_octetstring no_constraint new_input, true)
+    | (_, true, _)  -> Constructed (parse_der_constructed new_input)
+  in
+  get_out input new_input;
+ {
+    a_class = c;
+    a_tag = t;
+    a_content = content;
+  }
+
+and parse_der_constructed input =
+  let rec parse_aux accu =
+    if eos input
+    then List.rev accu
+    else
+      let next = parse_asn1_object input in
+      parse_aux (next::accu)
+  in parse_aux []
+
+
 
 
 

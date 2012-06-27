@@ -14,6 +14,7 @@ type field_type =
   | AT_Container of field_type
   | AT_List of field_type
   | AT_Custom of string option * string
+  | AT_Anything
 
 type expected_header_string = string option
 
