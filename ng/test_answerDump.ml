@@ -72,8 +72,19 @@ let _ =
   while not (eos input) do
     let tls_record = parse_tls_record input in
     print_endline (print_tls_record "" "TLS_Record" tls_record);
-    if tls_record.content_type = CT_Handshake then begin
-      let hs_msg = parse_handshake_msg (input_of_string "Handshake" (dump_record_content tls_record.record_content)) in
-      print_endline (print_handshake_msg "  " "Handshake message" hs_msg)
-    end;
-  done
+  done;
+
+  print_newline ();
+
+  let s = answer.content in
+  enrich_record_content := false;
+  let input = input_of_string "TLS Record" s in
+  let rec read_records () =
+    if not (eos input)
+    then begin
+      let next = (parse_tls_record input) in
+      next::(read_records())
+    end else []
+  in
+  let records = TlsUtil.merge_records ~enrich:false (read_records()) in
+  List.iter (fun r -> print_endline (print_tls_record "" "TLS_Record" r)) records;

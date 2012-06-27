@@ -273,8 +273,8 @@ let mk_choice_parse_fun do_lwt (name, discr_module, discr, choices, unparsed_con
     else Printf.sprintf "%s (parse_rem_string input)" unparsed_cons
   in
 
-  Printf.printf "let %s_%s ?context:(ctx=None) %sinput =\n" fun_name name discr_arg;
-  Printf.printf "  if !enrich_%s then begin\n" name;
+  Printf.printf "let %s_%s ?context:(ctx=None) ?enrich:(enrich=false) %sinput =\n" fun_name name discr_arg;
+  Printf.printf "  if enrich || !enrich_%s then begin\n" name;
   begin
     match discr with
       | Explicit discr_value ->
