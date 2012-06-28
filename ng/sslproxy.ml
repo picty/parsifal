@@ -1,5 +1,3 @@
-(* see https://github.com/avsm/ocaml-cohttpserver/blob/master/server/http_tcp_server.ml *)
-
 open Lwt
 open Unix
 

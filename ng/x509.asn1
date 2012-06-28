@@ -63,7 +63,7 @@ let certificate_a = [
 
 let descriptions = [
   "algorithmIdentifier",  algorithmIdentifier_a,  Some "AH_Simple (C_Universal, true, T_Sequence)";
-  "atv",                  atv_a,                 Some "AH_Simple (C_Universal, true, T_Sequence)";
+  "atv",                  atv_a,                  Some "AH_Simple (C_Universal, true, T_Sequence)";
   "validity",             validity_a,             Some "AH_Simple (C_Universal, true, T_Sequence)";
   "subjectPublicKeyInfo", subjectPublicKeyInfo_a, Some "AH_Simple (C_Universal, true, T_Sequence)";
   "extension",            extension_a,            Some "AH_Simple (C_Universal, true, T_Sequence)";

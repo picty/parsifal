@@ -5,12 +5,11 @@ TODO
  - ASN.1: Add support for ObjectIdentifiers
  - ASN.1: Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
  - ASN.1: Add dump and print functions
+ - ASN.1: Clean up options in hd_asn1
 
- - BinRecs: Create enrichable fields (either strings or custom ?? + a reference to tell what to do)
- - BinRecs: add a way to check eos is reached
+ - Binrecs: Clean up options in hd_binrecs
 
  - Add a way to automagically enrich the context (tlsEngine with an automata)
- - Add support for TLS extensions (this should be laxist)
  - Add a ciphersuite database
  - Write the automata
  - Add SSLv2 support
@@ -19,6 +18,8 @@ TODO
  - Sort all the files present in AceSL-hg and co.
  - Add MakefileV6
  - Make directories (asn1, tls, baseEngines, .generated)
+
+ - TLS: Describe Heartbeat messages
 
  - Add a way to constrain a binrec (length of 2^14 in TlsRecord)
  - Rethink the exception system?

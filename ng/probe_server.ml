@@ -11,7 +11,7 @@ open TlsEnums
 open Tls
 
 
-let mk_client_hello v cs =
+let mk_client_hello v cs ?extensions:(exts=None) =
   {
     content_type = CT_Handshake;
     record_version = V_TLSv1;
@@ -23,7 +23,7 @@ let mk_client_hello v cs =
 	client_session_id = "";
 	ciphersuites = cs;
 	compression_methods = [CM_Null];
-	client_extensions = None
+	client_extensions = exts
       }
     }
   }
@@ -125,9 +125,13 @@ let remote_addr =
 
 let send_and_receive v cs addr hs_fun alert_fun =
   let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-  let ch = mk_client_hello v cs in
+  let exts = [
+    { extension_type = HE_EllipticCurves;
+      extension_data = Unparsed_HelloExtension "\x00\x32\x00\x0e\x00\x0d\x00\x19\x00\x0b\x00\x0c\x00\x18\x00\x09\x00\x0a\x00\x16\x00\x17\x00\x08\x00\x06\x00\x07\x00\x14\x00\x15\x00\x04\x00\x05\x00\x12\x00\x13\x00\x01\x00\x02\x00\x03\x00\x0f\x00\x10\xff\x01" }
+  ] in
+  let ch = mk_client_hello v cs ~extensions:(Some exts) in
   Lwt_unix.connect s addr >>= fun () ->
-  write_record_by_chunks s ch 1 >>= fun () ->
+  write_record_by_chunks s ch 1400 >>= fun () ->
   handle_answer hs_fun alert_fun (input_of_fd "Server" s)
 
 

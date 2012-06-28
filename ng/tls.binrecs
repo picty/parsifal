@@ -17,13 +17,21 @@ let signature_and_hash_algorithm_d = [
   "signature_algorithm", FT_Enum (IT_UInt8, "TlsEnums", "signature_algorithm"), false;
 ]
 
+let hello_extension_content_c = [
+]
+
+let hello_extension_d = [
+  "extension_type", FT_Enum (IT_UInt16, "TlsEnums", "extension_type"), false;
+  "extension_data", FT_Container (IT_UInt16, FT_Custom (None, "hello_extension_content", ["_extension_type"])), false;
+]
+
 let client_hello_d = [
   "client_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
   "client_random", FT_String (FixedLen 32, true), false;
   "client_session_id", FT_String (VarLen IT_UInt8, true), false;
   "ciphersuites", FT_List (VarLen IT_UInt16, FT_Enum (IT_UInt16, "TlsEnums", "ciphersuite")), false;
   "compression_methods", FT_List (VarLen IT_UInt8, FT_Enum (IT_UInt8, "TlsEnums", "compression_method")), false;
-  "client_extensions", FT_String (VarLen IT_UInt16, true), true;    (* TODO *)
+  "client_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", [])), true;
 ]
 
 let server_hello_d = [
@@ -32,7 +40,7 @@ let server_hello_d = [
   "server_session_id", FT_String (VarLen IT_UInt8, true), false;
   "ciphersuite", FT_Enum (IT_UInt16, "TlsEnums", "ciphersuite"), false;
   "compression_method", FT_Enum (IT_UInt8, "TlsEnums", "compression_method"), false;
-  "server_extensions", FT_String (VarLen IT_UInt16, true), true;    (* TODO *)
+  "server_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", [])), true;
 ]
 
 let new_session_ticket_d = [
@@ -112,18 +120,25 @@ let descriptions = [
   Record ("change_cipher_spec",  change_cipher_spec_d);
 
   Record ("hello_request",       []);
+  Choice ("hello_extension_content",
+          Some "TlsEnums", Explicit ("extension_type"), hello_extension_content_c, "Unparsed_HelloExtension", true);
+  Record ("hello_extension",     hello_extension_d);
   Record ("client_hello",        client_hello_d);
   Record ("server_hello",        server_hello_d);
   Record ("new_session_ticket",  new_session_ticket_d);
   Record ("certificates",        certificates_d);
   Record ("server_dh_params",    server_dh_params_d);
   Record ("ske_dhe_params",      ske_dhe_params_d);
-  Choice ("server_key_exchange", Some "TlsContext", Implicit "TlsContext.extract_future_kx context", server_key_exchange_c, "Unparsed_SKEContent", true);
+  Choice ("server_key_exchange",
+          Some "TlsContext", Implicit "TlsContext.extract_future_kx context",
+          server_key_exchange_c, "Unparsed_SKEContent", true);
   Record ("certificate_request", certificate_request_d);
   Record ("server_hello_done",   []);
-  Choice ("handshake_content",   Some "TlsEnums", Explicit ("handshake_type"), handshake_content_c, "Unparsed_HSContent", true);
+  Choice ("handshake_content", 
+          Some "TlsEnums", Explicit ("handshake_type"), handshake_content_c, "Unparsed_HSContent", true);
   Record ("handshake_msg",       handshake_msg_d);
 
-  Choice ("record_content",      Some "TlsEnums", Explicit ("content_type"), record_content_c, "Unparsed_Record", false);
+  Choice ("record_content",
+          Some "TlsEnums", Explicit ("content_type"), record_content_c, "Unparsed_Record", false);
   Record ("tls_record",          tls_record_d);
 ]

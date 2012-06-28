@@ -65,6 +65,27 @@ let hs_message_types = [
   20, "HT_Finished", "Finished";
 ]
 
+let extension_types = [
+  0,  "HE_ServerName", "ServerName";
+  1,  "HE_MaxFragmentLength", "MaxFragmentLength";
+  2,  "HE_ClientCertificateURL", "ClientCertificateURL";
+  3,  "HE_TrustedCAKeys", "TrustedCAKeys";
+  4,  "HE_TruncatedMAC", "TruncatedMAC";
+  5,  "HE_StatusRequest", "StatusRequest";
+  6,  "HE_UserMapping", "UserMapping";
+  7,  "HE_ClientAuthz", "ClientAuthz";
+  8,  "HE_ServerAuthz", "ServerAuthz";
+  9,  "HE_CertType", "CertType";
+  10, "HE_EllipticCurves", "EllipticCurves";
+  11, "HE_ECPointFormats", "ECPointFormats";
+  12, "HE_SRP", "SRP";
+  13, "HE_SignatureAlgorithms", "SignatureAlgorithms";
+  14, "HE_UseSRTP", "UseSRTP";
+  15, "HE_Heartbeat", "Heartbeat";
+  35, "HE_SessionTicket", "SessionTicket";
+  65281, "HE_RenegotiationInfo", "RenegotiationInfo";
+]
+
 let ciphersuites = [
   0x0000, "TLS_NULL_WITH_NULL_NULL", "TLS_NULL_WITH_NULL_NULL";
   0x0001, "TLS_RSA_WITH_NULL_MD5", "TLS_RSA_WITH_NULL_MD5";
@@ -414,6 +435,7 @@ let enums = [
 
   "hs_message_type", hs_message_types, UnknownVal "HT_Unknown";
   "ciphersuite", ciphersuites, UnknownVal "TLS_UnknownSuite";
+  "extension_type", extension_types, UnknownVal "HE_Unknown";
   "compression_method", compression_methods, UnknownVal "CM_UnknownVal";
 
   "client_certificate_type", client_certificate_types, UnknownVal "CCT_Unknown";
