@@ -17,6 +17,7 @@ type field_len =
   | Remaining
 
 type field_type =
+  | FT_Empty
   | FT_Char
   | FT_Integer of integer_type
   | FT_Enum of integer_type * string * string

@@ -17,6 +17,7 @@ let int_size = function
   | IT_UInt32 -> 32
 
 let rec ocaml_type_of_field_type = function
+  | FT_Empty -> failwith "Unexpected type in ocaml_type_of_field_type: empty"
   | FT_Char -> "char"
   | FT_Integer _ -> "int"
   | FT_Enum (_, module_name, type_name) -> module_name ^ "." ^ type_name
@@ -34,6 +35,7 @@ let ocaml_type_of_field_type_and_options t optional =
   else type_string
 
 let rec parse_fun_of_field_type name = function
+  | FT_Empty -> failwith "Unexpected type in parse_fun_of_field_type: empty"
   | FT_Char -> "parse_char"
   | FT_Integer it ->
     Printf.sprintf "parse_uint%d" (int_size it)
@@ -61,6 +63,7 @@ let rec parse_fun_of_field_type name = function
     String.concat " " (((mk_module_prefix module_name) ^ "parse_" ^ type_name)::"~context:ctx"::parse_fun_args)
 
 let rec lwt_parse_fun_of_field_type name = function
+  | FT_Empty -> failwith "Unexpected type in lwt_parse_fun_of_field_type: empty"
   | FT_Char -> "lwt_parse_char"
   | FT_Integer it ->
     Printf.sprintf "lwt_parse_uint%d" (int_size it)
@@ -90,6 +93,7 @@ let rec lwt_parse_fun_of_field_type name = function
 
 
 let rec dump_fun_of_field_type = function
+  | FT_Empty -> failwith "Unexpected type in dump_fun_of_field_type: empty"
   | FT_Char -> "dump_char"
   | FT_Integer it -> Printf.sprintf "dump_uint%d" (int_size it)
 
@@ -112,6 +116,7 @@ let rec dump_fun_of_field_type = function
   | FT_Custom (module_name, type_name, _) -> (mk_module_prefix module_name) ^ "dump_" ^ type_name
 
 let rec print_fun_of_field_type = function
+  | FT_Empty -> failwith "Unexpected type in print_fun_of_field_type: empty"
   | FT_Char -> "print_char"
   | FT_Integer it -> Printf.sprintf "print_uint %d" (int_size it)
 
@@ -132,8 +137,10 @@ let rec print_fun_of_field_type = function
   | FT_Custom (module_name, type_name, _) -> (mk_module_prefix module_name) ^ "print_" ^ type_name
 
 
+let remove_empty_fields fields = List.filter (fun (_, ft, _) -> ft <> FT_Empty) fields
 
-let mk_record_desc_type (name, fields) =
+let mk_record_desc_type (name, raw_fields) =
+  let fields = remove_empty_fields raw_fields in
   if fields = []
   then Printf.printf "type %s = unit\n" name
   else begin
@@ -145,7 +152,8 @@ let mk_record_desc_type (name, fields) =
     print_endline "}\n\n"
   end
 
-let mk_record_parse_fun (name, fields) =
+let mk_record_parse_fun (name, raw_fields) =
+  let fields = remove_empty_fields raw_fields in
   if fields = []
   then Printf.printf "let parse_%s ?context:(ctx=None) input = ()\n" name
   else begin
@@ -165,7 +173,8 @@ let mk_record_parse_fun (name, fields) =
     print_endline "  }\n"
   end
 
-let mk_record_lwt_parse_fun (name, fields) =
+let mk_record_lwt_parse_fun (name, raw_fields) =
+  let fields = remove_empty_fields raw_fields in
   if fields = []
   then Printf.printf "let lwt_parse_%s ?context:(ctx=None) input = return ()\n" name
   else begin
@@ -186,7 +195,8 @@ let mk_record_lwt_parse_fun (name, fields) =
     print_endline "  }\n"
   end
 
-let mk_record_dump_fun (name, fields) =
+let mk_record_dump_fun (name, raw_fields) =
+  let fields = remove_empty_fields raw_fields in
   if fields = []
   then Printf.printf "let dump_%s input = \"\"\n" name
   else begin
@@ -194,11 +204,11 @@ let mk_record_dump_fun (name, fields) =
     let dump_aux (fn, ft, fo) =
       if fo
       then begin
-	(Printf.sprintf "  begin\n") ^
-	(Printf.sprintf "    match %s.%s with\n" name fn) ^
-	(Printf.sprintf "      | None -> \"\"\n") ^
-	(Printf.sprintf "      | Some x -> %s x\n" (dump_fun_of_field_type ft)) ^
-	(Printf.sprintf "  end")
+        (Printf.sprintf "  begin\n") ^
+        (Printf.sprintf "    match %s.%s with\n" name fn) ^
+        (Printf.sprintf "      | None -> \"\"\n") ^
+        (Printf.sprintf "      | Some x -> %s x\n" (dump_fun_of_field_type ft)) ^
+        (Printf.sprintf "  end")
       end
       else Printf.sprintf "  %s %s.%s" (dump_fun_of_field_type ft) name fn
     in
@@ -206,7 +216,8 @@ let mk_record_dump_fun (name, fields) =
     print_endline "\n"
   end
 
-let mk_record_print_fun (name, fields) =
+let mk_record_print_fun (name, raw_fields) =
+  let fields = remove_empty_fields raw_fields in
   if fields = []
   then begin
     Printf.printf "let print_%s indent name %s =\n" name name;
@@ -215,9 +226,9 @@ let mk_record_print_fun (name, fields) =
     let print_aux (fn, ft, fo) =
       if fo
       then begin
-	(Printf.sprintf "  begin\n") ^
+        (Printf.sprintf "  begin\n") ^
         (Printf.sprintf "    match %s.%s with\n" name fn) ^
-	(Printf.sprintf "      | None -> \"\"\n") ^
+        (Printf.sprintf "      | None -> \"\"\n") ^
         (Printf.sprintf "      | Some x -> %s new_indent \"%s\" x\n" (print_fun_of_field_type ft) (quote_string fn)) ^
         (Printf.sprintf "  end")
       end
@@ -247,7 +258,9 @@ let mk_choice_type (name, _, _, choices, unparsed_cons, default_enrich) =
   Printf.printf "let enrich_%s = ref %s\n\n" name (string_of_bool default_enrich);
   Printf.printf "type %s =\n" name;
   let aux (_, cons, choice_type) =
-    Printf.printf "  | %s of %s\n" cons (ocaml_type_of_field_type choice_type)
+    match choice_type with
+    | FT_Empty -> Printf.printf "  | %s\n" cons
+    | _ -> Printf.printf "  | %s of %s\n" cons (ocaml_type_of_field_type choice_type)
   in
   List.iter aux choices;
   Printf.printf "  | %s of string\n\n" unparsed_cons
@@ -262,12 +275,17 @@ let mk_choice_parse_fun do_lwt (name, discr_module, discr, choices, unparsed_con
   in
 
   let mk_line (discr_value, cons, choice_type) =
-    if do_lwt then
-      Printf.printf "      | %s%s -> %s input >>= fun x -> return (%s x)\n"
-	(mk_module_prefix discr_module) discr_value (lwt_parse_fun_of_field_type discr_value choice_type) cons
-    else
-      Printf.printf "      | %s%s -> %s (%s input)\n"
-	(mk_module_prefix discr_module) discr_value cons (parse_fun_of_field_type discr_value choice_type)
+    let value = match do_lwt, choice_type with
+      | true, FT_Empty -> Printf.sprintf "return %s" cons
+      | true, _ ->
+        Printf.sprintf "%s input >>= fun x -> return (%s x)"
+          (lwt_parse_fun_of_field_type discr_value choice_type) cons
+      | false, FT_Empty -> cons
+      | false, _ ->
+        Printf.sprintf "%s (%s input)"
+          cons (parse_fun_of_field_type discr_value choice_type)
+    in
+      Printf.printf "      | %s%s -> %s\n" (mk_module_prefix discr_module) discr_value value
   and mk_default unparsed_cons =
     if do_lwt then Printf.sprintf "lwt_parse_rem_string \"%s\" input >>= fun x -> return (%s x)" (quote_string name) unparsed_cons
     else Printf.sprintf "%s (parse_rem_string input)" unparsed_cons
@@ -291,16 +309,18 @@ let mk_choice_parse_fun do_lwt (name, discr_module, discr, choices, unparsed_con
 
 let mk_choice_dump_fun (name, _, _, choices, unparsed_cons, _) =
   Printf.printf "let dump_%s = function\n" name;
-  let aux (_, cons, choice_type) =
-    Printf.printf "  | %s x -> %s x\n" cons (dump_fun_of_field_type choice_type)
+  let aux (_, cons, choice_type) = match choice_type with
+    | FT_Empty -> Printf.printf "  | %s -> \"\"\n" cons
+    | _ -> Printf.printf "  | %s x -> %s x\n" cons (dump_fun_of_field_type choice_type)
   in
   List.iter aux choices;
   Printf.printf "  | %s s -> s\n\n" unparsed_cons
 
 let mk_choice_print_fun (name, _, _, choices, unparsed_cons, _) =
   Printf.printf "let print_%s indent name = function\n" name;
-  let aux (_, cons, choice_type) =
-    Printf.printf "  | %s x -> %s indent name x\n" cons (print_fun_of_field_type choice_type)
+  let aux (_, cons, choice_type) = match choice_type with
+    | FT_Empty -> Printf.printf "  | %s -> print_string indent name \"\"\n" cons
+    | _ -> Printf.printf "  | %s x -> %s indent name x\n" cons (print_fun_of_field_type choice_type)
   in
   List.iter aux choices;
   Printf.printf "  | %s s -> print_binstring indent name s\n\n" unparsed_cons

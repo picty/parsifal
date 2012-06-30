@@ -13,8 +13,9 @@ let print_enum string_of_val int_of_val nchars indent name v =
 
 (* String printing *)
 
-let print_string indent name s =
-  Printf.sprintf "%s%s: \"%s\"\n" indent name (Common.quote_string s)
+let print_string indent name = function
+  | "" -> Printf.sprintf "%s%s\n" indent name
+  | s  -> Printf.sprintf "%s%s: \"%s\"\n" indent name (Common.quote_string s)
 
 let print_binstring indent name s =
   Printf.sprintf "%s%s: %s\n" indent name (Common.hexdump s)
