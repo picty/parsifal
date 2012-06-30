@@ -1,0 +1,395 @@
+
+
+
+
+
+
+Network Working Group                                           M. Badra
+Request for Comments: 5487                         CNRS/LIMOS Laboratory
+Category: Standards Track                                     March 2009
+
+
+               Pre-Shared Key Cipher Suites for TLS with
+                SHA-256/384 and AES Galois Counter Mode
+
+Status of This Memo
+
+   This document specifies an Internet standards track protocol for the
+   Internet community, and requests discussion and suggestions for
+   improvements.  Please refer to the current edition of the "Internet
+   Official Protocol Standards" (STD 1) for the standardization state
+   and status of this protocol.  Distribution of this memo is unlimited.
+
+Copyright Notice
+
+   Copyright (c) 2009 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents in effect on the date of
+   publication of this document (http://trustee.ietf.org/license-info).
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.
+
+   This document may contain material from IETF Documents or IETF
+   Contributions published or made publicly available before November
+   10, 2008.  The person(s) controlling the copyright in some of this
+   material may not have granted the IETF Trust the right to allow
+   modifications of such material outside the IETF Standards Process.
+   Without obtaining an adequate license from the person(s) controlling
+   the copyright in such materials, this document may not be modified
+   outside the IETF Standards Process, and derivative works of it may
+   not be created outside the IETF Standards Process, except to format
+   it for publication as an RFC or to translate it into languages other
+   than English.
+
+Abstract
+
+   RFC 4279 and RFC 4785 describe pre-shared key cipher suites for
+   Transport Layer Security (TLS).  However, all those cipher suites use
+   SHA-1 in their Message Authentication Code (MAC) algorithm.  This
+   document describes a set of pre-shared key cipher suites for TLS that
+   uses stronger digest algorithms (i.e., SHA-256 or SHA-384) and
+   another set that uses the Advanced Encryption Standard (AES) in
+   Galois Counter Mode (GCM).
+
+
+
+Badra                       Standards Track                     [Page 1]
+
+RFC 5487              TLS PSK New MAC and AES-GCM             March 2009
+
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . . . 2
+     1.1.  Applicability Statement . . . . . . . . . . . . . . . . . . 3
+     1.2.  Conventions Used in This Document . . . . . . . . . . . . . 3
+   2.  PSK, DHE_PSK, and RSA_PSK Key Exchange Algorithms with
+       AES-GCM . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+   3.  PSK, DHE_PSK, and RSA_PSK Key Exchange with SHA-256/384 . . . . 4
+     3.1.  PSK Key Exchange Algorithm with SHA-256/384 . . . . . . . . 4
+     3.2.  DHE_PSK Key Exchange Algorithm with SHA-256/384 . . . . . . 5
+     3.3.  RSA_PSK Key Exchange Algorithm with SHA-256/384 . . . . . . 5
+   4.  Security Considerations . . . . . . . . . . . . . . . . . . . . 5
+   5.  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 5
+   6.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . 6
+   7.  References  . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+     7.1.  Normative References  . . . . . . . . . . . . . . . . . . . 6
+     7.2.  Informative References  . . . . . . . . . . . . . . . . . . 7
+
+1.  Introduction
+
+   The benefits of pre-shared symmetric-key vs. public-/private-key pair
+   based authentication for the key exchange in TLS have been explained
+   in the Introduction of [RFC4279].  This document leverages the
+   already defined algorithms for the application of newer, generally
+   regarded stronger, cryptographic primitives and building blocks.
+
+   TLS 1.2 [RFC5246] adds support for authenticated encryption with
+   additional data (AEAD) cipher modes [RFC5116].  This document
+   describes the use of Advanced Encryption Standard [AES] in Galois
+   Counter Mode [GCM] (AES-GCM) with various pre-shared key (PSK)
+   authenticated key exchange mechanisms ([RFC4279] and [RFC4785]) in
+   cipher suites for TLS.
+
+   This document also specifies PSK cipher suites for TLS that replace
+   SHA-1 by SHA-256 or SHA-384 [SHS].  RFC 4279 [RFC4279] and RFC 4785
+   [RFC4785] describe PSK cipher suites for TLS.  However, all of the
+   RFC 4279 and the RFC 4785 cipher suites use HMAC-SHA1 as their MAC
+   algorithm.  Due to recent analytic work on SHA-1 [Wang05], the IETF
+   is gradually moving away from SHA-1 and towards stronger hash
+   algorithms.
+
+   Related TLS cipher suites with key exchange algorithms that are
+   authenticated using public/private key pairs have recently been
+   specified:
+
+   o  RSA-, DSS-, and Diffie-Hellman-based cipher suites in [RFC5288],
+      and
+
+
+
+
+Badra                       Standards Track                     [Page 2]
+
+RFC 5487              TLS PSK New MAC and AES-GCM             March 2009
+
+
+   o  ECC-based cipher suites with SHA-256/384 and AES-GCM in [RFC5289].
+
+   The reader is expected to become familiar with these two memos prior
+   to studying this document.
+
+1.1.  Applicability Statement
+
+   The cipher suites defined in Section 3 can be negotiated, whatever
+   the negotiated TLS version is.
+
+   The cipher suites defined in Section 2 can be negotiated in TLS
+   version 1.2 or higher.
+
+   The applicability statement in [RFC4279] applies to this document as
+   well.
+
+1.2.  Conventions Used in This Document
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in [RFC2119].
+
+2.  PSK, DHE_PSK, and RSA_PSK Key Exchange Algorithms with AES-GCM
+
+   The following six cipher suites use the new authenticated encryption
+   modes defined in TLS 1.2 with AES in Galois Counter Mode [GCM].  The
+   cipher suites with the DHE_PSK key exchange algorithm
+   (TLS_DHE_PSK_WITH_AES_128_GCM_SHA256 and
+   TLS_DHE_PSK_WITH_AES_256_GCM_SHA348) provide Perfect Forward Secrecy
+   (PFS).
+
+      CipherSuite TLS_PSK_WITH_AES_128_GCM_SHA256        = {0x00,0xA8};
+      CipherSuite TLS_PSK_WITH_AES_256_GCM_SHA384        = {0x00,0xA9};
+      CipherSuite TLS_DHE_PSK_WITH_AES_128_GCM_SHA256    = {0x00,0xAA};
+      CipherSuite TLS_DHE_PSK_WITH_AES_256_GCM_SHA384    = {0x00,0xAB};
+      CipherSuite TLS_RSA_PSK_WITH_AES_128_GCM_SHA256    = {0x00,0xAC};
+      CipherSuite TLS_RSA_PSK_WITH_AES_256_GCM_SHA384    = {0x00,0xAD};
+
+   These cipher suites use authenticated encryption with additional data
+   (AEAD) algorithms, AEAD_AES_128_GCM and AEAD_AES_256_GCM, as
+   described in RFC 5116.  GCM is used as described in [RFC5288].
+
+   The PSK, DHE_PSK, and RSA_PSK key exchanges are performed as defined
+   in [RFC4279].
+
+
+
+
+
+
+
+Badra                       Standards Track                     [Page 3]
+
+RFC 5487              TLS PSK New MAC and AES-GCM             March 2009
+
+
+   The Pseudo-Random Function (PRF) algorithms SHALL be as follows:
+
+   o  For cipher suites ending with _SHA256, the PRF is the TLS PRF
+      [RFC5246] with SHA-256 as the hash function.
+
+   o  For cipher suites ending with _SHA384, the PRF is the TLS PRF
+      [RFC5246] with SHA-384 as the hash function.
+
+   Implementations MUST send a TLS Alert 'bad_record_mac' for all types
+   of failures encountered in processing the AES-GCM algorithm.
+
+3.  PSK, DHE_PSK, and RSA_PSK Key Exchange with SHA-256/384
+
+   The first two cipher suites described in each of the following three
+   sections use AES [AES] in Cipher Block Chaining (CBC) mode [MODES]
+   for data confidentiality, whereas the other two cipher suites do not
+   provide data confidentiality; all cipher suites provide integrity
+   protection and authentication using HMAC-based MACs.
+
+3.1.  PSK Key Exchange Algorithm with SHA-256/384
+
+      CipherSuite TLS_PSK_WITH_AES_128_CBC_SHA256        = {0x00,0xAE};
+      CipherSuite TLS_PSK_WITH_AES_256_CBC_SHA384        = {0x00,0xAF};
+      CipherSuite TLS_PSK_WITH_NULL_SHA256               = {0x00,0xB0};
+      CipherSuite TLS_PSK_WITH_NULL_SHA384               = {0x00,0xB1};
+
+   The above four cipher suites are the same as the corresponding cipher
+   suites in RFC 4279 and RFC 4785 (with names ending in "_SHA" in place
+   of "_SHA256" or "_SHA384"), except for the hash and PRF algorithms,
+   as explained below.
+
+   o  For cipher suites with names ending in "_SHA256":
+
+      *  The MAC is HMAC [RFC2104] with SHA-256 as the hash function.
+
+      *  When negotiated in a version of TLS prior to 1.2, the PRF from
+         that version is used; otherwise, the PRF is the TLS PRF
+         [RFC5246] with SHA-256 as the hash function.
+
+   o  For cipher suites with names ending in "_SHA384":
+
+      *  The MAC is HMAC [RFC2104] with SHA-384 as the hash function.
+
+      *  When negotiated in a version of TLS prior to 1.2, the PRF from
+         that version is used; otherwise, the PRF is the TLS PRF
+         [RFC5246] with SHA-384 as the hash function.
+
+
+
+
+
+Badra                       Standards Track                     [Page 4]
+
+RFC 5487              TLS PSK New MAC and AES-GCM             March 2009
+
+
+3.2.  DHE_PSK Key Exchange Algorithm with SHA-256/384
+
+      CipherSuite TLS_DHE_PSK_WITH_AES_128_CBC_SHA256    = {0x00,0xB2};
+      CipherSuite TLS_DHE_PSK_WITH_AES_256_CBC_SHA384    = {0x00,0xB3};
+      CipherSuite TLS_DHE_PSK_WITH_NULL_SHA256           = {0x00,0xB4};
+      CipherSuite TLS_DHE_PSK_WITH_NULL_SHA384           = {0x00,0xB5};
+
+   The above four cipher suites are the same as the corresponding cipher
+   suites in RFC 4279 and RFC 4785 (with names ending in "_SHA" in place
+   of "_SHA256" or "_SHA384"), except for the hash and PRF algorithms,
+   as explained in Section 3.1.
+
+3.3.  RSA_PSK Key Exchange Algorithm with SHA-256/384
+
+      CipherSuite TLS_RSA_PSK_WITH_AES_128_CBC_SHA256    = {0x00,0xB6};
+      CipherSuite TLS_RSA_PSK_WITH_AES_256_CBC_SHA384    = {0x00,0xB7};
+      CipherSuite TLS_RSA_PSK_WITH_NULL_SHA256           = {0x00,0xB8};
+      CipherSuite TLS_RSA_PSK_WITH_NULL_SHA384           = {0x00,0xB9};
+
+   The above four cipher suites are the same as the corresponding cipher
+   suites in RFC 4279 and RFC 4785 (with names ending in "_SHA" in place
+   of "_SHA256" or "_SHA384"), except for the hash and PRF algorithms,
+   as explained in Section 3.1.
+
+4.  Security Considerations
+
+   The security considerations in [RFC4279], [RFC4785], and [RFC5288]
+   apply to this document as well.  In particular, as authentication-
+   only cipher suites (with no encryption) defined here do not support
+   confidentiality, care should be taken not to send sensitive
+   information (such as passwords) over connections protected with one
+   of the cipher suites with NULL encryption defined in this document.
+
+5.  IANA Considerations
+
+   IANA has assigned the following values for the cipher suites defined
+   in this document:
+
+      CipherSuite TLS_PSK_WITH_AES_128_GCM_SHA256        = {0x00,0xA8};
+      CipherSuite TLS_PSK_WITH_AES_256_GCM_SHA384        = {0x00,0xA9};
+      CipherSuite TLS_DHE_PSK_WITH_AES_128_GCM_SHA256    = {0x00,0xAA};
+      CipherSuite TLS_DHE_PSK_WITH_AES_256_GCM_SHA384    = {0x00,0xAB};
+      CipherSuite TLS_RSA_PSK_WITH_AES_128_GCM_SHA256    = {0x00,0xAC};
+      CipherSuite TLS_RSA_PSK_WITH_AES_256_GCM_SHA384    = {0x00,0xAD};
+      CipherSuite TLS_PSK_WITH_AES_128_CBC_SHA256        = {0x00,0xAE};
+      CipherSuite TLS_PSK_WITH_AES_256_CBC_SHA384        = {0x00,0xAF};
+      CipherSuite TLS_PSK_WITH_NULL_SHA256               = {0x00,0xB0};
+      CipherSuite TLS_PSK_WITH_NULL_SHA384               = {0x00,0xB1};
+
+
+
+Badra                       Standards Track                     [Page 5]
+
+RFC 5487              TLS PSK New MAC and AES-GCM             March 2009
+
+
+      CipherSuite TLS_DHE_PSK_WITH_AES_128_CBC_SHA256    = {0x00,0xB2};
+      CipherSuite TLS_DHE_PSK_WITH_AES_256_CBC_SHA384    = {0x00,0xB3};
+      CipherSuite TLS_DHE_PSK_WITH_NULL_SHA256           = {0x00,0xB4};
+      CipherSuite TLS_DHE_PSK_WITH_NULL_SHA384           = {0x00,0xB5};
+      CipherSuite TLS_RSA_PSK_WITH_AES_128_CBC_SHA256    = {0x00,0xB6};
+      CipherSuite TLS_RSA_PSK_WITH_AES_256_CBC_SHA384    = {0x00,0xB7};
+      CipherSuite TLS_RSA_PSK_WITH_NULL_SHA256           = {0x00,0xB8};
+      CipherSuite TLS_RSA_PSK_WITH_NULL_SHA384           = {0x00,0xB9};
+
+6.  Acknowledgments
+
+   This document borrows from [RFC5289].  The author appreciates Alfred
+   Hoenes for his detailed review and effort on resolving issues in
+   discussion.  The author would like also to acknowledge Ibrahim
+   Hajjeh, Simon Josefsson, Hassnaa Moustafa, Joseph Salowey, and Pascal
+   Urien for their reviews of the content of the document.
+
+7.  References
+
+7.1.  Normative References
+
+   [AES]      National Institute of Standards and Technology,
+              "Specification for the Advanced Encryption Standard
+              (AES)", FIPS 197, November 2001.
+
+   [GCM]      National Institute of Standards and Technology,
+              "Recommendation for Block Cipher Modes of Operation:
+              Galois/Counter Mode (GCM) for Confidentiality and
+              Authentication", SP 800-38D, November 2007.
+
+   [MODES]    National Institute of Standards and Technology,
+              "Recommendation for Block Cipher Modes of Operation -
+              Methods and Techniques", SP 800-38A, December 2001.
+
+   [RFC2104]  Krawczyk, H., Bellare, M., and R. Canetti, "HMAC: Keyed-
+              Hashing for Message Authentication", RFC 2104,
+              February 1997.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC4279]  Eronen, P. and H. Tschofenig, "Pre-Shared Key Ciphersuites
+              for Transport Layer Security (TLS)", RFC 4279,
+              December 2005.
+
+   [RFC4785]  Blumenthal, U. and P. Goel, "Pre-Shared Key (PSK)
+              Ciphersuites with NULL Encryption for Transport Layer
+              Security (TLS)", RFC 4785, January 2007.
+
+
+
+Badra                       Standards Track                     [Page 6]
+
+RFC 5487              TLS PSK New MAC and AES-GCM             March 2009
+
+
+   [RFC5116]  McGrew, D., "An Interface and Algorithms for Authenticated
+              Encryption", RFC 5116, January 2008.
+
+   [RFC5246]  Dierks, T. and E. Rescorla, "The Transport Layer Security
+              (TLS) Protocol Version 1.2", RFC 5246, August 2008.
+
+   [RFC5288]  Salowey, J., Choudhury, A., and D. McGrew, "AES Galois
+              Counter Mode (GCM) Cipher Suites for TLS", RFC 5288,
+              August 2008.
+
+   [SHS]      National Institute of Standards and Technology, "Secure
+              Hash Standard", FIPS 180-2, August 2002.
+
+7.2.  Informative References
+
+   [RFC5289]  Rescorla, E., "TLS Elliptic Curve Cipher Suites with SHA-
+              256/384 and AES Galois Counter Mode (GCM)", RFC 5289,
+              August 2008.
+
+   [Wang05]   Wang, X., Yin, Y., and H. Yu, "Finding Collisions in the
+              Full SHA-1", CRYPTO 2005, August 2005.
+
+Author's Address
+
+   Mohamad Badra
+   CNRS/LIMOS Laboratory
+   Campus de cezeaux, Bat. ISIMA
+   Aubiere  63170
+   France
+
+   EMail: badra@isima.fr
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Badra                       Standards Track                     [Page 7]
+

@@ -1,0 +1,149 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<?xml-stylesheet type="text/xsl" href="tls-extensiontype-values.xsl"?>
+<?oxygen RNGSchema="tls-extensiontype-values.rng" type="xml"?>
+<registry xmlns="http://www.iana.org/assignments" id="tls-extensiontype-values">
+  <title>Transport Layer Security (TLS) Extensions</title>
+  <created>2005-11-15</created>
+  <updated>2012-02-09</updated>
+  <registry id="tls-extensiontype-values-1">
+    <title>ExtensionType Values</title>
+    <xref type="rfc" data="rfc5246"/>
+    <registration_rule>IETF Consensus</registration_rule>
+    <record>
+      <value>0</value>
+      <name>server_name</name>
+      <xref type="rfc" data="rfc6066"/>
+    </record>
+    <record>
+      <value>1</value>
+      <name>max_fragment_length</name>
+      <xref type="rfc" data="rfc6066"/>
+    </record>
+    <record>
+      <value>2</value>
+      <name>client_certificate_url</name>
+      <xref type="rfc" data="rfc6066"/>
+    </record>
+    <record>
+      <value>3</value>
+      <name>trusted_ca_keys</name>
+      <xref type="rfc" data="rfc6066"/>
+    </record>
+    <record>
+      <value>4</value>
+      <name>truncated_hmac</name>
+      <xref type="rfc" data="rfc6066"/>
+    </record>
+    <record>
+      <value>5</value>
+      <name>status_request</name>
+      <xref type="rfc" data="rfc6066"/>
+    </record>
+    <record>
+      <value>6</value>
+      <name>user_mapping</name>
+      <xref type="rfc" data="rfc4681"/>
+    </record>
+    <record>
+      <value>7</value>
+      <name>client_authz</name>
+      <xref type="rfc" data="rfc5878"/>
+    </record>
+    <record>
+      <value>8</value>
+      <name>server_authz</name>
+      <xref type="rfc" data="rfc5878"/>
+    </record>
+    <record>
+      <value>9</value>
+      <name>cert_type</name>
+      <xref type="rfc" data="rfc6091"/>
+    </record>
+    <record>
+      <value>10</value>
+      <name>elliptic_curves</name>
+      <xref type="rfc" data="rfc4492"/>
+    </record>
+    <record>
+      <value>11</value>
+      <name>ec_point_formats</name>
+      <xref type="rfc" data="rfc4492"/>
+    </record>
+    <record>
+      <value>12</value>
+      <name>srp</name>
+      <xref type="rfc" data="rfc5054"/>
+    </record>
+    <record>
+      <value>13</value>
+      <name>signature_algorithms</name>
+      <xref type="rfc" data="rfc5246"/>
+    </record>
+    <record>
+      <value>14</value>
+      <name>use_srtp</name>
+      <xref type="rfc" data="rfc5764"/>
+    </record>
+    <record>
+      <value>15</value>
+      <name>heartbeat</name>
+      <xref type="rfc" data="rfc6520"/>
+    </record>
+    <record>
+      <value>16-34</value>
+      <name>Unassigned</name>
+    </record>
+    <record>
+      <value>35</value>
+      <name>SessionTicket TLS</name>
+      <xref type="rfc" data="rfc4507"/>
+    </record>
+    <record>
+      <value>36-65280</value>
+      <name>Unassigned</name>
+    </record>
+    <record>
+      <value>65281</value>
+      <name>renegotiation_info</name>
+      <xref type="rfc" data="rfc5746"/>
+    </record>
+    <record>
+      <value>65282-65535</value>
+      <name>Unassigned</name>
+    </record>
+  </registry>
+  <registry id="tls-extensiontype-values-2">
+    <title>TLS Certificate Types</title>
+    <xref type="rfc" data="rfc6091"/>
+    <record>
+      <value>0-223</value>
+      <registration_rule>RFC Required</registration_rule>
+    </record>
+    <record>
+      <value>224-255</value>
+      <registration_rule>Reserved for Private Use</registration_rule>
+    </record>
+  </registry>
+  <registry id="tls-extensiontype-values-3">
+    <record>
+      <value>0</value>
+      <description>X.509</description>
+      <xref type="rfc" data="rfc6091"/>
+    </record>
+    <record>
+      <value>1</value>
+      <description>OpenPGP</description>
+      <xref type="rfc" data="rfc6091"/>
+    </record>
+    <record>
+      <value>2-223</value>
+      <description>Unassigned</description>
+    </record>
+    <record>
+      <value>224-255</value>
+      <description>Reserved for Private Use</description>
+      <xref type="rfc" data="rfc6091"/>
+    </record>
+  </registry>
+  <people/>
+</registry>

@@ -1,3 +1,15 @@
+(* TODO *)
+(* - EC Named Curve Registry *)
+(* - EC Point Format Registry *)
+(* - EC Curve Type Registry *)
+(* - TLS Supplemental Data Formats (SupplementalDataType) *)
+(* - TLS UserMappingType Values *)
+(* - TLS SignatureAlgorithm Registry *)
+(* - TLS Authorization Data Formats *)
+(* - Heartbeat Message Types *)
+(* - Heartbeat Modes *)
+(* - TLS Certificates *)
+
 let tls_versions = [
   0x0002, "V_SSLv2", "SSLv2";
   0x0300, "V_SSLv3", "SSLv3";
@@ -20,31 +32,36 @@ let tls_alert_levels = [
 ]
 
 let tls_alert_types = [
-  0,  "AT_CloseNotify", "CloseNotify";
-  10, "AT_UnexpectedMessage", "UnexpectedMessage";
-  20, "AT_BadRecordMAC", "BadRecordMAC";
-  21, "AT_DecryptionFailed", "DecryptionFailed";   (* Reserved *)
-  22, "AT_RecordOverflow", "RecordOverflow";
-  30, "AT_DecompressionFailure", "DecompressionFailure";
-  40, "AT_HandshakeFailure", "HandshakeFailure";
-  41, "AT_NoCertificate", "NoCertificate";         (* Reserved *)
-  42, "AT_BadCertificate", "BadCertificate";
-  43, "AT_UnsupportedCertificate", "UnsupportedCertificate";
-  44, "AT_CertificateRevoked", "CertificateRevoked";
-  45, "AT_CertificateExpired", "CertificateExpired";
-  46, "AT_CertificateUnknown", "CertificateUnknown";
-  47, "AT_IllegalParameter", "IllegalParameter";
-  48, "AT_UnknownCA", "UnknownCA";
-  49, "AT_AccessDenied", "AccessDenied";
-  50, "AT_DecodeError", "DecodeError";
-  51, "AT_DecryptError", "DecryptError";
-  60, "AT_ExportRestriction", "ExportRestriction"; (* Reserved *)
-  70, "AT_ProtocolVersion", "ProtocolVersion";
-  71, "AT_InsufficientSecurity", "InsufficientSecurity";
-  80, "AT_InternalError", "InternalError";
-  90, "AT_UserCanceled", "UserCanceled";
-  100,"AT_NoRenegotiation", "NoRenegotiation";
-  110,"AT_UnsupportedExtension", "UnsupportedExtension";
+  0,   "AT_CloseNotify", "CloseNotify";
+  10,  "AT_UnexpectedMessage", "UnexpectedMessage";
+  20,  "AT_BadRecordMAC", "BadRecordMAC";
+  21,  "AT_DecryptionFailed", "DecryptionFailed";   (* Reserved *)
+  22,  "AT_RecordOverflow", "RecordOverflow";
+  30,  "AT_DecompressionFailure", "DecompressionFailure";
+  40,  "AT_HandshakeFailure", "HandshakeFailure";
+  41,  "AT_NoCertificate", "NoCertificate";         (* Reserved *)
+  42,  "AT_BadCertificate", "BadCertificate";
+  43,  "AT_UnsupportedCertificate", "UnsupportedCertificate";
+  44,  "AT_CertificateRevoked", "CertificateRevoked";
+  45,  "AT_CertificateExpired", "CertificateExpired";
+  46,  "AT_CertificateUnknown", "CertificateUnknown";
+  47,  "AT_IllegalParameter", "IllegalParameter";
+  48,  "AT_UnknownCA", "UnknownCA";
+  49,  "AT_AccessDenied", "AccessDenied";
+  50,  "AT_DecodeError", "DecodeError";
+  51,  "AT_DecryptError", "DecryptError";
+  60,  "AT_ExportRestriction", "ExportRestriction"; (* Reserved *)
+  70,  "AT_ProtocolVersion", "ProtocolVersion";
+  71,  "AT_InsufficientSecurity", "InsufficientSecurity";
+  80,  "AT_InternalError", "InternalError";
+  90,  "AT_UserCanceled", "UserCanceled";
+  100, "AT_NoRenegotiation", "NoRenegotiation";
+  110, "AT_UnsupportedExtension", "UnsupportedExtension";
+  111, "AT_CertificateUnobtainable", "CerttificateUnobtainable";
+  112, "AT_UnrecognizedName", "UnrecognizedName";
+  113, "AT_BadCertificateStatusResponse", "BadCertificateStatusResponse";
+  114, "AT_BadCertificateHashValue", "BadCertificateHashValue";
+  115, "AT_UnknownPSKIdentity", "UnknownPSKIdentity";
 ]
 
 let change_cipher_spec_values = [
@@ -55,6 +72,7 @@ let hs_message_types = [
   0,  "HT_HelloRequest", "HelloRequest";
   1,  "HT_ClientHello", "ClientHello";
   2,  "HT_ServerHello", "ServerHello";
+  3,  "HT_HelloVerifyRequest", "HelloVerifyRequest";
   4,  "HT_NewSessionTicket", "NewSessionTicket";
   11, "HT_Certificate", "Certificate";
   12, "HT_ServerKeyExchange", "ServerKeyExchange";
@@ -63,27 +81,9 @@ let hs_message_types = [
   15, "HT_CertificateVerify", "CertificateVerify";
   16, "HT_ClientKeyExchange", "ClientKeyExchange";
   20, "HT_Finished", "Finished";
-]
-
-let extension_types = [
-  0,  "HE_ServerName", "ServerName";
-  1,  "HE_MaxFragmentLength", "MaxFragmentLength";
-  2,  "HE_ClientCertificateURL", "ClientCertificateURL";
-  3,  "HE_TrustedCAKeys", "TrustedCAKeys";
-  4,  "HE_TruncatedMAC", "TruncatedMAC";
-  5,  "HE_StatusRequest", "StatusRequest";
-  6,  "HE_UserMapping", "UserMapping";
-  7,  "HE_ClientAuthz", "ClientAuthz";
-  8,  "HE_ServerAuthz", "ServerAuthz";
-  9,  "HE_CertType", "CertType";
-  10, "HE_EllipticCurves", "EllipticCurves";
-  11, "HE_ECPointFormats", "ECPointFormats";
-  12, "HE_SRP", "SRP";
-  13, "HE_SignatureAlgorithms", "SignatureAlgorithms";
-  14, "HE_UseSRTP", "UseSRTP";
-  15, "HE_Heartbeat", "Heartbeat";
-  35, "HE_SessionTicket", "SessionTicket";
-  65281, "HE_RenegotiationInfo", "RenegotiationInfo";
+  21, "HT_CertificateURL", "CertificateURL";
+  22, "HT_CertificateStatus", "CertificateStatus";
+  23, "HT_SupplementalData", "SupplementalData";
 ]
 
 let ciphersuites = [
@@ -396,6 +396,31 @@ let compression_methods = [
   1, "CM_Defalte", "Deflate";
 ]
 
+let extension_types = [
+  0,  "HE_ServerName", "ServerName";
+  1,  "HE_MaxFragmentLength", "MaxFragmentLength";
+  2,  "HE_ClientCertificateURL", "ClientCertificateURL";
+  3,  "HE_TrustedCAKeys", "TrustedCAKeys";
+  4,  "HE_TruncatedMAC", "TruncatedMAC";
+  5,  "HE_StatusRequest", "StatusRequest";
+  6,  "HE_UserMapping", "UserMapping";
+  7,  "HE_ClientAuthz", "ClientAuthz";
+  8,  "HE_ServerAuthz", "ServerAuthz";
+  9,  "HE_CertType", "CertType";
+  10, "HE_EllipticCurves", "EllipticCurves";
+  11, "HE_ECPointFormats", "ECPointFormats";
+  12, "HE_SRP", "SRP";
+  13, "HE_SignatureAlgorithms", "SignatureAlgorithms";
+  14, "HE_UseSRTP", "UseSRTP";
+  15, "HE_Heartbeat", "Heartbeat";
+  35, "HE_SessionTicket", "SessionTicket";
+  65281, "HE_RenegotiationInfo", "RenegotiationInfo";
+]
+
+let name_types = [
+  0, "NT_HostName", "HostName";
+]
+
 let client_certificate_types = [
   1,  "CCT_RSASign", "RSASign";
   2,  "CCT_DSSSign", "DSSSign";
@@ -404,6 +429,9 @@ let client_certificate_types = [
   5,  "CCT_RSAEphemeralDH", "RSAEphemeralDH";   (* RESERVED *)
   6,  "CCT_DSSEphemeralDH", "DSSEphemeralDH";   (* RESERVED *)
   20, "CCT_FortezzaDMS", "FortezzaDMS";         (* RESERVED *)
+  64, "CCT_ECDSASign", "ECDSASign";
+  65, "CCT_RSAFixedECDH", "RSAFixedECDH";
+  66, "CCT_ECDSAFixedECDH", "ECDSAFixedECDH";
 ]
 
 let hash_algorithms = [
@@ -437,6 +465,7 @@ let enums = [
   "ciphersuite", ciphersuites, UnknownVal "TLS_UnknownSuite";
   "extension_type", extension_types, UnknownVal "HE_Unknown";
   "compression_method", compression_methods, UnknownVal "CM_UnknownVal";
+  "name_type", name_types, UnknownVal "UnknownNameType";
 
   "client_certificate_type", client_certificate_types, UnknownVal "CCT_Unknown";
   "hash_algorithm", hash_algorithms, UnknownVal "HA_Unknown";

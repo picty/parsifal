@@ -1,3 +1,6 @@
+ - IANA TLS parameters
+   * http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xml
+   * http://www.iana.org/assignments/tls-parameters/tls-parameters.xml
  - TLS RFCs
    * TLS v1.2 : rfc5246
    * TLS v1.1 : rfc4346
