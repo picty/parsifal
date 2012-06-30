@@ -39,8 +39,9 @@ let rec forward state i o =
   lwt_parse_tls_record i >>= fun record ->
   print_string (print_tls_record "" state.name record);
   write_record o record >>= fun () ->
-  begin
-    match record.content_type, state.clear with
+  try
+    begin
+      match record.content_type, state.clear with
       | CT_Handshake, true ->
 	let hs_msg = parse_handshake_msg (input_of_string "Handshake" (dump_record_content record.record_content)) in
 	print_endline (print_handshake_msg "  " "Handshake content" hs_msg)
@@ -52,8 +53,9 @@ let rec forward state i o =
 	let hs_msg = parse_tls_alert (input_of_string "Alert" (dump_record_content record.record_content)) in
 	print_endline (print_tls_alert "  " "Alert content" hs_msg)
       | _ -> print_newline ()
-  end;
-  forward state i o
+    end;
+    forward state i o
+  with e -> fail e
 
 
 let new_socket () =
@@ -65,17 +67,23 @@ let remote_addr =
   let inet_addr = host_entry.Unix.h_addr_list.(0) in
   Unix.ADDR_INET (inet_addr, 443)
 
+let catcher = function
+  | ParsingException (e, i) ->
+    Printf.printf "%s in %s\n" (ParsingEngine.print_parsing_exception e)
+      (ParsingEngine.print_string_input i); flush Pervasives.stdout; return ()
+  | e -> print_endline (Printexc.to_string e); flush Pervasives.stdout; return ()
+
+
+
 let rec accept sock =
   Lwt_unix.accept sock >>= fun (inp, _) ->
-  ignore
-    (let out = new_socket () in
-     Lwt_unix.connect out remote_addr >>= fun () ->
-     let io = forward (empty_state "C->S") (input_of_fd "Client socket" inp) out in
-     let oi = forward (empty_state "S->C") (input_of_fd "Server socket" out) inp in
-     io >>= fun () -> oi >>= fun () ->
-     ignore (Lwt_unix.close out);
-     ignore (Lwt_unix.close inp);
-     Lwt.return ());
+  let out = new_socket () in
+  Lwt_unix.connect out remote_addr >>= fun () ->
+  let io = forward (empty_state "C->S") (input_of_fd "Client socket" inp) out in
+  let oi = forward (empty_state "S->C") (input_of_fd "Server socket" out) inp in
+  catch (fun () -> pick [io; oi]) catcher >>= fun () ->
+  ignore (Lwt_unix.close out);
+  ignore (Lwt_unix.close inp);
   accept sock
 
 let _ =
