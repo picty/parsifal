@@ -57,7 +57,7 @@ let handle_answer handle_hs handle_alert s =
 
   let rec parse_hs_msgs () =
     lwt_parse_handshake_msg ~context:(Some ctx) hs_lwt_in >>= fun hs_msg ->
-    match handle_hs hs_msg with
+    match handle_hs ctx hs_msg with
       | None -> parse_hs_msgs ()
       | Some x -> return (Some x)
   in
@@ -93,13 +93,16 @@ let write_record_by_chunks o record size =
   Lwt_list.iter_s (write_record o) recs
 
 
-let print_hs hs =
+let print_hs ctx hs =
   print_endline (print_handshake_msg "" "Handshake" hs);
-  if hs.handshake_type = HT_ServerHelloDone
-  then Some ()
-  else None
+  match hs.handshake_type, hs.handshake_content with
+  | HT_ServerHelloDone, _ -> Some ()
+  | _, ServerHello { ciphersuite = cs } ->
+    ctx.TlsContext.future.TlsContext.ciphersuite <- cs;
+    None
+  | _ -> None
 
-let print_cs hs =
+let print_cs _ hs =
   match hs.handshake_content with
     | ServerHello { ciphersuite = cs } ->
       print_endline (string_of_ciphersuite cs);
