@@ -32,7 +32,11 @@ type field_type =
 
 type field_desc = field_name * field_type * bool
 
-type record_description = string * field_desc list
+type record_option =
+  | RO_AddParseParameter of string
+  | RO_NoContextParameter
+
+type record_description = string * field_desc list * record_option list
 
 
 
@@ -49,8 +53,14 @@ type discriminator_type =
 (* Discrimating value, Constructor name, Constructor subtype (module + type name) *)
 type choice_desc = string * string * field_type
 
+type choice_option =
+  | CO_EnrichByDefault
+  | CO_ExhaustiveDiscriminatingVals
+  | CO_AddParseParameter of string
+  | CO_NoContextParameter
+
 (* Type name, Module containing the discriminating values, Discriminator, Choice list, Constructor if unparsed, Default value of the enrich ref *)
-type choice_description = string * string option * discriminator_type * choice_desc list * string * bool
+type choice_description = string * string option * discriminator_type * choice_desc list * string * choice_option list
 
 
 

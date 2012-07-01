@@ -139,7 +139,20 @@ let rec print_fun_of_field_type = function
 
 let remove_empty_fields fields = List.filter (fun (_, ft, _) -> ft <> FT_Empty) fields
 
-let mk_record_desc_type (name, raw_fields) =
+let extract_record_parse_params ro =
+  let aux accu = function
+    | RO_AddParseParameter p -> p::accu
+    |RO_NoContextParameter -> accu
+  in
+  let raw_param_list = List.fold_left aux [] ro in
+  let param_list =
+    if List.mem RO_NoContextParameter ro
+    then List.rev raw_param_list
+    else List.rev ("?context:(ctx=None)"::raw_param_list)
+  in String.concat " " param_list
+
+
+let mk_record_desc_type (name, raw_fields, _) =
   let fields = remove_empty_fields raw_fields in
   if fields = []
   then Printf.printf "type %s = unit\n" name
@@ -152,12 +165,13 @@ let mk_record_desc_type (name, raw_fields) =
     print_endline "}\n\n"
   end
 
-let mk_record_parse_fun (name, raw_fields) =
+let mk_record_parse_fun (name, raw_fields, record_options) =
+  let params = extract_record_parse_params record_options in
   let fields = remove_empty_fields raw_fields in
   if fields = []
-  then Printf.printf "let parse_%s ?context:(ctx=None) input = ()\n" name
+  then Printf.printf "let parse_%s %s input = ()\n" name params
   else begin
-    Printf.printf "let parse_%s ?context:(ctx=None) input =\n" name;
+    Printf.printf "let parse_%s %s input =\n" name params;
     let parse_aux (fn, ft, fo) =
       if fo
       then begin
@@ -173,12 +187,13 @@ let mk_record_parse_fun (name, raw_fields) =
     print_endline "  }\n"
   end
 
-let mk_record_lwt_parse_fun (name, raw_fields) =
+let mk_record_lwt_parse_fun (name, raw_fields, record_options) =
+  let params = extract_record_parse_params record_options in
   let fields = remove_empty_fields raw_fields in
   if fields = []
-  then Printf.printf "let lwt_parse_%s ?context:(ctx=None) input = return ()\n" name
+  then Printf.printf "let lwt_parse_%s %s input = return ()\n" name params
   else begin
-    Printf.printf "let lwt_parse_%s ?context:(ctx=None) input =\n" name;
+    Printf.printf "let lwt_parse_%s %s input =\n" name params;
     let parse_aux (fn, ft, _fo) =
       (* TODO: Really support optional fields *)
       Printf.printf "  %s input >>= fun _%s ->\n" (lwt_parse_fun_of_field_type fn ft) fn
@@ -195,7 +210,7 @@ let mk_record_lwt_parse_fun (name, raw_fields) =
     print_endline "  }\n"
   end
 
-let mk_record_dump_fun (name, raw_fields) =
+let mk_record_dump_fun (name, raw_fields, _) =
   let fields = remove_empty_fields raw_fields in
   if fields = []
   then Printf.printf "let dump_%s input = \"\"\n" name
@@ -216,7 +231,7 @@ let mk_record_dump_fun (name, raw_fields) =
     print_endline "\n"
   end
 
-let mk_record_print_fun (name, raw_fields) =
+let mk_record_print_fun (name, raw_fields, _) =
   let fields = remove_empty_fields raw_fields in
   if fields = []
   then begin
@@ -254,7 +269,23 @@ let handle_record_desc do_lwt (desc : record_description) =
 
 (* Choices functions *)
 
-let mk_choice_type (name, _, _, choices, unparsed_cons, default_enrich) =
+let extract_choice_parse_params ro =
+  let aux accu = function
+    | CO_AddParseParameter p -> p::accu
+    | CO_NoContextParameter
+    | CO_ExhaustiveDiscriminatingVals
+    | CO_EnrichByDefault -> accu
+  in
+  let raw_param_list = List.fold_left aux [] ro in
+  let param_list =
+    if List.mem CO_NoContextParameter ro
+    then List.rev raw_param_list
+    else List.rev ("?context:(ctx=None)"::raw_param_list)
+  in String.concat " " param_list
+
+
+let mk_choice_type (name, _, _, choices, unparsed_cons, choice_options) =
+  let default_enrich = List.mem CO_EnrichByDefault choice_options in
   Printf.printf "let enrich_%s = ref %s\n\n" name (string_of_bool default_enrich);
   Printf.printf "type %s =\n" name;
   let aux (_, cons, choice_type) =
@@ -265,8 +296,8 @@ let mk_choice_type (name, _, _, choices, unparsed_cons, default_enrich) =
   List.iter aux choices;
   Printf.printf "  | %s of string\n\n" unparsed_cons
 
-
-let mk_choice_parse_fun do_lwt (name, discr_module, discr, choices, unparsed_cons, _) =
+let mk_choice_parse_fun do_lwt (name, discr_module, discr, choices, unparsed_cons, choice_options) =
+  let params = extract_choice_parse_params choice_options in
   let fun_name = if do_lwt then "lwt_parse" else "parse" in
 
   let discr_arg = match discr with
@@ -291,7 +322,7 @@ let mk_choice_parse_fun do_lwt (name, discr_module, discr, choices, unparsed_con
     else Printf.sprintf "%s (parse_rem_string input)" unparsed_cons
   in
 
-  Printf.printf "let %s_%s ?context:(ctx=None) ?enrich:(enrich=false) %sinput =\n" fun_name name discr_arg;
+  Printf.printf "let %s_%s %s ?enrich:(enrich=false) %sinput =\n" fun_name name params discr_arg;
   Printf.printf "  if enrich || !enrich_%s then begin\n" name;
   begin
     match discr with
@@ -303,7 +334,8 @@ let mk_choice_parse_fun do_lwt (name, discr_module, discr, choices, unparsed_con
 	Printf.printf "    | Some context -> match %s with\n" discr_expr
   end;
   List.iter mk_line choices;
-  Printf.printf "      | _ -> %s\n" (mk_default unparsed_cons);
+  if not (List.mem CO_ExhaustiveDiscriminatingVals choice_options)
+  then Printf.printf "      | _ -> %s\n" (mk_default unparsed_cons);
   Printf.printf "  end else %s\n\n" (mk_default unparsed_cons)
 
 

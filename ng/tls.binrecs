@@ -114,31 +114,31 @@ let tls_record_d = [
 
 
 let descriptions = [
-  Record ("signature_and_hash_algorithm", signature_and_hash_algorithm_d);
+  Record ("signature_and_hash_algorithm", signature_and_hash_algorithm_d, []);
 
-  Record ("tls_alert",           tls_alert_d);
-  Record ("change_cipher_spec",  change_cipher_spec_d);
+  Record ("tls_alert",           tls_alert_d, []);
+  Record ("change_cipher_spec",  change_cipher_spec_d, []);
 
-  Record ("hello_request",       []);
+  Record ("hello_request",       [], []);
   Choice ("hello_extension_content",
-          Some "TlsEnums", Explicit ("extension_type"), hello_extension_content_c, "Unparsed_HelloExtension", true);
-  Record ("hello_extension",     hello_extension_d);
-  Record ("client_hello",        client_hello_d);
-  Record ("server_hello",        server_hello_d);
-  Record ("new_session_ticket",  new_session_ticket_d);
-  Record ("certificates",        certificates_d);
-  Record ("server_dh_params",    server_dh_params_d);
-  Record ("ske_dhe_params",      ske_dhe_params_d);
+          Some "TlsEnums", Explicit ("extension_type"), hello_extension_content_c, "Unparsed_HelloExtension", [CO_EnrichByDefault]);
+  Record ("hello_extension",     hello_extension_d, []);
+  Record ("client_hello",        client_hello_d, []);
+  Record ("server_hello",        server_hello_d, []);
+  Record ("new_session_ticket",  new_session_ticket_d, []);
+  Record ("certificates",        certificates_d, []);
+  Record ("server_dh_params",    server_dh_params_d, []);
+  Record ("ske_dhe_params",      ske_dhe_params_d, []);
   Choice ("server_key_exchange",
           Some "TlsContext", Implicit "TlsContext.extract_future_kx context",
-          server_key_exchange_c, "Unparsed_SKEContent", true);
-  Record ("certificate_request", certificate_request_d);
-  Record ("server_hello_done",   []);
+          server_key_exchange_c, "Unparsed_SKEContent", [CO_EnrichByDefault]);
+  Record ("certificate_request", certificate_request_d, []);
+  Record ("server_hello_done",   [], []);
   Choice ("handshake_content", 
-          Some "TlsEnums", Explicit ("handshake_type"), handshake_content_c, "Unparsed_HSContent", true);
-  Record ("handshake_msg",       handshake_msg_d);
+          Some "TlsEnums", Explicit ("handshake_type"), handshake_content_c, "Unparsed_HSContent", [CO_EnrichByDefault]);
+  Record ("handshake_msg",       handshake_msg_d, []);
 
   Choice ("record_content",
-          Some "TlsEnums", Explicit ("content_type"), record_content_c, "Unparsed_Record", false);
-  Record ("tls_record",          tls_record_d);
+          Some "TlsEnums", Explicit ("content_type"), record_content_c, "Unparsed_Record", []);
+  Record ("tls_record",          tls_record_d, []);
 ]

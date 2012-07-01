@@ -8,6 +8,8 @@ TODO
  - ASN.1: Clean up options in hd_asn1
 
  - Binrecs: Clean up options in hd_binrecs
+ - Binrecs: add options for fields (optional, change the value of context, remove Implicit/Explicit)
+ - Binrecs: add options for record descriptions (post-build checks)
 
  - Add a way to automagically enrich the context (tlsEngine with an automata)
  - Add a ciphersuite database
