@@ -1,30 +1,34 @@
 TODO
+ - Useful: write quick functions to open and read files with lwt_parse funs
+ - Useful: add a exact_parse_<obj> : string -> <obj> for top-level <obj> (one more option for Records/Choices/ASN.1)
+ - Useful: use lwt_parse_answer_dump and produce some easy statistics to confirm it works
+
  - ASN.1: handle constraints, optional fields, choices
  - ASN.1: Add UTCTime / ValidityTime handling (choices)
  - ASN.1: Add stg to have parse_distinguished_name (we need aliases for sequences of and sets of)
  - ASN.1: Add support for ObjectIdentifiers
  - ASN.1: Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
+ - ASN.1: Support extensions
+ - ASN.1: Parse certificates with all the previous features: RSA handling, DN.short, extensions
  - ASN.1: Add dump and print functions
  - ASN.1: Clean up options in hd_asn1
 
  - Binrecs: Clean up options in hd_binrecs
  - Binrecs: add options for fields (optional, change the value of context, remove Implicit/Explicit)
  - Binrecs: add options for record descriptions (post-build checks)
+ - TLS: use  the post-build feature to constrain a binrec (length of 2^14 in TlsRecord)
 
  - Add a way to automagically enrich the context (tlsEngine with an automata)
- - Add a ciphersuite database
- - Write the automata
+ - Add a ciphersuite database with useful informations
+ - Write the automata (client, server, transparent proxy, normalizing proxy)
  - Add SSLv2 support
- - Use lwt_parse_answer_dump and produce some easy statistics to confirm it works
 
  - Sort all the files present in AceSL-hg and co.
  - Add MakefileV6
  - Make directories (asn1, tls, baseEngines, .generated)
 
  - TLS: Describe Heartbeat messages
-
- - Add a way to constrain a binrec (length of 2^14 in TlsRecord)
- - Rethink the exception system?
+ - TLS: Add all the missing enums
 
  - Learn how to pretty print Caml code (and stop using Printf ;-))
 
