@@ -1,12 +1,14 @@
 open TlsEnums
 
+type direction = ClientToServer | ServerToClient
+
 type crypto_context = {
   mutable ciphersuite : TlsEnums.ciphersuite
 }
 
 type tls_context = {
-  present : crypto_context;
-  future : crypto_context;
+  mutable present : crypto_context;
+  mutable future : crypto_context;
 }
 
 type key_exchange_algorithm =

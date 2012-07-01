@@ -12,17 +12,32 @@ let change_cipher_spec_d = [
 
 (* Handshake records and choices *)
 
-let signature_and_hash_algorithm_d = [
-  "hash_algorithm", FT_Enum (IT_UInt8, "TlsEnums", "hash_algorithm"), false;
-  "signature_algorithm", FT_Enum (IT_UInt8, "TlsEnums", "signature_algorithm"), false;
+let sni_name_c = [
+  "NT_HostName", "HostName", FT_String (VarLen IT_UInt16, false);
+]
+
+let server_name_d = [
+  "sni_name_type", FT_Enum (IT_UInt8, "TlsEnums", "name_type"), false;
+  "sni_name", FT_Custom (None, "sni_name", ["_sni_name_type"]), false;
+]
+
+let server_name_content_c = [
+  "ClientToServer", "ClientServerName", FT_List (VarLen IT_UInt16, FT_Custom (None, "server_name", []));
+  "ServerToClient", "ServerServerName", FT_Empty;
 ]
 
 let hello_extension_content_c = [
+  "HE_ServerName", "ServerName", FT_Custom (None, "server_name_content", ["direction"]);
+  "HE_MaxFragmentLength", "MaxFragmentLength", FT_Integer IT_UInt8;
+  "HE_ClientCertificateURL", "ClientCertificateURL", FT_Empty;
+(* TODO "HE_TrustedCAKeys", "TrustedCAKeys", FT_?; *)
+  "HE_TruncatedMAC", "TruncatedMAC", FT_Empty;
+(* TODO: describe the other extensions! *)
 ]
 
 let hello_extension_d = [
   "extension_type", FT_Enum (IT_UInt16, "TlsEnums", "extension_type"), false;
-  "extension_data", FT_Container (IT_UInt16, FT_Custom (None, "hello_extension_content", ["_extension_type"])), false;
+  "extension_data", FT_Container (IT_UInt16, FT_Custom (None, "hello_extension_content", ["direction"; "_extension_type"])), false;
 ]
 
 let client_hello_d = [
@@ -31,7 +46,7 @@ let client_hello_d = [
   "client_session_id", FT_String (VarLen IT_UInt8, true), false;
   "ciphersuites", FT_List (VarLen IT_UInt16, FT_Enum (IT_UInt16, "TlsEnums", "ciphersuite")), false;
   "compression_methods", FT_List (VarLen IT_UInt8, FT_Enum (IT_UInt8, "TlsEnums", "compression_method")), false;
-  "client_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", [])), true;
+  "client_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", ["TlsContext.ClientToServer"])), true;
 ]
 
 let server_hello_d = [
@@ -40,7 +55,7 @@ let server_hello_d = [
   "server_session_id", FT_String (VarLen IT_UInt8, true), false;
   "ciphersuite", FT_Enum (IT_UInt16, "TlsEnums", "ciphersuite"), false;
   "compression_method", FT_Enum (IT_UInt8, "TlsEnums", "compression_method"), false;
-  "server_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", [])), true;
+  "server_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", ["TlsContext.ServerToClient"])), true;
 ]
 
 let new_session_ticket_d = [
@@ -70,6 +85,10 @@ let server_key_exchange_c = [
   "KX_DHE", "SKE_DHE", FT_Custom (None, "ske_dhe_params", []);
 ]
 
+let signature_and_hash_algorithm_d = [
+  "hash_algorithm", FT_Enum (IT_UInt8, "TlsEnums", "hash_algorithm"), false;
+  "signature_algorithm", FT_Enum (IT_UInt8, "TlsEnums", "signature_algorithm"), false;
+]
 
 let certificate_request_d = [
   "certificate_types", FT_Enum (IT_UInt8, "TlsEnums", "client_certificate_type"), false;
@@ -114,24 +133,34 @@ let tls_record_d = [
 
 
 let descriptions = [
-  Record ("signature_and_hash_algorithm", signature_and_hash_algorithm_d, []);
-
   Record ("tls_alert",           tls_alert_d, []);
   Record ("change_cipher_spec",  change_cipher_spec_d, []);
 
   Record ("hello_request",       [], []);
+
+  Choice ("sni_name",
+          Some "TlsEnums", Explicit ("name_type"), sni_name_c, "Unparsed_SNIName", [CO_EnrichByDefault]);
+  Record ("server_name",         server_name_d, []);
+  Choice ("server_name_content",
+          Some "TlsContext", Implicit "direction",
+          server_name_content_c, "Unparsed_ServerNameContent", [CO_EnrichByDefault; CO_AddParseParameter "direction"; CO_ExhaustiveDiscriminatingVals]);
   Choice ("hello_extension_content",
-          Some "TlsEnums", Explicit ("extension_type"), hello_extension_content_c, "Unparsed_HelloExtension", [CO_EnrichByDefault]);
-  Record ("hello_extension",     hello_extension_d, []);
+          Some "TlsEnums", Explicit ("extension_type"), hello_extension_content_c, "Unparsed_HelloExtension", [CO_EnrichByDefault; CO_AddParseParameter "direction"]);
+  Record ("hello_extension",     hello_extension_d, [RO_AddParseParameter "direction"]);
+
   Record ("client_hello",        client_hello_d, []);
   Record ("server_hello",        server_hello_d, []);
+
   Record ("new_session_ticket",  new_session_ticket_d, []);
   Record ("certificates",        certificates_d, []);
+
   Record ("server_dh_params",    server_dh_params_d, []);
   Record ("ske_dhe_params",      ske_dhe_params_d, []);
   Choice ("server_key_exchange",
           Some "TlsContext", Implicit "TlsContext.extract_future_kx context",
           server_key_exchange_c, "Unparsed_SKEContent", [CO_EnrichByDefault]);
+
+  Record ("signature_and_hash_algorithm", signature_and_hash_algorithm_d, []);
   Record ("certificate_request", certificate_request_d, []);
   Record ("server_hello_done",   [], []);
   Choice ("handshake_content", 
