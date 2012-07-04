@@ -1,4 +1,5 @@
 TODO
+ - Crypto: Add support for RSA / DSA, using Bigint for the moment?
  - Useful: write quick functions to open and read files with lwt_parse funs
  - Useful: add a exact_parse_<obj> : string -> <obj> for top-level <obj> (one more option for Records/Choices/ASN.1)
  - Useful: use lwt_parse_answer_dump and produce some easy statistics to confirm it works
@@ -18,6 +19,10 @@ TODO
  - Binrecs: add options for record descriptions (post-build checks)
  - TLS: use  the post-build feature to constrain a binrec (length of 2^14 in TlsRecord)
 
+ - Crypto: Add support for PRNG
+ - Crypto: Add support for hash functions, AES, CBC mode, etc.
+
+ - Tools: factor all the little programs when possible.
  - Add a way to automagically enrich the context (tlsEngine with an automata)
  - Add a ciphersuite database with useful informations
  - Write the automata (client, server, transparent proxy, normalizing proxy)
@@ -29,6 +34,8 @@ TODO
 
  - TLS: Describe Heartbeat messages
  - TLS: Add all the missing enums
+
+ - Tools: acu (AceSL Cert Util) to read certs / pubkeys / privkeys and manipulate them
 
  - Learn how to pretty print Caml code (and stop using Printf ;-))
 
