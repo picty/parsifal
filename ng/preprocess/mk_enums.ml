@@ -48,6 +48,13 @@ let mk_enum_of_int (name, enum, unknown) =
   end;
   print_newline ()
 
+let mk_enum_of_string (name, enum, _) =
+  Printf.printf "let %s_of_string = function\n" name;
+  let aux (_, ctor, n) = Printf.printf "  | \"%s\" -> %s\n" (quote_string n) ctor in
+  List.iter aux enum;
+  Printf.printf "  | _s -> %s_of_int (int_of_string _s)\n\n" name
+
+
 let mk_parse_dump_print_funs do_lwt (name, _, _) =
   Printf.printf "let parse_%s parse_int input = %s_of_int (parse_int input)\n" name name;
   if do_lwt
@@ -61,6 +68,7 @@ let handle_enum do_lwt (enum : enum) =
   mk_string_of_enum enum;
   mk_int_of_enum enum;
   mk_enum_of_int enum;
+  mk_enum_of_string enum;
   mk_parse_dump_print_funs do_lwt enum;
   print_newline ()
 
