@@ -16,6 +16,7 @@ open TlsEngine
    - Add a --retry option
    - Handle errors more smoothly
    - Add extensions
+   - Put 'a result_type and handle_answer logic in TlsEngine?
 *)
 
 
@@ -159,43 +160,40 @@ let catch_eof = function
 
 let handle_answer handle_hs handle_alert s =
   let ctx = TlsContext.empty_context () in
+  let hs_in = input_of_string "Handshake records" ""
+  and alert_in = input_of_string "Alert records" "" in
 
-  let hs_in, hs_out = Lwt_io.pipe ()
-  and alert_in,alert_out = Lwt_io.pipe () in
-  let hs_lwt_in = input_of_channel "Server handshake" hs_in
-  and alert_lwt_in = input_of_channel "Server alerts" alert_in in
+  let process_input parse_fun handle_fun input =
+    let saved_state = save_input input in
+    try
+      let parsed_msg = parse_fun input in
+      let res = handle_fun parsed_msg in
+      drop_used_string input;
+      res
+    with ParsingException _ ->
+      restore_input input saved_state;
+      NothingSoFar
+  in
 
   let rec read_answers () =
     lwt_parse_tls_record s >>= fun record ->
-    begin
-      match record.content_type with
-	| CT_Handshake -> write_exactly hs_out record.record_content
-	| CT_Alert -> write_exactly alert_out record.record_content
-	| _ -> fail (Failure "??")
-    end >>= fun () ->
-    timed_read_answers ()
+    let result = match record.content_type with
+      | CT_Handshake ->
+	append_to_input hs_in (dump_record_content record.record_content);
+	process_input (parse_handshake_msg ~context:(Some ctx)) (handle_hs ctx) hs_in
+      | CT_Alert ->
+	append_to_input alert_in (dump_record_content record.record_content);
+	process_input parse_tls_alert handle_alert alert_in
+      | _ -> FatalAlert "Unexpected content type"
+    in match result with
+      | NothingSoFar -> timed_read_answers ()
+      | x -> return x
   and timed_read_answers () =
     let t = read_answers () in
     pick [t; Lwt_unix.sleep !timeout >>= fun () -> return Timeout]
   in
 
-  let rec parse_hs_msgs () =
-    lwt_parse_handshake_msg ~context:(Some ctx) hs_lwt_in >>= fun hs_msg ->
-    match handle_hs ctx hs_msg with
-      | NothingSoFar -> parse_hs_msgs ()
-      | x -> return x
-  in
-
-  let rec parse_alert_msgs () =
-    lwt_parse_tls_alert alert_lwt_in >>= fun alert ->
-    match handle_alert alert with
-      | NothingSoFar -> parse_alert_msgs ()
-      | x -> return x
-  in
-
-  let p1 = parse_hs_msgs ()
-  and p2 = parse_alert_msgs () in
-  catch (fun () -> pick [p1; p2; timed_read_answers ()]) catch_eof
+  catch timed_read_answers catch_eof
 
 
 
