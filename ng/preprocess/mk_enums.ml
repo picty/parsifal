@@ -20,7 +20,7 @@ let mk_string_of_enum (name, enum, unknown) =
   List.iter aux enum;
   begin
     match unknown with
-      | UnknownVal u -> Printf.printf "  | %s _ -> \"Unknown %s\"\n" u name
+      | UnknownVal u -> Printf.printf "  | %s i -> \"Unknown %s (\" ^ (string_of_int i) ^ \")\"\n" u name
       | _ -> ()
   end;
   print_newline ()
