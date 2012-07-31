@@ -1,7 +1,10 @@
 TODO
  - Useful: getopt tuning (help usage messages [principal and details], multiline descriptions, clear_list)
+ - probe_server: Add a retry option
+ - probe_server: Add a way to handle extensions
+ - tlsEngine: put 'a result_type and handle_answer logic from probe_server into TlsEngine
  - Useful: write quick functions to open and read files with lwt_parse funs
- - Useful: add a function "connect : string (host) -> int (port) -> tls_record Lwt_mvar t (where records read are sent) -> Lwy_io output"
+ - Useful: add a function "connect : string (host) -> int (port) -> tls_record Lwt_mvar t (where records read are sent) -> Lwt_io output"
  - Useful: add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
  - Useful: add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
  - Crypto: Add support for RSA / DSA, using Bigint for the moment?

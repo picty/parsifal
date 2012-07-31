@@ -12,13 +12,6 @@ open Tls
 open TlsEngine
 
 
-(* TODO:
-   - Add a --retry option
-   - Handle errors more smoothly
-   - Add extensions
-   - Put 'a result_type and handle_answer logic in TlsEngine?
-*)
-
 
 (* Option handling *)
 
