@@ -51,6 +51,7 @@ type key_exchange_algorithm =
   | KX_Unknown
 
 let extract_future_kx ctx = match ctx.future.s_ciphersuite with
-  | TLS_DHE_RSA_WITH_AES_128_CBC_SHA -> KX_DHE
+  | TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+  | TLS_DHE_RSA_WITH_AES_256_CBC_SHA -> KX_DHE
   | _ -> KX_Unknown
 

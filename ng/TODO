@@ -62,6 +62,7 @@ TODO
 
  - Add unit tests
 
+ - add a magic_print function ("print handshake_content.params.dh_p" should work)
 
 
  - check-ssl-server

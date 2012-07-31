@@ -133,10 +133,6 @@ let rec _really_write o s p l =
 
 let really_write o s = _really_write o s 0 (String.length s)
 
-let write_exactly o record_contet =
-  let s = dump_record_content record_contet in
-  write_from_exactly o s 0 (String.length s)
-
 let write_record o record =
   let s = dump_tls_record record in
   really_write o s
