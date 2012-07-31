@@ -64,6 +64,14 @@ let get_out old_input input =
   then raise (ParsingException (UnexptedTrailingBytes, input))
   else old_input.cur_offset <- old_input.cur_offset + input.cur_length
 
+
+let save_input i = i.str, i.cur_base, i.cur_offset, i.cur_length
+let restore_input i (str, cb, co, cl) =
+  i.str <- str;
+  i.cur_base <- cb;
+  i.cur_offset <- co;
+  i.cur_length <- cl
+
 let append_to_input input next_string =
   if input.cur_base = 0 && input.history = [] then begin
     input.str <- (String.sub input.str input.cur_offset (input.cur_length - input.cur_offset)) ^ next_string;
