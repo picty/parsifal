@@ -216,6 +216,11 @@ let get_cm _ hs =
     | ServerHello { compression_method = cm } -> Result cm
     | _ -> NothingSoFar
 
+let get_sh_version _ hs =
+  match hs.handshake_content with
+    | ServerHello { server_version = v } -> Result v
+    | _ -> NothingSoFar
+
 let stop_on_fatal_alert alert =
   if alert.alert_level = AL_Fatal
   then FatalAlert (string_of_tls_alert_type alert.alert_type)
@@ -266,6 +271,32 @@ let ssl_scan get to_string update =
       | FatalAlert s -> return (Result ["FatalAlert \"" ^ s ^ "\""])
   in next_step ()
 
+let ssl_scan_versions () =
+  let versions = [V_SSLv3; V_TLSv1; V_TLSv1_1; V_TLSv1_2; V_Unknown 0x3ff] in
+  let rec mk_versions ext int = match ext, int with
+    | [], _ -> []
+    | e::r, [] -> mk_versions r versions
+    | e::_, i::s -> (e, i)::(mk_versions ext s)
+  in
+  let all_cases = mk_versions versions versions in
+
+  let rec next_step = function
+    | [] -> return (Result "")
+    | (e, i)::r ->
+      rec_version := e;
+      ch_version := i;
+      send_and_receive get_sh_version stop_on_fatal_alert >>= fun res ->
+      let str_res = match res with
+	| Result r -> string_of_tls_version r;
+	| NothingSoFar -> "???"
+	| Timeout -> "Timeout"
+	| EndOfFile -> "EndOfFile"
+	| FatalAlert s -> "FatalAlert \"" ^ s ^ "\""
+      in
+      Printf.printf "%s,%s -> %s\n" (string_of_tls_version e) (string_of_tls_version i) str_res;
+      next_step r
+  in next_step all_cases
+
 let print_list = List.iter print_endline
 
 let print_result print_fun = function
@@ -281,6 +312,6 @@ let _ =
   match args with
     | ["scan-suites"] -> print_result print_list (Lwt_unix.run (ssl_scan get_cs string_of_ciphersuite (remove_from_list suites)))
     | ["scan-compressions"] -> print_result print_list (Lwt_unix.run (ssl_scan get_cm string_of_compression_method (remove_from_list compressions)))
-(*    | ["version_scan"] -> Lwt_unix.run (ssl_scan ()) *)
+    | ["scan-versions"] -> print_result ignore (Lwt_unix.run (ssl_scan_versions ()))
     | ["probe"] | [] -> print_result ignore (Lwt_unix.run (send_and_receive print_hs print_alert))
     | _ -> failwith "Invalid command"
