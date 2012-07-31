@@ -1,4 +1,5 @@
 TODO
+ - Useful: getopt tuning (help usage messages [principal and details], multiline descriptions, clear_list)
  - Useful: write quick functions to open and read files with lwt_parse funs
  - Useful: add a function "connect : string (host) -> int (port) -> tls_record Lwt_mvar t (where records read are sent) -> Lwy_io output"
  - Useful: add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
