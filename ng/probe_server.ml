@@ -226,11 +226,7 @@ let do_nothing _ = NothingSoFar
 
 
 let send_and_receive hs_fun alert_fun =
-  let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-  let host_entry = Unix.gethostbyname !host in
-  let inet_addr = host_entry.Unix.h_addr_list.(0) in
-  let addr = Unix.ADDR_INET (inet_addr, !port) in
-  Lwt_unix.connect s addr >>= fun () ->
+  Util.client_socket !host !port >>= fun s ->
   if !verbose then Printf.fprintf Pervasives.stderr "Connected to %s:%d\n" !host !port;
   let ch = mk_client_hello None in
   if !verbose then prerr_endline (print_tls_record "" "Sending Handshake (C->S)" ch);

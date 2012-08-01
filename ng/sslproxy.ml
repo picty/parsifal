@@ -6,6 +6,25 @@ open DumpingEngine
 open LwtParsingEngine
 open TlsEnums
 open Tls
+open Getopt
+
+
+let host = ref "www.google.com"
+let port = ref 443
+
+let options = [
+  mkopt (Some 'h') "help" Usage "show this help";
+
+  mkopt (Some 'H') "host" (StringVal host) "host to contact";
+  mkopt (Some 'p') "port" (IntVal port) "port to probe";
+]
+
+let getopt_params = {
+  default_progname = "sslproxy";
+  options = options;
+  postprocess_funs = [];
+}
+
 
 
 (* TODO: Handle exceptions in lwt code, and add timers *)
@@ -58,15 +77,6 @@ let rec forward state i o =
   with e -> fail e
 
 
-let new_socket () =
-  Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0
-let local_addr =
-  Unix.ADDR_INET (Unix.inet_addr_any, 8080)
-let remote_addr =
-  let host_entry = Unix.gethostbyname "www.google.com" in
-  let inet_addr = host_entry.Unix.h_addr_list.(0) in
-  Unix.ADDR_INET (inet_addr, 443)
-
 let catcher = function
   | ParsingException (e, i) ->
     Printf.printf "%s in %s\n" (ParsingEngine.print_parsing_exception e)
@@ -77,8 +87,7 @@ let catcher = function
 
 let rec accept sock =
   Lwt_unix.accept sock >>= fun (inp, _) ->
-  let out = new_socket () in
-  Lwt_unix.connect out remote_addr >>= fun () ->
+  Util.client_socket !host !port >>= fun out ->
   let io = forward (empty_state "C->S") (input_of_fd "Client socket" inp) out in
   let oi = forward (empty_state "S->C") (input_of_fd "Server socket" out) inp in
   catch (fun () -> pick [io; oi]) catcher >>= fun () ->
@@ -87,9 +96,6 @@ let rec accept sock =
   accept sock
 
 let _ =
-  let socket = new_socket () in
-  Lwt_unix.setsockopt
-  socket Unix.SO_REUSEADDR true;
-  Lwt_unix.bind socket local_addr;
-  Lwt_unix.listen socket 1024;
+  let _ = parse_args getopt_params Sys.argv in
+  let socket = Util.server_socket 8080 in
   Lwt_unix.run (accept socket)
