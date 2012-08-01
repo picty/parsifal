@@ -167,7 +167,7 @@ let parse_args gop args =
 	    | 0, [] -> 
 	      usage progname gop.options (Some ("Option \"-" ^ (String.make 1 c) ^ "\" expects a parameter"))
 	    | 0, p::new_r -> p, new_r
-	    | _ -> String.sub current i (n-i), r
+	    | _ -> String.sub current (i+1) (n-(i+1)), r
 	  in handle_option_with_param opt p arguments new_r
     end
 
