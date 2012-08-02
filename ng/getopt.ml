@@ -12,6 +12,7 @@ type option_type =
   | SimpleFun of (unit -> action_result)
   | StringVal of string ref
   | StringFun of (string -> action_result)
+  | ClearList of string list ref
   | StringList of string list ref
   | Usage
 
@@ -43,11 +44,17 @@ let usage progname options error =
   in
   Printf.fprintf stderr "Usage: %s [options] [--] [arguments]\n" progname;
   let max_aux m opt = max m (String.length opt.long_opt) in
-  let max_length = List.fold_left max_aux 0 options in
+  prerr_endline "\nOptions:\n";
+  let max_length = (List.fold_left max_aux 0 options) + 2 in
   let usage_option opt =
+    let value_str = match opt.action with
+      | Set _ | Clear _ | SimpleFun _ | TrivialFun _ | Usage | ClearList _ -> "  "
+      | IntVal _ | FloatVal _ -> "=n"
+      | StringVal _ | StringFun _ | StringList _ -> "=s"
+    in
     match opt.short_opt with
-    | None -> Printf.fprintf stderr "      --%*s  %s\n" (-max_length) opt.long_opt opt.description
-    | Some c -> Printf.fprintf stderr "  -%c  --%*s  %s\n" c (-max_length) opt.long_opt opt.description
+    | None -> Printf.fprintf stderr "      --%*s  %s\n" (-max_length) (opt.long_opt ^ value_str) opt.description
+    | Some c -> Printf.fprintf stderr "  -%c  --%*s  %s\n" c (-max_length) (opt.long_opt ^ value_str) opt.description
   in
   List.iter usage_option options;
   exit (exit_code)
@@ -60,8 +67,9 @@ let act_on_option opt param =
   | Usage, None -> ShowUsage None
   | TrivialFun f, None -> f (); ActionDone
   | SimpleFun f, None -> f ()
+  | ClearList l, None -> l := []; ActionDone
 
-  | (Set _ | Clear _ | Usage | TrivialFun _ | SimpleFun _), Some _ ->
+  | (Set _ | Clear _ | Usage | TrivialFun _ | SimpleFun _ | ClearList _), Some _ ->
     ShowUsage (Some ("Option \"" ^ opt.long_opt ^ "\" does not expect a parameter"))
 
   | IntVal _, None
