@@ -1,5 +1,3 @@
-type field_name = string
-
 type expected_header_string = string option
 
 type field_type =
@@ -7,7 +5,7 @@ type field_type =
   | AT_SmallInteger
   | AT_Integer
   | AT_BitString
-(*  | AT_EnumeratedBitString *)
+  (*  TODO: AT_EnumeratedBitString *)
   | AT_Null
   | AT_OId
   (* AT_String (constraints : None -> no_constraint, Some s -> $s_constraint) *)
@@ -21,18 +19,40 @@ type field_type =
   | AT_Custom of string option * string
   | AT_Anything
 
+type asn1_option =
+  | AO_EnrichRawString
+  | AO_EnrichASN1Info
+  | AO_TopLevel
+
 (* TODO: Add constraints
-    - optional fields SHOULDs and SHOULDNOTs
-*)
+    - optional fields SHOULDs and SHOULDNOTs *)
 
-(* TODO: Add a way to enrich with
-      * offset / hlen / len
-      * class / tag info
-      * hash of the asn1 object
-      * string of the asn1 object *)
 
-(* Name, type, optional?, Header expected (if we need to override the default) *)
-type field_desc = field_name * field_type * bool * expected_header_string
+type field_desc = {
+  field_name : string;
+  field_type : field_type;
+  field_optional : bool;
+  field_expected_header : string option;
+}
 
-type description = string * field_desc list * expected_header_string
+type description = {
+  name : string;
+  fields : field_desc list;
+  expected_header : string option;
+  options : asn1_option list;
+}
 
+
+let mkf ?opt:(o=false) ?hdr:(h=None) n t = {
+  field_name = n;
+  field_type = t;
+  field_optional = o;
+  field_expected_header = h;
+}
+
+let mkd ?options:(o=[]) ?hdr:(h=None) n f = {
+  name = n;
+  fields = f;
+  expected_header = h;
+  options = o;
+}

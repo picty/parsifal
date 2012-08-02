@@ -1,16 +1,16 @@
 let rsa_private_key_a = [
-  "version",         AT_SmallInteger, false, None;
-  "modulus",         AT_Integer,      false, None;
-  "publicExponent",  AT_Integer,      false, None;
-  "privateExponent", AT_Integer,      false, None;
-  "prime1",          AT_Integer,      false, None;
-  "prime2",          AT_Integer,      false, None;
-  "exponent1",       AT_Integer,      false, None;
-  "exponent2",       AT_Integer,      false, None;
-  "coefficient",     AT_Integer,      false, None;
+  mkf "version"         AT_SmallInteger;
+  mkf "modulus"         AT_Integer;
+  mkf "publicExponent"  AT_Integer;
+  mkf "privateExponent" AT_Integer;
+  mkf "prime1"          AT_Integer;
+  mkf "prime2"          AT_Integer;
+  mkf "exponent1"       AT_Integer;
+  mkf "exponent2"       AT_Integer;
+  mkf "coefficient"     AT_Integer;
 ]
 
 let descriptions = [
-  "rsa_private_key", rsa_private_key_a, None;
+  mkd "rsa_private_key" rsa_private_key_a;
 ]
 

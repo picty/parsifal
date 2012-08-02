@@ -1,3 +1,4 @@
+open Lwt
 open Common
 open Asn1Enums
 open ParsingEngine
@@ -18,6 +19,15 @@ let print_header = function
   | C_Application, isC, t -> Printf.sprintf "[APP %d] %s" (int_of_asn1_tag t) (prim_or_cons isC)
   | C_ContextSpecific, isC, t -> Printf.sprintf "[%d] %s" (int_of_asn1_tag t) (prim_or_cons isC)
   | C_Private, isC, t -> Printf.sprintf "[PRIVATE %d] %s" (int_of_asn1_tag t) (prim_or_cons isC)
+
+type asn1_info = {
+  a_offset : int;
+  a_hlen : int;
+  a_length : int;
+  a_class : asn1_class;
+  a_isConstructed : bool;
+  a_tag : asn1_tag;
+}
 
 
 type asn1_exception =
@@ -122,16 +132,29 @@ let check_header header_constraint input c isC t =
       if not (check_fun c isC t)
       then raise (Asn1Exception (UnexpectedHeader ((c, isC, t), None), input))
 
-let extract_asn1_object name header_constraint parse_content input =
-  let _offset = input.cur_base + input.cur_offset in
+let _extract_asn1_object name header_constraint parse_content input =
+  let offset = input.cur_base + input.cur_offset in
   let old_cur_offset = input.cur_offset in
   let c, isC, t = extract_header input in
   check_header header_constraint input c isC t;
   let len = extract_length input in
-  let _hlen = input.cur_offset - old_cur_offset in
+  let hlen = input.cur_offset - old_cur_offset in
   let new_input = get_in input name len in
+  let asn1_info = {
+    a_offset = offset;
+    a_hlen = hlen;
+    a_length = len;
+    a_class = c;
+    a_isConstructed = isC;
+    a_tag = t;
+  }
+  and raw_string () = String.sub input.str offset (len+hlen) in
   let res = parse_content new_input in
   get_out input new_input;
+  res, asn1_info, raw_string
+
+let extract_asn1_object name header_constraint parse_content input =
+  let res, _, _ = _extract_asn1_object name header_constraint parse_content input in
   res
 
 
@@ -165,6 +188,77 @@ let dump_length l =
 let dump_asn1_object c isC t dump_content v =
   let content_dumped = dump_content v in
   (dump_header c isC t) ^ (dump_length (String.length content_dumped)) ^ content_dumped
+
+
+
+let lwt_extract_longtype input =
+  let rec aux accu =
+    LwtParsingEngine.lwt_parse_uint8 input >>= fun byte ->
+    let new_accu = (accu lsl 7) lor (byte land 0x7f) in
+    if (byte land 0x80) = 0
+    then return new_accu
+    else aux new_accu
+  in aux 0 >>= fun x -> return (T_Unknown x)
+
+let lwt_extract_header input =
+  LwtParsingEngine.lwt_parse_uint8 input >>= fun hdr ->
+  let c = extract_class hdr in
+  let isC = extract_isConstructed hdr in
+  let hdr_t = hdr land 31 in
+  if (hdr_t < 0x1f)
+  then begin
+    if c = C_Universal
+    then return (c, isC, asn1_tag_of_int hdr_t)
+    else return (c, isC, T_Unknown hdr_t)
+  end else begin
+    lwt_extract_longtype input >>= fun t ->
+    return (c, isC, t)
+  end
+
+let lwt_extract_length input =
+  LwtParsingEngine.lwt_parse_uint8 input >>= fun first ->
+  if first land 0x80 = 0
+  then return first
+  else begin
+    let rec aux accu = function
+      | 0 -> return accu
+      | i ->
+	LwtParsingEngine.lwt_parse_uint8 input >>= fun x ->
+	aux ((accu lsl 8) lor x) (i-1)
+    in aux 0 (first land 0x7f)
+  end
+
+let _lwt_extract_asn1_object name header_constraint parse_content input =
+  let offset = input.LwtParsingEngine.lwt_offset in
+  lwt_extract_header input >>= fun (c, isC, t) ->
+  let fake_input = {
+    str = "";
+    cur_name = name;
+    cur_base = 0;
+    cur_offset = offset;
+    cur_length = -1;
+    history = []
+  } in
+  check_header header_constraint fake_input c isC t;
+  let hlen = input.LwtParsingEngine.lwt_offset - offset in
+  lwt_extract_length input >>= fun len ->
+  LwtParsingEngine.get_in input name len >>= fun new_input ->
+  let asn1_info = {
+    a_offset = offset;
+    a_hlen = hlen;
+    a_length = len;
+    a_class = c;
+    a_isConstructed = isC;
+    a_tag = t;
+  }
+  and raw_string () = (dump_header c isC t) ^ (dump_length len) ^ new_input.str in
+  let res = parse_content new_input in
+  LwtParsingEngine.get_out input new_input >>= fun () ->
+  return (res, asn1_info, raw_string)
+
+let lwt_extract_asn1_object name header_constraint parse_content input =
+  _lwt_extract_asn1_object name header_constraint parse_content input >>= fun (res, _, _) ->
+  return res
 
 
 

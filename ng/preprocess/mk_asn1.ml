@@ -88,63 +88,107 @@ let rec parse_fun_of_field_type fn = function
   | AT_Anything -> fn, "parse_asn1_object"
 
 
-let mk_desc_type (name, fields, _) =
-  Printf.printf "type %s = {\n" name;
-  let aux (fn, ft, fo, _) =
-    Printf.printf "  %s : %s;\n" fn (ocaml_type_of_field_type fo ft)
+let mk_desc_type d =
+  Printf.printf "type %s = {\n" d.name;
+  let aux field_descr =
+    Printf.printf "  %s : %s;\n" field_descr.field_name (ocaml_type_of_field_type field_descr.field_optional field_descr.field_type)
   in
-  List.iter aux fields;
+  List.iter aux d.fields;
+  if List.mem AO_EnrichASN1Info d.options
+  then Printf.printf "  _asn1_info_%s : asn1_info option;\n" d.name;
+  if List.mem AO_EnrichRawString d.options
+  then Printf.printf "  _raw_%s : string option;\n" d.name;
   print_endline "}\n\n"
 
 
-let mk_parse_fun (name, fields, header_expected) =
-  Printf.printf "let parse_%s_content input =\n" name;
-  let parse_aux (fn, ft, fo, fh) =
-    let indent = if fo then begin
-      Printf.printf "  let tmp_offset_before_%s = input.cur_offset in\n" fn;
-      Printf.printf "  let _%s = try\n" fn;
+let mk_parse_fun d =
+  Printf.printf "let parse_%s_content input =\n" d.name;
+  let parse_aux fd =
+    let indent = if fd.field_optional then begin
+      Printf.printf "  let tmp_offset_before_%s = input.cur_offset in\n" fd.field_name;
+      Printf.printf "  let _%s = try\n" fd.field_name;
       "    "
     end else "  " in
     begin
-      match ft, fh with
+      match fd.field_type, fd.field_expected_header with
 	| AT_Custom (module_name, type_name), None ->
-	  Printf.printf "%slet _%s = %sparse_%s input in\n" indent fn (mk_module_prefix module_name) type_name
+	  Printf.printf "%slet _%s = %sparse_%s input in\n" indent fd.field_name (mk_module_prefix module_name) type_name
 	| AT_Anything, None ->
-	  Printf.printf "%slet _%s = parse_asn1_object input in\n" indent fn
+	  Printf.printf "%slet _%s = parse_asn1_object input in\n" indent fd.field_name
 	| AT_Anything, _ -> failwith "AT_Anything expected header can not be overriden"
 	| _ -> 
-	  let hdr_constraint = header_constraint fh ft
-	  and parse_name, parse_fun = parse_fun_of_field_type fn ft in
+	  let hdr_constraint = header_constraint fd.field_expected_header fd.field_type
+	  and parse_name, parse_fun = parse_fun_of_field_type fd.field_name fd.field_type in
 	  Printf.printf "%slet _%s = extract_asn1_object \"%s\" (%s) (%s) input in\n"
-	    indent fn (quote_string parse_name) hdr_constraint parse_fun
+	    indent fd.field_name (quote_string parse_name) hdr_constraint parse_fun
     end;
-    if fo then begin
-      Printf.printf "    Some _%s\n" fn;
+    if fd.field_optional then begin
+      Printf.printf "    Some _%s\n" fd.field_name;
       Printf.printf "  with (Asn1Exception _) ->\n";
-      Printf.printf "    input.cur_offset <- tmp_offset_before_%s;\n" fn;
+      Printf.printf "    input.cur_offset <- tmp_offset_before_%s;\n" fd.field_name;
       Printf.printf "    None\n";
       Printf.printf "  in\n";
     end
   in
-  let mkrec_aux (fn, ft, _, fh) = Printf.printf "    %s = _%s;\n" fn fn in
-  List.iter parse_aux fields;
+  let mkrec_aux fd = Printf.printf "    %s = _%s;\n" fd.field_name fd.field_name in
+  List.iter parse_aux d.fields;
   print_endline "  {";
-  List.iter mkrec_aux fields;
+  List.iter mkrec_aux d.fields;
+  let enrich_asn1_info = List.mem AO_EnrichASN1Info d.options
+  and enrich_raw_string = List.mem AO_EnrichRawString d.options in
+  if enrich_asn1_info
+  then Printf.printf "    _asn1_info_%s = None;\n" d.name;
+  if enrich_raw_string
+  then Printf.printf "    _raw_%s = None;\n" d.name;
   print_endline "  }\n\n";
 
-  Printf.printf "let parse_%s input =\n" name;
-  let hdr_constraint = external_header_constraint header_expected in
-  Printf.printf "  extract_asn1_object \"%s\" (%s) (parse_%s_content) input\n\n"
-    (quote_string name) hdr_constraint name
+  Printf.printf "let parse_%s input =\n" d.name;
+  let hdr_constraint = external_header_constraint d.expected_header in
+  if enrich_asn1_info || enrich_raw_string then begin
+    Printf.printf "  let res, asn1_info, raw_string = _extract_asn1_object \"%s\" (%s) (parse_%s_content) input in\n"
+      (quote_string d.name) hdr_constraint d.name;
+    Printf.printf "  { res with\n";
+    if enrich_asn1_info then Printf.printf  "    _asn1_info_%s = Some asn1_info;\n" d.name;
+    if enrich_raw_string then Printf.printf "    _raw_%s = Some (raw_string ());\n" d.name;
+    Printf.printf "  }\n\n";
+  end else begin
+    Printf.printf "  extract_asn1_object \"%s\" (%s) (parse_%s_content) input\n\n"
+      (quote_string d.name) hdr_constraint d.name
+  end;
+
+  if List.mem AO_TopLevel d.options then begin
+    Printf.printf "let exact_parse_%s input =\n" d.name;
+    Printf.printf "  let res = parse_%s input in\n" d.name;
+    Printf.printf "  check_empty_input true input;\n";
+    Printf.printf "  res\n\n";
+
+    Printf.printf "let lwt_parse_%s input =\n" d.name;
+    if enrich_asn1_info || enrich_raw_string then begin
+      Printf.printf "   _lwt_extract_asn1_object \"%s\" (%s) (parse_%s_content) input >>= fun (res, asn1_info, raw_string) ->\n"
+	(quote_string d.name) hdr_constraint d.name;
+      Printf.printf "  return { res with\n";
+      if enrich_asn1_info then Printf.printf  "    _asn1_info_%s = Some asn1_info;\n" d.name;
+      if enrich_raw_string then Printf.printf "    _raw_%s = Some (raw_string ());\n" d.name;
+      Printf.printf "  }\n\n";
+    end else begin
+      Printf.printf "  lwt_extract_asn1_object \"%s\" (%s) (parse_%s_content) input\n\n"
+	(quote_string d.name) hdr_constraint d.name
+    end;
+  end
 
 
 let handle_desc (desc : description) =
   mk_desc_type desc;
   mk_parse_fun desc;
+(*  if (List.mem AO_TopLevel desc.options) then begin
+    mk_exact_parse_fun desc
+    mk_lwt_parse_fun desc;
+  end; *)
   print_newline ()
 
 
 let _ =
+  print_endline "open Lwt";
   print_endline "open Asn1Enums";
   print_endline "open ParsingEngine";
   print_endline "open Asn1Engine\n";
