@@ -10,7 +10,5 @@ let rsa_private_key_a = [
   mkf "coefficient"     AT_Integer;
 ]
 
-let descriptions = [
-  mkd "rsa_private_key" rsa_private_key_a;
-]
+let _ = handle_desc "rsa_private_key" rsa_private_key_a;;
 

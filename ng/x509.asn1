@@ -63,13 +63,11 @@ let certificate_a = [
 ]
 
 
-
-let descriptions = [
-  mkd "algorithmIdentifier"  algorithmIdentifier_a;
-  mkd "atv"                  atv_a;
-  mkd "validity"             validity_a;
-  mkd "subjectPublicKeyInfo" subjectPublicKeyInfo_a;
-  mkd "extension"            extension_a;
-  mkd "tbsCertificate"       tbsCertificate_a  ~options:[AO_EnrichRawString];
-  mkd "certificate"          certificate_a     ~options:[AO_TopLevel];
-]
+let _ =
+  handle_desc "algorithmIdentifier"  algorithmIdentifier_a;
+  handle_desc "atv"                  atv_a;
+  handle_desc "validity"             validity_a;
+  handle_desc "subjectPublicKeyInfo" subjectPublicKeyInfo_a;
+  handle_desc "extension"            extension_a;
+  handle_desc "tbsCertificate"       tbsCertificate_a  ~options:[AO_EnrichRawString];
+  handle_desc "certificate"          certificate_a     ~options:[AO_TopLevel]

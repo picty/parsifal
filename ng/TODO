@@ -1,4 +1,7 @@
 TODO
+ - ASN.1: Clean up options in mk_asn1 and handle_*
+ - ASN.1: Add dump and print functions
+
  - Useful: getopt tuning (help usage messages [principal and details], multiline descriptions, clear_list)
  - probe_server: Add a retry option
  - probe_server: Add a way to handle extensions
@@ -18,8 +21,6 @@ TODO
  - ASN.1: Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
  - ASN.1: Support extensions
  - ASN.1: Parse certificates with all the previous features: RSA handling, DN.short, extensions
- - ASN.1: Add dump and print functions
- - ASN.1: Clean up options in hd_asn1
 
  - Binrecs: Clean up options in hd_binrecs
  - Binrecs: add options for fields (optional, change the value of context, remove Implicit/Explicit)

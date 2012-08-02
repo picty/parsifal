@@ -43,7 +43,7 @@ clean:
 	ocaml $< > $@
 
 
-%.mk_asn1.ml: preprocess/hd_asn1.ml %.asn1 common.ml preprocess/mk_asn1.ml
+%.mk_asn1.ml: common.ml preprocess/mk_asn1.ml %.asn1
 	cat $^ > $@
 
 %.ml: %.mk_asn1.ml
