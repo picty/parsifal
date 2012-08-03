@@ -3,9 +3,11 @@ open Common
 open LwtParsingEngine
 open ParsingEngine
 open X509
+open X509Util
+open RSAKey
 open Getopt
 
-type action = Text | Subject | Issuer | Serial
+type action = Text | Subject | Issuer | Serial | CheckSelfSigned
 
 let verbose = ref false
 let keep_going = ref false
@@ -20,6 +22,7 @@ let options = [
   mkopt (Some 'S') "serial" (TrivialFun (fun () -> action := Serial)) "prints the certificates serial number";
   mkopt (Some 's') "subject" (TrivialFun (fun () -> action := Subject)) "prints the certificates subject";
   mkopt (Some 'i') "issuer" (TrivialFun (fun () -> action := Issuer)) "prints the certificates issuer";
+  mkopt None "check-selfsigned" (TrivialFun (fun () -> action := CheckSelfSigned)) "checks the signature of a self signed";
 ]
 
 let getopt_params = {
@@ -34,6 +37,12 @@ let handle_input input =
   match !action with
     | Serial ->
       print_endline (hexdump certificate.tbsCertificate.serialNumber);
+      return ()
+    | CheckSelfSigned ->
+      let Some m = certificate.tbsCertificate._raw_tbsCertificate
+      and _, s = certificate.signatureValue
+      and RSA {p_modulus = n; p_publicExponent = e} = certificate.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey in
+      print_endline (string_of_bool (Pkcs1.raw_verify 1 m s n e));
       return ()
     | _ -> fail (Common.NotImplemented "")
 
