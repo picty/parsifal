@@ -435,6 +435,11 @@ let parse_der_bitstring input =
   (* TODO: Check the trailing bits are zeroed. *)
   (nBits, content)
 
+let dump_der_bitstring nBits s =
+  let prefix = String.make 1 (char_of_int nBits) in
+  prefix ^ s
+
+
 (* TODO: Enumerated Bit Strings *)
 
 (* let apply_desc desc i = *)
@@ -473,8 +478,6 @@ let parse_der_bitstring input =
 (*   then asn1_emit NotInNormalForm None (Some "Bit string is too long") pstate; *)
 (*   let bits = extract_bit_list content in *)
 (*   name_bits pstate desc bits *)
-
-(* TODO: dump_der_bitstring *)
 
 (* let der_to_bitstring description pstate = *)
 (*   let nBits, content = raw_der_to_bitstring pstate in *)
@@ -576,6 +579,10 @@ and asn1_content =
   | String of (string * bool)       (* bool : isBinary *)
   | Constructed of asn1_object list
 
+let isConstructed o = match o.a_content with
+  | Constructed _ -> true
+  | _ -> false
+
 
 let rec parse_asn1_object input =
   let _offset = input.cur_base + input.cur_offset in
@@ -645,9 +652,21 @@ let parse_asn1_object_opt input =
     input.cur_offset <- tmp_offset;
     None
 
+let rec dump_asn1_object o =
+  let hdr = dump_header o.a_class (isConstructed o) o.a_tag in
+  let content = dump_asn1_content o.a_content in
+  let len = dump_length (String.length content) in
+  hdr ^ len ^ content
 
-
-(* TODO: dump_asn1_object *)
+and dump_asn1_content = function
+  | Boolean b -> dump_der_boolean b
+  | Integer i -> dump_der_int i
+  | BitString (nBits, s) -> dump_der_bitstring nBits s
+  | Null -> dump_der_null ()
+  | OId oid -> dump_der_oid oid
+  | String (s, _) -> dump_der_octetstring s
+  | Constructed l ->
+    String.concat "" (List.map dump_asn1_object l)
 
 
 
@@ -659,9 +678,6 @@ let parse_asn1_object_opt input =
 
 (* (\* Useful func *\) *)
 
-(* let isConstructed o = match o.a_content with *)
-(*   | Constructed _ -> true *)
-(*   | _ -> false *)
 
 
 (* let string_of_bitstring raw nBits s = *)
@@ -731,16 +747,6 @@ let parse_asn1_object_opt input =
 (*   if multiline *)
 (*   then PrinterLib._string_of_strlist (Some type_string) (hash_options "" true) content_string *)
 (*   else PrinterLib._string_of_strlist (Some type_string) (only_ml false) content_string *)
-
-
-
-
-
-
-
-(* let bitstring_to_der nBits s = *)
-(*   let prefix = String.make 1 (char_of_int nBits) in *)
-(*   prefix ^ s *)
 
 
 
