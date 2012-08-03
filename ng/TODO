@@ -10,17 +10,19 @@ TODO
  - Useful: add a function "connect : string (host) -> int (port) -> tls_record Lwt_mvar t (where records read are sent) -> Lwt_io output"
  - Useful: add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
  - Useful: add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
- - Crypto: Add support for RSA / DSA, using Bigint for the moment?
- - Useful: add a exact_parse_<obj> : string -> <obj> for top-level <obj> (one more option for Records/Choices/ASN.1)
+ - Crypto/PKCS#1: Add support for RSA / DSA
+ - Useful: add a exact_parse_<obj> : string -> <obj> for top-level <obj> (OK for ASN.1. One more option for Records/Choices)
  - Useful: use lwt_parse_answer_dump and produce some easy statistics to confirm it works
 
  - ASN.1: handle constraints, optional fields, choices
  - ASN.1: Add UTCTime / ValidityTime handling (choices)
  - ASN.1: Add stg to have parse_distinguished_name (we need aliases for sequences of and sets of)
- - ASN.1: Add support for ObjectIdentifiers
- - ASN.1: Add AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
+ - ASN.1: Add support for ObjectIdentifiers (global registery and magic functions)
+ - ASN.1: Refine AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
+ - ASN.1: Add support for RSA/DSA public key and signature
  - ASN.1: Support extensions
  - ASN.1: Parse certificates with all the previous features: RSA handling, DN.short, extensions
+ - ASN.1: use "extract_asn1_object_opt"/"parse_asn1_object_opt" in mk_asn1.mk_parse_fun to have shorter generated code?
 
  - Binrecs: Clean up options in hd_binrecs
  - Binrecs: add options for fields (optional, change the value of context, remove Implicit/Explicit)
@@ -28,7 +30,6 @@ TODO
  - TLS: use  the post-build feature to constrain a binrec (length of 2^14 in TlsRecord)
 
  - Crypto: Add support for PRNG
- - Crypto: Add support for hash functions, AES, CBC mode, etc.
 
  - Tools: factor all the little programs when possible.
  - Add a way to automagically enrich the context (tlsEngine with an automata)

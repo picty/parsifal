@@ -69,3 +69,8 @@ let quote_string s =
   in
   write_string 0 0;
   res
+
+
+let hash_get ht k default =
+  try Hashtbl.find ht k
+  with Not_found -> default

@@ -157,6 +157,13 @@ let extract_asn1_object name header_constraint parse_content input =
   let res, _, _ = _extract_asn1_object name header_constraint parse_content input in
   res
 
+let extract_asn1_object_opt name header_constraint parse_content input =
+  let tmp_offset = input.cur_offset in
+  try
+    Some (extract_asn1_object name header_constraint parse_content input)
+  with (Asn1Exception _) ->
+    input.cur_offset <- tmp_offset;
+    None
 
 
 let dump_header c isC t =
@@ -580,6 +587,16 @@ and parse_der_constructed input =
       let next = parse_asn1_object input in
       parse_aux (next::accu)
   in parse_aux []
+
+let parse_asn1_object_opt input =
+  let tmp_offset = input.cur_offset in
+  try
+    Some (parse_asn1_object input)
+  with (Asn1Exception _) ->
+    input.cur_offset <- tmp_offset;
+    None
+
+
 
 (* TODO: dump_asn1_object *)
 

@@ -1,9 +1,3 @@
-(* TODO: algorithmIdentifier should rely on Objects written in x509Util.ml *)
-let algorithmIdentifier_a = [
-  mkf "algorithmId"     AT_OId;
-  mkf "algorithmParams" AT_Anything;
-]
-
 (* TODO: name should rely on Objects written in x509Util.ml *)
 let atv_a = [
   mkf "attributeType"  AT_OId;
@@ -16,12 +10,6 @@ let validity_a = [
   "notAfter",  AT_Custom (None, "time"), false, None; *)
   mkf "notBefore" AT_Anything;
   mkf "notAfter"  AT_Anything;
-]
-
-(* TODO: should be enrichable *)
-let subjectPublicKeyInfo_a = [
-  mkf "algorithm"        (AT_Custom (None, "algorithmIdentifier"));
-  mkf "subjectPublicKey" AT_BitString;
 ]
 
 (* TODO: Make extnValue depend on extnID, and have it enrichable *)
@@ -41,11 +29,11 @@ let tbsCertificate_a = [
   mkf "version"              (AT_Container (None, AT_Integer))
                              ~opt:true ~hdr:(Some "AH_Simple (C_ContextSpecific, true, T_Unknown 0)");
   mkf "serialNumber"         AT_Integer;
-  mkf "signature"            (AT_Custom (None, "algorithmIdentifier"));
+  mkf "signature"            (AT_Custom (Some "X509Util", "algorithmIdentifier"));
   mkf "issuer"               dn_type;
   mkf "validity"             (AT_Custom (None, "validity"));
   mkf "subject"              dn_type;
-  mkf "subjectPublicKeyInfo" (AT_Custom (None, "subjectPublicKeyInfo"));
+  mkf "subjectPublicKeyInfo" (AT_Custom (Some "X509Util", "subjectPublicKeyInfo"));
   mkf "issuerUniqueID"       AT_BitString
                              ~opt:true ~hdr:(Some "AH_Simple (C_ContextSpecific, false, T_Unknown 1)");
   mkf "subjectUniqueID"      AT_BitString
@@ -58,16 +46,14 @@ let tbsCertificate_a = [
 
 let certificate_a = [
   mkf "tbsCertificate"      (AT_Custom (None, "tbsCertificate"));
-  mkf "signatureAlgorithm" (AT_Custom (None, "algorithmIdentifier"));
+  mkf "signatureAlgorithm" (AT_Custom (Some "X509Util", "algorithmIdentifier"));
   mkf "signatureValue"     AT_BitString;
 ]
 
 
 let _ =
-  handle_desc "algorithmIdentifier"  algorithmIdentifier_a;
   handle_desc "atv"                  atv_a;
   handle_desc "validity"             validity_a;
-  handle_desc "subjectPublicKeyInfo" subjectPublicKeyInfo_a;
   handle_desc "extension"            extension_a;
   handle_desc "tbsCertificate"       tbsCertificate_a  ~options:[AO_EnrichRawString];
   handle_desc "certificate"          certificate_a     ~options:[AO_TopLevel]
