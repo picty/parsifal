@@ -287,6 +287,10 @@ let dump_der_boolean = function
   | true -> String.make 1 '\xff'
   | false -> String.make 1 '\x00'
 
+let print_der_boolean indent name v =
+  Printf.sprintf "%s%s: %s\n" indent name (string_of_bool v)
+
+
 
 (* Integer *)
 
@@ -310,6 +314,9 @@ let parse_der_int input =
 
 let dump_der_int s = s
 
+let print_der_int indent name v =
+  Printf.sprintf "%s%s: %s\n" indent name (hexdump v)
+
 
 let parse_der_smallint input =
   let integer_s = parse_der_int input in
@@ -325,7 +332,26 @@ let parse_der_smallint input =
   end
 
 let dump_der_smallint i =
-  raise (NotImplemented "dump_der_smallint")
+  let rec compute_size rem =
+    if rem < 0x80 then 1
+    else if rem < 0x100 then 2
+    else 1 + (compute_size (rem lsr 8))
+  in
+  let sz = compute_size i in
+  let res = String.make sz '\x00' in
+  let rec mk_content where rem =
+    if rem = 0 then ()
+    else begin
+      res.[where] <- char_of_int (rem land 0xff);
+      mk_content (where - 1) (rem lsr 8)
+    end
+  in
+  mk_content (sz-1) i;
+  res
+
+let print_der_smallint indent name v =
+  Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
+
 
 
 (* Null *)
@@ -338,6 +364,10 @@ let parse_der_null input =
   end
 
 let dump_der_null () = ""
+
+let print_der_null indent name () =
+  Printf.sprintf "%s%s\n" indent name
+
 
 
 (* OId *)
@@ -366,18 +396,27 @@ let parse_der_oid input =
   in
   aux ()
 
-(* TODO: dump_der_oid *)
+let subid_to_charlist id =
+  let rec aux accu x =
+    if x = 0
+    then accu
+    else aux (((x land 0x7f) lor 0x80)::accu) (x lsr 7)
+  in aux [id land 0x7f] (id lsr 7)
 
-(* let subid_to_charlist id = *)
-(*   let rec aux accu x = *)
-(*     if x = 0 *)
-(*     then accu *)
-(*     else aux (((x land 0x7f) lor 0x80)::accu) (x lsr 7) *)
-(*   in aux [id land 0x7f] (id lsr 7) *)
+let _string_of_int_list l =
+  let len = List.length l in
+  let res = String.make len ' ' in
+  let rec populate_string i = function
+    | [] -> res
+    | c::r ->
+      res.[i] <- char_of_int c;
+      populate_string (i+1) r
+  in populate_string 0 l
 
-(* let oid_to_der idlist = *)
-(*   let cll = List.map subid_to_charlist idlist in *)
-(*   string_of_int_list (List.flatten cll) *)
+let dump_der_oid idlist =
+  let cll = List.map subid_to_charlist idlist in
+  _string_of_int_list (List.flatten cll)
+
 
 
 (* Bit String *)
@@ -505,7 +544,17 @@ let parse_der_list name header_constraint min max parse_content input =
   if len > real_max then emit false (TooManyObjects (len, real_max)) input;
   res
 
-(* TODO: dump_der_list *)
+let dump_der_list (c, isC, t) dump_content l =
+  let header = dump_header c isC t in
+  let rec dump_der_list_aux accu = function
+    | [] -> String.concat "" (List.rev accu)
+    | x::r ->
+      let content = dump_content x in
+      let der_length = dump_length (String.length content) in
+      let der_x = header ^ der_length ^ content in
+      dump_der_list_aux (der_x::accu) r
+  in
+  dump_der_list_aux [] l
 
 
 
@@ -717,7 +766,6 @@ let parse_asn1_object_opt input =
 
 
 
-(* module Asn1Parser = struct *)
 (*   type t = asn1_object *)
 (*   let name = "asn1" *)
 (*   let params = [param_from_bool_ref "parse_enumerated" parse_enumerated] *)
@@ -792,12 +840,3 @@ let parse_asn1_object_opt input =
 (*     let isC = eval_as_bool (hash_find dict "is_constructed") in *)
 (*     let content = asn1_content_of_value (isC, hash_find dict "content") in *)
 (*     mk_object' name c t content *)
-
-
-(*   let to_string = string_of_object *)
-
-(*   let functions = [] *)
-(* end *)
-
-(* module Asn1Module = MakeParserModule (Asn1Parser) *)
-(* let _ = add_object_module ((module Asn1Module : ObjectModule)) *)
