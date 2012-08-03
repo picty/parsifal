@@ -39,10 +39,15 @@ let handle_input input =
       print_endline (hexdump certificate.tbsCertificate.serialNumber);
       return ()
     | CheckSelfSigned ->
-      let Some m = certificate.tbsCertificate._raw_tbsCertificate
-      and _, s = certificate.signatureValue
-      and RSA {p_modulus = n; p_publicExponent = e} = certificate.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey in
-      print_endline (string_of_bool (Pkcs1.raw_verify 1 m s n e));
+      let result = match certificate.tbsCertificate._raw_tbsCertificate,
+	certificate.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey,
+	certificate.signatureValue
+	with
+	| Some m, RSA {p_modulus = n; p_publicExponent = e}, (0, s) ->
+	  Pkcs1.raw_verify 1 m s n e
+	| _ -> false
+      in
+      print_endline (string_of_bool (result));
       return ()
     | _ -> fail (Common.NotImplemented "")
 
