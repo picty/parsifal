@@ -617,6 +617,13 @@ and asn1_content =
   | String of (string * bool)       (* bool : isBinary *)
   | Constructed of asn1_object list
 
+
+let mk_object c t content = {
+  a_class = c;
+  a_tag = t;
+  a_content = content;
+}
+
 let isConstructed o = match o.a_content with
   | Constructed _ -> true
   | _ -> false
@@ -667,11 +674,7 @@ let rec parse_asn1_object input =
     | (_, true, _)  -> Constructed (parse_der_constructed new_input)
   in
   get_out input new_input;
- {
-    a_class = c;
-    a_tag = t;
-    a_content = content;
-  }
+  mk_object c t content
 
 and parse_der_constructed input =
   let rec parse_aux accu =
