@@ -100,4 +100,5 @@ let parse_subjectPublicKeyInfo = parse_asn1_qualified_object subjectPublicKeyInf
 let rsaEncryption_oid = [42;840;113549;1;1;1]
 
 let _ =
+  register_oid rsaEncryption_oid "rsaEncryption";
   Hashtbl.replace pki_parsers rsaEncryption_oid (fun _ input -> RSA (RSAKey.parse_rsa_public_key input))

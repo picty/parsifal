@@ -4,6 +4,12 @@ open Asn1Enums
 open ParsingEngine
 
 
+let (oid_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
+let (rev_oid_directory : (string, int list) Hashtbl.t) = Hashtbl.create 200
+
+let resolve_oids = ref true
+
+
 let prim_or_cons = function false -> "prim" | true -> "cons"
 let print_header = function
   | (C_Universal, false, (T_EndOfContents | T_Boolean | T_Integer | T_BitString | T_OctetString | 
@@ -418,6 +424,38 @@ let dump_der_oid idlist =
   _string_of_int_list (List.flatten cll)
 
 
+let oid_expand = function
+  | [] -> []
+  | x::r ->
+    let a, b = if x >= 80
+      then 2, (x - 80)
+      else (x / 40), (x mod 40)
+    in a::b::r
+
+(* (\* TODO: correctly handle the exception? *\) *)
+(* let oid_squash = function *)
+(*   | a::b::r -> *)
+(*     if ((a = 0 || a = 1) && (b < 40)) || (a = 2) *)
+(*     then (a * 40 + b)::r *)
+(*     else raise (Failure ("Invalid OId")) *)
+(*   | _ -> raise (Failure ("Invalid OId")) *)
+
+
+let raw_string_of_oid oid =
+  String.concat "." (List.map string_of_int (oid_expand oid))
+
+let register_oid oid s =
+  Hashtbl.add oid_directory oid s;
+  Hashtbl.add rev_oid_directory s oid;
+  Hashtbl.add rev_oid_directory (raw_string_of_oid oid) oid
+
+let print_der_oid oid =
+  if !resolve_oids then
+    try Hashtbl.find oid_directory oid
+    with Not_found -> raw_string_of_oid oid
+  else raw_string_of_oid oid
+
+
 
 (* Bit String *)
 
@@ -685,39 +723,6 @@ and dump_asn1_content = function
 (*   then "[" ^ (string_of_int nBits) ^ "]:" ^ (hexdump s) *)
 (*   else hexdump s *)
 
-(* let oid_expand = function *)
-(*   | [] -> [] *)
-(*   | x::r -> *)
-(*     let a, b = if x >= 80 *)
-(*       then 2, (x - 80) *)
-(*       else (x / 40), (x mod 40) *)
-(*     in a::b::r *)
-
-(* let oid_squash = function *)
-(*   | a::b::r -> *)
-(*     if ((a = 0 || a = 1) && (b < 40)) || (a = 2) *)
-(*     then (a * 40 + b)::r *)
-(*     else raise (ContentError ("Invalid OId")) *)
-(*   | _ -> raise (ContentError ("Invalid OId")) *)
-
-
-(* let (name_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100 *)
-(* let (rev_name_directory : (string, int list) Hashtbl.t) = Hashtbl.create 200 *)
-
-(* let raw_string_of_oid oid = *)
-(*   String.concat "." (List.map string_of_int (oid_expand oid)) *)
-
-(* let register_oid oid s = *)
-(*   Hashtbl.add name_directory oid s; *)
-(*   Hashtbl.add rev_name_directory s oid; *)
-(*   Hashtbl.add rev_name_directory (raw_string_of_oid oid) oid *)
-
-(* let string_of_oid oid = *)
-(*   if !PrinterLib.resolve_names then *)
-(*     try Hashtbl.find name_directory oid *)
-(*     with Not_found -> raw_string_of_oid oid *)
-(*   else raw_string_of_oid oid *)
-
 
 (* let rec string_of_content = function *)
 (*   | Constructed l -> *)
@@ -747,102 +752,3 @@ and dump_asn1_content = function
 (*   if multiline *)
 (*   then PrinterLib._string_of_strlist (Some type_string) (hash_options "" true) content_string *)
 (*   else PrinterLib._string_of_strlist (Some type_string) (only_ml false) content_string *)
-
-
-
-(* let rec dump o = *)
-(*   let isC, contents = match o.a_content with *)
-(*     | Null -> false, "" *)
-(*     | Boolean b -> false, boolean_to_der b *)
-(*     | Integer i -> false, i *)
-(*     | BitString (nb, s) -> false, bitstring_to_der nb s *)
-(*     | EnumeratedBitString (l, _) -> raise (NotImplemented "asn1.dump (EnumeratedBitString)") (\* TODO *\) *)
-(*     | OId id -> false, oid_to_der id *)
-(*     | String (s, _) -> false, s *)
-(*     | Constructed objects -> true, constructed_to_der objects *)
-(*   in *)
-(*   let hdr = dump_header o.a_class isC o.a_tag in *)
-(*   let lg = dump_length (String.length contents) in *)
-(*   hdr ^ lg ^ contents *)
-
-(* and constructed_to_der objlist = *)
-(*   let subdumps = List.map dump objlist in *)
-(*   String.concat "" subdumps *)
-
-
-
-
-(*   type t = asn1_object *)
-(*   let name = "asn1" *)
-(*   let params = [param_from_bool_ref "parse_enumerated" parse_enumerated] *)
-
-(*   let parse = parse *)
-(*   let dump = dump *)
-
-(*   let class_of_string = function *)
-(*     | "Universal" -> C_Universal *)
-(*     | "Application" -> C_Application *)
-(*     | "Context Specific" -> C_ContextSpecific *)
-(*     | "Private" -> C_Private *)
-(*     | _ -> raise (ContentError ("Invalid ASN.1 class")) *)
-
-(*   let value_of_oid oid = *)
-(*     V_List (List.map (fun x -> V_Int x) (oid_expand oid)) *)
-
-(*   let rec value_of_asn1_content = function *)
-(*     | Null -> V_Unit *)
-(*     | Boolean b -> V_Bool b *)
-(*     | Integer i -> V_Bigint i *)
-(*     | BitString (n, s) -> V_BitString (n, s) *)
-(*     | EnumeratedBitString (l, desc) -> *)
-(*       let f = apply_desc desc in *)
-(*       V_List (List.map (fun x -> V_Enumerated (x, f)) l) *)
-(*     | OId oid -> value_of_oid oid *)
-(*     | String (s, true) -> V_BinaryString s *)
-(*     | String (s, false) -> V_String s *)
-(*     | Constructed objs -> *)
-(*       let value_of_constructed sub_obj = *)
-(* 	let d = Hashtbl.create 10 in *)
-(* 	enrich sub_obj d; *)
-(* 	V_Dict d *)
-(*       in *)
-(*       V_List (List.map value_of_constructed objs) *)
-
-(*   and enrich o dict = *)
-(*     Hashtbl.replace dict "name" (V_String o.a_name); *)
-(*     Hashtbl.replace dict "class" (V_String (string_of_class o.a_class)); *)
-(*     Hashtbl.replace dict "tag" (V_Int (o.a_tag)); *)
-(*     Hashtbl.replace dict "tag_str" (V_String (string_of_tag o.a_class o.a_tag)); *)
-(*     Hashtbl.replace dict "is_constructed" (V_Bool (isConstructed o)); *)
-(*     begin *)
-(*       match o.a_ohl with *)
-(* 	| None -> () *)
-(* 	| Some (off, hlen, len) -> *)
-(* 	  Hashtbl.replace dict "offset" (V_Int off); *)
-(* 	  Hashtbl.replace dict "hlen" (V_Int hlen); *)
-(* 	  Hashtbl.replace dict "len" (V_Int len); *)
-(*     end; *)
-(*     Hashtbl.replace dict "content" (value_of_asn1_content o.a_content) *)
-
-(*   let oid_of_list v = oid_squash (List.map eval_as_int v) *)
-
-(*   let rec asn1_content_of_value = function *)
-(*     | false, V_Unit -> Null *)
-(*     | false, V_Bool b -> Boolean b *)
-(*     | false, V_Bigint i -> Integer i *)
-(*     | false, V_BitString (n, s) -> BitString (n, s) *)
-(*     | false, V_BinaryString s -> String (s, true) *)
-(*     | false, V_String s -> String (s, false) *)
-(*     | false, V_List ((V_Int _::r) as l) -> OId (oid_of_list l) *)
-(*     | false, V_List l -> raise (NotImplemented "asn1_content_of_value (V_List [EnumeratedBitString])") (\* TODO *\) *)
-(*     | true, V_List l -> *)
-(*       Constructed (List.map (fun x -> update (eval_as_dict x)) l) *)
-(*     | _ -> raise (ContentError ("Invalid value for an asn1 content")) *)
-
-(*   and update dict = *)
-(*     let name = eval_as_string (hash_find dict "name") in *)
-(*     let c = class_of_string (eval_as_string (hash_find dict "class")) in *)
-(*     let t = eval_as_int (hash_find dict "tag") in *)
-(*     let isC = eval_as_bool (hash_find dict "is_constructed") in *)
-(*     let content = asn1_content_of_value (isC, hash_find dict "content") in *)
-(*     mk_object' name c t content *)

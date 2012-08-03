@@ -17,7 +17,6 @@ TODO
  - ASN.1: handle constraints, optional fields, choices
  - ASN.1: Add UTCTime / ValidityTime handling (choices)
  - ASN.1: Add stg to have parse_distinguished_name (we need aliases for sequences of and sets of)
- - ASN.1: Add support for ObjectIdentifiers (global registery and magic functions)
  - ASN.1: Refine AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
  - ASN.1: Add support for RSA/DSA public key and signature
  - ASN.1: Support extensions
