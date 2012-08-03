@@ -2,7 +2,7 @@ open Unix
 open Sys
 open Common
 open ParsingEngine
-open RSAPrivateKey
+open RSAKey
 
 let get_file_content filename =
   let f = open_in filename in

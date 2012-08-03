@@ -10,5 +10,12 @@ let rsa_private_key_a = [
   mkf "coefficient"     AT_Integer;
 ]
 
-let _ = handle_desc "rsa_private_key" rsa_private_key_a;;
+let rsa_public_key_a = [
+  mkf "p_modulus"         AT_Integer;
+  mkf "p_publicExponent"  AT_Integer;
+]
+
+let _ =
+  handle_desc "rsa_private_key" rsa_private_key_a;;
+  handle_desc "rsa_public_key" rsa_public_key_a;;
 

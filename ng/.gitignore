@@ -12,6 +12,6 @@ tlsEnums.ml
 answerDump.ml
 tls.ml
 *.mk_asn1.ml
-rSAPrivateKey.ml
+rSAKey.ml
 x509.ml
 test_answerDump
