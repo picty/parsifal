@@ -1,4 +1,5 @@
 TODO
+ - Test: Write test_random
  - ASN.1: Clean up options in mk_asn1 and handle_*
  - ASN.1: Add dump and print functions
 
