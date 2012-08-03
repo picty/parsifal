@@ -1,13 +1,12 @@
 TODO
- - Test: Write test_random
  - PKCS1: Write test_pkcs1 to check RSA implementation
- - Crypto/PKCS#1: Add support for DSA
+ - Crypto: Add support for DSA
  - Cryptokit: look at the code which seems grrovy
 
  - ASN.1: Clean up options in mk_asn1 and handle_*
  - ASN.1: Add dump and print functions
 
- - Useful: getopt tuning (help usage messages [principal and details], multiline descriptions, clear_list)
+ - Useful: getopt tuning (help usage messages [principal and details], multiline descriptions)
  - probe_server: Add a retry option
  - probe_server: Add a way to handle extensions
  - tlsEngine: put 'a result_type and handle_answer logic from probe_server into TlsEngine
@@ -31,8 +30,6 @@ TODO
  - Binrecs: add options for fields (optional, change the value of context, remove Implicit/Explicit)
  - Binrecs: add options for record descriptions (post-build checks)
  - TLS: use  the post-build feature to constrain a binrec (length of 2^14 in TlsRecord)
-
- - Crypto: Add support for PRNG
 
  - Tools: factor all the little programs when possible.
  - Add a way to automagically enrich the context (tlsEngine with an automata)
