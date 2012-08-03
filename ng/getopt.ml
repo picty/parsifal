@@ -7,6 +7,7 @@ type option_type =
   | Set of bool ref
   | Clear of bool ref
   | IntVal of int ref
+  | IntFun of (int -> action_result)
   | FloatVal of float ref
   | TrivialFun of (unit -> unit)
   | SimpleFun of (unit -> action_result)
@@ -44,12 +45,12 @@ let usage progname options error =
   in
   Printf.fprintf stderr "Usage: %s [options] [--] [arguments]\n" progname;
   let max_aux m opt = max m (String.length opt.long_opt) in
-  prerr_endline "\nOptions:\n";
+  prerr_endline "\nOptions:";
   let max_length = (List.fold_left max_aux 0 options) + 2 in
   let usage_option opt =
     let value_str = match opt.action with
       | Set _ | Clear _ | SimpleFun _ | TrivialFun _ | Usage | ClearList _ -> "  "
-      | IntVal _ | FloatVal _ -> "=n"
+      | IntVal _ | IntFun _ | FloatVal _ -> "=n"
       | StringVal _ | StringFun _ | StringList _ -> "=s"
     in
     match opt.short_opt with
@@ -73,6 +74,7 @@ let act_on_option opt param =
     ShowUsage (Some ("Option \"" ^ opt.long_opt ^ "\" does not expect a parameter"))
 
   | IntVal _, None
+  | IntFun _, None
   | FloatVal _, None
   | StringVal _, None
   | StringFun _, None
@@ -85,6 +87,10 @@ let act_on_option opt param =
     with _ ->
       ShowUsage (Some ("Integer expected for option \"" ^ opt.long_opt ^ "\""))
   end
+  | IntFun f, Some p -> begin
+    try f (int_of_string p)
+    with _ -> ShowUsage (Some ("Integer expected for option \"" ^ opt.long_opt ^ "\""))
+  end
   | FloatVal f, Some p -> begin
     try
       f := float_of_string p;
@@ -92,6 +98,7 @@ let act_on_option opt param =
     with _ ->
       ShowUsage (Some ("Float expected for option \"" ^ opt.long_opt ^ "\""))
   end
+
   | StringVal s, Some p -> s := p; ActionDone
   | StringFun f, Some p -> f p
   | StringList l, Some p -> l := p::(!l); ActionDone
