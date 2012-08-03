@@ -5,13 +5,13 @@ SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml pr
 	$(ENUMS) $(BINRECS) $(CHOICES) $(ASN1RECS) \
 	common.ml x509Util.ml\
 	tlsUtil.ml tlsContext.ml \
-	test_answerDump.ml test_tls_record.ml test_rsa_private_key.ml test_x509.ml
+	test_answerDump.ml test_tls_record.ml test_rsa_private_key.ml test_x509.ml test_random.ml
 
-TEST_PROGRAMS = test_answerDump.native test_tls_record.native
-PROGRAMS = $(TEST_PROGRAMS)
+TEST_PROGRAMS = test_answerDump.native test_tls_record.native test_rsa_private_key.native test_x509.native test_random.native test_pkcs1.native
+PROGRAMS = $(TEST_PROGRAMS) probe_server.native sslproxy.native answer_stats.native serveranswer.native
 
 all: $(ENUMS) $(BINRECS) $(ASN1RECS)
-	ocamlbuild -cflags -I,+lwt,-I,+cryptokit -lflags -I,+lwt,-I,+cryptokit -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit test_answerDump.native test_tls_record.native sslproxy.native probe_server.native answer_stats.native test_rsa_private_key.native test_x509.native serveranswer.native
+	ocamlbuild -cflags -I,+lwt,-I,+cryptokit -lflags -I,+lwt,-I,+cryptokit -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit test_answerDump.native test_tls_record.native sslproxy.native probe_server.native answer_stats.native test_rsa_private_key.native test_x509.native serveranswer.native test_random.native test_pkcs1.native
 
 toplevel: $(ENUMS) $(BINRECS) $(ASN1RECS)
 	ocamlbuild -cflags -I,+lwt,-I,+cryptokit -lflags -I,+lwt,-I,+cryptokit -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit util.top
