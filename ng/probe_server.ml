@@ -15,22 +15,13 @@ open TlsEngine
 
 (* Option handling *)
 
-type 'a result_type =
-  | NothingSoFar
-  | Result of 'a
-  | FatalAlert of string
-  | EndOfFile
-  | Timeout
-
 let verbose = ref false
-let chunk_size = ref 1400
 let host = ref "www.google.com"
 let port = ref 443
 let rec_version = ref V_TLSv1
 let ch_version = ref V_TLSv1
 let suites = ref [TLS_RSA_WITH_RC4_128_SHA]
 let compressions = ref [CM_Null]
-let timeout = ref 3.0
 
 let clear_suites () = suites := []
 let add_suite s =
@@ -93,7 +84,7 @@ let options = [
   mkopt None "add-compression" (StringFun add_compression) "add a suite to the list of compresion methods";
   mkopt None "all-compressions" (TrivialFun all_compressions) "add all the known compression methods";
 
-  mkopt None "record-size" (IntVal chunk_size) "set the size of the records sent";
+  mkopt None "record-size" (IntVal plaintext_chunk_size) "set the size of the records sent";
   mkopt (Some 't') "timeout" (FloatVal timeout) "set the timeout";
 ]
 
@@ -124,22 +115,6 @@ let mk_client_hello exts =
     }
   }
 
-let rec _really_write o s p l =
-  Lwt_unix.write o s p l >>= fun n ->
-  if l = n then
-    Lwt.return ()
-  else
-    _really_write o s (p + n) (l - n)
-
-let really_write o s = _really_write o s 0 (String.length s)
-
-let write_record o record =
-  let s = dump_tls_record record in
-  really_write o s
-
-let write_record_by_chunks o record size =
-  let recs = TlsUtil.split_record record size in
-  Lwt_list.iter_s (write_record o) recs
 
 let catch_eof = function
   | End_of_file -> return EndOfFile
@@ -225,14 +200,16 @@ let do_nothing _ = NothingSoFar
 
 
 
-let send_and_receive hs_fun alert_fun =
-  Util.client_socket !host !port >>= fun s ->
+let _send_and_receive hs_fun alert_fun =
+  Util.client_socket ~timeout:(Some !timeout) !host !port >>= fun s ->
   if !verbose then Printf.fprintf Pervasives.stderr "Connected to %s:%d\n" !host !port;
   let ch = mk_client_hello None in
   if !verbose then prerr_endline (print_tls_record "" "Sending Handshake (C->S)" ch);
-  write_record_by_chunks s ch !chunk_size >>= fun () ->
+  send_plain_record s ch >>= fun () ->
   handle_answer hs_fun alert_fun (input_of_fd "Server" s)
 
+let send_and_receive hs_fun alert_fun =
+  catch (fun () -> _send_and_receive hs_fun alert_fun) catch_exceptions
 
 
 let remove_from_list list elt =

@@ -1,12 +1,18 @@
 open Lwt
 
-let client_socket host port =
+exception Timeout
+
+let client_socket ?timeout:(timeout=None) host port =
   let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   let host_entry = Unix.gethostbyname host in
   let inet_addr = host_entry.Unix.h_addr_list.(0) in
   let addr = Unix.ADDR_INET (inet_addr, port) in
-  Lwt_unix.connect s addr >>= fun () ->
-  return s
+  let t = Lwt_unix.connect s addr in
+  let timed_t = match timeout with
+    | None -> t
+    | Some timeout_val ->
+      pick [t; Lwt_unix.sleep timeout_val >>= fun () -> fail Timeout]
+  in timed_t >>= fun () -> return s
 
 let server_socket ?bind_address:(bind_addr=None) ?backlog:(backlog=1024) port =
   let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
