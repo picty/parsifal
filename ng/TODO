@@ -1,4 +1,9 @@
 TODO
+ - Add a ciphersuite database with useful informations
+ - Useful: add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
+ - Useful: add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
+ - Useful: use lwt_parse_answer_dump and produce some easy statistics to confirm it works
+
  - PKCS1: Write test_pkcs1 to check RSA implementation
  - Crypto: Add support for DSA
  - Cryptokit: look at the code which seems grrovy
@@ -11,11 +16,7 @@ TODO
  - probe_server: Add a way to handle extensions
  - tlsEngine: put 'a result_type and handle_answer logic from probe_server into TlsEngine
  - Useful: write quick functions to open and read files with lwt_parse funs
- - Useful: add a function "connect : string (host) -> int (port) -> tls_record Lwt_mvar t (where records read are sent) -> Lwt_io output"
- - Useful: add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
- - Useful: add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
  - Useful: add a exact_parse_<obj> : string -> <obj> for top-level <obj> (OK for ASN.1. One more option for Records/Choices)
- - Useful: use lwt_parse_answer_dump and produce some easy statistics to confirm it works
 
  - ASN.1: handle constraints, optional fields, choices
  - ASN.1: Add UTCTime / ValidityTime handling (choices)
@@ -33,7 +34,6 @@ TODO
 
  - Tools: factor all the little programs when possible.
  - Add a way to automagically enrich the context (tlsEngine with an automata)
- - Add a ciphersuite database with useful informations
  - Write the automata (client, server, transparent proxy, normalizing proxy)
  - Add SSLv2 support
 
