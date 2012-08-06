@@ -20,9 +20,12 @@ let print_string indent name = function
 let print_binstring indent name s =
   Printf.sprintf "%s%s: %s\n" indent name (Common.hexdump s)
 
-let print_ipv4 indent name s =
+let string_of_ipv4 s =
   let elts = [s.[0]; s.[1]; s.[2]; s.[3]] in
-  let res = String.concat "." (List.map (fun e -> string_of_int (int_of_char e)) elts) in
+  String.concat "." (List.map (fun e -> string_of_int (int_of_char e)) elts)
+
+let print_ipv4 indent name s =
+  let res = string_of_ipv4 s in
   Printf.sprintf "%s%s: %s\n" indent name res
 
 let print_ipv6 indent name s =

@@ -30,32 +30,38 @@ let update_with_client_hello ctx ch =
   | _ -> failwith "Extensions not supported for now"
 
 
-let set_server_version ctx v =
+let check_server_version ctx v =
   let min, max = ctx.future.versions_proposed in
-  ctx.future.s_version <- v;
   if not ((int_of_tls_version min < int_of_tls_version v) &&
 	     (int_of_tls_version v < int_of_tls_version max))
   then raise (TLS_AlertToSend (AT_ProtocolVersion,
 	        Printf.sprintf "A version between %s and %s was expected"
 		  (print_tls_version 4 "" "" min) (print_tls_version 4 "" "" max)))
 
-let set_ciphersuite ctx cs =
-  ctx.future.s_ciphersuite <- find_csdescr cs;
+let check_ciphersuite ctx cs =
   if  not (List.mem cs ctx.future.ciphersuites_proposed)
   then raise (TLS_AlertToSend (AT_HandshakeFailure, "Unexpected ciphersuite"))
 
-let set_compression ctx cm =
-  ctx.future.s_compression_method <- cm;
+let check_compression ctx cm =
   if not (List.mem cm ctx.future.compressions_proposed)
   then raise (TLS_AlertToSend (AT_HandshakeFailure, "Unexpected compression method"))
+
+let check_server_hello ctx sh =
+  (* TODO: exts *)
+  check_server_version ctx sh.server_version;
+  check_ciphersuite ctx sh.ciphersuite;
+  check_compression ctx sh.compression_method;
+  match sh.server_extensions with
+  | None | Some [] -> ()
+  | _ -> failwith "Extensions not supported for now"
 
 let update_with_server_hello ctx sh =
   (* TODO: exts *)
   ctx.future.s_server_random <- sh.server_random;
   ctx.future.s_session_id <- sh.server_session_id;
-  set_server_version ctx sh.server_version;
-  set_ciphersuite ctx sh.ciphersuite;
-  set_compression ctx sh.compression_method;
+  ctx.future.s_version <- sh.server_version;
+  ctx.future.s_ciphersuite <- find_csdescr sh.ciphersuite;
+  ctx.future.s_compression_method <- sh.compression_method;
   match sh.server_extensions with
   | None | Some [] -> ()
   | _ -> failwith "Extensions not supported for now"

@@ -52,8 +52,8 @@ let handle_input input =
     | _ -> fail (Common.NotImplemented "")
 
 let input_of_filename filename =
-    Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-    return (input_of_fd filename fd)
+  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
+  return (input_of_fd filename fd)
 
 let catch_exceptions e =
   if !keep_going
