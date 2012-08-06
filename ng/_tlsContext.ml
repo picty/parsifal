@@ -1,4 +1,4 @@
-open TlsEnums
+(* TLS_CONTEXT Code copied from _tlsContext.ml *)
 
 type direction = ClientToServer | ServerToClient
 
@@ -56,7 +56,7 @@ type pseudo_random_function =
 
 
 type ciphersuite_description = {
-  suite_name : ciphersuite;
+  suite_name : TlsEnums.ciphersuite;
   kx : key_exchange_algorithm;
   au : authentication_algorithm;
   enc : encryption_algorithm;
@@ -82,13 +82,13 @@ let find_csdescr cs =
 
 
 type crypto_context = {
-  mutable versions_proposed : tls_version * tls_version;
-  mutable ciphersuites_proposed : ciphersuite list;
-  mutable compressions_proposed : compression_method list;
+  mutable versions_proposed : TlsEnums.tls_version * TlsEnums.tls_version;
+  mutable ciphersuites_proposed : TlsEnums.ciphersuite list;
+  mutable compressions_proposed : TlsEnums.compression_method list;
 
-  mutable s_version : tls_version;
+  mutable s_version : TlsEnums.tls_version;
   mutable s_ciphersuite : ciphersuite_description;
-  mutable s_compression_method : compression_method;
+  mutable s_compression_method : TlsEnums.compression_method;
 
   mutable s_client_random : string;
   mutable s_server_random : string;
@@ -101,13 +101,13 @@ type tls_context = {
 }
 
 let empty_crypto_context () = {
-  versions_proposed = V_Unknown 0xffff, V_Unknown 0;
+  versions_proposed = TlsEnums.V_Unknown 0xffff, TlsEnums.V_Unknown 0;
   ciphersuites_proposed = [];
   compressions_proposed = [];
 
-  s_version = V_Unknown 0;
-  s_ciphersuite = find_csdescr TLS_NULL_WITH_NULL_NULL;
-  s_compression_method = CM_Null;
+  s_version = TlsEnums.V_Unknown 0;
+  s_ciphersuite = find_csdescr TlsEnums.TLS_NULL_WITH_NULL_NULL;
+  s_compression_method = TlsEnums.CM_Null;
 
   s_client_random = "";
   s_server_random = "";
@@ -121,5 +121,7 @@ let empty_context () = {
 
 
 let check_record_version ctx record_version =
-  ctx.present.s_version = (V_Unknown 0) ||
+  ctx.present.s_version = (TlsEnums.V_Unknown 0) ||
   ctx.present.s_version = record_version
+
+(* TLS_CONTEXT End of the code copied *)

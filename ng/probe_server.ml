@@ -7,7 +7,6 @@ open ParsingEngine
 open DumpingEngine
 open LwtParsingEngine
 open TlsEnums
-open TlsContext
 open Tls
 open TlsEngine
 
@@ -123,7 +122,7 @@ let catch_eof = function
 
 
 let handle_answer handle_hs handle_alert s =
-  let ctx = TlsContext.empty_context () in
+  let ctx = empty_context () in
   let hs_in = input_of_string "Handshake records" ""
   and alert_in = input_of_string "Alert records" "" in
 

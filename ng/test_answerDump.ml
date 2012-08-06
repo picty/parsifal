@@ -61,7 +61,7 @@ let parse_all_records answer =
 	  begin
 	    match ctx, next_content with
 	      | None, Handshake {handshake_content = ServerHello sh} ->
-		let real_ctx = TlsContext.empty_context () in
+		let real_ctx = empty_context () in
 		TlsEngine.update_with_server_hello real_ctx sh;
 		split_records (next_record::accu) (Some real_ctx) str_input recs
 	      | _ -> split_records (next_record::accu) ctx str_input recs
@@ -98,7 +98,7 @@ let rec handle_one_file input =
 	let _, ctx, _ = parse_all_records answer in
 	let cs = match ctx with
 	  | None -> "ERROR"
-	  | Some ctx -> string_of_ciphersuite ctx.TlsContext.future.TlsContext.s_ciphersuite.TlsContext.suite_name
+	  | Some ctx -> string_of_ciphersuite ctx.future.s_ciphersuite.suite_name
 	in
 	Printf.printf "%s: %s\n" ip cs;
 	return ()

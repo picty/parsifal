@@ -1,6 +1,5 @@
 open Lwt
 open TlsEnums
-open TlsContext
 open TlsDatabase
 open Tls
 open ParsingEngine
@@ -94,7 +93,7 @@ let send_record ctx out record =
 
 
 
-(* type 'a tls_function = TlsContext.tls_context -> tls_record Lwt_mvar.t -> 'a Lwt.t *)
+(* type 'a tls_function = tls_context -> tls_record Lwt_mvar.t -> 'a Lwt.t *)
 
 (* type 'a tls_state = *)
 (*   | FatalAlertReceived of tls_alert_type *)
@@ -118,7 +117,7 @@ let catch_exceptions = function
   | e -> fail e
 
 let handle_answer handle_hs handle_alert s =
-  let ctx = TlsContext.empty_context () in
+  let ctx = empty_context () in
   let hs_in = input_of_string "Handshake records" ""
   and alert_in = input_of_string "Alert records" "" in
 

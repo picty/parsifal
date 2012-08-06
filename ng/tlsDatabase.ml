@@ -1,5 +1,5 @@
 open TlsEnums
-open TlsContext
+open Tls
 
 let mk_csdescr cs kx au enc mac prf exp min max =
   let desc = {

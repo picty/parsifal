@@ -11,10 +11,10 @@ TEST_PROGRAMS = test_answerDump.native test_tls_record.native test_rsa_private_k
 PROGRAMS = $(TEST_PROGRAMS) probe_server.native sslproxy.native answer_stats.native serveranswer.native
 
 all: $(ENUMS) $(BINRECS) $(ASN1RECS)
-	ocamlbuild -cflags -I,+lwt,-I,+cryptokit -lflags -I,+lwt,-I,+cryptokit -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit test_answerDump.native test_tls_record.native sslproxy.native probe_server.native answer_stats.native test_rsa_private_key.native test_x509.native serveranswer.native test_random.native test_pkcs1.native
+	ocamlbuild -build-dir .build.main -cflags -I,+lwt,-I,+cryptokit -lflags -I,+lwt,-I,+cryptokit -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit test_answerDump.native test_tls_record.native sslproxy.native probe_server.native answer_stats.native test_rsa_private_key.native test_x509.native serveranswer.native test_random.native test_pkcs1.native
 
 toplevel: $(ENUMS) $(BINRECS) $(ASN1RECS)
-	ocamlbuild -cflags -I,+lwt,-I,+cryptokit -lflags -I,+lwt,-I,+cryptokit -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit util.top
+	ocamlbuild -build-dir .build.toplevel -cflags -I,+lwt,-I,+cryptokit -lflags -I,+lwt,-I,+cryptokit -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit util.top
 	@echo "rlwrap ./util.top -I _build"
 
 check: $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS)
@@ -24,6 +24,8 @@ dep : Makefile.depend Makefile.native-depend
 
 
 clean:
+	ocamlbuild -build-dir .build.main -clean
+	ocamlbuild -build-dir .build.toplevel -clean
 	rm -f Makefile.depend Makefile.native-depend $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS) \
               *.cmx *.cmi *.cmo *.mk_enums.ml *.mk_binrecs.ml *.mk_choices.ml *.mk_asn1.ml *~ *.o
 
@@ -36,7 +38,7 @@ clean:
 	ocaml $< > $@
 
 
-%.mk_binrecs.ml: preprocess/hd_binrecs.ml %.binrecs common.ml preprocess/mk_binrecs.ml
+%.mk_binrecs.ml: common.ml preprocess/mk_binrecs.ml %.binrecs
 	cat $^ > $@
 
 %.ml: %.mk_binrecs.ml

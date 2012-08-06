@@ -1,3 +1,73 @@
+(* BINARY RECORDS *)
+
+let do_lwt = true
+
+
+(* Simple records (a.k.a structs) *)
+
+type integer_type =
+  | IT_UInt8
+  | IT_UInt16
+  | IT_UInt24
+  | IT_UInt32
+
+type field_name = string
+
+type field_len =
+  | FixedLen of int
+  | VarLen of integer_type
+  | Remaining
+
+type field_type =
+  | FT_Empty
+  | FT_Char
+  | FT_Integer of integer_type
+  | FT_Enum of integer_type * string * string
+  | FT_IPv4
+  | FT_IPv6
+  | FT_String of field_len * bool
+  | FT_List of field_len * field_type
+  | FT_Container of integer_type * field_type
+  | FT_Custom of (string option) * string * (string list)
+
+(* TODO: Add options for lists (AtLeast, AtMost) and for options *)
+
+type field_desc = field_name * field_type * bool
+
+type record_option =
+  | RO_AddParseParameter of string
+  | RO_NoContextParameter
+
+type record_description = string * field_desc list * record_option list
+
+
+
+
+(* Choices (a.k.a unions) *)
+
+type discriminator_type =
+  | Explicit of string  (* the discriminator will be given as an arg *)
+  | Implicit of string  (* the discriminator comes from the context *)
+(* If the discriminator is Implict x
+   - context is None -> Unparsed
+   - context is Some context -> the discriminator is context, whatever this means (generally "context.field") *)
+
+(* Discrimating value, Constructor name, Constructor subtype (module + type name) *)
+type choice_desc = string * string * field_type
+
+type choice_option =
+  | CO_EnrichByDefault
+  | CO_ExhaustiveDiscriminatingVals
+  | CO_AddParseParameter of string
+  | CO_NoContextParameter
+
+(* Type name, Module containing the discriminating values, Discriminator, Choice list, Constructor if unparsed, Default value of the enrich ref *)
+type choice_description = string * string option * discriminator_type * choice_desc list * string * choice_option list
+
+
+
+type what = All | OnlyTypes | OnlyFuns
+
 
 
 (* Generic functions *)
@@ -257,13 +327,19 @@ let mk_record_print_fun (name, raw_fields, _) =
   end
 
 
-let handle_record_desc do_lwt (desc : record_description) =
-  mk_record_desc_type desc;
-  mk_record_parse_fun desc;
-  if do_lwt then mk_record_lwt_parse_fun desc;
-  mk_record_dump_fun desc;
-  mk_record_print_fun desc;
-  print_newline ()
+let handle_record_desc ?what:(what=All) (desc : record_description) =
+  begin
+    match what with
+      | OnlyTypes | All -> mk_record_desc_type desc;
+      | OnlyFuns -> ()
+  end;
+  match what with
+    | OnlyFuns | All ->
+      mk_record_parse_fun desc;
+      if do_lwt then mk_record_lwt_parse_fun desc;
+      mk_record_dump_fun desc;
+      mk_record_print_fun desc;
+    | OnlyTypes -> ()
 
 
 
@@ -358,28 +434,31 @@ let mk_choice_print_fun (name, _, _, choices, unparsed_cons, _) =
   Printf.printf "  | %s s -> print_binstring indent name s\n\n" unparsed_cons
 
 
-let handle_choice_desc do_lwt (choice : choice_description) =
-  mk_choice_type choice;
-  mk_choice_parse_fun false choice;
-  if do_lwt then mk_choice_parse_fun true choice;
-  mk_choice_dump_fun choice;
-  mk_choice_print_fun choice;
-  print_newline ()
-
-
-
-let handle_type_desc do_lwt = function
-  | Record r_d -> handle_record_desc do_lwt r_d
-  | Choice c_d -> handle_choice_desc do_lwt c_d
+let handle_choice_desc ?what:(what=All) (choice : choice_description) =
+  begin
+    match what with
+      | OnlyTypes | All -> mk_choice_type choice;
+      | OnlyFuns -> ()
+  end;
+  match what with
+    | OnlyFuns | All ->
+      mk_choice_parse_fun false choice;
+      if do_lwt then mk_choice_parse_fun true choice;
+      mk_choice_dump_fun choice;
+      mk_choice_print_fun choice;
+    | OnlyTypes -> ()
 
 
 let _ =
-  let do_lwt = true in
   if do_lwt then begin
     print_endline "open Lwt";
     print_endline "open LwtParsingEngine"
   end;
   print_endline "open ParsingEngine";
   print_endline "open DumpingEngine";
-  print_endline "open PrintingEngine\n";
-  List.iter (handle_type_desc do_lwt) descriptions
+  print_endline "open PrintingEngine\n"
+
+
+
+(* Real information about binary records/choices goes after here. *)
+

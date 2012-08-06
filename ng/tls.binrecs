@@ -46,7 +46,7 @@ let client_hello_d = [
   "client_session_id", FT_String (VarLen IT_UInt8, true), false;
   "ciphersuites", FT_List (VarLen IT_UInt16, FT_Enum (IT_UInt16, "TlsEnums", "ciphersuite")), false;
   "compression_methods", FT_List (VarLen IT_UInt8, FT_Enum (IT_UInt8, "TlsEnums", "compression_method")), false;
-  "client_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", ["TlsContext.ClientToServer"])), true;
+  "client_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", ["ClientToServer"])), true;
 ]
 
 let server_hello_d = [
@@ -55,7 +55,7 @@ let server_hello_d = [
   "server_session_id", FT_String (VarLen IT_UInt8, true), false;
   "ciphersuite", FT_Enum (IT_UInt16, "TlsEnums", "ciphersuite"), false;
   "compression_method", FT_Enum (IT_UInt8, "TlsEnums", "compression_method"), false;
-  "server_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", ["TlsContext.ServerToClient"])), true;
+  "server_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", ["ServerToClient"])), true;
 ]
 
 let new_session_ticket_d = [
@@ -132,42 +132,98 @@ let tls_record_d = [
 
 
 
-let descriptions = [
-  Record ("tls_alert",           tls_alert_d, []);
-  Record ("change_cipher_spec",  change_cipher_spec_d, []);
+(* Print all the TLS types *)
 
-  Record ("hello_request",       [], []);
+let _ =
+  handle_record_desc ~what:OnlyTypes ("tls_alert",           tls_alert_d, []);
+  handle_record_desc ~what:OnlyTypes ("change_cipher_spec",  change_cipher_spec_d, []);
 
-  Choice ("sni_name",
+  handle_record_desc ~what:OnlyTypes ("hello_request",       [], []);
+
+  handle_choice_desc ~what:OnlyTypes ("sni_name",
           Some "TlsEnums", Explicit ("name_type"), sni_name_c, "Unparsed_SNIName", [CO_EnrichByDefault]);
-  Record ("server_name",         server_name_d, []);
-  Choice ("server_name_content",
-          Some "TlsContext", Implicit "direction",
+  handle_record_desc ~what:OnlyTypes ("server_name",         server_name_d, []);
+  handle_choice_desc ~what:OnlyTypes ("server_name_content",
+          None, Implicit "direction",
           server_name_content_c, "Unparsed_ServerNameContent", [CO_EnrichByDefault; CO_AddParseParameter "direction"; CO_ExhaustiveDiscriminatingVals]);
-  Choice ("hello_extension_content",
+  handle_choice_desc ~what:OnlyTypes ("hello_extension_content",
           Some "TlsEnums", Explicit ("extension_type"), hello_extension_content_c, "Unparsed_HelloExtension", [CO_EnrichByDefault; CO_AddParseParameter "direction"]);
-  Record ("hello_extension",     hello_extension_d, [RO_AddParseParameter "direction"]);
+  handle_record_desc ~what:OnlyTypes ("hello_extension",     hello_extension_d, [RO_AddParseParameter "direction"]);
 
-  Record ("client_hello",        client_hello_d, []);
-  Record ("server_hello",        server_hello_d, []);
+  handle_record_desc ~what:OnlyTypes ("client_hello",        client_hello_d, []);
+  handle_record_desc ~what:OnlyTypes ("server_hello",        server_hello_d, []);
 
-  Record ("new_session_ticket",  new_session_ticket_d, []);
-  Record ("certificates",        certificates_d, []);
+  handle_record_desc ~what:OnlyTypes ("new_session_ticket",  new_session_ticket_d, []);
+  handle_record_desc ~what:OnlyTypes ("certificates",        certificates_d, []);
 
-  Record ("server_dh_params",    server_dh_params_d, []);
-  Record ("ske_dhe_params",      ske_dhe_params_d, []);
-  Choice ("server_key_exchange",
-          Some "TlsContext", Implicit "context.TlsContext.future.TlsContext.s_ciphersuite.TlsContext.kx",
+  handle_record_desc ~what:OnlyTypes ("server_dh_params",    server_dh_params_d, []);
+  handle_record_desc ~what:OnlyTypes ("ske_dhe_params",      ske_dhe_params_d, []);
+  handle_choice_desc ~what:OnlyTypes ("server_key_exchange",
+          None, Implicit "context.future.s_ciphersuite.kx",
           server_key_exchange_c, "Unparsed_SKEContent", [CO_EnrichByDefault]);
 
-  Record ("signature_and_hash_algorithm", signature_and_hash_algorithm_d, []);
-  Record ("certificate_request", certificate_request_d, []);
-  Record ("server_hello_done",   [], []);
-  Choice ("handshake_content", 
+  handle_record_desc ~what:OnlyTypes ("signature_and_hash_algorithm", signature_and_hash_algorithm_d, []);
+  handle_record_desc ~what:OnlyTypes ("certificate_request", certificate_request_d, []);
+  handle_record_desc ~what:OnlyTypes ("server_hello_done",   [], []);
+  handle_choice_desc ~what:OnlyTypes ("handshake_content", 
           Some "TlsEnums", Explicit ("handshake_type"), handshake_content_c, "Unparsed_HSContent", [CO_EnrichByDefault]);
-  Record ("handshake_msg",       handshake_msg_d, []);
+  handle_record_desc ~what:OnlyTypes ("handshake_msg",       handshake_msg_d, []);
 
-  Choice ("record_content",
+  handle_choice_desc ~what:OnlyTypes ("record_content",
           Some "TlsEnums", Explicit ("content_type"), record_content_c, "Unparsed_Record", []);
-  Record ("tls_record",          tls_record_d, []);
-]
+  handle_record_desc ~what:OnlyTypes ("tls_record",          tls_record_d, []);
+  ();;
+
+
+let _ =
+  let f = open_in "_tlsContext.ml" in
+  let rec print_all_lines () =
+    print_endline (input_line f);
+    print_all_lines ()
+  in
+  try print_all_lines ()
+  with End_of_file -> ()
+
+
+
+(* Print the parsing/printing/dumping functions *)
+
+let _ =
+  handle_record_desc ~what:OnlyFuns ("tls_alert",           tls_alert_d, []);
+  handle_record_desc ~what:OnlyFuns ("change_cipher_spec",  change_cipher_spec_d, []);
+
+  handle_record_desc ~what:OnlyFuns ("hello_request",       [], []);
+
+  handle_choice_desc ~what:OnlyFuns ("sni_name",
+          Some "TlsEnums", Explicit ("name_type"), sni_name_c, "Unparsed_SNIName", [CO_EnrichByDefault]);
+  handle_record_desc ~what:OnlyFuns ("server_name",         server_name_d, []);
+  handle_choice_desc ~what:OnlyFuns ("server_name_content",
+          None, Implicit "direction",
+          server_name_content_c, "Unparsed_ServerNameContent", [CO_EnrichByDefault; CO_AddParseParameter "direction"; CO_ExhaustiveDiscriminatingVals]);
+  handle_choice_desc ~what:OnlyFuns ("hello_extension_content",
+          Some "TlsEnums", Explicit ("extension_type"), hello_extension_content_c, "Unparsed_HelloExtension", [CO_EnrichByDefault; CO_AddParseParameter "direction"]);
+  handle_record_desc ~what:OnlyFuns ("hello_extension",     hello_extension_d, [RO_AddParseParameter "direction"]);
+
+  handle_record_desc ~what:OnlyFuns ("client_hello",        client_hello_d, []);
+  handle_record_desc ~what:OnlyFuns ("server_hello",        server_hello_d, []);
+
+  handle_record_desc ~what:OnlyFuns ("new_session_ticket",  new_session_ticket_d, []);
+  handle_record_desc ~what:OnlyFuns ("certificates",        certificates_d, []);
+
+  handle_record_desc ~what:OnlyFuns ("server_dh_params",    server_dh_params_d, []);
+  handle_record_desc ~what:OnlyFuns ("ske_dhe_params",      ske_dhe_params_d, []);
+  handle_choice_desc ~what:OnlyFuns ("server_key_exchange",
+          None, Implicit "context.future.s_ciphersuite.kx",
+          server_key_exchange_c, "Unparsed_SKEContent", [CO_EnrichByDefault]);
+
+  handle_record_desc ~what:OnlyFuns ("signature_and_hash_algorithm", signature_and_hash_algorithm_d, []);
+  handle_record_desc ~what:OnlyFuns ("certificate_request", certificate_request_d, []);
+  handle_record_desc ~what:OnlyFuns ("server_hello_done",   [], []);
+  handle_choice_desc ~what:OnlyFuns ("handshake_content", 
+          Some "TlsEnums", Explicit ("handshake_type"), handshake_content_c, "Unparsed_HSContent", [CO_EnrichByDefault]);
+  handle_record_desc ~what:OnlyFuns ("handshake_msg",       handshake_msg_d, []);
+
+  handle_choice_desc ~what:OnlyFuns ("record_content",
+          Some "TlsEnums", Explicit ("content_type"), record_content_c, "Unparsed_Record", []);
+  handle_record_desc ~what:OnlyFuns ("tls_record",          tls_record_d, []);
+  ();;
