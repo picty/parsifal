@@ -1,3 +1,4 @@
+open Common
 open Lwt
 open ParsingEngine
 open LwtParsingEngine
@@ -64,6 +65,9 @@ let parse_all_records answer =
 		let real_ctx = empty_context () in
 		TlsEngine.update_with_server_hello real_ctx sh;
 		split_records (next_record::accu) (Some real_ctx) str_input recs
+	      | Some c, Handshake {handshake_content = ServerKeyExchange ske} ->
+		TlsEngine.update_with_server_key_exchange c ske;
+		split_records (next_record::accu) ctx str_input recs
 	      | _ -> split_records (next_record::accu) ctx str_input recs
 	  end;
 	  
@@ -102,7 +106,16 @@ let rec handle_one_file input =
 	in
 	Printf.printf "%s: %s\n" ip cs;
 	return ()
-      | SKE -> fail (Common.NotImplemented "SKE")
+      | SKE ->
+	let _, ctx, _ = parse_all_records answer in
+	let ske = match ctx with
+	  | None -> "ERROR"
+	  | Some { future = { s_server_key_exchange = (SKE_DHE { params = params } ) } } ->
+	    Printf.sprintf "%s,%s,%s" (hexdump params.dh_p) (hexdump params.dh_g) (hexdump params.dh_Ys)
+	  | Some _ -> "UNPARSED"
+	in
+	Printf.printf "%s: %s\n" ip ske;
+	return ()
   end >>= fun () ->
   handle_one_file input
 

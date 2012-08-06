@@ -69,7 +69,8 @@ let update_with_server_hello ctx sh =
 let update_with_certificate _ctx _cert = ()
 
 
-let update_with_ske _ctx _cert = ()
+let update_with_server_key_exchange ctx ske =
+  ctx.future.s_server_key_exchange <- ske
 
 
 (* Useful functions *)

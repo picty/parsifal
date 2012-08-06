@@ -90,6 +90,8 @@ type crypto_context = {
   mutable s_ciphersuite : ciphersuite_description;
   mutable s_compression_method : TlsEnums.compression_method;
 
+  mutable s_server_key_exchange : server_key_exchange;
+
   mutable s_client_random : string;
   mutable s_server_random : string;
   mutable s_session_id : string;
@@ -108,6 +110,8 @@ let empty_crypto_context () = {
   s_version = TlsEnums.V_Unknown 0;
   s_ciphersuite = find_csdescr TlsEnums.TLS_NULL_WITH_NULL_NULL;
   s_compression_method = TlsEnums.CM_Null;
+
+  s_server_key_exchange = Unparsed_SKEContent "";
 
   s_client_random = "";
   s_server_random = "";
