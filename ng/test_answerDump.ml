@@ -112,7 +112,8 @@ let rec handle_one_file input =
 	  | None -> "ERROR"
 	  | Some { future = { s_server_key_exchange = (SKE_DHE { params = params } ) } } ->
 	    Printf.sprintf "%s,%s,%s" (hexdump params.dh_p) (hexdump params.dh_g) (hexdump params.dh_Ys)
-	  | Some _ -> "UNPARSED"
+	  | Some { future = { s_server_key_exchange = (Unparsed_SKEContent "" ) } } -> "NO_SKE"
+	  | Some _ -> "NOT PARSED YET"
 	in
 	Printf.printf "%s: %s\n" ip ske;
 	return ()
