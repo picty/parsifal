@@ -1,6 +1,14 @@
 TODO
+ - TlsEngine: Work on TlsEngine.update* functions
+ - TlsEngine: Add a automaton_state field in context
+ - TlsEngine: Add a check_consistency field in context
+ - TlsEngine: Add a generic update function relying on the context and the message received to
+   * check the consistency if necessary
+   * update the state
+   * return what to do next?
  - Move test_answerDump.split_record in TlsUtil?
- - TlsContext types should be inserted between type definitions in Tls.binrecs and the functions generated. The remaining functions should migrate to TlsEngine.
+ - TlsEngine: TlsContext types should be inserted between type definitions in Tls.binrecs and the functions generated. The remaining functions should migrate to TlsEngine.
+
  - Useful: add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
  - Useful: add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
 
