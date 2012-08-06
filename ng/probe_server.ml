@@ -166,7 +166,7 @@ let print_hs ctx hs =
   match hs.handshake_type, hs.handshake_content with
   | HT_ServerHelloDone, _ -> Result ()
   | _, ServerHello { ciphersuite = cs } ->
-    ctx.future.s_ciphersuite <- cs;
+    ctx.future.s_ciphersuite <- find_csdescr cs;
     NothingSoFar
   | _ -> NothingSoFar
 

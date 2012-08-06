@@ -1,5 +1,5 @@
 TODO
- - Add a ciphersuite database with useful informations
+ - TlsContext types should be inserted between type definitions in Tls.binrecs and the functions generated. The remaining functions should migrate to TlsEngine.
  - Useful: add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
  - Useful: add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
  - Useful: use lwt_parse_answer_dump and produce some easy statistics to confirm it works

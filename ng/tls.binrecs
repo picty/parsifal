@@ -157,7 +157,7 @@ let descriptions = [
   Record ("server_dh_params",    server_dh_params_d, []);
   Record ("ske_dhe_params",      ske_dhe_params_d, []);
   Choice ("server_key_exchange",
-          Some "TlsContext", Implicit "TlsContext.extract_future_kx context",
+          Some "TlsContext", Implicit "context.TlsContext.future.TlsContext.s_ciphersuite.TlsContext.kx",
           server_key_exchange_c, "Unparsed_SKEContent", [CO_EnrichByDefault]);
 
   Record ("signature_and_hash_algorithm", signature_and_hash_algorithm_d, []);

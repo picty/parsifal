@@ -1,6 +1,7 @@
 open Lwt
 open TlsEnums
 open TlsContext
+open TlsDatabase
 open Tls
 open ParsingEngine
 
@@ -15,10 +16,10 @@ let timeout = ref 3.0
 
 
 
-(* CLIENT AUTOMATA *)
+(* AUTOMATA *)
 
-(* TODO: extensions *)
 let update_with_client_hello ctx ch =
+  (* TODO: extensions *)
   ctx.future.versions_proposed <- (V_SSLv3, ch.client_version);
   ctx.future.s_client_random <- ch.client_random;
   ctx.future.s_session_id <- ch.client_session_id;
@@ -39,7 +40,7 @@ let set_server_version ctx v =
 		  (print_tls_version 4 "" "" min) (print_tls_version 4 "" "" max)))
 
 let set_ciphersuite ctx cs =
-  ctx.future.s_ciphersuite <- cs;
+  ctx.future.s_ciphersuite <- find_csdescr cs;
   if  not (List.mem cs ctx.future.ciphersuites_proposed)
   then raise (TLS_AlertToSend (AT_HandshakeFailure, "Unexpected ciphersuite"))
 
@@ -59,7 +60,9 @@ let update_with_server_hello ctx sh =
   | None | Some [] -> ()
   | _ -> failwith "Extensions not supported for now"
 
+
 let update_with_certificate _ctx _cert = ()
+
 
 let update_with_ske _ctx _cert = ()
 
