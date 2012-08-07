@@ -1,0 +1,55 @@
+# configurable section
+#TARGETS = test_answerDump test_tls_record test_random \
+          test_pkcs1 test_rsa_private_key test_x509 \
+          test_camlp4_enums \
+          sslproxy probe_server answer_stats serveranswer
+TARGETS = test_answerDump
+
+test_answerDump_SRCS := test_answerDump.ml answerDump.ml parsingEngine.ml printingEngine.ml lwtParsingEngine.ml dumpingEngine.ml
+test_answerDump_INCS :=
+
+# comment this line if not using camlp4
+USE_CAMLP4 = yes
+
+CC = gcc
+
+# use the following lines to guess .cmxa files from libs names.
+# remember, libs are always lowercase
+OCAML_LIBS = unix lwt lwt.unix str lwt cryptokit
+
+# use the following variables to add extra flags (not guessed by ocamlfind)
+EXTRA_OCAMLOPT_CC_FLAGS = -package mk_enums
+EXTRA_OCAMLOPT_LD_FLAGS =
+EXTRA_OCAMLC_CC_FLAGS = -package mk_enums
+EXTRA_OCAMLC_LD_FLAGS =
+
+BUILD_DIR = build
+
+
+# Specific rules and dependencies
+tls.binrecs: _tlsContext.ml
+
+BINRECS = answerDump.ml tls.ml
+ASN1RECS = rSAKey.ml x509.ml
+
+common.ml: build/mk_enums.cmo
+
+build/%.cmo: preprocess/%.ml
+	ocamlc -pp "camlp4o pa_extend.cmo q_MLast.cmo" -I +camlp4 -c $<
+
+%.mk_binrecs.ml: common.ml preprocess/mk_binrecs.ml %.binrecs
+	cat $^ > $@
+
+%.ml: %.mk_binrecs.ml
+	ocaml $< > $@
+
+
+%.mk_asn1.ml: common.ml preprocess/mk_asn1.ml %.asn1
+	cat $^ > $@
+
+%.ml: %.mk_asn1.ml
+	ocaml $< > $@
+
+
+
+include Makefile.ocaml
