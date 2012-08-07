@@ -38,8 +38,6 @@ preprocessors: $(PREPROCESSORS)
 preprocess/%.cmo: preprocess/%.ml
 	ocamlbuild -pp "camlp4o pa_extend.cmo q_MLast.cmo" -cflags -I,+camlp4 -lflags -I,+camlp4 $@
 
-dep : Makefile.depend Makefile.native-depend
-
 
 clean:
 	ocamlbuild -build-dir .build.main -clean
@@ -66,13 +64,3 @@ tls.binrecs: _tlsContext.ml
 %.ml: %.mk_asn1.ml
 	ocaml $< > $@
 
-
-
-Makefile.depend: Makefile $(BINRECS) $(ASN1RECS) $(SOURCES)
-	ocamldep $^ > $@
-
-Makefile.native-depend: Makefile.depend
-	./native_deps.py $^ $(PROGRAMS) > $@
-
--include Makefile.depend
--include Makefile.native-depend

@@ -1,10 +1,4 @@
 *~
-*.o
-*.cmx
-*.cmi
-*.cmo
-Makefile.depend
-Makefile.native-depend
 *.mk_binrecs.ml
 answerDump.ml
 mrt.ml
@@ -14,3 +8,4 @@ rSAKey.ml
 x509.ml
 test_answerDump
 util.top
+data-samples
