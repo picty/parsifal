@@ -5,9 +5,6 @@
 *.cmo
 Makefile.depend
 Makefile.native-depend
-*.mk_enums.ml
-tlsEnums.ml
-mrtEnums.ml
 *.mk_binrecs.ml
 answerDump.ml
 mrt.ml

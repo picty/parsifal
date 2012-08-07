@@ -1,8 +1,7 @@
-ENUMS = tlsEnums.ml
 BINRECS = answerDump.ml tls.ml
 ASN1RECS = rSAKey.ml x509.ml
 SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml printingEngine.ml \
-	$(ENUMS) $(BINRECS) $(CHOICES) $(ASN1RECS) \
+	$(BINRECS) $(CHOICES) $(ASN1RECS) \
 	common.ml x509Util.ml\
 	tlsUtil.ml tlsContext.ml \
 	test_answerDump.ml test_tls_record.ml test_rsa_private_key.ml test_x509.ml test_random.ml
@@ -13,7 +12,7 @@ PROGRAMS = $(TEST_PROGRAMS) probe_server.native sslproxy.native answer_stats.nat
 PREPROCESSORS = preprocess/mk_enums_ng.cmo
 
 
-all: $(ENUMS) $(BINRECS) $(ASN1RECS) $(PREPROCESSORS)
+all: $(BINRECS) $(ASN1RECS) $(PREPROCESSORS)
 	ocamlbuild -cflags -I,+lwt,-I,+cryptokit \
                    -lflags -I,+lwt,-I,+cryptokit \
                    -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit \
@@ -23,7 +22,7 @@ all: $(ENUMS) $(BINRECS) $(ASN1RECS) $(PREPROCESSORS)
                    test_camlp4_enums.native \
                    sslproxy.native probe_server.native answer_stats.native serveranswer.native
 
-toplevel: $(ENUMS) $(BINRECS) $(ASN1RECS)
+toplevel: $(BINRECS) $(ASN1RECS)
 	ocamlbuild -cflags -I,+lwt,-I,+cryptokit \
                    -lflags -I,+lwt,-I,+cryptokit \
                    -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit \
@@ -31,7 +30,7 @@ toplevel: $(ENUMS) $(BINRECS) $(ASN1RECS)
                    util.top
 	@echo "rlwrap ./util.top -I _build"
 
-check: $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS)
+check: $(TEST_PROGRAMS) $(BINRECS) $(ASN1RECS)
 
 
 preprocessors: $(PREPROCESSORS)
@@ -45,20 +44,13 @@ dep : Makefile.depend Makefile.native-depend
 clean:
 	ocamlbuild -build-dir .build.main -clean
 	ocamlbuild -build-dir .build.toplevel -clean
-	rm -f Makefile.depend Makefile.native-depend $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS) \
-              *.cmx *.cmi *.cmo *.mk_enums.ml *.mk_binrecs.ml *.mk_choices.ml *.mk_asn1.ml *~ *.o
+	rm -f Makefile.depend Makefile.native-depend $(TEST_PROGRAMS) $(BINRECS) $(ASN1RECS) \
+              *.cmx *.cmi *.cmo *.mk_binrecs.ml *.mk_choices.ml *.mk_asn1.ml *~ *.o
 
 
 
 # Specific dependencies
 tls.binrecs: _tlsContext.ml
-
-
-%.mk_enums.ml: preprocess/hd_enums.ml %.enums common.ml preprocess/mk_enums.ml
-	cat $^ > $@
-
-%.ml: %.mk_enums.ml
-	ocaml $< > $@
 
 
 %.mk_binrecs.ml: common.ml preprocess/mk_binrecs.ml %.binrecs
@@ -76,7 +68,7 @@ tls.binrecs: _tlsContext.ml
 
 
 
-Makefile.depend: Makefile $(ENUMS) $(BINRECS) $(ASN1RECS) $(SOURCES)
+Makefile.depend: Makefile $(BINRECS) $(ASN1RECS) $(SOURCES)
 	ocamldep $^ > $@
 
 Makefile.native-depend: Makefile.depend
