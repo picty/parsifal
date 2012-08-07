@@ -5,10 +5,6 @@
    ./a.out
 *)
 
-open PrintingEngine
-open Lwt
-
-
 enum tls_version = [
   0x0002, V_SSLv2, "SSLv2";
   0x0300, V_SSLv3, "SSLv3";

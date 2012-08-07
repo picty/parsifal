@@ -1,7 +1,47 @@
-open Lwt
 open Common
-open Asn1Enums
+open Lwt
 open ParsingEngine
+
+
+enum asn1_class = [
+  0, C_Universal, "Universal";
+  1, C_Application, "Application";
+  2, C_ContextSpecific, "Context Specific";
+  3, C_Private, "Private"
+], [Exception UnknownAsn1Class], []
+
+enum asn1_tag = [
+  0, T_EndOfContents, "EOC";
+  1, T_Boolean, "Boolean";
+  2, T_Integer, "Integer";
+  3, T_BitString, "Bit String";
+  4, T_OctetString, "Octet String";
+  5, T_Null, "Null";
+  6, T_OId, "OId";
+  7, T_ObjectDescriptor, "Object Descriptor";
+  8, T_External, "External";
+  9, T_Real, "Real";
+  10, T_Enumerated, "Enumerated";
+  11, T_EmbeddedPDV, "EmbeddedPDV";
+  12, T_UTF8String, "UTF8 String";
+  13, T_RelativeOId, "Relative OId";
+  16, T_Sequence, "Sequence";
+  17, T_Set, "Set";
+  18, T_NumericString, "Numeric String";
+  19, T_PrintableString, "Printable String";
+  20, T_T61String, "T61 String";
+  21, T_VideoString, "Video String";
+  22, T_IA5String, "IA5 String";
+  23, T_UTCTime, "UTC Time";
+  24, T_GeneralizedTime, "Generalized Time";
+  25, T_GraphicString, "Graphic String";
+  26, T_VisibleString, "Visible String";
+  27, T_GeneralString, "General String";
+  28, T_UniversalString, "Universal String";
+  29, T_UnspecifiedCharacterString, "Unspecified Character String";
+  30, T_BMPString, "BMP String"
+], [UnknownVal T_Unknown], []
+
 
 
 let (oid_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100

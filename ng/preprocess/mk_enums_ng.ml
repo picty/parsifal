@@ -126,7 +126,7 @@ let mk_parse_dump_print_funs opts (_loc, name, _, _) =
   begin
     if List.mem DoLwt opts then
       <:str_item< value $ <:binding< $pat:pat_lid _loc ("lwt_parse_" ^ name)$ $pat:pat_lid _loc "lwt_parse_int"$ $pat:pat_lid _loc "input"$ =
-           $exp: <:expr< Lwt.bind (lwt_parse_int input) (fun x -> return ( $ <:expr< $exp_lid _loc (name ^ "_of_int")$ x >> $ ) ) >> $ >> $ >>
+           $exp: <:expr< Lwt.bind (lwt_parse_int input) (fun x -> Lwt.return ( $ <:expr< $exp_lid _loc (name ^ "_of_int")$ x >> $ ) ) >> $ >> $ >>
     else <:str_item< >>
   end,
 
@@ -134,7 +134,7 @@ let mk_parse_dump_print_funs opts (_loc, name, _, _) =
        $exp: <:expr< dump_int ( $exp_lid _loc ("int_of_" ^ name)$ v) >> $ >> $ >>,
 
   <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ name)$ =
-       $exp: <:expr< print_enum $exp_lid _loc ("string_of_" ^ name)$ $exp_lid _loc ("int_of_" ^ name)$ >> $ >> $ >>
+       $exp: <:expr< PrintingEngine.print_enum $exp_lid _loc ("string_of_" ^ name)$ $exp_lid _loc ("int_of_" ^ name)$ >> $ >> $ >>
 
 
 

@@ -1,4 +1,4 @@
-ENUMS = asn1Enums.ml tlsEnums.ml
+ENUMS = tlsEnums.ml
 BINRECS = answerDump.ml tls.ml
 ASN1RECS = rSAKey.ml x509.ml
 SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml printingEngine.ml \
@@ -24,7 +24,11 @@ all: $(ENUMS) $(BINRECS) $(ASN1RECS) $(PREPROCESSORS)
                    sslproxy.native probe_server.native answer_stats.native serveranswer.native
 
 toplevel: $(ENUMS) $(BINRECS) $(ASN1RECS)
-	ocamlbuild -build-dir .build.toplevel -cflags -I,+lwt,-I,+cryptokit -lflags -I,+lwt,-I,+cryptokit -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit util.top
+	ocamlbuild -cflags -I,+lwt,-I,+cryptokit \
+                   -lflags -I,+lwt,-I,+cryptokit \
+                   -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit \
+                   -pp "camlp4o $(PREPROCESSORS)" \
+                   util.top
 	@echo "rlwrap ./util.top -I _build"
 
 check: $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS)

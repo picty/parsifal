@@ -3,7 +3,6 @@ parsingEngine
 dumpingEngine
 printingEngine
 lwtParsingEngine
-asn1Enums
 asn1Engine
 rSAKey
 x509

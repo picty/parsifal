@@ -6,7 +6,6 @@
 Makefile.depend
 Makefile.native-depend
 *.mk_enums.ml
-asn1Enums.ml
 tlsEnums.ml
 mrtEnums.ml
 *.mk_binrecs.ml

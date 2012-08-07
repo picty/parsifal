@@ -242,7 +242,6 @@ let handle_desc ?options:(o=[]) ?hdr:(h=None) n f =
 
 let _ =
   print_endline "open Lwt";
-  print_endline "open Asn1Enums";
   print_endline "open ParsingEngine";
   print_endline "open Asn1Engine\n";;
 
