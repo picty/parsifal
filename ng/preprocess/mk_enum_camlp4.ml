@@ -31,7 +31,7 @@ let mk_ctors (_loc, name, enum, unknown) =
   in
 
   let ctyp_ctors = ctors@suffix_choice in
-  let constructors = Ast.tyOr_of_list ctyp_ctors in
+  let constructors = Ast.TySum (_loc, Ast.tyOr_of_list ctyp_ctors) in
   <:str_item< type $lid:name$ = $constructors$ >>
 
 
@@ -103,7 +103,7 @@ let mk_enum_of_string (_loc, name, enum, unknown) =
   let _cases = List.map mk_case enum in
   let cases =
     let p = <:patt< $lid:"s"$ >>
-    and e = <:expr< $ <:expr< $lid:(name ^ "_of_int")$ >> $  ( $ <:expr< $lid:"int_of_string"$ >> $  $ <:expr< $uid:"s"$ >> $ )  >>
+    and e = <:expr< $ <:expr< $lid:(name ^ "_of_int")$ >> $  ( $ <:expr< $lid:"int_of_string"$ >> $  $ <:expr< $lid:"s"$ >> $ )  >>
     in _cases@[ <:match_case< $p$ -> $e$ >> ]
   in
   let body = <:expr< fun [ $list:cases$ ] >>
