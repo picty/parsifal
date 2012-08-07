@@ -10,8 +10,18 @@ SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml pr
 TEST_PROGRAMS = test_answerDump.native test_tls_record.native test_rsa_private_key.native test_x509.native test_random.native test_pkcs1.native
 PROGRAMS = $(TEST_PROGRAMS) probe_server.native sslproxy.native answer_stats.native serveranswer.native
 
-all: $(ENUMS) $(BINRECS) $(ASN1RECS)
-	ocamlbuild -cflags -I,+lwt,-I,+cryptokit -lflags -I,+lwt,-I,+cryptokit -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit test_answerDump.native test_tls_record.native sslproxy.native probe_server.native answer_stats.native test_rsa_private_key.native test_x509.native serveranswer.native test_random.native test_pkcs1.native
+PREPROCESSORS = preprocess/mk_enums_ng.cmo
+
+
+all: $(ENUMS) $(BINRECS) $(ASN1RECS) $(PREPROCESSORS)
+	ocamlbuild -cflags -I,+lwt,-I,+cryptokit \
+                   -lflags -I,+lwt,-I,+cryptokit \
+                   -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit \
+                   -pp "camlp4o $(PREPROCESSORS)" \
+                   test_answerDump.native test_tls_record.native test_random.native \
+                   test_pkcs1.native test_rsa_private_key.native test_x509.native \
+                   test_camlp4_enums.native \
+                   sslproxy.native probe_server.native answer_stats.native serveranswer.native
 
 toplevel: $(ENUMS) $(BINRECS) $(ASN1RECS)
 	ocamlbuild -build-dir .build.toplevel -cflags -I,+lwt,-I,+cryptokit -lflags -I,+lwt,-I,+cryptokit -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit util.top
@@ -19,6 +29,11 @@ toplevel: $(ENUMS) $(BINRECS) $(ASN1RECS)
 
 check: $(TEST_PROGRAMS) $(ENUMS) $(BINRECS) $(ASN1RECS)
 
+
+preprocessors: $(PREPROCESSORS)
+
+preprocess/%.cmo: preprocess/%.ml
+	ocamlbuild -pp "camlp4o pa_extend.cmo q_MLast.cmo" -cflags -I,+camlp4 -lflags -I,+camlp4 $@
 
 dep : Makefile.depend Makefile.native-depend
 
@@ -55,16 +70,6 @@ tls.binrecs: _tlsContext.ml
 %.ml: %.mk_asn1.ml
 	ocaml $< > $@
 
-
-
-%.cmx: %.ml
-	ocamlopt -c $^
-
-%.cmo: %.ml
-	ocamlc -c $^
-
-%.native:
-	ocamlopt -o $@ $^
 
 
 Makefile.depend: Makefile $(ENUMS) $(BINRECS) $(ASN1RECS) $(SOURCES)

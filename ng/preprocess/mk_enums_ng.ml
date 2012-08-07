@@ -1,5 +1,3 @@
-(* ocamlc -pp "camlp4o pa_extend.cmo q_MLast.cmo" -I /usr/lib/ocaml/camlp4 -c mk_enum_camlp4.ml *)
-
 open Camlp4
 open Camlp4.PreCast
 open Syntax
