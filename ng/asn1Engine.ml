@@ -3,14 +3,14 @@ open Lwt
 open ParsingEngine
 
 
-enum asn1_class = [
+enum asn1_class (2, Exception UnknownAsn1Class, []) = [
   0, C_Universal, "Universal";
   1, C_Application, "Application";
   2, C_ContextSpecific, "Context Specific";
   3, C_Private, "Private"
-], [Exception UnknownAsn1Class], []
+]
 
-enum asn1_tag = [
+enum asn1_tag (5, UnknownVal T_Unknown, []) = [
   0, T_EndOfContents, "EOC";
   1, T_Boolean, "Boolean";
   2, T_Integer, "Integer";
@@ -40,7 +40,7 @@ enum asn1_tag = [
   28, T_UniversalString, "Universal String";
   29, T_UnspecifiedCharacterString, "Unspecified Character String";
   30, T_BMPString, "BMP String"
-], [UnknownVal T_Unknown], []
+]
 
 
 

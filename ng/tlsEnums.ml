@@ -10,29 +10,29 @@
 (* - Heartbeat Modes *)
 (* - TLS Certificates *)
 
-enum tls_version = [
+enum tls_version (16, UnknownVal V_Unknown, [lwt]) = [
   0x0002, V_SSLv2, "SSLv2";
   0x0300, V_SSLv3, "SSLv3";
   0x0301, V_TLSv1, "TLSv1.0";
   0x0302, V_TLSv1_1, "TLSv1.1";
   0x0303, V_TLSv1_2, "TLSv1.2";
-], [UnknownVal V_Unknown], [lwt]
+]
 
-enum tls_content_type = [
+enum tls_content_type (8, UnknownVal CT_Unknown, [lwt]) = [
   0x14, CT_ChangeCipherSpec, "ChangeCipherSpec";
   0x15, CT_Alert, "Alert";
   0x16, CT_Handshake, "Handshake";
   0x17, CT_ApplicationData, "ApplicationData";
   0x18, CT_Heartbeat, "Heartbeat";
-], [UnknownVal CT_Unknown], [lwt]
+]
 
 
-enum tls_alert_level = [
+enum tls_alert_level (8, UnknownVal AL_Unknown, [lwt]) = [
   1, AL_Warning, "Warning";
   2, AL_Fatal, "Fatal";
-], [UnknownVal AL_Unknown], [lwt]
+]
 
-enum tls_alert_type = [
+enum tls_alert_type (8, UnknownVal AT_Unknown, [lwt]) = [
   0,   AT_CloseNotify, "CloseNotify";
   10,  AT_UnexpectedMessage, "UnexpectedMessage";
   20,  AT_BadRecordMAC, "BadRecordMAC";
@@ -63,15 +63,15 @@ enum tls_alert_type = [
   113, AT_BadCertificateStatusResponse, "BadCertificateStatusResponse";
   114, AT_BadCertificateHashValue, "BadCertificateHashValue";
   115, AT_UnknownPSKIdentity, "UnknownPSKIdentity";
-], [UnknownVal AT_Unknown], [lwt]
+]
 
 
-enum change_cipher_spec_value = [
+enum change_cipher_spec_value (8, UnknownVal CCS_Unknown, [lwt]) = [
   1, CCS_ChangeCipherSpec, "ChangeCipherSpec";
-], [UnknownVal CCS_Unknown], [lwt]
+]
 
 
-enum hs_message_type = [
+enum hs_message_type (8, UnknownVal HT_Unknown, [lwt]) = [
   0,  HT_HelloRequest, "HelloRequest";
   1,  HT_ClientHello, "ClientHello";
   2,  HT_ServerHello, "ServerHello";
@@ -87,9 +87,9 @@ enum hs_message_type = [
   21, HT_CertificateURL, "CertificateURL";
   22, HT_CertificateStatus, "CertificateStatus";
   23, HT_SupplementalData, "SupplementalData";
-], [UnknownVal HT_Unknown], [lwt]
+]
 
-enum ciphersuite = [
+enum ciphersuite (16, UnknownVal TLS_UnknownSuite, [lwt]) = [
   0x0000, TLS_NULL_WITH_NULL_NULL, "TLS_NULL_WITH_NULL_NULL";
   0x0001, TLS_RSA_WITH_NULL_MD5, "TLS_RSA_WITH_NULL_MD5";
   0x0002, TLS_RSA_WITH_NULL_SHA, "TLS_RSA_WITH_NULL_SHA";
@@ -392,14 +392,14 @@ enum ciphersuite = [
   0xffe0, SSL_RSA_FIPS_WITH_3DES_EDE_CBC_SHA_bis, "SSL_RSA_FIPS_WITH_3DES_EDE_CBC_SHA_bis";
   0xffe1, SSL_RSA_FIPS_WITH_DES_CBC_SHA_bis, "SSL_RSA_FIPS_WITH_DES_CBC_SHA_bis";
   0x00ff, TLS_EMPTY_RENEGOTIATION_INFO_SCSV, "TLS_EMPTY_RENEGOTIATION_INFO_SCSV";
-], [UnknownVal TLS_UnknownSuite], [lwt]
+]
 
-enum compression_method = [
+enum compression_method (8, UnknownVal CM_UnknownVal, [lwt]) = [
   0, CM_Null, "Null";
   1, CM_Defalte, "Deflate";
-], [UnknownVal CM_UnknownVal], [lwt]
+]
 
-enum extension_type = [
+enum extension_type (16, UnknownVal HE_Unknown, [lwt]) = [
   0,  HE_ServerName, "ServerName";
   1,  HE_MaxFragmentLength, "MaxFragmentLength";
   2,  HE_ClientCertificateURL, "ClientCertificateURL";
@@ -418,13 +418,13 @@ enum extension_type = [
   15, HE_Heartbeat, "Heartbeat";
   35, HE_SessionTicket, "SessionTicket";
   65281, HE_RenegotiationInfo, "RenegotiationInfo";
-], [UnknownVal HE_Unknown], [lwt]
+]
 
-enum name_type = [
+enum name_type (8, UnknownVal UnknownNameType, [lwt]) = [
   0, NT_HostName, "HostName";
-], [UnknownVal UnknownNameType], [lwt]
+]
 
-enum client_certificate_type = [
+enum client_certificate_type (8, UnknownVal CCT_Unknown, [lwt]) = [
   1,  CCT_RSASign, "RSASign";
   2,  CCT_DSSSign, "DSSSign";
   3,  CCT_RSAFixedDH, "RSAFixedDH";
@@ -435,9 +435,9 @@ enum client_certificate_type = [
   64, CCT_ECDSASign, "ECDSASign";
   65, CCT_RSAFixedECDH, "RSAFixedECDH";
   66, CCT_ECDSAFixedECDH, "ECDSAFixedECDH";
-], [UnknownVal CCT_Unknown], [lwt]
+]
 
-enum hash_algorithm = [
+enum hash_algorithm (8, UnknownVal HA_Unknown, [lwt]) = [
   0,  HA_None, "None";
   1,  HA_MD5, "MD5";
   2,  HA_SHA1, "SHA1";
@@ -445,11 +445,11 @@ enum hash_algorithm = [
   4,  HA_SHA256, "SHA256";
   5,  HA_SHA384, "SHA384";
   6,  HA_SHA512, "SHA512";
-], [UnknownVal HA_Unknown], [lwt]
+]
 
-enum signature_algorithm = [
+enum signature_algorithm (8, UnknownVal SA_Unknown, [lwt]) = [
   0,  SA_Anonymous, "Anonymous";
   1,  SA_RSA, "RSA";
   2,  SA_DSA, "DSA";
   3,  SA_ECDSA, "ECDSA";
-], [UnknownVal SA_Unknown], [lwt]
+]

@@ -22,7 +22,7 @@ type field_type =
   | FT_Empty
   | FT_Char
   | FT_Integer of integer_type
-  | FT_Enum of integer_type * string * string
+  | FT_Enum of string * string
   | FT_IPv4
   | FT_IPv6
   | FT_String of field_len * bool
@@ -90,7 +90,7 @@ let rec ocaml_type_of_field_type = function
   | FT_Empty -> failwith "Unexpected type in ocaml_type_of_field_type: empty"
   | FT_Char -> "char"
   | FT_Integer _ -> "int"
-  | FT_Enum (_, module_name, type_name) -> module_name ^ "." ^ type_name
+  | FT_Enum (module_name, type_name) -> module_name ^ "." ^ type_name
   | FT_IPv4 | FT_IPv6 -> "string"
   | FT_String _ -> "string"
   | FT_List (_, subtype) ->
@@ -110,8 +110,8 @@ let rec parse_fun_of_field_type name = function
   | FT_Integer it ->
     Printf.sprintf "parse_uint%d" (int_size it)
 
-  | FT_Enum (int_type, module_name, type_name) ->
-    Printf.sprintf "%s.parse_%s parse_uint%d" module_name type_name (int_size int_type)
+  | FT_Enum (module_name, type_name) ->
+    Printf.sprintf "%s.parse_%s" module_name type_name
 
   | FT_IPv4 -> "parse_string 4"
   | FT_IPv6 -> "parse_string 16"
@@ -138,8 +138,8 @@ let rec lwt_parse_fun_of_field_type name = function
   | FT_Integer it ->
     Printf.sprintf "lwt_parse_uint%d" (int_size it)
 
-  | FT_Enum (int_type, module_name, type_name) ->
-    Printf.sprintf "%s.lwt_parse_%s lwt_parse_uint%d" module_name type_name (int_size int_type)
+  | FT_Enum (module_name, type_name) ->
+    Printf.sprintf "%s.lwt_parse_%s" module_name type_name
 
   | FT_IPv4 -> "lwt_parse_string 4"
   | FT_IPv6 -> "lwt_parse_string 16"
@@ -167,8 +167,8 @@ let rec dump_fun_of_field_type = function
   | FT_Char -> "dump_char"
   | FT_Integer it -> Printf.sprintf "dump_uint%d" (int_size it)
 
-  | FT_Enum (int_type, module_name, type_name) ->
-    Printf.sprintf "%s.dump_%s dump_uint%d" module_name type_name (int_size int_type)
+  | FT_Enum (module_name, type_name) ->
+    Printf.sprintf "%s.dump_%s" module_name type_name
 
   | FT_String (VarLen int_t, _) ->
     Printf.sprintf "dump_varlen_string dump_uint%d" (int_size int_t)
@@ -190,8 +190,8 @@ let rec print_fun_of_field_type = function
   | FT_Char -> "print_char"
   | FT_Integer it -> Printf.sprintf "print_uint %d" (int_size it)
 
-  | FT_Enum (int_type, module_name, type_name) ->
-    Printf.sprintf "%s.print_%s %d" module_name type_name ((int_size int_type) / 4)
+  | FT_Enum (module_name, type_name) ->
+    Printf.sprintf "%s.print_%s (%s.__%s_size / 4)" module_name type_name module_name type_name
 
   | FT_String (_, true) -> "print_binstring"
   | FT_String (_, false) -> "print_string"

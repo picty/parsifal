@@ -1,12 +1,12 @@
 (* Simple TLS records *)
 
 let tls_alert_d = [
-  "alert_level", FT_Enum (IT_UInt8, "TlsEnums", "tls_alert_level"), false;
-  "alert_type", FT_Enum (IT_UInt8, "TlsEnums", "tls_alert_type"), false
+  "alert_level", FT_Enum ("TlsEnums", "tls_alert_level"), false;
+  "alert_type", FT_Enum ("TlsEnums", "tls_alert_type"), false
 ]
 
 let change_cipher_spec_d = [
-  "change_cipher_spec_value", FT_Enum (IT_UInt8, "TlsEnums", "change_cipher_spec_value"), false
+  "change_cipher_spec_value", FT_Enum ("TlsEnums", "change_cipher_spec_value"), false
 ]
 
 
@@ -17,7 +17,7 @@ let sni_name_c = [
 ]
 
 let server_name_d = [
-  "sni_name_type", FT_Enum (IT_UInt8, "TlsEnums", "name_type"), false;
+  "sni_name_type", FT_Enum ("TlsEnums", "name_type"), false;
   "sni_name", FT_Custom (None, "sni_name", ["_sni_name_type"]), false;
 ]
 
@@ -36,25 +36,25 @@ let hello_extension_content_c = [
 ]
 
 let hello_extension_d = [
-  "extension_type", FT_Enum (IT_UInt16, "TlsEnums", "extension_type"), false;
+  "extension_type", FT_Enum ("TlsEnums", "extension_type"), false;
   "extension_data", FT_Container (IT_UInt16, FT_Custom (None, "hello_extension_content", ["direction"; "_extension_type"])), false;
 ]
 
 let client_hello_d = [
-  "client_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
+  "client_version", FT_Enum ("TlsEnums", "tls_version"), false;
   "client_random", FT_String (FixedLen 32, true), false;
   "client_session_id", FT_String (VarLen IT_UInt8, true), false;
-  "ciphersuites", FT_List (VarLen IT_UInt16, FT_Enum (IT_UInt16, "TlsEnums", "ciphersuite")), false;
-  "compression_methods", FT_List (VarLen IT_UInt8, FT_Enum (IT_UInt8, "TlsEnums", "compression_method")), false;
+  "ciphersuites", FT_List (VarLen IT_UInt16, FT_Enum ("TlsEnums", "ciphersuite")), false;
+  "compression_methods", FT_List (VarLen IT_UInt8, FT_Enum ("TlsEnums", "compression_method")), false;
   "client_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", ["ClientToServer"])), true;
 ]
 
 let server_hello_d = [
-  "server_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
+  "server_version", FT_Enum ("TlsEnums", "tls_version"), false;
   "server_random", FT_String (FixedLen 32, true), false;
   "server_session_id", FT_String (VarLen IT_UInt8, true), false;
-  "ciphersuite", FT_Enum (IT_UInt16, "TlsEnums", "ciphersuite"), false;
-  "compression_method", FT_Enum (IT_UInt8, "TlsEnums", "compression_method"), false;
+  "ciphersuite", FT_Enum ("TlsEnums", "ciphersuite"), false;
+  "compression_method", FT_Enum ("TlsEnums", "compression_method"), false;
   "server_extensions", FT_List (VarLen IT_UInt16, FT_Custom (None, "hello_extension", ["ServerToClient"])), true;
 ]
 
@@ -86,12 +86,12 @@ let server_key_exchange_c = [
 ]
 
 let signature_and_hash_algorithm_d = [
-  "hash_algorithm", FT_Enum (IT_UInt8, "TlsEnums", "hash_algorithm"), false;
-  "signature_algorithm", FT_Enum (IT_UInt8, "TlsEnums", "signature_algorithm"), false;
+  "hash_algorithm", FT_Enum ("TlsEnums", "hash_algorithm"), false;
+  "signature_algorithm", FT_Enum ("TlsEnums", "signature_algorithm"), false;
 ]
 
 let certificate_request_d = [
-  "certificate_types", FT_Enum (IT_UInt8, "TlsEnums", "client_certificate_type"), false;
+  "certificate_types", FT_Enum ("TlsEnums", "client_certificate_type"), false;
   "supported_signature_algorithms", FT_List (VarLen IT_UInt16, FT_Custom (None, "signature_and_hash_algorithm", [])), false;
   "certificate_authorities", FT_List (VarLen IT_UInt16, FT_String (VarLen IT_UInt16, true)), false;
 ]
@@ -109,7 +109,7 @@ let handshake_content_c = [
 ]
 
 let handshake_msg_d = [
-  "handshake_type", FT_Enum (IT_UInt8, "TlsEnums", "hs_message_type"), false;
+  "handshake_type", FT_Enum ("TlsEnums", "hs_message_type"), false;
   "handshake_content", FT_Container (IT_UInt24, FT_Custom (None, "handshake_content", ["_handshake_type"])), false;
 ]
 
@@ -124,8 +124,8 @@ let record_content_c = [
 ]
 
 let tls_record_d = [
-  "content_type", FT_Enum (IT_UInt8, "TlsEnums", "tls_content_type"), false;
-  "record_version", FT_Enum (IT_UInt16, "TlsEnums", "tls_version"), false;
+  "content_type", FT_Enum ("TlsEnums", "tls_content_type"), false;
+  "record_version", FT_Enum ("TlsEnums", "tls_version"), false;
   "record_content", FT_Container (IT_UInt16, FT_Custom (None, "record_content", ["_content_type"])), false;
 ]
 

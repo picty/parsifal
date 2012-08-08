@@ -6,8 +6,10 @@ SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml pr
 	tlsUtil.ml tlsContext.ml \
 	test_answerDump.ml test_tls_record.ml test_rsa_private_key.ml test_x509.ml test_random.ml
 
-TEST_PROGRAMS = test_answerDump.native test_tls_record.native test_rsa_private_key.native test_x509.native test_random.native test_pkcs1.native
-PROGRAMS = $(TEST_PROGRAMS) probe_server.native sslproxy.native answer_stats.native serveranswer.native
+TEST_PROGRAMS = test_answerDump.native test_tls_record.native test_random.native \
+                test_pkcs1.native test_rsa_private_key.native test_x509.native \
+                test_camlp4_enums.native
+PROGRAMS = probe_server.native sslproxy.native answer_stats.native serveranswer.native
 
 PREPROCESSORS = preprocess/mk_enums.cmo
 
@@ -17,10 +19,7 @@ all: $(BINRECS) $(ASN1RECS) $(PREPROCESSORS)
                    -lflags -I,+lwt,-I,+cryptokit \
                    -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit \
                    -pp "camlp4o $(PREPROCESSORS)" \
-                   test_answerDump.native test_tls_record.native test_random.native \
-                   test_pkcs1.native test_rsa_private_key.native test_x509.native \
-                   test_camlp4_enums.native \
-                   sslproxy.native probe_server.native answer_stats.native serveranswer.native
+                   $(PROGRAMS) $(TEST_PROGRAMS)
 
 toplevel: $(BINRECS) $(ASN1RECS)
 	ocamlbuild -cflags -I,+lwt,-I,+cryptokit \
