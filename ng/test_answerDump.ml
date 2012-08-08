@@ -10,10 +10,12 @@ open Getopt
 
 type action = IP | All | Suite | SKE
 let action = ref IP
+let verbose = ref false
 let raw_records = ref false
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
+  mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
 
   mkopt None "raw-records" (Set raw_records) "show raw records (do not try to reassemble them)";
 
@@ -101,21 +103,30 @@ let rec handle_one_file input =
       | Suite ->
 	let _, ctx, _ = parse_all_records answer in
 	let cs = match ctx with
-	  | None -> "ERROR"
-	  | Some ctx -> string_of_ciphersuite ctx.future.s_ciphersuite.suite_name
+	  | None -> if !verbose then (Some "ERROR") else None
+	  | Some ctx -> Some (string_of_ciphersuite ctx.future.s_ciphersuite.suite_name)
 	in
-	Printf.printf "%s: %s\n" ip cs;
+	begin
+	  match cs with
+	    | None -> ()
+	    | Some s -> Printf.printf "%s: %s\n" ip s;
+	end;
 	return ()
       | SKE ->
 	let _, ctx, _ = parse_all_records answer in
 	let ske = match ctx with
-	  | None -> "ERROR"
+	  | None -> if !verbose then (Some "ERROR") else None
 	  | Some { future = { s_server_key_exchange = (SKE_DHE { params = params } ) } } ->
-	    Printf.sprintf "%s,%s,%s" (hexdump params.dh_p) (hexdump params.dh_g) (hexdump params.dh_Ys)
-	  | Some { future = { s_server_key_exchange = (Unparsed_SKEContent "" ) } } -> "NO_SKE"
-	  | Some _ -> "NOT PARSED YET"
+	    Some (Printf.sprintf "%s,%s,%s" (hexdump params.dh_p) (hexdump params.dh_g) (hexdump params.dh_Ys))
+	  | Some { future = { s_server_key_exchange = (Unparsed_SKEContent "" ) } } ->
+	    if !verbose then (Some "NO_SKE") else None
+	  | Some _ -> if !verbose then (Some "NOT PARSED YET") else None
 	in
-	Printf.printf "%s: %s\n" ip ske;
+	begin
+	  match ske with
+	    | None -> ()
+	    | Some s -> Printf.printf "%s: %s\n" ip s;
+	end;
 	return ()
   end >>= fun () ->
   handle_one_file input
