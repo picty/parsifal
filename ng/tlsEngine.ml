@@ -123,15 +123,12 @@ let handle_answer handle_hs handle_alert s =
   and alert_in = input_of_string "Alert records" "" in
 
   let process_input parse_fun handle_fun input =
-    let saved_state = save_input input in
-    try
-      let parsed_msg = parse_fun input in
-      let res = handle_fun parsed_msg in
-      drop_used_string input;
-      res
-    with ParsingException _ ->
-      restore_input input saved_state;
-      NothingSoFar
+    match try_parse parse_fun input with
+      | None -> NothingSoFar
+      | Some parsed_msg ->
+	let res = handle_fun parsed_msg in
+	drop_used_string input;
+	res
   in
 
   let rec read_answers () =

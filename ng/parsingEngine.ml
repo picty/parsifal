@@ -38,6 +38,8 @@ let emit_parsing_exception fatal e i =
   else Printf.fprintf stderr "%s in %s\n" (print_parsing_exception e) (print_string_input i)
 
 
+(* string_input manipulation *)
+
 let input_of_string name s =
   {
     str = s;
@@ -65,13 +67,6 @@ let get_out old_input input =
   else old_input.cur_offset <- old_input.cur_offset + input.cur_length
 
 
-let save_input i = i.str, i.cur_base, i.cur_offset, i.cur_length
-let restore_input i (str, cb, co, cl) =
-  i.str <- str;
-  i.cur_base <- cb;
-  i.cur_offset <- co;
-  i.cur_length <- cl
-
 let append_to_input input next_string =
   if input.cur_base = 0 && input.history = [] then begin
     input.str <- (String.sub input.str input.cur_offset (input.cur_length - input.cur_offset)) ^ next_string;
@@ -88,6 +83,28 @@ let drop_used_string input =
     input.cur_offset <- 0;
     input.cur_length <- String.length input.str
   end else raise (ParsingException (NonEmptyHistory, input))
+
+let eos input =
+  input.cur_offset >= input.cur_length
+
+let check_empty_input fatal input =
+  if not (eos input) then emit_parsing_exception fatal UnexptedTrailingBytes input
+
+let _save_input i = i.str, i.cur_base, i.cur_offset, i.cur_length
+let _restore_input i (str, cb, co, cl) =
+  i.str <- str;
+  i.cur_base <- cb;
+  i.cur_offset <- co;
+  i.cur_length <- cl
+
+let try_parse parse_fun input =
+  if eos input then None else begin
+    let saved_state = _save_input input in
+    try Some (parse_fun input)
+    with ParsingException _ ->
+      _restore_input input saved_state;
+      None
+  end
 
 
 
@@ -170,12 +187,6 @@ let drop_bytes n input =
 
 let drop_rem_bytes input =
   input.cur_offset <- input.cur_length
-
-let eos input =
-  input.cur_offset >= input.cur_length
-
-let check_empty_input fatal input =
-  if not (eos input) then emit_parsing_exception fatal UnexptedTrailingBytes input
 
 
 
