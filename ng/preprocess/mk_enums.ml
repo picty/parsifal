@@ -3,6 +3,29 @@ open Camlp4.PreCast
 open Syntax
 
 
+(* Common camlp4 functions *)
+
+let uid_of_ident _loc = function
+  | <:ident< $uid:id$ >> -> id
+  | _ -> Loc.raise _loc (Failure "uppercase identifier expected")
+
+let lid_of_ident _loc = function
+  | <:ident< $lid:id$ >> -> id
+  | _ -> Loc.raise _loc (Failure "lowercase identifier expected")
+
+let pat_lid _loc name = <:patt< $lid:name$ >>
+let pat_uid _loc name = <:patt< $uid:name$ >>
+let exp_int _loc i = <:expr< $int:i$ >>
+let exp_str _loc s = <:expr< $str:s$ >>
+let exp_lid _loc name = <:expr< $lid:name$ >>
+let exp_uid _loc name = <:expr< $uid:name$ >>
+let ctyp_uid _loc name = <:ctyp< $uid:name$ >>
+
+let exp_qname _loc m n = match m with
+  | None -> <:expr< $lid:n$ >>
+  | Some module_name -> <:expr< $uid:module_name$.$lid:n$ >>
+
+
 type unknown_behaviour =
   | UnknownVal of string
   | Exception of string
@@ -23,22 +46,6 @@ let mk_enum_desc n s c u o = {
  choices = c; unknown_behaviour = u; opts = o;
 }
 
-
-let uid_of_ident _loc = function
-  | <:ident< $uid:id$ >> -> id
-  | _ -> Loc.raise _loc (Failure "uppercase identifier expected")
-
-let lid_of_ident _loc = function
-  | <:ident< $lid:id$ >> -> id
-  | _ -> Loc.raise _loc (Failure "lowercase identifier expected")
-
-let pat_lid _loc name = <:patt< $lid:name$ >>
-let pat_uid _loc name = <:patt< $uid:name$ >>
-let exp_int _loc i = <:expr< $int:i$ >>
-let exp_str _loc s = <:expr< $str:s$ >>
-let exp_lid _loc name = <:expr< $lid:name$ >>
-let exp_uid _loc name = <:expr< $uid:name$ >>
-let ctyp_uid _loc name = <:ctyp< $uid:name$ >>
 
 let mk_exception _loc enum = match enum with
   | {unknown_behaviour = Exception e} ->
