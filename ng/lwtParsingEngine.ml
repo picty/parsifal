@@ -63,6 +63,9 @@ let get_out old_input input =
     return ()
   end
 
+let try_lwt_parse lwt_parse_fun input =
+  fail (Common.NotImplemented "try_lwt_parse")
+
 
 (* Integer parsing *)
 

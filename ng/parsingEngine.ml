@@ -106,6 +106,10 @@ let try_parse parse_fun input =
       None
   end
 
+let exact_parse parse_fun input =
+  let res = parse_fun input in
+  check_empty_input true input;
+  res
 
 
 (* Integer parsing *)

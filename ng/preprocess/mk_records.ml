@@ -31,9 +31,14 @@ let rec exp_of_list _loc = function
 
 
 
-type record_options =
+(* Internal type definitions *)
+
+type record_option =
   | DoLwt
-(*  | AddParseParameter of string
+  | ExactParser
+(*
+  TODO:
+  | AddParseParameter of string
   | NoContextParameter *)
 
 type field_len =
@@ -51,6 +56,15 @@ type field_type =
   | FT_List of field_len * field_type
   | FT_Container of string * field_type     (* the string corresponds to the integer type for the field length *)
   | FT_Custom of (string option) * string
+
+type record_description = {
+  name : string;
+  fields : (Loc.t * string * field_type * bool) list;
+  opts : record_option list;
+}
+
+let mk_record_desc n f o = { name = n; fields = f; opts = o; }
+
 
 
 (* To-be-processed file parsing *)
@@ -103,9 +117,9 @@ let ocaml_type_of_field_type _loc t opt =
   let real_t = _ocaml_type_of_field_type _loc t in
   if opt then <:ctyp< option $real_t$ >> else real_t
 
-let mk_record_type (_loc, name, fields, _) =
-  let ctyp_fields = List.map (fun (_loc, n, t, optional) -> <:ctyp< $lid:n$ : $ocaml_type_of_field_type _loc t optional$ >> ) fields in
-  <:str_item< type $lid:name$ = { $list:ctyp_fields$ } >>
+let mk_record_type _loc record =
+  let ctyp_fields = List.map (fun (_loc, n, t, optional) -> <:ctyp< $lid:n$ : $ocaml_type_of_field_type _loc t optional$ >> ) record.fields in
+  <:str_item< type $lid:record.name$ = { $list:ctyp_fields$ } >>
 
 
 (* Parse function *)
@@ -135,11 +149,11 @@ let rec parse_fun_of_field_type _loc name t =
     | FT_Custom (m, n) -> exp_qname _loc m ("parse_" ^ n)
 
 
-let mk_record_parse_fun (_loc, name, fields, _) =
+let mk_record_parse_fun _loc record =
   let rec mk_body = function
     | [] ->
       let field_assigns = List.map (fun (_loc, n, _, _) ->
-	<:rec_binding< $lid:n$ = $exp:exp_lid _loc ("_" ^ n)$ >> ) fields
+	<:rec_binding< $lid:n$ = $exp:exp_lid _loc ("_" ^ n)$ >> ) record.fields
       in <:expr< { $list:field_assigns$ } >>
     | (_loc, n, t, false)::r ->
       let tmp = mk_body r in
@@ -149,8 +163,8 @@ let mk_record_parse_fun (_loc, name, fields, _) =
       <:expr< let $lid:("_" ^ n)$ = ParsingEngine.try_parse $parse_fun_of_field_type _loc n t$ input in $tmp$ >>
   in
 
-  let body = mk_body fields in
-  <:str_item< value $ <:binding< $pat:pat_lid _loc ("parse_" ^ name)$ $pat_lid _loc "input"$ = $exp:body$ >> $ >>
+  let body = mk_body record.fields in
+  <:str_item< value $ <:binding< $pat:pat_lid _loc ("parse_" ^ record.name)$ $pat_lid _loc "input"$ = $exp:body$ >> $ >>
 
 
 (* Lwt Parse function *)
@@ -182,23 +196,29 @@ let rec lwt_parse_fun_of_field_type _loc name t =
   | FT_Custom (m, n) -> exp_qname _loc m ("lwt_parse_" ^ n)
 
 
-let mk_record_lwt_parse_fun (_loc, name, fields, _) =
+let mk_record_lwt_parse_fun _loc record =
   let rec mk_body = function
     | [] ->
       let field_assigns = List.map (fun (_loc, n, _, _) ->
-	<:rec_binding< $lid:n$ = $exp:exp_lid _loc ("_" ^ n)$ >> ) fields
+	<:rec_binding< $lid:n$ = $exp:exp_lid _loc ("_" ^ n)$ >> ) record.fields
       in <:expr< Lwt.return { $list:field_assigns$ } >>
     | (_loc, n, t, false)::r ->
       let tmp = mk_body r in
       <:expr< Lwt.bind ($lwt_parse_fun_of_field_type _loc n t$ input) (fun $lid:("_" ^ n)$ -> $tmp$ ) >>
     | (_loc, n, t, true)::r ->
-      (* TODO? *)
       let tmp = mk_body r in
-      <:expr< Lwt.bind ($lwt_parse_fun_of_field_type _loc n t$ input) (fun $lid:("_" ^ n)$ -> $tmp$ ) >>
+      <:expr< Lwt.bind (LwtParsingEngine.try_lwt_parse $lwt_parse_fun_of_field_type _loc n t$ input) (fun $lid:("_" ^ n)$ -> $tmp$ ) >>
   in
 
-  let body = mk_body fields in
-  <:str_item< value $ <:binding< $pat:pat_lid _loc ("lwt_parse_" ^ name)$ $pat_lid _loc "input"$ = $exp:body$ >> $ >>
+  let body = mk_body record.fields in
+  <:str_item< value $ <:binding< $pat:pat_lid _loc ("lwt_parse_" ^ record.name)$ $pat_lid _loc "input"$ = $exp:body$ >> $ >>
+
+
+(* Exact parse *)
+
+let mk_exact_parse_fun _loc record =
+  let body = <:expr< ParsingEngine.exact_parse $exp_lid _loc ("parse_" ^ record.name)$ input >> in
+  <:str_item< value $ <:binding< $pat:pat_lid _loc ("exact_parse_" ^ record.name)$ $pat_lid _loc "input"$ = $exp:body$ >> $ >>
 
 
 (* Dump function *)
@@ -225,19 +245,19 @@ let rec dump_fun_of_field_type _loc t =
     | FT_Custom (m, n) -> exp_qname _loc m ("dump_" ^ n)
 
 
-let mk_record_dump_fun (_loc, name, fields, _) =
+let mk_record_dump_fun _loc record =
   let dump_one_field = function
       (_loc, n, t, false) ->
-      <:expr< $dump_fun_of_field_type _loc t$ $lid:name$.$lid:n$ >>
+      <:expr< $dump_fun_of_field_type _loc t$ $lid:record.name$.$lid:n$ >>
     | (_loc, n, t, true) ->
-      <:expr< DumpingEngine.try_dump $dump_fun_of_field_type _loc t$ $lid:name$.$lid:n$ >>
+      <:expr< DumpingEngine.try_dump $dump_fun_of_field_type _loc t$ $lid:record.name$.$lid:n$ >>
   in
-  let fields_dumped_expr = exp_of_list _loc (List.map dump_one_field fields) in
+  let fields_dumped_expr = exp_of_list _loc (List.map dump_one_field record.fields) in
   let body =
     <:expr< let $lid:"fields_dumped"$ = $fields_dumped_expr$ in
 	    String.concat "" fields_dumped >>
   in
-  <:str_item< value $ <:binding< $pat:pat_lid _loc ("dump_" ^ name)$ $pat_lid _loc name$ = $exp:body$ >> $ >>
+  <:str_item< value $ <:binding< $pat:pat_lid _loc ("dump_" ^ record.name)$ $pat_lid _loc record.name$ = $exp:body$ >> $ >>
 
 
 (* Print function *)
@@ -259,14 +279,14 @@ let rec print_fun_of_field_type _loc t =
     | FT_Custom (m, n) -> exp_qname _loc m ("print_" ^ n)
 
 
-let mk_record_print_fun (_loc, name, fields, _) =
+let mk_record_print_fun _loc record =
   let print_one_field = function
       (_loc, n, t, false) ->
-	<:expr< $print_fun_of_field_type _loc t$ new_indent $str:n$ $lid:name$.$lid:n$ >>
+	<:expr< $print_fun_of_field_type _loc t$ new_indent $str:n$ $lid:record.name$.$lid:n$ >>
     | (_loc, n, t, true) ->
-	<:expr< PrintingEngine.try_print $print_fun_of_field_type _loc t$ new_indent $str:n$ $lid:name$.$lid:n$ >>
+	<:expr< PrintingEngine.try_print $print_fun_of_field_type _loc t$ new_indent $str:n$ $lid:record.name$.$lid:n$ >>
   in
-  let fields_printed_expr = exp_of_list _loc (List.map print_one_field fields) in
+  let fields_printed_expr = exp_of_list _loc (List.map print_one_field record.fields) in
   let body =
     <:expr< let new_indent = indent ^ "  " in
 	    let $lid:"fields_printed"$ = $fields_printed_expr$ in
@@ -274,7 +294,7 @@ let mk_record_print_fun (_loc, name, fields, _) =
 	    (String.concat "" fields_printed) ^
 	    indent ^ "}\\n" >>
   in
-  <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ name)$ indent name $pat_lid _loc name$ = $exp:body$ >> $ >>
+  <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ record.name)$ indent name $pat_lid _loc record.name$ = $exp:body$ >> $ >>
 
 
 EXTEND Gram
@@ -302,25 +322,35 @@ EXTEND Gram
   | -> []
   ]];
 
-  (* TODO: lwt and exact should be simple lids and not keywords *)
-
   options: [[
     o1 = SELF; ";"; o2 = SELF -> o1 @ o2
-  | "lwt" -> [DoLwt]
+  | i = ident -> begin
+    match i with
+      | <:ident< $lid:"with_lwt"$ >> -> [DoLwt]
+      | <:ident< $lid:"with_exact"$ >> -> [ExactParser]
+      | <:ident< $lid:"top"$ >> -> [DoLwt; ExactParser]
+      | _ -> Loc.raise _loc (Failure "unknown option")
+  end
   | -> []
   ]];
 
   str_item: [[
     "record_def"; record_name = ident; "["; opts = options; "]"; "="; "{"; fields = field_descs; "}" ->
-      let record_descr = (_loc, lid_of_ident _loc record_name, fields, opts) in
-      let si1 = mk_record_type record_descr
-      and si2 = mk_record_parse_fun record_descr
-      (* TODO: exact and lwt option *)
-      and si3 = mk_record_lwt_parse_fun record_descr
-      and si4 = mk_record_dump_fun record_descr
-      and si5 = mk_record_print_fun record_descr
+      let record = mk_record_desc (lid_of_ident _loc record_name) fields opts in
+      let si1 = mk_record_type _loc record
+      and si2 = mk_record_parse_fun _loc record
+      and si3 =
+	if List.mem DoLwt record.opts
+	then mk_record_lwt_parse_fun _loc record
+	else <:str_item< >>
+      and si4 =
+	if List.mem ExactParser record.opts
+	then mk_exact_parse_fun _loc record
+	else <:str_item< >>
+      and si5 = mk_record_dump_fun _loc record
+      and si6 = mk_record_print_fun _loc record
       in
-      <:str_item< $si1$; $si2$; $si3$; $si4$; $si5$ >>
+      <:str_item< $si1$; $si2$; $si3$; $si4$; $si5$; $si6$ >>
   ]];
 END
 ;;

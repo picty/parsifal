@@ -1,4 +1,4 @@
-record_def answer_dump [lwt] = {
+record_def answer_dump [top] = {
   ip : ipv4;
   port : uint16;
   name : string(uint16);

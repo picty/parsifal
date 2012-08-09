@@ -8,7 +8,7 @@ SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml pr
 
 TEST_PROGRAMS = test_answerDump.native test_tls_record.native test_random.native \
                 test_pkcs1.native test_rsa_private_key.native test_x509.native \
-                test_camlp4_enums.native test_camlp4_records.native
+                test_camlp4_enums.native
 PROGRAMS = probe_server.native sslproxy.native serveranswer.native
 
 PREPROCESSORS = preprocess/mk_enums.cmo preprocess/mk_records.cmo

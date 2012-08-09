@@ -26,6 +26,8 @@ let exp_qname _loc m n = match m with
   | Some module_name -> <:expr< $uid:module_name$.$lid:n$ >>
 
 
+(* Internal type definitions *)
+
 type unknown_behaviour =
   | UnknownVal of string
   | Exception of string
