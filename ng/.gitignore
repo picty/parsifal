@@ -1,6 +1,5 @@
 *~
 *.mk_binrecs.ml
-answerDump.ml
 mrt.ml
 tls.ml
 *.mk_asn1.ml
