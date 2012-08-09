@@ -148,6 +148,54 @@ let mk_record_parse_fun (_loc, name, fields, _) =
   <:str_item< value $ <:binding< $pat:pat_lid _loc ("parse_" ^ name)$ $pat_lid _loc "input"$ = $exp:body$ >> $ >>
 
 
+(* Lwt Parse function *)
+
+let rec lwt_parse_fun_of_field_type _loc name t =
+  let mk_pf fname = <:expr< $uid:"LwtParsingEngine"$.$lid:fname$ >> in
+  match t with
+  | FT_Char -> mk_pf "lwt_parse_char"
+  | FT_Int int_t -> mk_pf ("lwt_parse_" ^ int_t)
+  | FT_IPv4 -> <:expr< $mk_pf "lwt_parse_string"$ $exp_int _loc "4"$ >>
+  | FT_IPv6 -> <:expr< $mk_pf "lwt_parse_string"$ $exp_int _loc "16"$ >>
+
+  | FT_String (FixedLen n, _) -> <:expr< $mk_pf "lwt_parse_string"$ $exp_int _loc (string_of_int n)$ >>
+  | FT_String (VarLen int_t, _) ->
+    <:expr< $mk_pf "lwt_parse_varlen_string"$ $exp_str _loc name$ $mk_pf ("lwt_parse_" ^ int_t)$ >>
+  | FT_String (Remaining, _) -> mk_pf "lwt_parse_rem_string"
+
+  | FT_List (FixedLen n, subtype) ->
+    <:expr< $mk_pf "lwt_parse_list"$ $exp_int _loc (string_of_int n)$ $lwt_parse_fun_of_field_type _loc name subtype$ >>
+  | FT_List (VarLen int_t, subtype) ->
+    <:expr< $mk_pf "lwt_parse_varlen_list"$ $exp_str _loc name$ $mk_pf ("lwt_parse_" ^ int_t)$
+                                                   $lwt_parse_fun_of_field_type _loc name subtype$ >>
+  | FT_List (Remaining, subtype) ->
+    <:expr< $mk_pf "lwt_parse_rem_list"$ $lwt_parse_fun_of_field_type _loc name subtype$ >>
+  | FT_Container (int_t, subtype) ->
+    <:expr< $mk_pf "lwt_parse_container"$ $exp_str _loc name$ $mk_pf ("lwt_parse_" ^ int_t)$
+                                                 $lwt_parse_fun_of_field_type _loc name subtype$ >>
+
+  | FT_Custom (m, n) -> exp_qname _loc m ("lwt_parse_" ^ n)
+
+
+let mk_record_lwt_parse_fun (_loc, name, fields, _) =
+  let rec mk_body = function
+    | [] ->
+      let field_assigns = List.map (fun (_loc, n, _, _) ->
+	<:rec_binding< $lid:n$ = $exp:exp_lid _loc ("_" ^ n)$ >> ) fields
+      in <:expr< Lwt.return { $list:field_assigns$ } >>
+    | (_loc, n, t, false)::r ->
+      let tmp = mk_body r in
+      <:expr< Lwt.bind ($lwt_parse_fun_of_field_type _loc n t$ input) (fun $lid:("_" ^ n)$ -> $tmp$ ) >>
+    | (_loc, n, t, true)::r ->
+      (* TODO? *)
+      let tmp = mk_body r in
+      <:expr< Lwt.bind ($lwt_parse_fun_of_field_type _loc n t$ input) (fun $lid:("_" ^ n)$ -> $tmp$ ) >>
+  in
+
+  let body = mk_body fields in
+  <:str_item< value $ <:binding< $pat:pat_lid _loc ("lwt_parse_" ^ name)$ $pat_lid _loc "input"$ = $exp:body$ >> $ >>
+
+
 
 EXTEND Gram
   GLOBAL: expr ctyp str_item;
@@ -174,6 +222,8 @@ EXTEND Gram
   | -> []
   ]];
 
+  (* TODO: lwt and exact should be simple lids and not keywords *)
+
   options: [[
     o1 = SELF; ";"; o2 = SELF -> o1 @ o2
   | "lwt" -> [DoLwt]
@@ -185,8 +235,10 @@ EXTEND Gram
       let record_descr = (_loc, lid_of_ident _loc record_name, fields, opts) in
       let si1 = mk_record_type record_descr
       and si2 = mk_record_parse_fun record_descr
+      (* TODO: exact and lwt option *)
+      and si3 = mk_record_lwt_parse_fun record_descr
       in
-      <:str_item< $si1$; $si2$ >>
+      <:str_item< $si1$; $si2$; $si3$ >>
   ]];
 END
 ;;
@@ -196,34 +248,6 @@ END
 
 
 (* (\* Records functions *\) *)
-
-(* let rec lwt_parse_fun_of_field_type name = function *)
-(*   | FT_Char -> "lwt_parse_char" *)
-(*   | FT_Integer it -> *)
-(*     Printf.sprintf "lwt_parse_uint%d" (int_size it) *)
-
-(*   | FT_Enum (int_type, module_name, type_name) -> *)
-(*     Printf.sprintf "%s.lwt_parse_%s lwt_parse_uint%d" module_name type_name (int_size int_type) *)
-
-(*   | FT_IPv4 -> "lwt_parse_string 4" *)
-(*   | FT_IPv6 -> "lwt_parse_string 16" *)
-(*   | FT_String (FixedLen n, _) -> "lwt_parse_string " ^ (string_of_int n) *)
-(*   | FT_String (VarLen int_t, _) -> *)
-(*     Printf.sprintf "lwt_parse_varlen_string \"%s\" lwt_parse_uint%d" (quote_string name) (int_size int_t) *)
-(*   | FT_String (Remaining, _) -> *)
-(*       Printf.sprintf "lwt_parse_rem_string \"%s\"" (quote_string name) *)
-
-(*   | FT_List (FixedLen n, subtype) -> *)
-(*     Printf.sprintf "lwt_parse_list %d (%s)" n (parse_fun_of_field_type name subtype) *)
-(*   | FT_List (VarLen int_t, subtype) -> *)
-(*     Printf.sprintf "lwt_parse_varlen_list \"%s\" lwt_parse_uint%d (%s)" (quote_string name) (int_size int_t) (parse_fun_of_field_type name subtype) *)
-(*   | FT_List (Remaining, subtype) -> *)
-(*     Printf.sprintf "lwt_parse_rem_list %s (%s)" name (parse_fun_of_field_type name subtype) *)
-(*   | FT_Container (int_t, subtype) -> *)
-(*     Printf.sprintf "lwt_parse_container \"%s\" lwt_parse_uint%d (%s)" (quote_string name) (int_size int_t) (parse_fun_of_field_type name subtype) *)
-
-(*   | FT_Custom (module_name, type_name, parse_fun_args) -> *)
-(*     String.concat " " (((mk_module_prefix module_name) ^ "lwt_parse_" ^ type_name)::" ~context:ctx"::parse_fun_args) *)
 
 
 (* let rec dump_fun_of_field_type = function *)
@@ -271,28 +295,6 @@ END
 
 
 
-
-(* let mk_record_lwt_parse_fun (name, raw_fields, record_options) = *)
-(*   let params = extract_record_parse_params record_options in *)
-(*   if fields = [] *)
-(*   then Printf.printf "let lwt_parse_%s %s input = return ()\n" name params *)
-(*   else begin *)
-(*     Printf.printf "let lwt_parse_%s %s input =\n" name params; *)
-(*     let parse_aux (fn, ft, _fo) = *)
-(*       (\* TODO: Really support optional fields *\) *)
-(*       Printf.printf "  %s input >>= fun _%s ->\n" (lwt_parse_fun_of_field_type fn ft) fn *)
-(*     in *)
-(*     let mkrec_aux (fn, _, fo) = *)
-(*       (\* TODO: Really support optional fields *\) *)
-(*       if fo *)
-(*       then Printf.printf "    %s = Some _%s;\n" fn fn *)
-(*       else Printf.printf "    %s = _%s;\n" fn fn *)
-(*     in *)
-(*     List.iter parse_aux fields; *)
-(*     print_endline "  return {"; *)
-(*     List.iter mkrec_aux fields; *)
-(*     print_endline "  }\n" *)
-(*   end *)
 
 (* let mk_record_dump_fun (name, raw_fields, _) = *)
 (*   if fields = [] *)
