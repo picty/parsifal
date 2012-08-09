@@ -25,6 +25,11 @@ let exp_qname _loc m n = match m with
   | None -> <:expr< $lid:n$ >>
   | Some module_name -> <:expr< $uid:module_name$.$lid:n$ >>
 
+let rec exp_of_list _loc = function
+  | [] -> <:expr< $uid:"[]"$ >>
+  | e::r -> <:expr< $uid:"::"$ $e$ $exp_of_list _loc r$ >>
+
+
 
 type record_options =
   | DoLwt
@@ -196,6 +201,81 @@ let mk_record_lwt_parse_fun (_loc, name, fields, _) =
   <:str_item< value $ <:binding< $pat:pat_lid _loc ("lwt_parse_" ^ name)$ $pat_lid _loc "input"$ = $exp:body$ >> $ >>
 
 
+(* Dump function *)
+
+let rec dump_fun_of_field_type _loc t =
+  let mk_df fname = <:expr< $uid:"DumpingEngine"$.$lid:fname$ >> in
+  match t with
+    | FT_Char -> mk_df "dump_char"
+    | FT_Int int_t -> mk_df  ("dump_" ^ int_t)
+
+    | FT_String (VarLen int_t, _) ->
+      <:expr< $mk_df "dump_varlen_string"$ $mk_df ("dump_" ^ int_t)$ >>
+    | FT_IPv4
+    | FT_IPv6
+    | FT_String _ -> mk_df "dump_string"
+
+    | FT_List (VarLen int_t, subtype) ->
+      <:expr< $mk_df "dump_varlen_list"$ $mk_df ("dump_" ^ int_t)$ $dump_fun_of_field_type _loc subtype$ >>
+    | FT_List (_, subtype) ->
+      <:expr< $mk_df "dump_list"$ $dump_fun_of_field_type _loc subtype$ >>
+    | FT_Container (int_t, subtype) ->
+      <:expr< $mk_df "dump_container"$ $mk_df ("dump_" ^ int_t)$ $dump_fun_of_field_type _loc subtype$ >>
+
+    | FT_Custom (m, n) -> exp_qname _loc m ("dump_" ^ n)
+
+
+let mk_record_dump_fun (_loc, name, fields, _) =
+  let dump_one_field = function
+      (_loc, n, t, false) ->
+      <:expr< $dump_fun_of_field_type _loc t$ $lid:name$.$lid:n$ >>
+    | (_loc, n, t, true) ->
+      <:expr< DumpingEngine.try_dump $dump_fun_of_field_type _loc t$ $lid:name$.$lid:n$ >>
+  in
+  let fields_dumped_expr = exp_of_list _loc (List.map dump_one_field fields) in
+  let body =
+    <:expr< let $lid:"fields_dumped"$ = $fields_dumped_expr$ in
+	    String.concat "" fields_dumped >>
+  in
+  <:str_item< value $ <:binding< $pat:pat_lid _loc ("dump_" ^ name)$ $pat_lid _loc name$ = $exp:body$ >> $ >>
+
+
+(* Print function *)
+
+let rec print_fun_of_field_type _loc t =
+  let mk_pf fname = <:expr< $uid:"PrintingEngine"$.$lid:fname$ >> in
+  match t with
+    | FT_Char -> mk_pf "print_char"
+    | FT_Int int_t -> mk_pf  ("print_" ^ int_t)
+
+    | FT_String (_, false) -> mk_pf "print_string"
+    | FT_String (_, true) -> mk_pf "print_binstring"
+    | FT_IPv4 -> mk_pf "print_ipv4"
+    | FT_IPv6 -> mk_pf "print_ipv6"
+
+    | FT_List (_, subtype) ->
+      <:expr< $mk_pf "print_list"$ $print_fun_of_field_type _loc subtype$ >>
+    | FT_Container (_, subtype) -> print_fun_of_field_type _loc subtype
+    | FT_Custom (m, n) -> exp_qname _loc m ("print_" ^ n)
+
+
+let mk_record_print_fun (_loc, name, fields, _) =
+  let print_one_field = function
+      (_loc, n, t, false) ->
+	<:expr< $print_fun_of_field_type _loc t$ new_indent $str:n$ $lid:name$.$lid:n$ >>
+    | (_loc, n, t, true) ->
+	<:expr< PrintingEngine.try_print $print_fun_of_field_type _loc t$ new_indent $str:n$ $lid:name$.$lid:n$ >>
+  in
+  let fields_printed_expr = exp_of_list _loc (List.map print_one_field fields) in
+  let body =
+    <:expr< let new_indent = indent ^ "  " in
+	    let $lid:"fields_printed"$ = $fields_printed_expr$ in
+	    indent ^ name ^ " {\\n" ^
+	    (String.concat "" fields_printed) ^
+	    indent ^ "}\\n" >>
+  in
+  <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ name)$ indent name $pat_lid _loc name$ = $exp:body$ >> $ >>
+
 
 EXTEND Gram
   GLOBAL: expr ctyp str_item;
@@ -237,105 +317,10 @@ EXTEND Gram
       and si2 = mk_record_parse_fun record_descr
       (* TODO: exact and lwt option *)
       and si3 = mk_record_lwt_parse_fun record_descr
+      and si4 = mk_record_dump_fun record_descr
+      and si5 = mk_record_print_fun record_descr
       in
-      <:str_item< $si1$; $si2$; $si3$ >>
+      <:str_item< $si1$; $si2$; $si3$; $si4$; $si5$ >>
   ]];
 END
 ;;
-
-
-
-
-
-(* (\* Records functions *\) *)
-
-
-(* let rec dump_fun_of_field_type = function *)
-(*   | FT_Char -> "dump_char" *)
-(*   | FT_Integer it -> Printf.sprintf "dump_uint%d" (int_size it) *)
-
-(*   | FT_Enum (int_type, module_name, type_name) -> *)
-(*     Printf.sprintf "%s.dump_%s dump_uint%d" module_name type_name (int_size int_type) *)
-
-(*   | FT_String (VarLen int_t, _) -> *)
-(*     Printf.sprintf "dump_varlen_string dump_uint%d" (int_size int_t) *)
-(*   | FT_IPv4 *)
-(*   | FT_IPv6 *)
-(*   | FT_String _ -> "dump_string" *)
-
-(*   | FT_List (VarLen int_t, subtype) -> *)
-(*     Printf.sprintf "dump_varlen_list dump_uint%d (%s)" (int_size int_t) (dump_fun_of_field_type subtype) *)
-(*   | FT_List (_, subtype) -> *)
-(*     Printf.sprintf "dump_list (%s)" (dump_fun_of_field_type subtype) *)
-(*   | FT_Container (int_t, subtype) -> *)
-(*     Printf.sprintf "dump_container dump_uint%d (%s)" (int_size int_t) (dump_fun_of_field_type subtype) *)
-
-(*   | FT_Custom (module_name, type_name, _) -> (mk_module_prefix module_name) ^ "dump_" ^ type_name *)
-
-(* let rec print_fun_of_field_type = function *)
-(*   | FT_Char -> "print_char" *)
-(*   | FT_Integer it -> Printf.sprintf "print_uint %d" (int_size it) *)
-
-(*   | FT_Enum (int_type, module_name, type_name) -> *)
-(*     Printf.sprintf "%s.print_%s %d" module_name type_name ((int_size int_type) / 4) *)
-
-(*   | FT_String (_, true) -> "print_binstring" *)
-(*   | FT_String (_, false) -> "print_string" *)
-
-(*   | FT_IPv4 -> "print_ipv4" *)
-(*   | FT_IPv6 -> "print_ipv6" *)
-
-(*   | FT_List (_, subtype) -> *)
-(*     Printf.sprintf "print_list (%s)" (print_fun_of_field_type subtype) *)
-
-(*   | FT_Container (_, subtype) -> print_fun_of_field_type subtype *)
-
-(*   | FT_Custom (module_name, type_name, _) -> (mk_module_prefix module_name) ^ "print_" ^ type_name *)
-
-
-
-
-
-(* let mk_record_dump_fun (name, raw_fields, _) = *)
-(*   if fields = [] *)
-(*   then Printf.printf "let dump_%s input = \"\"\n" name *)
-(*   else begin *)
-(*     Printf.printf "let dump_%s %s =\n" name name; *)
-(*     let dump_aux (fn, ft, fo) = *)
-(*       if fo *)
-(*       then begin *)
-(*         (Printf.sprintf "  begin\n") ^ *)
-(*         (Printf.sprintf "    match %s.%s with\n" name fn) ^ *)
-(*         (Printf.sprintf "      | None -> \"\"\n") ^ *)
-(*         (Printf.sprintf "      | Some x -> %s x\n" (dump_fun_of_field_type ft)) ^ *)
-(*         (Printf.sprintf "  end") *)
-(*       end *)
-(*       else Printf.sprintf "  %s %s.%s" (dump_fun_of_field_type ft) name fn *)
-(*     in *)
-(*     print_endline (String.concat " ^ \n" (List.map dump_aux fields)); *)
-(*     print_endline "\n" *)
-(*   end *)
-
-(* let mk_record_print_fun (name, raw_fields, _) = *)
-(*   if fields = [] *)
-(*   then begin *)
-(*     Printf.printf "let print_%s indent name %s =\n" name name; *)
-(*     print_endline "  (Printf.sprintf \"%s%s\\n\" indent name)\n"; *)
-(*   end else begin *)
-(*     let print_aux (fn, ft, fo) = *)
-(*       if fo *)
-(*       then begin *)
-(*         (Printf.sprintf "  begin\n") ^ *)
-(*         (Printf.sprintf "    match %s.%s with\n" name fn) ^ *)
-(*         (Printf.sprintf "      | None -> \"\"\n") ^ *)
-(*         (Printf.sprintf "      | Some x -> %s new_indent \"%s\" x\n" (print_fun_of_field_type ft) (quote_string fn)) ^ *)
-(*         (Printf.sprintf "  end") *)
-(*       end *)
-(*       else Printf.sprintf "  (%s new_indent \"%s\" %s.%s)" (print_fun_of_field_type ft) (quote_string fn) name fn *)
-(*     in *)
-(*     Printf.printf "let print_%s indent name %s =\n" name name; *)
-(*     print_endline "  let new_indent = indent ^ \"  \" in"; *)
-(*     print_endline "  (Printf.sprintf \"%s%s {\\n\" indent name) ^"; *)
-(*     print_endline ((String.concat " ^\n" (List.map print_aux fields)) ^ " ^"); *)
-(*     print_endline "  (Printf.sprintf \"%s}\\n\" indent)\n" *)
-(*   end *)

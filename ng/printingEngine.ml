@@ -1,8 +1,16 @@
 (* Integer printing *)
 
-let print_uint sz indent name v =
-  let size = sz / 4 in
-  Printf.sprintf "%s%s: %d (%*.*x)\n" indent name v size size v
+let print_uint8 indent name v =
+  Printf.sprintf "%s%s: %d (%2.2x)\n" indent name v v
+
+let print_uint16 indent name v =
+  Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
+
+let print_uint24 indent name v =
+  Printf.sprintf "%s%s: %d (%6.6x)\n" indent name v v
+
+let print_uint32 indent name v =
+  Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
 
 let print_char indent name c =
   Printf.sprintf "%s%s: %c (%2.2x)\n" indent name c (int_of_char c)
@@ -44,3 +52,10 @@ let print_list print_fun indent name l =
   (Printf.sprintf "%s%s {\n" indent name) ^
   (String.concat "" (List.map (fun x -> print_fun (indent ^ "  ") name x) l)) ^
   (Printf.sprintf "%s}\n" indent)
+
+
+(* Useful function *)
+
+let try_print print_fun indent name = function
+  | None -> ""
+  | Some x -> print_fun indent name x
