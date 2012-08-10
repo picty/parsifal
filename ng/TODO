@@ -1,5 +1,6 @@
 TODO
- - Document the fact that "enum", "record", "choice", and maybe other words have become reserved...
+ - CamlP4: Document the fact that "enum", "record", "choice", and maybe other words have become reserved...
+ - CamlP4: Improve the _loc handling
 
  - TlsEngine: Work on TlsEngine.update* functions
  - TlsEngine: Add a automaton_state field in context

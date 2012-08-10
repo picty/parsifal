@@ -4,8 +4,8 @@ open ParsingEngine
 open LwtParsingEngine
 open PrintingEngine
 open AnswerDump
-open Tls
 open TlsEnums
+open Tls
 open Getopt
 
 type action = IP | All | Suite | SKE

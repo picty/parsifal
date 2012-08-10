@@ -453,3 +453,73 @@ enum signature_algorithm (8, UnknownVal SA_Unknown, [lwt]) = [
   2,  SA_DSA, "DSA";
   3,  SA_ECDSA, "ECDSA";
 ]
+
+
+
+(* Internal types *)
+
+type direction = ClientToServer | ServerToClient
+
+type key_exchange_algorithm =
+  | KX_RSA
+  | KX_DH
+  | KX_DHE
+  | KX_ECDH
+  | KX_ECDHE
+  | KX_Unknown
+
+type authentication_algorithm =
+  | AU_Null
+  | AU_RSA
+  | AU_DSS
+  | AU_ECDSA
+  | AU_Unknown
+
+type encryption_blockcipher =
+  | BC_DES
+  | BC_RC2
+  | BC_IDEA
+  | BC_3DES
+  | BC_ARIA
+  | BC_SEED
+  | BC_CAMELLIA
+  | BC_AES
+
+type encryption_streamcipher =
+  | SC_RC4
+
+type encryption_algorithm =
+  | ENC_Null
+  | ENC_CBC of encryption_blockcipher * int
+  | ENC_GCM of encryption_blockcipher * int
+  | ENC_Stream of encryption_streamcipher * int
+  | ENC_Unknown
+
+type hash_function =
+  | HF_MD5
+  | HF_SHA1
+  | HF_SHA256
+  | HF_SHA384
+
+type integrity_algorithm =
+  | MAC_HMAC of hash_function * int
+  | MAC_AEAD
+  | MAC_Unknown
+
+type pseudo_random_function =
+  | PRF_Default
+  | PRF_SHA256
+  | PRF_SHA384
+  | PRF_Unknown
+
+type ciphersuite_description = {
+  suite_name : ciphersuite;
+  kx : key_exchange_algorithm;
+  au : authentication_algorithm;
+  enc : encryption_algorithm;
+  mac : integrity_algorithm;
+  prf : pseudo_random_function;
+  export : bool;
+  min_version : int;
+  max_version : int;
+}
