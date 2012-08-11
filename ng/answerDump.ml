@@ -4,6 +4,6 @@ record_def answer_dump [top] = {
   name : string(uint16);
   client_hello_type : uint8;
   msg_type : uint8;
-  content : binstring(uint32);
+  content : binstring(uint32)
 }
 
