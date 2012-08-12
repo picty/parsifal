@@ -1,4 +1,4 @@
-enum tls_version (16, UnknownVal V_Unknown, [lwt]) =
+enum tls_version (16, UnknownVal V_Unknown, [with_lwt]) =
   | 0x0002 -> V_SSLv2, "SSLv2"
   | 0x0300 -> V_SSLv3, "SSLv3"
   | 0x0301 -> V_TLSv1, "TLSv1.0"

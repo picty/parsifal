@@ -1,5 +1,5 @@
 TODO
- - CamlP4: Document the fact that "lwt", "enum", "record", "choice", and maybe other words have become reserved...
+ - Camlp4 : Put preprocess files in a separate directory and produce a real camlp4 syntax package
 
  - TlsEngine: Work on TlsEngine.update* functions
  - TlsEngine: Add a automaton_state field in context

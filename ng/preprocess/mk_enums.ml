@@ -198,7 +198,12 @@ EXTEND Gram
 
   options: [[
     o1 = SELF; ";"; o2 = SELF -> o1 @ o2
-  | "lwt" -> [DoLwt]
+  | o = ident ->
+    begin
+      match o with
+      | <:ident< $lid:"with_lwt"$ >> -> [DoLwt]
+      | i -> Loc.raise (loc_of_ident i) (Failure "unknown option")
+    end
   | -> []
   ]];
 

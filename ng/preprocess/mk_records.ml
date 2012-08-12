@@ -444,7 +444,7 @@ EXTEND Gram
   ]];
 
   str_item: [[
-    "record_def"; record_name = ident; opts = option_list; "="; "{"; fields = LIST1 field_desc SEP ";"; "}" ->
+    "struct"; record_name = ident; opts = option_list; "="; "{"; fields = LIST1 field_desc SEP ";"; "}" ->
       let record = mk_record_desc (lid_of_ident record_name) fields opts in
       let si1 = mk_record_type _loc record
       and si2 = mk_record_parse_fun _loc record
