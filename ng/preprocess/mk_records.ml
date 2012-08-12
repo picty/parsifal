@@ -71,6 +71,8 @@ let mk_multiple_args_fun _loc fname argnames body =
 type record_option =
   | DoLwt
   | ExactParser
+  | EnrichByDefault
+  | ExhaustiveChoices
   | Param of string list
 
 type field_len =
@@ -113,7 +115,26 @@ let mk_record_desc n f o = {
 }
 
 
+type union_description = {
+  uname : string;
+  choices : (Loc.t * patt * string * field_type) list;   (* loc, discriminating value, constructor, subtype *)
+  unparsed_constr : string;
+  udo_lwt : bool;
+  udo_exact : bool;
+  uenrich : bool;
+  uexhaustive : bool;
+  uparse_params : string list;
+}
 
+let mk_union_desc n c u o = {
+  uname = n; choices = c;
+  unparsed_constr = u;
+  udo_lwt = List.mem DoLwt o;
+  udo_exact = List.mem ExactParser o;
+  uenrich = List.mem EnrichByDefault o;
+  uexhaustive = List.mem ExhaustiveChoices o;
+  uparse_params = mk_params o;
+}
 
 
 (* To-be-processed file parsing *)
@@ -170,6 +191,8 @@ let opts_of_seq_expr expr =
     | <:expr< $lid:"with_lwt"$ >>   -> [DoLwt]
     | <:expr< $lid:"with_exact"$ >> -> [ExactParser]
     | <:expr< $lid:"top"$ >>        -> [DoLwt; ExactParser]
+    | <:expr< $lid:"enrich"$ >>     -> [EnrichByDefault]
+    | <:expr< $lid:"exhaustive"$ >> -> [ExhaustiveChoices]
     | <:expr< $lid:"param"$ $e$ >>  -> [Param (List.map lid_of_expr (list_of_com_expr e))]
     | e -> Loc.raise (loc_of_expr e) (Failure "unknown option")
   in
@@ -198,6 +221,19 @@ let mk_record_type _loc record =
   let mk_line (_loc, n, t, opt) = <:ctyp< $lid:n$ : $ocaml_type_of_field_type _loc t opt$ >> in
   let ctyp_fields = List.map mk_line record.fields in
   <:str_item< type $lid:record.rname$ = { $list:ctyp_fields$ } >>
+
+let mk_union_type _loc union =
+  let rec mk_ctors = function
+    | [] ->
+      [ <:ctyp< $ctyp_uid _loc union.unparsed_constr$ of string >> ]
+    | (_loc, _, n, FT_Empty)::r ->	
+      (ctyp_uid _loc n)::(mk_ctors r)
+    | (_loc, _, n, t)::r ->	
+      ( <:ctyp< $ctyp_uid _loc n$ of $ocaml_type_of_field_type _loc t false$ >> )::(mk_ctors r)
+  in
+  let ctyp_ctors = mk_ctors union.choices in
+  <:str_item< type $lid:union.uname$ = [ $list:ctyp_ctors$ ] >>
+
 
 
 (* Parse function *)
@@ -394,6 +430,13 @@ EXTEND Gram
     (_loc, lid_of_ident name, field, optional != None)
   ]];
 
+  choice_desc: [[
+    "|"; discr_val = patt; "->"; constructor = ident; "of"; t = field_type_d ->
+      (_loc, discr_val, uid_of_ident constructor, t)
+  | "|"; discr_val = patt; "->"; constructor = ident ->
+      (_loc, discr_val, uid_of_ident constructor, FT_Empty)
+  ]];
+
   option_list: [[
     -> []
   | "["; "]" -> []
@@ -417,6 +460,14 @@ EXTEND Gram
       and si6 = mk_record_print_fun _loc record
       in
       <:str_item< $si1$; $si2$; $si3$; $si4$; $si5$; $si6$ >>
+
+  | "union"; union_name = ident;
+      "("; unparsed_const = ident; ","; opts = option_list; ")"; "="; 
+      choices = LIST1 choice_desc  ->
+        let union = mk_union_desc (lid_of_ident union_name) choices (uid_of_ident unparsed_const) opts in
+	let si1 = mk_union_type _loc union
+	in
+	<:str_item< $si1$ >>
   ]];
 END
 ;;
