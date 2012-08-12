@@ -1,22 +1,21 @@
 open Camlp4
 open Camlp4.PreCast
+open Camlp4.PreCast.Ast
 open Syntax
 
 
 (* Common camlp4 functions *)
 
-let uid_of_ident _loc = function
-  | <:ident< $uid:id$ >> -> id
-  | _ -> Loc.raise _loc (Failure "uppercase identifier expected")
+let uid_of_ident = function
+  | IdUid (_, id) -> id
+  | i -> Loc.raise (loc_of_ident i) (Failure "uppercase identifier expected")
 
-let lid_of_ident _loc = function
-  | <:ident< $lid:id$ >> -> id
-  | _ -> Loc.raise _loc (Failure "lowercase identifier expected")
+let lid_of_ident = function
+  | IdLid (_, id) -> id
+  | i -> Loc.raise (loc_of_ident i) (Failure "lowercase identifier expected")
 
 let pat_lid _loc name = <:patt< $lid:name$ >>
 let pat_uid _loc name = <:patt< $uid:name$ >>
-let exp_int _loc i = <:expr< $int:i$ >>
-let exp_str _loc s = <:expr< $str:s$ >>
 let exp_lid _loc name = <:expr< $lid:name$ >>
 let exp_uid _loc name = <:expr< $uid:name$ >>
 let ctyp_uid _loc name = <:ctyp< $uid:name$ >>
@@ -48,6 +47,15 @@ let mk_enum_desc n s c u o = {
  choices = c; unknown_behaviour = u; opts = o;
 }
 
+let rec choices_of_match_cases = function
+  | McNil _ -> []
+  | McOr (_, m1, m2) ->
+    (choices_of_match_cases m1)@(choices_of_match_cases m2)
+  | McArr (_loc, <:patt< $int:i$ >>, <:expr< >>,
+	   ExTup (_, ExCom (_, <:expr< $uid:c$ >>, <:expr< $str:s$ >> ))) ->
+    [_loc, i, c, s]
+  | mc -> Loc.raise (loc_of_match_case mc) (Failure "Invalid choice for an enum")
+
 
 let mk_exception _loc enum = match enum with
   | {unknown_behaviour = Exception e} ->
@@ -55,7 +63,7 @@ let mk_exception _loc enum = match enum with
   | _ -> <:str_item< >>
 
 let mk_size_decl _loc enum =
-  <:str_item< value $ <:binding< $pat:pat_lid _loc ("__" ^ enum.name ^ "_size")$ = $exp:exp_int _loc (string_of_int enum.size)$ >> $ >>
+  <:str_item< value $ <:binding< $pat:pat_lid _loc ("__" ^ enum.name ^ "_size")$ = $exp:ExInt (_loc, (string_of_int enum.size))$ >> $ >>
 
 
 let mk_ctors _loc enum =
@@ -91,7 +99,7 @@ let mk_string_of_enum _loc enum =
 
 let mk_int_of_enum _loc enum =
   let mk_case (_loc, v, n, _) =
-    let p, e = ( pat_uid _loc n, exp_int _loc v ) in
+    let p, e = (pat_uid _loc n, ExInt (_loc, v)) in
     <:match_case< $p$ -> $e$ >>
   in
   let _cases = List.map mk_case enum.choices in
@@ -183,17 +191,9 @@ let mk_parse_dump_print_funs _loc enum =
 EXTEND Gram
   GLOBAL: str_item;
 
-  enum_elts: [[
-    e1 = SELF; ";"; e2 = SELF -> e1 @ e2
-  | v = INT; ","; constructor = ident; ","; display = STRING ->
-    [(_loc, v, uid_of_ident _loc constructor, display)]
-  | -> []
-  ]];
-
-
   unknown_behaviour: [[
-    "Exception"; x = ident -> Exception (uid_of_ident _loc x)
-  | "UnknownVal"; x = ident -> UnknownVal (uid_of_ident _loc x)
+    "Exception"; x = ident -> Exception (uid_of_ident x)
+  | "UnknownVal"; x = ident -> UnknownVal (uid_of_ident x)
   ]];
 
   options: [[
@@ -207,8 +207,9 @@ EXTEND Gram
     "("; sz = INT; ",";
          u_b = unknown_behaviour; ",";
 	 "["; opts = options; "]";
-    ")"; "="; "["; choices = enum_elts; "]" ->
-      let enum_descr = mk_enum_desc (lid_of_ident _loc enum_name) (int_of_string sz) choices u_b opts in
+    ")"; "="; _choices = match_case ->
+      let choices = choices_of_match_cases _choices in
+      let enum_descr = mk_enum_desc (lid_of_ident enum_name) (int_of_string sz) choices u_b opts in
       let si0 = mk_exception _loc enum_descr
       and si1 = mk_size_decl _loc enum_descr
       and si2 = mk_ctors _loc enum_descr

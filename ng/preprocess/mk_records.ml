@@ -1,21 +1,22 @@
 open Camlp4
 open Camlp4.PreCast
+open Camlp4.PreCast.Ast
 open Syntax
 
 
 (* Common camlp4 functions *)
 
-let uid_of_ident _loc = function
-  | <:ident< $uid:id$ >> -> id
-  | _ -> Loc.raise _loc (Failure "uppercase identifier expected")
+let uid_of_ident = function
+  | IdUid (_, id) -> id
+  | i -> Loc.raise (loc_of_ident i) (Failure "uppercase identifier expected")
 
-let lid_of_ident _loc = function
-  | <:ident< $lid:id$ >> -> id
-  | _ -> Loc.raise _loc (Failure "lowercase identifier expected")
+let lid_of_ident = function
+  | IdLid (_, id) -> id
+  | i -> Loc.raise (loc_of_ident i) (Failure "lowercase identifier expected")
 
-let lid_of_expr _loc = function
+let lid_of_expr = function
   | <:expr< $lid:id$ >> -> id
-  | _ -> Loc.raise _loc (Failure "lowercase identifier expected")
+  | e -> Loc.raise (loc_of_expr e) (Failure "lowercase identifier expected")
 
 let pat_lid _loc name = <:patt< $lid:name$ >>
 let pat_uid _loc name = <:patt< $uid:name$ >>
@@ -114,7 +115,7 @@ let mk_record_desc n f o = {
 
 (* To-be-processed file parsing *)
 
-let rec field_type_of_ident _loc name decorator subtype =
+let rec field_type_of_ident name decorator subtype =
   match name, decorator, subtype with
     | <:ident< $lid:"empty"$ >>,  None, None -> FT_Empty
     | <:ident< $lid:"char"$ >>,   None, None -> FT_Char
@@ -128,13 +129,13 @@ let rec field_type_of_ident _loc name decorator subtype =
       FT_List (FixedLen (int_of_string i), t)
     | <:ident< $lid:"list"$ >>,   Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, Some t ->
       FT_List (VarLen int_t, t)
-    | <:ident< $lid:"list"$ >>,   _, _ ->
-      Loc.raise _loc (Failure "invalid list type")
+    | <:ident< $lid:"list"$ >> as i,   _, _ ->
+      Loc.raise (loc_of_ident i) (Failure "invalid list type")
 
     | <:ident< $lid:"container"$ >>, Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>,
       Some t -> FT_Container (int_t, t)
-    | <:ident< $lid:"container"$ >>, _, _ ->
-      Loc.raise _loc (Failure "invalid container type")
+    | <:ident< $lid:"container"$ >> as i, _, _ ->
+      Loc.raise (loc_of_ident i) (Failure "invalid container type")
 
     | <:ident< $lid:"string"$ >>,    None, None-> FT_String (Remaining, false)
     | <:ident< $lid:"binstring"$ >>, None, None -> FT_String (Remaining, true)
@@ -146,8 +147,8 @@ let rec field_type_of_ident _loc name decorator subtype =
       FT_String (VarLen int_t, false)
     | <:ident< $lid:"binstring"$ >>, Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None ->
       FT_String (VarLen int_t, true)
-    | <:ident< $lid:("string" | "binstring")$ >>, _, _ ->
-      Loc.raise _loc (Failure "invalid string type")
+    | <:ident< $lid:("string" | "binstring")$ >> as i, _, _ ->
+      Loc.raise (loc_of_ident i) (Failure "invalid string type")
 
     | <:ident< $lid:custom_t$ >>, None, None ->
       FT_Custom (None, custom_t, [])
@@ -158,16 +159,16 @@ let rec field_type_of_ident _loc name decorator subtype =
     | <:ident< $uid:module_name$.$lid:custom_t$ >>, Some e, None ->
       FT_Custom (Some module_name, custom_t, list_of_com_expr e)
 
-    | e -> Loc.raise _loc (Failure "invalid identifier for a type")
+    | i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid identifier for a type")
 
 
-let rec opts_of_exprs _loc = function
+let rec opts_of_exprs = function
   | [] -> []
-  | <:expr< $lid:"with_lwt"$ >> :: r -> DoLwt::(opts_of_exprs _loc r)
-  | <:expr< $lid:"with_exact"$ >> :: r -> ExactParser::(opts_of_exprs _loc r)
-  | <:expr< $lid:"top"$ >> :: r -> DoLwt::ExactParser::(opts_of_exprs _loc r)
-  | <:expr< $lid:"param"$ $e$ >> :: r -> (Param (List.map (lid_of_expr _loc) (list_of_com_expr e)))::(opts_of_exprs _loc r)
-  | _ -> Loc.raise _loc (Failure "unknown option")
+  | <:expr< $lid:"with_lwt"$ >> :: r -> DoLwt::(opts_of_exprs r)
+  | <:expr< $lid:"with_exact"$ >> :: r -> ExactParser::(opts_of_exprs r)
+  | <:expr< $lid:"top"$ >> :: r -> DoLwt::ExactParser::(opts_of_exprs r)
+  | <:expr< $lid:"param"$ $e$ >> :: r -> (Param (List.map lid_of_expr (list_of_com_expr e)))::(opts_of_exprs r)
+  | e::r -> Loc.raise (loc_of_expr e) (Failure "unknown option")
 
 
 
@@ -380,32 +381,23 @@ EXTEND Gram
   field_type_d: [[
     "("; t = SELF; ")" -> t
   | type_name = ident; e = OPT [ "("; _e = expr; ")" -> _e ]; t = OPT [ "of"; _t = field_type_d -> _t ] ->
-    field_type_of_ident _loc type_name e t
+    field_type_of_ident type_name e t
   ]];
 
   field_desc: [[
     optional = OPT [ "optional" -> () ]; name = ident; ":"; field = field_type_d  ->
-    (_loc, lid_of_ident _loc name, field, optional != None)
-  ]];
-
-  field_descs: [[
-    f1 = SELF; ";"; f2 = SELF -> f1 @ f2
-  | name = ident; ":"; field = field_desc ->
-      [_loc, lid_of_ident _loc name, field, false]
-  | "optional"; name = ident; ":"; field = field_desc  ->
-      [_loc, lid_of_ident _loc name, field, true]
-  | -> []
+    (_loc, lid_of_ident name, field, optional != None)
   ]];
 
   option_list: [[
     -> []
   | "["; "]" -> []
-  | "["; _opts = expr; "]" -> opts_of_exprs _loc (list_of_sem_expr _opts)
+  | "["; _opts = expr; "]" -> opts_of_exprs (list_of_sem_expr _opts)
   ]];
 
   str_item: [[
     "record_def"; record_name = ident; opts = option_list; "="; "{"; fields = LIST1 field_desc SEP ";"; "}" ->
-      let record = mk_record_desc (lid_of_ident _loc record_name) fields opts in
+      let record = mk_record_desc (lid_of_ident record_name) fields opts in
       let si1 = mk_record_type _loc record
       and si2 = mk_record_parse_fun _loc record
       and si3 =
