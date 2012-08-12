@@ -35,19 +35,22 @@ let rec exp_of_list _loc = function
   | e::r -> <:expr< $uid:"::"$ $e$ $exp_of_list _loc r$ >>
 
 
-let rec _list_of_com_expr = function
-  | Ast.ExNil _loc -> []
-  | Ast.ExCom (_loc, e, r) -> e::(_list_of_com_expr r)
+let list_of_com_expr =
+  let rec _list_of_com_expr = function
+    | ExNil _ -> []
+    | ExCom (_, e1, e2) -> (_list_of_com_expr e1)@(_list_of_com_expr e2)
+    | e -> [e]
+  in function
+  | ExTup (_loc, e) -> _list_of_com_expr e
   | e -> [e]
 
-let list_of_com_expr = function
-  | Ast.ExTup (_loc, e) -> _list_of_com_expr e
-  | e -> [e]
-
-
-let rec list_of_sem_expr = function
-  | Ast.ExNil _loc -> []
-  | Ast.ExSem (_loc, e, r) -> e::(list_of_sem_expr r)
+let list_of_sem_expr =
+  let rec _list_of_sem_expr = function
+    | ExNil _ -> []
+    | ExSem (_, e1, e2) -> (_list_of_sem_expr e1)@(_list_of_sem_expr e2)
+    | e -> [e]
+  in function
+  | ExSeq (_loc, e) -> _list_of_sem_expr e
   | e -> [e]
 
 
@@ -85,7 +88,7 @@ type field_type =
   | FT_String of field_len * bool
   | FT_List of field_len * field_type
   | FT_Container of string * field_type     (* the string corresponds to the integer type for the field length *)
-  | FT_Custom of (string option) * string * Ast.expr list  (* the expr list is the list of args to apply to parse funs *)
+  | FT_Custom of (string option) * string * expr list  (* the expr list is the list of args to apply to parse funs *)
 
 type record_description = {
   rname : string;
@@ -162,14 +165,15 @@ let rec field_type_of_ident name decorator subtype =
     | i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid identifier for a type")
 
 
-let rec opts_of_exprs = function
-  | [] -> []
-  | <:expr< $lid:"with_lwt"$ >> :: r -> DoLwt::(opts_of_exprs r)
-  | <:expr< $lid:"with_exact"$ >> :: r -> ExactParser::(opts_of_exprs r)
-  | <:expr< $lid:"top"$ >> :: r -> DoLwt::ExactParser::(opts_of_exprs r)
-  | <:expr< $lid:"param"$ $e$ >> :: r -> (Param (List.map lid_of_expr (list_of_com_expr e)))::(opts_of_exprs r)
-  | e::r -> Loc.raise (loc_of_expr e) (Failure "unknown option")
-
+let opts_of_seq_expr expr =
+  let opt_of_exp = function
+    | <:expr< $lid:"with_lwt"$ >>   -> [DoLwt]
+    | <:expr< $lid:"with_exact"$ >> -> [ExactParser]
+    | <:expr< $lid:"top"$ >>        -> [DoLwt; ExactParser]
+    | <:expr< $lid:"param"$ $e$ >>  -> [Param (List.map lid_of_expr (list_of_com_expr e))]
+    | e -> Loc.raise (loc_of_expr e) (Failure "unknown option")
+  in
+  List.concat (List.map opt_of_exp (list_of_sem_expr expr))
 
 
 (* Type creation *)
@@ -191,7 +195,8 @@ let ocaml_type_of_field_type _loc t opt =
   if opt then <:ctyp< option $real_t$ >> else real_t
 
 let mk_record_type _loc record =
-  let ctyp_fields = List.map (fun (_loc, n, t, optional) -> <:ctyp< $lid:n$ : $ocaml_type_of_field_type _loc t optional$ >> ) record.fields in
+  let mk_line (_loc, n, t, opt) = <:ctyp< $lid:n$ : $ocaml_type_of_field_type _loc t opt$ >> in
+  let ctyp_fields = List.map mk_line record.fields in
   <:str_item< type $lid:record.rname$ = { $list:ctyp_fields$ } >>
 
 
@@ -392,7 +397,7 @@ EXTEND Gram
   option_list: [[
     -> []
   | "["; "]" -> []
-  | "["; _opts = expr; "]" -> opts_of_exprs (list_of_sem_expr _opts)
+  | "["; _opts = expr; "]" -> opts_of_seq_expr _opts
   ]];
 
   str_item: [[
