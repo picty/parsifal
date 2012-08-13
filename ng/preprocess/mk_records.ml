@@ -102,7 +102,7 @@ type record_description = {
 
 let mk_params opts =
   let rec _mk_params = function
-    | [] -> [["input"]]
+    | [] -> []
     | (Param l)::r -> l::(_mk_params r)
     | _::r -> _mk_params r
   in List.concat (_mk_params opts)
@@ -235,7 +235,7 @@ let mk_union_type _loc union =
   <:str_item< type $lid:union.uname$ = [ $list:ctyp_ctors$ ] >>
 
 
-(* Generic fun generation *)
+(* Parse functions *)
 
 let fun_of_field_type (prefix, module_prefix) _loc name t =
   let mk_pf fname = <:expr< $uid:module_prefix$.$lid:prefix ^ fname$ >> in
@@ -263,10 +263,6 @@ let fun_of_field_type (prefix, module_prefix) _loc name t =
     | FT_Custom (m, n, e) -> apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
   in aux name t
 
-
-
-(* Parse function *)
-
 let mk_record_parse_fun _loc record =
   let rec mk_body = function
     | [] ->
@@ -282,10 +278,8 @@ let mk_record_parse_fun _loc record =
   in
 
   let body = mk_body record.fields in
-  <:str_item< value $mk_multiple_args_fun _loc ("parse_" ^ record.rname) record.rparse_params body$ >>
-
-
-(* Lwt Parse function *)
+  let params = record.rparse_params@["input"] in
+  <:str_item< value $mk_multiple_args_fun _loc ("parse_" ^ record.rname) params body$ >>
 
 let mk_record_lwt_parse_fun _loc record =
   let rec mk_body = function
@@ -302,16 +296,34 @@ let mk_record_lwt_parse_fun _loc record =
   in
 
   let body = mk_body record.fields in
-  <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ record.rname) record.rparse_params body$ >>
-
-
-(* Exact parse *)
+  let params = record.rparse_params@["input"] in
+  <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ record.rname) params body$ >>
 
 let mk_exact_parse_fun _loc record =
-  let rec all_but_least = function [] | [_] -> [] | x::r -> (exp_lid _loc x)::(all_but_least r) in
-  let parse_fun = apply_exprs _loc (exp_qname _loc None ("parse_" ^ record.rname)) (all_but_least record.rparse_params) in
-  let body = <:expr< $parse_fun$ input >> in
-  <:str_item< value $mk_multiple_args_fun _loc ("exact_parse_" ^ record.rname) record.rparse_params body$ >>
+  let partial_params = List.map (exp_lid _loc) record.rparse_params
+  and params = record.rparse_params@["input"] in
+  let parse_fun = apply_exprs _loc (exp_qname _loc None ("parse_" ^ record.rname)) partial_params in
+  let body = <:expr< ParsingEngine.exact_parse $parse_fun$ input >> in
+  <:str_item< value $mk_multiple_args_fun _loc ("exact_parse_" ^ record.rname) params body$ >>
+
+
+let mk_union_parse_fun _loc union =
+  let mk_case (_loc, p, c, t) =
+    let parse_fun = fun_of_field_type ("parse_", "ParsingEngine") _loc union.uname t in
+    <:match_case< $p$ -> $exp_uid _loc c$ ($parse_fun$ input) >>
+  in
+  let parsed_cases = List.map mk_case union.choices
+  and last_case = <:match_case< _ -> $exp_uid _loc union.unparsed_constr$ (parse_rem_string input) >> in
+  let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
+  let body =
+    <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$
+      then match discriminator with [ $list:cases$ ]
+      else $exp_uid _loc union.unparsed_constr$ (parse_rem_string input) >>
+  in
+  let params = union.uparse_params@["discriminator"; "input"] in
+  <:str_item< value $mk_multiple_args_fun _loc ("parse_" ^ union.uname) params body$ >>
+
+
 
 
 (* Dump function *)
@@ -441,9 +453,13 @@ EXTEND Gram
       "("; unparsed_const = ident; ","; opts = option_list; ")"; "="; 
       choices = LIST1 choice_desc  ->
         let union = mk_union_desc (lid_of_ident union_name) choices (uid_of_ident unparsed_const) opts in
-	let si1 = mk_union_type _loc union
+	let si0 =
+	  <:str_item< value $ <:binding< $pat:pat_lid _loc ("enrich_" ^ union.uname)$ =
+                                         $exp: <:expr< ref $`bool:union.uenrich$ >> $ >> $ >>
+	and si1 = mk_union_type _loc union
+	and si2 = mk_union_parse_fun _loc union
 	in
-	<:str_item< $si1$ >>
+	<:str_item< $si0$; $si1$; $si2$ >>
   ]];
 END
 ;;

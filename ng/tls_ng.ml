@@ -25,7 +25,7 @@ struct server_name = {
   sni_name : sni_name(_sni_name_type)
 }
 
-union server_name_content (Unparsed_ServerNameContent, [enrich; param direction]) =
+union server_name_content (Unparsed_ServerNameContent, [enrich; param direction; exhaustive]) =
   | ClientToServer -> ClientServerName of (list(uint16) of server_name)
   | ServerToClient -> ServerServerName
 
