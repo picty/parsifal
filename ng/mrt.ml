@@ -47,7 +47,7 @@ struct table_dump [param ipa_type] = {
 }
 
 
-union mrt_subtype (UnparsedSubType, [enrich; with_lwt]) =
+union mrt_subtype (UnparsedSubType of uint16, [enrich; with_lwt]) =
   | MT_TABLE_DUMP -> MST_TABLE_DUMP of ip_address_type
 
 union mrt_message_content (UnparedMRTMessage, [enrich]) =
@@ -60,6 +60,6 @@ union mrt_message_content (UnparedMRTMessage, [enrich]) =
 struct mrt_message [top] = {
   mrt_timestamp : uint32;
   mrt_type : mrt_type;
-  mrt_subtype : (* mrt_subtype(_mrt_type) *) uint16;
+  mrt_subtype : mrt_subtype(_mrt_type);
   mrt_message : container(uint32) of mrt_message_content(_mrt_type, _mrt_subtype)
 }

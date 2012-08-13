@@ -127,6 +127,7 @@ type union_description = {
   uname : string;
   choices : (Loc.t * patt * string * field_type) list;   (* loc, discriminating value, constructor, subtype *)
   unparsed_constr : string;
+  unparsed_type : field_type;
   udo_lwt : bool;
   udo_exact : bool;
   uenrich : bool;
@@ -134,9 +135,10 @@ type union_description = {
   uparse_params : string list;
 }
 
-let mk_union_desc n c u o = {
+let mk_union_desc n c (u, t) o = {
   uname = n; choices = c;
   unparsed_constr = u;
+  unparsed_type = t;
   udo_lwt = List.mem DoLwt o;
   udo_exact = List.mem ExactParser o;
   uenrich = List.mem EnrichByDefault o;
@@ -233,11 +235,13 @@ let mk_record_type _loc record =
 let mk_union_type _loc union =
   let rec mk_ctors = function
     | [] ->
-      [ <:ctyp< $ctyp_uid _loc union.unparsed_constr$ of string >> ]
+      [ <:ctyp< $ctyp_uid _loc union.unparsed_constr$ of
+	        $ocaml_type_of_field_type _loc union.unparsed_type false$ >> ]
     | (_loc, _, n, FT_Empty)::r ->	
       (ctyp_uid _loc n)::(mk_ctors r)
     | (_loc, _, n, t)::r ->	
-      ( <:ctyp< $ctyp_uid _loc n$ of $ocaml_type_of_field_type _loc t false$ >> )::(mk_ctors r)
+      ( <:ctyp< $ctyp_uid _loc n$ of
+                $ocaml_type_of_field_type _loc t false$ >> )::(mk_ctors r)
   in
   let ctyp_ctors = mk_ctors union.choices in
   <:str_item< type $lid:union.uname$ = [ $list:ctyp_ctors$ ] >>
@@ -317,14 +321,18 @@ let mk_union_parse_fun _loc union =
     | (_loc, p, c, t) ->
       let parse_fun = fun_of_field_type ("parse_", "ParsingEngine") _loc union.uname t in
       <:match_case< $p$ -> $exp_uid _loc c$ ($parse_fun$ input) >>
+  and mk_unparsed =
+    let parse_fun = fun_of_field_type ("parse_", "ParsingEngine") _loc union.uname union.unparsed_type in
+    <:expr< $exp_uid _loc union.unparsed_constr$ ($parse_fun$ input) >>
   in
   let parsed_cases = List.map mk_case union.choices
-  and last_case = <:match_case< _ -> $exp_uid _loc union.unparsed_constr$ (ParsingEngine.parse_rem_string input) >> in
+  and last_case =
+    <:match_case< _ -> $mk_unparsed$ >> in
   let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
   let body =
     <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$ || enrich
       then match discriminator with [ $list:cases$ ]
-      else $exp_uid _loc union.unparsed_constr$ (ParsingEngine.parse_rem_string input) >>
+      else $mk_unparsed$ >>
   in
   let params = union.uparse_params@["discriminator"; "input"] in
   <:str_item< value $mk_multiple_args_fun _loc ("parse_" ^ union.uname) ~optargs:["enrich", exp_false _loc] params body$ >>
@@ -336,16 +344,17 @@ let mk_union_lwt_parse_fun _loc union =
     | (_loc, p, c, t) ->
       let parse_fun = fun_of_field_type ("lwt_parse_", "LwtParsingEngine") _loc union.uname t in
       <:match_case< $p$ -> Lwt.bind ($parse_fun$ input) (fun v -> Lwt.return ($exp_uid _loc c$ v)) >>
+  and mk_unparsed =
+    let parse_fun = fun_of_field_type ("lwt_parse_", "LwtParsingEngine") _loc union.uname union.unparsed_type in
+    <:expr< Lwt.bind ($parse_fun$ input) (fun v -> Lwt.return ($exp_uid _loc union.unparsed_constr$ v)) >>
   in
   let parsed_cases = List.map mk_case union.choices
-  and last_case = <:match_case< _ -> Lwt.bind (LwtParsingEngine.lwt_parse_rem_string $exp_str _loc union.uname$ input)
-                                              (fun v -> Lwt.return ($exp_uid _loc union.unparsed_constr$ v)) >> in
+  and last_case = <:match_case< _ -> $mk_unparsed$ >> in
   let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
   let body =
     <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$ || enrich
       then match discriminator with [ $list:cases$ ]
-      else Lwt.bind (LwtParsingEngine.lwt_parse_rem_string $exp_str _loc union.uname$ input)
-                    (fun v -> Lwt.return ($exp_uid _loc union.unparsed_constr$ v)) >>
+      else $mk_unparsed$ >>
   in
   let params = union.uparse_params@["discriminator"; "input"] in
   <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname) ~optargs:["enrich", exp_false _loc] params body$ >>
@@ -406,7 +415,10 @@ let mk_union_dump_fun _loc union =
     | _loc, _, c, t ->
       <:match_case< ( $pat_uid _loc c$ $pat_lid _loc "x"$ ) -> $ <:expr< $dump_fun_of_field_type _loc t$ x >> $ >>
   in
-  let last_case = <:match_case< ( $pat_uid _loc union.unparsed_constr$ $pat_lid _loc "s"$ ) -> s >> in
+  let last_case =
+    <:match_case< ( $pat_uid _loc union.unparsed_constr$ $pat_lid _loc "x"$ ) ->
+                  $ <:expr< $dump_fun_of_field_type _loc union.unparsed_type$ x >> $ >>
+  in
   let cases = (List.map mk_case union.choices)@[last_case] in
   let body = <:expr< fun [ $list:cases$ ] >> in
   <:str_item< value $ <:binding< $pat:pat_lid _loc ("dump_" ^ union.uname)$ = $exp:body$ >> $ >>
@@ -456,7 +468,10 @@ let mk_union_print_fun _loc union =
     | _loc, _, c, t ->
       <:match_case< ( $pat_uid _loc c$ $pat_lid _loc "x"$ ) -> $ <:expr< $print_fun_of_field_type _loc t$ indent name x >> $ >>
   in
-  let last_case = <:match_case< ( $pat_uid _loc union.unparsed_constr$ $pat_lid _loc "s"$ ) -> PrintingEngine.print_binstring indent name s >> in
+  let last_case =
+    <:match_case< ( $pat_uid _loc union.unparsed_constr$ $pat_lid _loc "x"$ ) ->
+                  $ <:expr< $print_fun_of_field_type _loc union.unparsed_type$ indent name x >> $ >>
+  in
   let cases = (List.map mk_case union.choices)@[last_case] in
   let body = <:expr< fun [ $list:cases$ ] >> in
   <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ union.uname)$ indent name = $exp:body$ >> $ >>
@@ -490,6 +505,11 @@ EXTEND Gram
   | "["; _opts = expr; "]" -> opts_of_seq_expr _opts
   ]];
 
+  unparsed_behavior: [[
+    unparsed_const = ident -> (uid_of_ident unparsed_const, FT_String (Remaining, true))
+  | unparsed_const = ident; "of"; unparsed_type = field_type_d -> (uid_of_ident unparsed_const, unparsed_type)
+  ]];
+
   str_item: [[
     "struct"; record_name = ident; opts = option_list; "="; "{"; fields = LIST1 field_desc SEP ";"; "}" ->
       let record = mk_record_desc (lid_of_ident record_name) fields opts in
@@ -509,9 +529,10 @@ EXTEND Gram
       <:str_item< $si1$; $si2$; $si3$; $si4$; $si5$; $si6$ >>
 
   | "union"; union_name = ident;
-      "("; unparsed_const = ident; ","; opts = option_list; ")"; "="; 
+      "("; unparsed_behavior = unparsed_behavior; ",";
+           opts = option_list; ")"; "="; 
       choices = LIST1 choice_desc  ->
-      let union = mk_union_desc (lid_of_ident union_name) choices (uid_of_ident unparsed_const) opts in
+      let union = mk_union_desc (lid_of_ident union_name) choices unparsed_behavior opts in
       let si0 =
 	<:str_item< value $ <:binding< $pat:pat_lid _loc ("enrich_" ^ union.uname)$ =
                                        $exp: <:expr< ref $exp_bool _loc union.uenrich$ >> $ >> $ >>
