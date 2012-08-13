@@ -153,7 +153,7 @@ struct handshake_msg [param context] = {
 
 (* TLS record *)
 
-union record_content (Unparsed_Record, [param context]) =
+union record_content (Unparsed_Record, [top; param context]) =
   | CT_Alert -> Alert of tls_alert
   | CT_Handshake -> Handshake of handshake_msg(context)
   | CT_ChangeCipherSpec -> ChangeCipherSpec of change_cipher_spec

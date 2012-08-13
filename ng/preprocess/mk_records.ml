@@ -323,6 +323,22 @@ let mk_union_parse_fun _loc union =
   let params = union.uparse_params@["discriminator"; "input"] in
   <:str_item< value $mk_multiple_args_fun _loc ("parse_" ^ union.uname) params body$ >>
 
+let mk_union_lwt_parse_fun _loc union =
+  let mk_case (_loc, p, c, t) =
+    let parse_fun = fun_of_field_type ("lwt_parse_", "LwtParsingEngine") _loc union.uname t in
+    <:match_case< $p$ -> Lwt.bind ($parse_fun$ input) (fun v -> return $exp_uid _loc c$ v) >>
+  in
+  let parsed_cases = List.map mk_case union.choices
+  and last_case = <:match_case< _ -> Lwt.bind (parse_rem_string input)
+                                              (fun v -> $exp_uid _loc union.unparsed_constr$ v) >> in
+  let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
+  let body =
+    <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$
+      then match discriminator with [ $list:cases$ ]
+      else Lwt.bind (parse_rem_string input) (fun v -> $exp_uid _loc union.unparsed_constr$ v) >>
+  in
+  let params = union.uparse_params@["discriminator"; "input"] in
+  <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname) params body$ >>
 
 
 
@@ -452,14 +468,18 @@ EXTEND Gram
   | "union"; union_name = ident;
       "("; unparsed_const = ident; ","; opts = option_list; ")"; "="; 
       choices = LIST1 choice_desc  ->
-        let union = mk_union_desc (lid_of_ident union_name) choices (uid_of_ident unparsed_const) opts in
-	let si0 =
-	  <:str_item< value $ <:binding< $pat:pat_lid _loc ("enrich_" ^ union.uname)$ =
-                                         $exp: <:expr< ref $`bool:union.uenrich$ >> $ >> $ >>
-	and si1 = mk_union_type _loc union
-	and si2 = mk_union_parse_fun _loc union
-	in
-	<:str_item< $si0$; $si1$; $si2$ >>
+      let union = mk_union_desc (lid_of_ident union_name) choices (uid_of_ident unparsed_const) opts in
+      let si0 =
+	<:str_item< value $ <:binding< $pat:pat_lid _loc ("enrich_" ^ union.uname)$ =
+                                       $exp: <:expr< ref $`bool:union.uenrich$ >> $ >> $ >>
+      and si1 = mk_union_type _loc union
+      and si2 = mk_union_parse_fun _loc union
+      and si3 =
+        if union.udo_lwt
+	then mk_union_lwt_parse_fun _loc union
+	else <:str_item< >>
+      in
+      <:str_item< $si0$; $si1$; $si2$; $si3$ >>
   ]];
 END
 ;;
