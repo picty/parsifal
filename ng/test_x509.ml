@@ -82,7 +82,7 @@ let _ =
     exit 0
   with
     | ParsingException (e, i) -> emit_parsing_exception false e i; exit 1
-    | LwtParsingException (e, i) -> LwtParsingEngine.emit_parsing_exception false e i; exit 1
+    | LwtParsingException (e, i) -> emit_lwt_parsing_exception false e i; exit 1
     | Asn1Engine.Asn1Exception (e, i) -> Asn1Engine.emit false e i; exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1
 

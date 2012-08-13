@@ -19,7 +19,7 @@ let print_parsing_exception = function
 
 exception LwtParsingException of lwt_parsing_exception * lwt_input
 
-let emit_parsing_exception fatal e i =
+let emit_lwt_parsing_exception fatal e i =
   if fatal
   then raise (LwtParsingException (e,i))
   else Printf.fprintf stderr "%s in %s\n" (print_parsing_exception e) (print_lwt_input i)
@@ -57,7 +57,7 @@ let get_in input name len =
 
 let get_out old_input input =
   if input.cur_offset < input.cur_length
-  then fail (ParsingException (UnexptedTrailingBytes, input))
+  then fail (ParsingException (UnexpectedTrailingBytes, input))
   else begin
     old_input.lwt_offset <- old_input.lwt_offset + input.cur_length;
     return ()

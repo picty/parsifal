@@ -20,13 +20,13 @@ let print_string_input i =
 
 type parsing_exception =
   | OutOfBounds
-  | UnexptedTrailingBytes
+  | UnexpectedTrailingBytes
   | EmptyHistory
   | NonEmptyHistory
 
 let print_parsing_exception = function
   | OutOfBounds -> "OutOfBounds"
-  | UnexptedTrailingBytes -> "UnexptedTrailingBytes"
+  | UnexpectedTrailingBytes -> "UnexpectedTrailingBytes"
   | EmptyHistory -> "EmptyHistory"
   | NonEmptyHistory -> "NonEmptyHistory"
 
@@ -63,7 +63,7 @@ let get_in input name len =
 
 let get_out old_input input =
   if input.cur_offset < input.cur_length
-  then raise (ParsingException (UnexptedTrailingBytes, input))
+  then raise (ParsingException (UnexpectedTrailingBytes, input))
   else old_input.cur_offset <- old_input.cur_offset + input.cur_length
 
 
@@ -88,7 +88,7 @@ let eos input =
   input.cur_offset >= input.cur_length
 
 let check_empty_input fatal input =
-  if not (eos input) then emit_parsing_exception fatal UnexptedTrailingBytes input
+  if not (eos input) then emit_parsing_exception fatal UnexpectedTrailingBytes input
 
 let _save_input i = i.str, i.cur_base, i.cur_offset, i.cur_length
 let _restore_input i (str, cb, co, cl) =
