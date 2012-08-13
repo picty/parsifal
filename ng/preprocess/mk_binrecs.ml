@@ -191,7 +191,7 @@ let rec print_fun_of_field_type = function
   | FT_Integer it -> Printf.sprintf "print_uint%d" (int_size it)
 
   | FT_Enum (module_name, type_name) ->
-    Printf.sprintf "%s.print_%s (%s.__%s_size / 4)" module_name type_name module_name type_name
+    Printf.sprintf "%s.print_%s" module_name type_name
 
   | FT_String (_, true) -> "print_binstring"
   | FT_String (_, false) -> "print_string"

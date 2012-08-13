@@ -62,9 +62,6 @@ let mk_exception _loc enum = match enum with
     <:str_item< exception  $typ:ctyp_uid _loc e$  >>
   | _ -> <:str_item< >>
 
-let mk_size_decl _loc enum =
-  <:str_item< value $ <:binding< $pat:pat_lid _loc ("__" ^ enum.name ^ "_size")$ = $exp:ExInt (_loc, (string_of_int enum.size))$ >> $ >>
-
 
 let mk_ctors _loc enum =
   let ctors = List.map (fun (_loc, _, n, _) -> ctyp_uid _loc n ) enum.choices in
@@ -182,7 +179,7 @@ let mk_parse_dump_print_funs _loc enum =
     end else <:str_item< >>
 
   and print_fun = <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ enum.name)$ =
-    $exp: <:expr< PrintingEngine.print_enum $soe$ $ioe$ >> $ >> $ >>
+    $exp: <:expr< PrintingEngine.print_enum $soe$ $ioe$ $int:string_of_int (enum.size / 4)$ >> $ >> $ >>
 
   in parse_fun, lwt_parse_fun, dump_fun, print_fun
 
@@ -215,8 +212,7 @@ EXTEND Gram
     ")"; "="; _choices = match_case ->
       let choices = choices_of_match_cases _choices in
       let enum_descr = mk_enum_desc (lid_of_ident enum_name) (int_of_string sz) choices u_b opts in
-      let si0 = mk_exception _loc enum_descr
-      and si1 = mk_size_decl _loc enum_descr
+      let si1 = mk_exception _loc enum_descr
       and si2 = mk_ctors _loc enum_descr
       and si3 = mk_string_of_enum _loc enum_descr
       and si4 = mk_int_of_enum _loc enum_descr
@@ -224,7 +220,7 @@ EXTEND Gram
       and si6 = mk_enum_of_string _loc enum_descr
       and si7, si8, si9, si10 = mk_parse_dump_print_funs _loc enum_descr
       in
-      <:str_item< $si0$; $si1$; $si2$; $si3$; $si4$; $si5$; $si6$; $si7$; $si8$; $si9$; $si10$ >>
+      <:str_item< $si1$; $si2$; $si3$; $si4$; $si5$; $si6$; $si7$; $si8$; $si9$; $si10$ >>
   ]];
 END
 ;;
