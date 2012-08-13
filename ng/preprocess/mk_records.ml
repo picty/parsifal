@@ -26,6 +26,10 @@ let exp_lid _loc name = <:expr< $lid:name$ >>
 let exp_uid _loc name = <:expr< $uid:name$ >>
 let ctyp_uid _loc name = <:ctyp< $uid:name$ >>
 
+let exp_true _loc = <:expr< $uid:"True"$ >>
+let exp_false _loc = <:expr< $uid:"False"$ >>
+let exp_bool _loc b = if b then exp_true _loc else exp_false _loc
+
 let exp_qname _loc m n = match m with
   | None -> <:expr< $lid:n$ >>
   | Some module_name -> <:expr< $uid:module_name$.$lid:n$ >>
@@ -58,12 +62,16 @@ let rec apply_exprs _loc e = function
   | [] -> e
   | a::r -> apply_exprs _loc <:expr< $e$ $a$ >> r
 
-let mk_multiple_args_fun _loc fname argnames body =
+let mk_multiple_args_fun _loc fname argnames ?optargs:(optargnames=[]) body =
   let rec _mk_multiple_args_fun = function
     | [] -> body
     | arg::r -> <:expr< fun $pat:pat_lid _loc arg$ -> $exp:_mk_multiple_args_fun r$ >>
   in
-  <:binding< $pat:pat_lid _loc fname$ = $exp:_mk_multiple_args_fun argnames$ >>
+  let rec _mk_multiple_optargs_fun = function
+    | [] -> _mk_multiple_args_fun argnames
+    | (arg, e)::r -> <:expr< fun $pat:PaOlbi (_loc, arg, pat_lid _loc arg, e)$ -> $exp:_mk_multiple_optargs_fun r$ >>
+  in
+  <:binding< $pat:pat_lid _loc fname$ = $exp:_mk_multiple_optargs_fun optargnames$ >>
 
 
 (* Internal type definitions *)
@@ -314,12 +322,12 @@ let mk_union_parse_fun _loc union =
   and last_case = <:match_case< _ -> $exp_uid _loc union.unparsed_constr$ (ParsingEngine.parse_rem_string input) >> in
   let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
   let body =
-    <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$
+    <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$ || enrich
       then match discriminator with [ $list:cases$ ]
       else $exp_uid _loc union.unparsed_constr$ (ParsingEngine.parse_rem_string input) >>
   in
   let params = union.uparse_params@["discriminator"; "input"] in
-  <:str_item< value $mk_multiple_args_fun _loc ("parse_" ^ union.uname) params body$ >>
+  <:str_item< value $mk_multiple_args_fun _loc ("parse_" ^ union.uname) ~optargs:["enrich", exp_true _loc] params body$ >>
 
 let mk_union_lwt_parse_fun _loc union =
   let mk_case = function
@@ -334,12 +342,12 @@ let mk_union_lwt_parse_fun _loc union =
                                               (fun v -> Lwt.return ($exp_uid _loc union.unparsed_constr$ v)) >> in
   let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
   let body =
-    <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$
+    <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$ || enrich
       then match discriminator with [ $list:cases$ ]
       else Lwt.bind (LwtParsingEngine.lwt_parse_rem_string input) (fun v -> Lwt.return ($exp_uid _loc union.unparsed_constr$ v)) >>
   in
   let params = union.uparse_params@["discriminator"; "input"] in
-  <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname) params body$ >>
+  <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname) ~optargs:["enrich", <:expr< false >>] params body$ >>
 
 
 let mk_exact_parse_fun _loc name parse_params =
@@ -505,7 +513,7 @@ EXTEND Gram
       let union = mk_union_desc (lid_of_ident union_name) choices (uid_of_ident unparsed_const) opts in
       let si0 =
 	<:str_item< value $ <:binding< $pat:pat_lid _loc ("enrich_" ^ union.uname)$ =
-                                       $exp: <:expr< ref $`bool:union.uenrich$ >> $ >> $ >>
+                                       $exp: <:expr< ref $exp_bool _loc union.uenrich$ >> $ >> $ >>
       and si1 = mk_union_type _loc union
       and si2 = mk_union_parse_fun _loc union
       and si3 =
