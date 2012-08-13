@@ -132,11 +132,11 @@ let handle_answer handle_hs handle_alert s =
   in
 
   let rec read_answers () =
-    lwt_parse_tls_record s >>= fun record ->
+    lwt_parse_tls_record None s >>= fun record ->
     let result = match record.content_type with
       | CT_Handshake ->
 	append_to_input hs_in (dump_record_content record.record_content);
-	process_input (parse_handshake_msg ~context:(Some ctx)) (handle_hs ctx) hs_in
+	process_input (parse_handshake_msg (Some ctx)) (handle_hs ctx) hs_in
       | CT_Alert ->
 	append_to_input alert_in (dump_record_content record.record_content);
 	process_input parse_tls_alert handle_alert alert_in

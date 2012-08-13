@@ -25,8 +25,9 @@ let print_string indent name = function
   | "" -> Printf.sprintf "%s%s\n" indent name
   | s  -> Printf.sprintf "%s%s: \"%s\"\n" indent name (Common.quote_string s)
 
-let print_binstring indent name s =
-  Printf.sprintf "%s%s: %s\n" indent name (Common.hexdump s)
+let print_binstring indent name = function
+  | "" -> Printf.sprintf "%s%s\n" indent name
+  | s -> Printf.sprintf "%s%s: %s\n" indent name (Common.hexdump s)
 
 let string_of_ipv4 s =
   let elts = [s.[0]; s.[1]; s.[2]; s.[3]] in

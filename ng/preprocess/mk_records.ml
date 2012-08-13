@@ -327,7 +327,7 @@ let mk_union_parse_fun _loc union =
       else $exp_uid _loc union.unparsed_constr$ (ParsingEngine.parse_rem_string input) >>
   in
   let params = union.uparse_params@["discriminator"; "input"] in
-  <:str_item< value $mk_multiple_args_fun _loc ("parse_" ^ union.uname) ~optargs:["enrich", exp_true _loc] params body$ >>
+  <:str_item< value $mk_multiple_args_fun _loc ("parse_" ^ union.uname) ~optargs:["enrich", exp_false _loc] params body$ >>
 
 let mk_union_lwt_parse_fun _loc union =
   let mk_case = function
@@ -347,7 +347,7 @@ let mk_union_lwt_parse_fun _loc union =
       else Lwt.bind (LwtParsingEngine.lwt_parse_rem_string input) (fun v -> Lwt.return ($exp_uid _loc union.unparsed_constr$ v)) >>
   in
   let params = union.uparse_params@["discriminator"; "input"] in
-  <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname) ~optargs:["enrich", <:expr< false >>] params body$ >>
+  <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname) ~optargs:["enrich", exp_false _loc] params body$ >>
 
 
 let mk_exact_parse_fun _loc name parse_params =

@@ -40,7 +40,7 @@ let parse_all_records answer =
   let rec read_records accu i =
     if not (eos i)
     then begin
-      let next = (parse_tls_record i) in
+      let next = (parse_tls_record None i) in
       read_records (next::accu) i
     end else List.rev accu
   in
@@ -55,7 +55,7 @@ let parse_all_records answer =
       if eos i then split_records accu ctx None recs
       else begin
 	try
-	  let next_content = parse_record_content ~context:(ctx) ~enrich:true ct i in
+	  let next_content = parse_record_content ctx ~enrich:true ct i in
 	  let next_record = {
 	    content_type = ct;
 	    record_version = v;
@@ -72,7 +72,7 @@ let parse_all_records answer =
 		split_records (next_record::accu) ctx str_input recs
 	      | _ -> split_records (next_record::accu) ctx str_input recs
 	  end;
-	  
+
 	with _ -> List.rev accu, ctx, true
       end
   in

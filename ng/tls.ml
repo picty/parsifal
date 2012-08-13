@@ -18,14 +18,14 @@ struct change_cipher_spec = {
 
 (* Explicit ("name_type") *)
 union sni_name (Unparsed_SNIName, [enrich]) =
-  | NT_Hostname -> HostName of string(uint16)
+  | NT_HostName -> HostName of string(uint16)
 
 struct server_name = {
   sni_name_type : name_type;
   sni_name : sni_name(_sni_name_type)
 }
 
-union server_name_content (Unparsed_ServerNameContent, [enrich; param direction; exhaustive]) =
+union server_name_content (Unparsed_ServerNameContent, [enrich; exhaustive]) =
   | ClientToServer -> ClientServerName of (list(uint16) of server_name)
   | ServerToClient -> ServerServerName
 
@@ -79,8 +79,12 @@ struct server_dh_params = {
 (* TODO: signature? *)
 struct ske_dhe_params = {
   params : server_dh_params;
-  signature : string
+  signature : binstring
 }
+
+
+union server_key_exchange (Unparsed_SKEContent, [enrich]) =
+  | KX_DHE -> SKE_DHE of ske_dhe_params
 
 
 
@@ -119,9 +123,6 @@ type tls_context = {
 
 
 
-union server_key_exchange (Unparsed_SKEContent, [enrich]) =
-  | KX_DHE -> SKE_DHE of ske_dhe_params
-
 struct signature_and_hash_algorithm = {
   hash_algorithm : hash_algorithm;
   signature_algorithm : signature_algorithm
@@ -140,20 +141,20 @@ union handshake_content (Unparsed_HSContent, [enrich; param context]) =
   | HT_ServerHello -> ServerHello of server_hello
   | HT_NewSessionTicket -> NewSessionTicket of new_session_ticket
   | HT_Certificate -> Certificate of certificates
-  | HT_ServerKeyExchange -> ServerKeyExchange of server_key_exchange(context.future.s_ciphersuite.kx)
+  | HT_ServerKeyExchange -> ServerKeyExchange of server_key_exchange(match context with None -> KX_Unknown | Some ctx -> ctx.future.s_ciphersuite.kx)
   | HT_CertificateRequest -> CertificateRequest of certificate_request
   | HT_ServerHelloDone -> ServerHelloDone
 
 struct handshake_msg [param context] = {
   handshake_type : hs_message_type;
-  handshake_content : handshake_content(context, _handshake_type)
+  handshake_content : container(uint24) of handshake_content(context, _handshake_type)
 }
 
 
 
 (* TLS record *)
 
-union record_content (Unparsed_Record, [top; param context]) =
+union record_content (Unparsed_Record, [param context]) =
   | CT_Alert -> Alert of tls_alert
   | CT_Handshake -> Handshake of handshake_msg(context)
   | CT_ChangeCipherSpec -> ChangeCipherSpec of change_cipher_spec
@@ -168,40 +169,40 @@ struct tls_record [top; param context] = {
 
 
 
-(* let ciphersuite_descriptions = Hashtbl.create 300 *)
+let ciphersuite_descriptions = Hashtbl.create 300
 
-(* let find_csdescr cs = *)
-(*   try Hashtbl.find ciphersuite_descriptions cs *)
-(*   with Not_found -> { *)
-(*     suite_name = cs; *)
-(*     kx = KX_Unknown; au = AU_Unknown; *)
-(*     enc = ENC_Unknown; mac = MAC_Unknown; *)
-(*     prf = PRF_Unknown; *)
-(*     export = false; min_version = 0; max_version = 0xffff; *)
-(*   } *)
+let find_csdescr cs =
+  try Hashtbl.find ciphersuite_descriptions cs
+  with Not_found -> {
+    suite_name = cs;
+    kx = KX_Unknown; au = AU_Unknown;
+    enc = ENC_Unknown; mac = MAC_Unknown;
+    prf = PRF_Unknown;
+    export = false; min_version = 0; max_version = 0xffff;
+  }
 
-(* let empty_crypto_context () = { *)
-(*   versions_proposed = TlsEnums.V_Unknown 0xffff, TlsEnums.V_Unknown 0; *)
-(*   ciphersuites_proposed = []; *)
-(*   compressions_proposed = []; *)
+let empty_crypto_context () = {
+  versions_proposed = TlsEnums.V_Unknown 0xffff, TlsEnums.V_Unknown 0;
+  ciphersuites_proposed = [];
+  compressions_proposed = [];
 
-(*   s_version = TlsEnums.V_Unknown 0; *)
-(*   s_ciphersuite = find_csdescr TlsEnums.TLS_NULL_WITH_NULL_NULL; *)
-(*   s_compression_method = TlsEnums.CM_Null; *)
+  s_version = TlsEnums.V_Unknown 0;
+  s_ciphersuite = find_csdescr TlsEnums.TLS_NULL_WITH_NULL_NULL;
+  s_compression_method = TlsEnums.CM_Null;
 
-(*   s_server_key_exchange = Unparsed_SKEContent ""; *)
+  s_server_key_exchange = Unparsed_SKEContent "";
 
-(*   s_client_random = ""; *)
-(*   s_server_random = ""; *)
-(*   s_session_id = ""; *)
-(* } *)
+  s_client_random = "";
+  s_server_random = "";
+  s_session_id = "";
+}
 
-(* let empty_context () = { *)
-(*   present = empty_crypto_context (); *)
-(*   future = empty_crypto_context (); *)
-(* } *)
+let empty_context () = {
+  present = empty_crypto_context ();
+  future = empty_crypto_context ();
+}
 
 
-(* let check_record_version ctx record_version = *)
-(*   ctx.present.s_version = (TlsEnums.V_Unknown 0) || *)
-(*   ctx.present.s_version = record_version *)
+let check_record_version ctx record_version =
+  ctx.present.s_version = (TlsEnums.V_Unknown 0) ||
+  ctx.present.s_version = record_version

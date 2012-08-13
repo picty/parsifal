@@ -1,7 +1,4 @@
 *~
-*.mk_binrecs.ml
-mrt.ml
-tls.ml
 *.mk_asn1.ml
 rSAKey.ml
 x509.ml

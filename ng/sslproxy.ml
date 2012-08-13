@@ -55,14 +55,14 @@ let write_record o record =
 
 
 let rec forward state i o =
-  lwt_parse_tls_record i >>= fun record ->
+  lwt_parse_tls_record None i >>= fun record ->
   print_string (print_tls_record "" state.name record);
   write_record o record >>= fun () ->
   try
     begin
       match record.content_type, state.clear with
       | CT_Handshake, true ->
-	let hs_msg = parse_handshake_msg (input_of_string "Handshake" (dump_record_content record.record_content)) in
+	let hs_msg = parse_handshake_msg None (input_of_string "Handshake" (dump_record_content record.record_content)) in
 	print_endline (print_handshake_msg "  " "Handshake content" hs_msg)
       | CT_ChangeCipherSpec, true ->
 	let hs_msg = parse_change_cipher_spec (input_of_string "CCS" (dump_record_content record.record_content)) in
