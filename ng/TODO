@@ -1,5 +1,6 @@
 TODO
  - Camlp4 : Put preprocess files in a separate directory and produce a real camlp4 syntax package
+ - Camlp4 : Have a list(n=uint16) type constructor to handle counts correctly with the MRT parser...
 
  - TlsEngine: Work on TlsEngine.update* functions
  - TlsEngine: Add a automaton_state field in context

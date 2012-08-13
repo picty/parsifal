@@ -37,13 +37,17 @@ let print_ipv4 indent name s =
   let res = string_of_ipv4 s in
   Printf.sprintf "%s%s: %s\n" indent name res
 
-let print_ipv6 indent name s =
+let string_of_ipv6 s =
   let res = String.make 39 ':' in
   for i = 0 to 15 do
     let x = int_of_char (String.get s i) in
     res.[(i / 2) + i * 2] <- Common.hexa_char.[(x lsr 4) land 0xf];
     res.[(i / 2) + i * 2 + 1] <- Common.hexa_char.[x land 0xf];
   done;
+  res
+
+let print_ipv6 indent name s =
+  let res = string_of_ipv6 s in
   Printf.sprintf "%s%s: %s\n" indent name res
 
 
