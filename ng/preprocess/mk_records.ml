@@ -185,11 +185,11 @@ let rec field_type_of_ident name decorator subtype =
     | <:ident< $lid:custom_t$ >>, None, None ->
       FT_Custom (None, custom_t, [])
     | <:ident< $lid:custom_t$ >>, Some e, None ->
-      FT_Custom (None, custom_t, list_of_com_expr e)
+      FT_Custom (None, custom_t, list_of_sem_expr e)
     | <:ident< $uid:module_name$.$lid:custom_t$ >>, None, None ->
       FT_Custom (Some module_name, custom_t, [])
     | <:ident< $uid:module_name$.$lid:custom_t$ >>, Some e, None ->
-      FT_Custom (Some module_name, custom_t, list_of_com_expr e)
+      FT_Custom (Some module_name, custom_t, list_of_sem_expr e)
 
     | i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid identifier for a type")
 
@@ -338,13 +338,14 @@ let mk_union_lwt_parse_fun _loc union =
       <:match_case< $p$ -> Lwt.bind ($parse_fun$ input) (fun v -> Lwt.return ($exp_uid _loc c$ v)) >>
   in
   let parsed_cases = List.map mk_case union.choices
-  and last_case = <:match_case< _ -> Lwt.bind (LwtParsingEngine.lwt_parse_rem_string input)
+  and last_case = <:match_case< _ -> Lwt.bind (LwtParsingEngine.lwt_parse_rem_string $exp_str _loc union.uname$ input)
                                               (fun v -> Lwt.return ($exp_uid _loc union.unparsed_constr$ v)) >> in
   let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
   let body =
     <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$ || enrich
       then match discriminator with [ $list:cases$ ]
-      else Lwt.bind (LwtParsingEngine.lwt_parse_rem_string input) (fun v -> Lwt.return ($exp_uid _loc union.unparsed_constr$ v)) >>
+      else Lwt.bind (LwtParsingEngine.lwt_parse_rem_string $exp_str _loc union.uname$ input)
+                    (fun v -> Lwt.return ($exp_uid _loc union.unparsed_constr$ v)) >>
   in
   let params = union.uparse_params@["discriminator"; "input"] in
   <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname) ~optargs:["enrich", exp_false _loc] params body$ >>

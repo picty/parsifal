@@ -39,7 +39,7 @@ union hello_extension_content (Unparsed_HelloExtension, [enrich; param direction
 
 struct hello_extension [param direction] = {
   extension_type : extension_type;
-  extension_data : container(uint16) of hello_extension_content(direction, _extension_type)
+  extension_data : container(uint16) of hello_extension_content(direction; _extension_type)
 }
 
 struct client_hello = {
@@ -147,7 +147,7 @@ union handshake_content (Unparsed_HSContent, [enrich; param context]) =
 
 struct handshake_msg [param context] = {
   handshake_type : hs_message_type;
-  handshake_content : container(uint24) of handshake_content(context, _handshake_type)
+  handshake_content : container(uint24) of handshake_content(context; _handshake_type)
 }
 
 
@@ -163,7 +163,7 @@ union record_content (Unparsed_Record, [param context]) =
 struct tls_record [top; param context] = {
   content_type : tls_content_type;
   record_version : tls_version;
-  record_content : container(uint16) of record_content (context, _content_type)
+  record_content : container(uint16) of record_content (context; _content_type)
 }
 
 
