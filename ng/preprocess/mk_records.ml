@@ -299,12 +299,12 @@ let mk_record_lwt_parse_fun _loc record =
   let params = record.rparse_params@["input"] in
   <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ record.rname) params body$ >>
 
-let mk_exact_parse_fun _loc record =
-  let partial_params = List.map (exp_lid _loc) record.rparse_params
-  and params = record.rparse_params@["input"] in
-  let parse_fun = apply_exprs _loc (exp_qname _loc None ("parse_" ^ record.rname)) partial_params in
+let mk_exact_parse_fun _loc name parse_params =
+  let partial_params = List.map (exp_lid _loc) parse_params
+  and params = parse_params@["input"] in
+  let parse_fun = apply_exprs _loc (exp_qname _loc None ("parse_" ^ name)) partial_params in
   let body = <:expr< ParsingEngine.exact_parse $parse_fun$ input >> in
-  <:str_item< value $mk_multiple_args_fun _loc ("exact_parse_" ^ record.rname) params body$ >>
+  <:str_item< value $mk_multiple_args_fun _loc ("exact_parse_" ^ name) params body$ >>
 
 
 let mk_union_parse_fun _loc union =
@@ -381,6 +381,18 @@ let mk_record_dump_fun _loc record =
   in
   <:str_item< value $ <:binding< $pat:pat_lid _loc ("dump_" ^ record.rname)$ $pat_lid _loc record.rname$ = $exp:body$ >> $ >>
 
+let mk_union_dump_fun _loc union =
+  let mk_case = function
+    | _loc, _, c, FT_Empty ->
+      <:match_case< $pat_uid _loc c$ -> "" >>
+    | _loc, _, c, t ->
+      <:match_case< ( $pat_uid _loc c$ $pat_lid _loc "x"$ ) -> $ <:expr< $dump_fun_of_field_type _loc t$ x >> $ >>
+  in
+  let last_case = <:match_case< ( $pat_uid _loc union.unparsed_constr$ $pat_lid _loc "s"$ ) -> s >> in
+  let cases = (List.map mk_case union.choices)@[last_case] in
+  let body = <:expr< fun [ $list:cases$ ] >> in
+  <:str_item< value $ <:binding< $pat:pat_lid _loc ("dump_" ^ union.uname)$ = $exp:body$ >> $ >>
+
 
 (* Print function *)
 
@@ -419,7 +431,20 @@ let mk_record_print_fun _loc record =
   in
   <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ record.rname)$ indent name $pat_lid _loc record.rname$ = $exp:body$ >> $ >>
 
+let mk_union_print_fun _loc union =
+  let mk_case = function
+    | _loc, _, c, FT_Empty ->
+      <:match_case< $pat_uid _loc c$ -> print_string indent name "" >>
+    | _loc, _, c, t ->
+      <:match_case< ( $pat_uid _loc c$ $pat_lid _loc "x"$ ) -> $ <:expr< $print_fun_of_field_type _loc t$ indent name x >> $ >>
+  in
+  let last_case = <:match_case< ( $pat_uid _loc union.unparsed_constr$ $pat_lid _loc "s"$ ) -> print_binstring indent name s >> in
+  let cases = (List.map mk_case union.choices)@[last_case] in
+  let body = <:expr< fun [ $list:cases$ ] >> in
+  <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ union.uname)$ indent name = $exp:body$ >> $ >>
 
+
+ 
 EXTEND Gram
   GLOBAL: expr ctyp str_item;
 
@@ -458,7 +483,7 @@ EXTEND Gram
 	else <:str_item< >>
       and si4 =
 	if record.rdo_exact
-	then mk_exact_parse_fun _loc record
+	then mk_exact_parse_fun _loc record.rname record.rparse_params
 	else <:str_item< >>
       and si5 = mk_record_dump_fun _loc record
       and si6 = mk_record_print_fun _loc record
@@ -478,8 +503,14 @@ EXTEND Gram
         if union.udo_lwt
 	then mk_union_lwt_parse_fun _loc union
 	else <:str_item< >>
+      and si4 =
+	if union.udo_exact
+	then mk_exact_parse_fun _loc union.uname union.uparse_params
+	else <:str_item< >>
+      and si5 = mk_union_dump_fun _loc union
+      and si6 = mk_union_print_fun _loc union
       in
-      <:str_item< $si0$; $si1$; $si2$; $si3$ >>
+      <:str_item< $si0$; $si1$; $si2$; $si3$; $si4$; $si5$; $si6$ >>
   ]];
 END
 ;;
