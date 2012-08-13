@@ -235,34 +235,37 @@ let mk_union_type _loc union =
   <:str_item< type $lid:union.uname$ = [ $list:ctyp_ctors$ ] >>
 
 
+(* Generic fun generation *)
 
-(* Parse function *)
+let fun_of_field_type (prefix, module_prefix) _loc name t =
+  let mk_pf fname = <:expr< $uid:module_prefix$.$lid:prefix ^ fname$ >> in
+  let rec aux name = function
+    | FT_Empty -> mk_pf "empty"
+    | FT_Char -> mk_pf "char"
+    | FT_Int int_t -> mk_pf int_t
+    | FT_IPv4 -> <:expr< $mk_pf "string"$ $exp_int _loc "4"$ >>
+    | FT_IPv6 -> <:expr< $mk_pf "string"$ $exp_int _loc "16"$ >>
 
-let rec parse_fun_of_field_type _loc name t =
-  let mk_pf fname = <:expr< $uid:"ParsingEngine"$.$lid:fname$ >> in
-  match t with
-    | FT_Empty -> mk_pf "parse_empty"
-    | FT_Char -> mk_pf "parse_char"
-    | FT_Int int_t -> mk_pf  ("parse_" ^ int_t)
-    | FT_IPv4 -> <:expr< $mk_pf "parse_string"$ $exp_int _loc "4"$ >>
-    | FT_IPv6 -> <:expr< $mk_pf "parse_string"$ $exp_int _loc "16"$ >>
-
-    | FT_String (FixedLen n, _) -> <:expr< $mk_pf "parse_string"$ $exp_int _loc (string_of_int n)$ >>
+    | FT_String (FixedLen n, _) -> <:expr< $mk_pf "string"$ $exp_int _loc (string_of_int n)$ >>
     | FT_String (VarLen int_t, _) ->
-      <:expr< $mk_pf "parse_varlen_string"$ $exp_str _loc name$ $mk_pf ("parse_" ^ int_t)$ >>
-    | FT_String (Remaining, _) -> mk_pf "parse_rem_string"
+      <:expr< $mk_pf "varlen_string"$ $exp_str _loc name$ $mk_pf int_t$ >>
+    | FT_String (Remaining, _) -> mk_pf "rem_string"
 
     | FT_List (FixedLen n, subtype) ->
-      <:expr< $mk_pf "parse_list"$ $exp_int _loc (string_of_int n)$ $parse_fun_of_field_type _loc name subtype$ >>
+      <:expr< $mk_pf "list"$ $exp_int _loc (string_of_int n)$ $aux name subtype$ >>
     | FT_List (VarLen int_t, subtype) ->
-      <:expr< $mk_pf "parse_varlen_list"$ $exp_str _loc name$ $mk_pf ("parse_" ^ int_t)$ $parse_fun_of_field_type _loc name subtype$ >>
+      <:expr< $mk_pf "varlen_list"$ $exp_str _loc name$ $mk_pf int_t$ $aux name subtype$ >>
     | FT_List (Remaining, subtype) ->
-      <:expr< $mk_pf "parse_rem_list"$ $parse_fun_of_field_type _loc name subtype$ >>
+      <:expr< $mk_pf "rem_list"$ $aux name subtype$ >>
     | FT_Container (int_t, subtype) ->
-      <:expr< $mk_pf "parse_container"$ $exp_str _loc name$ $mk_pf ("parse_" ^ int_t)$ $parse_fun_of_field_type _loc name subtype$ >>
+      <:expr< $mk_pf "container"$ $exp_str _loc name$ $mk_pf int_t$ $aux name subtype$ >>
 
-    | FT_Custom (m, n, e) -> apply_exprs _loc (exp_qname _loc m ("parse_" ^ n)) e
+    | FT_Custom (m, n, e) -> apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
+  in aux name t
 
+
+
+(* Parse function *)
 
 let mk_record_parse_fun _loc record =
   let rec mk_body = function
@@ -272,10 +275,10 @@ let mk_record_parse_fun _loc record =
       in <:expr< { $list:field_assigns$ } >>
     | (_loc, n, t, false)::r ->
       let tmp = mk_body r in
-      <:expr< let $lid:("_" ^ n)$ = $parse_fun_of_field_type _loc n t$ input in $tmp$ >>
+      <:expr< let $lid:("_" ^ n)$ = $fun_of_field_type ("parse_", "ParsingEngine") _loc n t$ input in $tmp$ >>
     | (_loc, n, t, true)::r ->
       let tmp = mk_body r in
-      <:expr< let $lid:("_" ^ n)$ = ParsingEngine.try_parse $parse_fun_of_field_type _loc n t$ input in $tmp$ >>
+      <:expr< let $lid:("_" ^ n)$ = ParsingEngine.try_parse $fun_of_field_type ("parse_", "ParsingEngine") _loc n t$ input in $tmp$ >>
   in
 
   let body = mk_body record.fields in
@@ -283,33 +286,6 @@ let mk_record_parse_fun _loc record =
 
 
 (* Lwt Parse function *)
-
-let rec lwt_parse_fun_of_field_type _loc name t =
-  let mk_pf fname = <:expr< $uid:"LwtParsingEngine"$.$lid:fname$ >> in
-  match t with
-  | FT_Empty -> mk_pf "lwt_parse_empty"
-  | FT_Char -> mk_pf "lwt_parse_char"
-  | FT_Int int_t -> mk_pf ("lwt_parse_" ^ int_t)
-  | FT_IPv4 -> <:expr< $mk_pf "lwt_parse_string"$ $exp_int _loc "4"$ >>
-  | FT_IPv6 -> <:expr< $mk_pf "lwt_parse_string"$ $exp_int _loc "16"$ >>
-
-  | FT_String (FixedLen n, _) -> <:expr< $mk_pf "lwt_parse_string"$ $exp_int _loc (string_of_int n)$ >>
-  | FT_String (VarLen int_t, _) ->
-    <:expr< $mk_pf "lwt_parse_varlen_string"$ $exp_str _loc name$ $mk_pf ("lwt_parse_" ^ int_t)$ >>
-  | FT_String (Remaining, _) -> mk_pf "lwt_parse_rem_string"
-
-  | FT_List (FixedLen n, subtype) ->
-    <:expr< $mk_pf "lwt_parse_list"$ $exp_int _loc (string_of_int n)$ $lwt_parse_fun_of_field_type _loc name subtype$ >>
-  | FT_List (VarLen int_t, subtype) ->
-    <:expr< $mk_pf "lwt_parse_varlen_list"$ $exp_str _loc name$ $mk_pf ("lwt_parse_" ^ int_t)$
-                                                   $lwt_parse_fun_of_field_type _loc name subtype$ >>
-  | FT_List (Remaining, subtype) ->
-    <:expr< $mk_pf "lwt_parse_rem_list"$ $lwt_parse_fun_of_field_type _loc name subtype$ >>
-  | FT_Container (int_t, subtype) ->
-    <:expr< $mk_pf "lwt_parse_container"$ $exp_str _loc name$ $mk_pf ("lwt_parse_" ^ int_t)$
-                                                 $lwt_parse_fun_of_field_type _loc name subtype$ >>
-
-  | FT_Custom (m, n, e) -> apply_exprs _loc (exp_qname _loc m ("lwt_parse_" ^ n)) e
 
 let mk_record_lwt_parse_fun _loc record =
   let rec mk_body = function
@@ -319,10 +295,10 @@ let mk_record_lwt_parse_fun _loc record =
       in <:expr< Lwt.return { $list:field_assigns$ } >>
     | (_loc, n, t, false)::r ->
       let tmp = mk_body r in
-      <:expr< Lwt.bind ($lwt_parse_fun_of_field_type _loc n t$ input) (fun $lid:("_" ^ n)$ -> $tmp$ ) >>
+      <:expr< Lwt.bind ($fun_of_field_type ("lwt_parse_", "LwtParsingEngine") _loc n t$ input) (fun $lid:("_" ^ n)$ -> $tmp$ ) >>
     | (_loc, n, t, true)::r ->
       let tmp = mk_body r in
-      <:expr< Lwt.bind (LwtParsingEngine.try_lwt_parse $lwt_parse_fun_of_field_type _loc n t$ input) (fun $lid:("_" ^ n)$ -> $tmp$ ) >>
+      <:expr< Lwt.bind (LwtParsingEngine.try_lwt_parse $fun_of_field_type ("lwt_parse_", "LwtParsingEngine") _loc n t$ input) (fun $lid:("_" ^ n)$ -> $tmp$ ) >>
   in
 
   let body = mk_body record.fields in
