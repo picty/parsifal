@@ -44,7 +44,7 @@ let print_ipv6 indent name s =
     res.[(i / 2) + i * 2] <- Common.hexa_char.[(x lsr 4) land 0xf];
     res.[(i / 2) + i * 2 + 1] <- Common.hexa_char.[x land 0xf];
   done;
-  res
+  Printf.sprintf "%s%s: %s\n" indent name res
 
 
 (* List printing *)
