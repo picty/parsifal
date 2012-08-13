@@ -237,9 +237,9 @@ let mk_union_type _loc union =
 
 (* Parse functions *)
 
-let fun_of_field_type (prefix, module_prefix) _loc name t =
+let rec fun_of_field_type (prefix, module_prefix) _loc name t =
   let mk_pf fname = <:expr< $uid:module_prefix$.$lid:prefix ^ fname$ >> in
-  let rec aux name = function
+  match t with
     | FT_Empty -> mk_pf "empty"
     | FT_Char -> mk_pf "char"
     | FT_Int int_t -> mk_pf int_t
@@ -252,16 +252,19 @@ let fun_of_field_type (prefix, module_prefix) _loc name t =
     | FT_String (Remaining, _) -> mk_pf "rem_string"
 
     | FT_List (FixedLen n, subtype) ->
-      <:expr< $mk_pf "list"$ $exp_int _loc (string_of_int n)$ $aux name subtype$ >>
+      <:expr< $mk_pf "list"$ $exp_int _loc (string_of_int n)$
+              $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
     | FT_List (VarLen int_t, subtype) ->
-      <:expr< $mk_pf "varlen_list"$ $exp_str _loc name$ $mk_pf int_t$ $aux name subtype$ >>
+      <:expr< $mk_pf "varlen_list"$ $exp_str _loc name$ $mk_pf int_t$
+              $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
     | FT_List (Remaining, subtype) ->
-      <:expr< $mk_pf "rem_list"$ $aux name subtype$ >>
+      <:expr< $mk_pf "rem_list"$
+              $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
     | FT_Container (int_t, subtype) ->
-      <:expr< $mk_pf "container"$ $exp_str _loc name$ $mk_pf int_t$ $aux name subtype$ >>
+      <:expr< $mk_pf "container"$ $exp_str _loc name$ $mk_pf int_t$
+              $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
 
     | FT_Custom (m, n, e) -> apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
-  in aux name t
 
 let mk_record_parse_fun _loc record =
   let rec mk_body = function
@@ -299,46 +302,52 @@ let mk_record_lwt_parse_fun _loc record =
   let params = record.rparse_params@["input"] in
   <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ record.rname) params body$ >>
 
+let mk_union_parse_fun _loc union =
+  let mk_case = function
+    | (_loc, p, c, FT_Empty) ->
+      <:match_case< $p$ -> $exp_uid _loc c$ >>
+    | (_loc, p, c, t) ->
+      let parse_fun = fun_of_field_type ("parse_", "ParsingEngine") _loc union.uname t in
+      <:match_case< $p$ -> $exp_uid _loc c$ ($parse_fun$ input) >>
+  in
+  let parsed_cases = List.map mk_case union.choices
+  and last_case = <:match_case< _ -> $exp_uid _loc union.unparsed_constr$ (ParsingEngine.parse_rem_string input) >> in
+  let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
+  let body =
+    <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$
+      then match discriminator with [ $list:cases$ ]
+      else $exp_uid _loc union.unparsed_constr$ (ParsingEngine.parse_rem_string input) >>
+  in
+  let params = union.uparse_params@["discriminator"; "input"] in
+  <:str_item< value $mk_multiple_args_fun _loc ("parse_" ^ union.uname) params body$ >>
+
+let mk_union_lwt_parse_fun _loc union =
+  let mk_case = function
+    | (_loc, p, c, FT_Empty) ->
+      <:match_case< $p$ -> Lwt.return $exp_uid _loc c$ >>
+    | (_loc, p, c, t) ->
+      let parse_fun = fun_of_field_type ("lwt_parse_", "LwtParsingEngine") _loc union.uname t in
+      <:match_case< $p$ -> Lwt.bind ($parse_fun$ input) (fun v -> Lwt.return ($exp_uid _loc c$ v)) >>
+  in
+  let parsed_cases = List.map mk_case union.choices
+  and last_case = <:match_case< _ -> Lwt.bind (LwtParsingEngine.lwt_parse_rem_string input)
+                                              (fun v -> Lwt.return ($exp_uid _loc union.unparsed_constr$ v)) >> in
+  let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
+  let body =
+    <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$
+      then match discriminator with [ $list:cases$ ]
+      else Lwt.bind (LwtParsingEngine.lwt_parse_rem_string input) (fun v -> Lwt.return ($exp_uid _loc union.unparsed_constr$ v)) >>
+  in
+  let params = union.uparse_params@["discriminator"; "input"] in
+  <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname) params body$ >>
+
+
 let mk_exact_parse_fun _loc name parse_params =
   let partial_params = List.map (exp_lid _loc) parse_params
   and params = parse_params@["input"] in
   let parse_fun = apply_exprs _loc (exp_qname _loc None ("parse_" ^ name)) partial_params in
   let body = <:expr< ParsingEngine.exact_parse $parse_fun$ input >> in
   <:str_item< value $mk_multiple_args_fun _loc ("exact_parse_" ^ name) params body$ >>
-
-
-let mk_union_parse_fun _loc union =
-  let mk_case (_loc, p, c, t) =
-    let parse_fun = fun_of_field_type ("parse_", "ParsingEngine") _loc union.uname t in
-    <:match_case< $p$ -> $exp_uid _loc c$ ($parse_fun$ input) >>
-  in
-  let parsed_cases = List.map mk_case union.choices
-  and last_case = <:match_case< _ -> $exp_uid _loc union.unparsed_constr$ (parse_rem_string input) >> in
-  let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
-  let body =
-    <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$
-      then match discriminator with [ $list:cases$ ]
-      else $exp_uid _loc union.unparsed_constr$ (parse_rem_string input) >>
-  in
-  let params = union.uparse_params@["discriminator"; "input"] in
-  <:str_item< value $mk_multiple_args_fun _loc ("parse_" ^ union.uname) params body$ >>
-
-let mk_union_lwt_parse_fun _loc union =
-  let mk_case (_loc, p, c, t) =
-    let parse_fun = fun_of_field_type ("lwt_parse_", "LwtParsingEngine") _loc union.uname t in
-    <:match_case< $p$ -> Lwt.bind ($parse_fun$ input) (fun v -> return $exp_uid _loc c$ v) >>
-  in
-  let parsed_cases = List.map mk_case union.choices
-  and last_case = <:match_case< _ -> Lwt.bind (parse_rem_string input)
-                                              (fun v -> $exp_uid _loc union.unparsed_constr$ v) >> in
-  let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
-  let body =
-    <:expr< if ! $exp_lid _loc ("enrich_" ^ union.uname)$
-      then match discriminator with [ $list:cases$ ]
-      else Lwt.bind (parse_rem_string input) (fun v -> $exp_uid _loc union.unparsed_constr$ v) >>
-  in
-  let params = union.uparse_params@["discriminator"; "input"] in
-  <:str_item< value $mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname) params body$ >>
 
 
 
@@ -434,11 +443,11 @@ let mk_record_print_fun _loc record =
 let mk_union_print_fun _loc union =
   let mk_case = function
     | _loc, _, c, FT_Empty ->
-      <:match_case< $pat_uid _loc c$ -> print_string indent name "" >>
+      <:match_case< $pat_uid _loc c$ -> PrintingEngine.print_binstring indent name "" >>
     | _loc, _, c, t ->
       <:match_case< ( $pat_uid _loc c$ $pat_lid _loc "x"$ ) -> $ <:expr< $print_fun_of_field_type _loc t$ indent name x >> $ >>
   in
-  let last_case = <:match_case< ( $pat_uid _loc union.unparsed_constr$ $pat_lid _loc "s"$ ) -> print_binstring indent name s >> in
+  let last_case = <:match_case< ( $pat_uid _loc union.unparsed_constr$ $pat_lid _loc "s"$ ) -> PrintingEngine.print_binstring indent name s >> in
   let cases = (List.map mk_case union.choices)@[last_case] in
   let body = <:expr< fun [ $list:cases$ ] >> in
   <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ union.uname)$ indent name = $exp:body$ >> $ >>
