@@ -54,6 +54,8 @@ let rec choices_of_match_cases = function
   | McArr (_loc, <:patt< $int:i$ >>, <:expr< >>,
 	   ExTup (_, ExCom (_, <:expr< $uid:c$ >>, <:expr< $str:s$ >> ))) ->
     [_loc, i, c, s]
+  | McArr (_loc, <:patt< $int:i$ >>, <:expr< >>, <:expr< $uid:c$ >> ) ->
+    [_loc, i, c, c]
   | mc -> Loc.raise (loc_of_match_case mc) (Failure "Invalid choice for an enum")
 
 
