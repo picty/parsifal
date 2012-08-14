@@ -147,6 +147,15 @@ let mk_union_desc n c (u, t) o = {
   uparse_params = mk_params o;
 }
 
+let keep_unique_cons union =
+  let rec _keep_unique_cons names accu = function
+  | [] -> List.rev accu
+  | ((_, _, n, _) as c)::r  ->
+    if List.mem n names
+    then _keep_unique_cons names accu r
+    else _keep_unique_cons (n::names) (c::accu) r
+  in _keep_unique_cons [] [] union.choices
+
 
 (* To-be-processed file parsing *)
 
@@ -257,7 +266,8 @@ let mk_union_type _loc union =
       ( <:ctyp< $ctyp_uid _loc n$ of
                 $ocaml_type_of_field_type _loc t false$ >> )::(mk_ctors r)
   in
-  let ctyp_ctors = mk_ctors union.choices in
+
+  let ctyp_ctors = mk_ctors (keep_unique_cons union) in
   <:str_item< type $lid:union.uname$ = [ $list:ctyp_ctors$ ] >>
 
 
@@ -436,7 +446,7 @@ let mk_union_dump_fun _loc union =
     <:match_case< ( $pat_uid _loc union.unparsed_constr$ $pat_lid _loc "x"$ ) ->
                   $ <:expr< $dump_fun_of_field_type _loc union.unparsed_type$ x >> $ >>
   in
-  let cases = (List.map mk_case union.choices)@[last_case] in
+  let cases = (List.map mk_case (keep_unique_cons union))@[last_case] in
   let body = <:expr< fun [ $list:cases$ ] >> in
   <:str_item< value $ <:binding< $pat:pat_lid _loc ("dump_" ^ union.uname)$ = $exp:body$ >> $ >>
 
@@ -487,9 +497,9 @@ let mk_union_print_fun _loc union =
   in
   let last_case =
     <:match_case< ( $pat_uid _loc union.unparsed_constr$ $pat_lid _loc "x"$ ) ->
-                  $ <:expr< $print_fun_of_field_type _loc union.unparsed_type$ indent name x >> $ >>
+                  $ <:expr< $print_fun_of_field_type _loc union.unparsed_type$ indent (name ^ "[Unparsed]") x >> $ >>
   in
-  let cases = (List.map mk_case union.choices)@[last_case] in
+  let cases = (List.map mk_case (keep_unique_cons union))@[last_case] in
   let body = <:expr< fun [ $list:cases$ ] >> in
   <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ union.uname)$ indent name = $exp:body$ >> $ >>
 
