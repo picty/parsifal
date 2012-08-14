@@ -4,7 +4,7 @@ TODO
  - Camlp4 : Implement the parse_check function.
             The result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff)
  - Camlp4 : Have a generic list_expr/string_expr/container_expr accepting real expressions as length (_var -56 + 4)
-            [example: bgp_message_content(_bgp_message_size -19)]
+            [example: container[_bgp_message_size -19] of bgp_message_content]
 
  - TlsEngine: Work on TlsEngine.update* functions
  - TlsEngine: Add a automaton_state field in context
