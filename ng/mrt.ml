@@ -84,7 +84,7 @@ struct table_dump [param ipa_type] = {
   td_originated_time : uint32;
   td_peer_ip_address : ip_address(ipa_type);
   td_peer_as : uint16;
-  td_attribute : container(uint16) of binstring
+  td_attribute : container[uint16] of binstring
 }
 
 
@@ -122,7 +122,7 @@ struct peer_entry = {
 
 struct peer_index_table = {
   pit_collector_bgp_id : uint32;
-  pit_view_name : binstring(uint16);
+  pit_view_name : binstring[uint16];
   pit_peer_count : uint16;
   pit_peer_entries : list of peer_entry
 }
@@ -130,7 +130,7 @@ struct peer_index_table = {
 struct rib_entry = {
   rib_peer_index : uint16;
   rib_originated_time : uint32;
-  rib_attribute : container(uint16) of binstring
+  rib_attribute : container[uint16] of binstring
 }
 
 struct rib [param ipa_type] = {
@@ -184,7 +184,7 @@ struct bgp_open_message = {
   my_autonomous_system : autonomous_system(16);
   hold_time : uint16;
   bgp_identifier : uint32;
-  optional_parameters : binstring(uint8) (* TODO *)
+  optional_parameters : binstring[uint8] (* TODO *)
 }
 
 union bgp_message_content (UnparsedBGPMessageContent of binstring, [enrich]) =
@@ -197,7 +197,7 @@ struct bgp_message = {
   bgp_message_marker : bgp_message_marker;
   bgp_message_size : uint16;
   bgp_message_type : bgp_message_type;
-  bgp_message_content : bgp_message_content(_bgp_message_type) (* TODO: container[_bgp_message_size-19] of bgp_message_content *)
+  bgp_message_content : container(_bgp_message_size - 19) of bgp_message_content(_bgp_message_type)
 }
 
 
@@ -244,5 +244,5 @@ struct mrt_message [top] = {
   mrt_type : mrt_type;
   mrt_subtype : mrt_subtype(_mrt_type);
   mrt_checkpoint : checkref of check_function(_mrt_type; _mrt_subtype);
-  mrt_message : container(uint32) of mrt_message_content(_mrt_type, _mrt_subtype)
+  mrt_message : container[uint32] of mrt_message_content(_mrt_type, _mrt_subtype)
 }

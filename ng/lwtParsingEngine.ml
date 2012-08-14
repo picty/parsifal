@@ -147,9 +147,13 @@ let lwt_parse_varlen_list name len_fun parse_fun input =
   get_out input str_input >>= fun () ->
   return res
 
-let lwt_parse_container name len_fun parse_fun input =
-  len_fun input >>= fun n ->
+
+let lwt_parse_container name n parse_fun input =
   get_in input name n >>= fun str_input ->
   wrap1 parse_fun str_input >>= fun res ->
   get_out input str_input >>= fun () ->
   return res
+
+let lwt_parse_varlen_container name len_fun parse_fun input =
+  len_fun input >>= fun n ->
+  lwt_parse_container name n parse_fun input

@@ -84,7 +84,7 @@ type record_option =
   | Param of string list
 
 type field_len =
-  | FixedLen of int    (* size in bytes of the field *)
+  | ExprLen of expr    (* size in bytes of the field *)
   | VarLen of string   (* name of the integer type used *)
   | Remaining
 
@@ -97,7 +97,7 @@ type field_type =
   | FT_IPv6
   | FT_String of field_len * bool
   | FT_List of field_len * field_type
-  | FT_Container of string * field_type     (* the string corresponds to the integer type for the field length *)
+  | FT_Container of field_len * field_type     (* the string corresponds to the integer type for the field length *)
   | FT_Custom of (string option) * string * expr list  (* the expr list is the list of args to apply to parse funs *)
   | FT_CheckFunction of (string option) * string * expr list * bool  (* the last boolean is set if the function is in fact a reference *)
 
@@ -159,55 +159,59 @@ let keep_unique_cons union =
 
 (* To-be-processed file parsing *)
 
+type decorator_type = NoDec | ExprDec of expr | VarLenDec of expr
+
 let rec field_type_of_ident name decorator subtype =
   match name, decorator, subtype with
-    | <:ident< $lid:"empty"$ >>,  None, None -> FT_Empty
-    | <:ident< $lid:"char"$ >>,   None, None -> FT_Char
-    | <:ident< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None, None -> FT_Int int_t
-    | <:ident< $lid:"ipv4"$ >>,   None, None -> FT_IPv4
-    | <:ident< $lid:"ipv6"$ >>,   None, None -> FT_IPv6
+    | <:ident< $lid:"empty"$ >>,  NoDec, None -> FT_Empty
+    | <:ident< $lid:"char"$ >>,   NoDec, None -> FT_Char
+    | <:ident< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, NoDec, None -> FT_Int int_t
+    | <:ident< $lid:"ipv4"$ >>,   NoDec, None -> FT_IPv4
+    | <:ident< $lid:"ipv6"$ >>,   NoDec, None -> FT_IPv6
 
-    | <:ident< $lid:"list"$ >>,   None, Some t ->
+    | <:ident< $lid:"list"$ >>,   NoDec, Some t ->
       FT_List (Remaining, t)
-    | <:ident< $lid:"list"$ >>,   Some <:expr< $int: i$ >>, Some t ->
-      FT_List (FixedLen (int_of_string i), t)
-    | <:ident< $lid:"list"$ >>,   Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, Some t ->
+    | <:ident< $lid:"list"$ >>,   ExprDec e, Some t ->
+      FT_List (ExprLen e, t)
+    | <:ident< $lid:"list"$ >>,   VarLenDec <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, Some t ->
       FT_List (VarLen int_t, t)
     | <:ident< $lid:"list"$ >> as i,   _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid list type")
 
-    | <:ident< $lid:"container"$ >>, Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>,
-      Some t -> FT_Container (int_t, t)
+    | <:ident< $lid:"container"$ >>, ExprDec e, Some t ->
+      FT_Container (ExprLen e, t)
+    | <:ident< $lid:"container"$ >>, VarLenDec <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, Some t ->
+      FT_Container (VarLen int_t, t)
     | <:ident< $lid:"container"$ >> as i, _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid container type")
 
-    | <:ident< $lid:"string"$ >>,    None, None-> FT_String (Remaining, false)
-    | <:ident< $lid:"binstring"$ >>, None, None -> FT_String (Remaining, true)
-    | <:ident< $lid:"string"$ >>,    Some <:expr< $int:i$ >>, None ->
-      FT_String (FixedLen (int_of_string i), false)
-    | <:ident< $lid:"binstring"$ >>, Some <:expr< $int:i$ >>, None ->
-      FT_String (FixedLen (int_of_string i), true)
-    | <:ident< $lid:"string"$ >>,    Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None ->
+    | <:ident< $lid:"string"$ >>,    NoDec, None-> FT_String (Remaining, false)
+    | <:ident< $lid:"binstring"$ >>, NoDec, None -> FT_String (Remaining, true)
+    | <:ident< $lid:"string"$ >>,    ExprDec e, None ->
+      FT_String (ExprLen e, false)
+    | <:ident< $lid:"binstring"$ >>, ExprDec e, None ->
+      FT_String (ExprLen e, true)
+    | <:ident< $lid:"string"$ >>,    VarLenDec <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None ->
       FT_String (VarLen int_t, false)
-    | <:ident< $lid:"binstring"$ >>, Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None ->
+    | <:ident< $lid:"binstring"$ >>, VarLenDec <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None ->
       FT_String (VarLen int_t, true)
     | <:ident< $lid:("string" | "binstring")$ >> as i, _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid string type")
 
-    | <:ident< $lid:"check"$ >>,      None, Some (FT_Custom (m, n, args)) ->
+    | <:ident< $lid:"check"$ >>,      NoDec, Some (FT_Custom (m, n, args)) ->
       FT_CheckFunction (m, n, args, false)
-    | <:ident< $lid:"checkref"$ >>,      None, Some (FT_Custom (m, n, args)) ->
+    | <:ident< $lid:"checkref"$ >>,   NoDec, Some (FT_Custom (m, n, args)) ->
       FT_CheckFunction (m, n, args, true)
     | <:ident< $lid:("check"|"checkref")$ >> as i, _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid check declaration")
 
-    | <:ident< $lid:custom_t$ >>, None, None ->
+    | <:ident< $lid:custom_t$ >>, NoDec, None ->
       FT_Custom (None, custom_t, [])
-    | <:ident< $lid:custom_t$ >>, Some e, None ->
+    | <:ident< $lid:custom_t$ >>, ExprDec e, None ->
       FT_Custom (None, custom_t, list_of_sem_expr e)
-    | <:ident< $uid:module_name$.$lid:custom_t$ >>, None, None ->
+    | <:ident< $uid:module_name$.$lid:custom_t$ >>, NoDec, None ->
       FT_Custom (Some module_name, custom_t, [])
-    | <:ident< $uid:module_name$.$lid:custom_t$ >>, Some e, None ->
+    | <:ident< $uid:module_name$.$lid:custom_t$ >>, ExprDec e, None ->
       FT_Custom (Some module_name, custom_t, list_of_sem_expr e)
 
     | i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid identifier for a type")
@@ -282,13 +286,13 @@ let rec fun_of_field_type (prefix, module_prefix) _loc name t =
     | FT_IPv4 -> <:expr< $mk_pf "string"$ $exp_int _loc "4"$ >>
     | FT_IPv6 -> <:expr< $mk_pf "string"$ $exp_int _loc "16"$ >>
 
-    | FT_String (FixedLen n, _) -> <:expr< $mk_pf "string"$ $exp_int _loc (string_of_int n)$ >>
+    | FT_String (ExprLen e, _) -> <:expr< $mk_pf "string"$ $e$ >>
     | FT_String (VarLen int_t, _) ->
       <:expr< $mk_pf "varlen_string"$ $exp_str _loc name$ $mk_pf int_t$ >>
     | FT_String (Remaining, _) -> mk_pf "rem_string"
 
-    | FT_List (FixedLen n, subtype) ->
-      <:expr< $mk_pf "list"$ $exp_int _loc (string_of_int n)$
+    | FT_List (ExprLen e, subtype) ->
+      <:expr< $mk_pf "list"$ $e$
               $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
     | FT_List (VarLen int_t, subtype) ->
       <:expr< $mk_pf "varlen_list"$ $exp_str _loc name$ $mk_pf int_t$
@@ -296,9 +300,14 @@ let rec fun_of_field_type (prefix, module_prefix) _loc name t =
     | FT_List (Remaining, subtype) ->
       <:expr< $mk_pf "rem_list"$
               $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
-    | FT_Container (int_t, subtype) ->
-      <:expr< $mk_pf "container"$ $exp_str _loc name$ $mk_pf int_t$
+    | FT_Container (ExprLen e, subtype) ->
+      <:expr< $mk_pf "container"$ $exp_str _loc name$ $e$
               $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
+    | FT_Container (VarLen int_t, subtype) ->
+      <:expr< $mk_pf "varlen_container"$ $exp_str _loc name$ $mk_pf int_t$
+              $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
+    | FT_Container (Remaining, subtype) ->
+      fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype
 
     | FT_Custom (m, n, e) -> apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
     | FT_CheckFunction (m, n, e, false) -> apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
@@ -415,8 +424,10 @@ let rec dump_fun_of_field_type _loc t =
       <:expr< $mk_df "dump_varlen_list"$ $mk_df ("dump_" ^ int_t)$ $dump_fun_of_field_type _loc subtype$ >>
     | FT_List (_, subtype) ->
       <:expr< $mk_df "dump_list"$ $dump_fun_of_field_type _loc subtype$ >>
-    | FT_Container (int_t, subtype) ->
+    | FT_Container (VarLen int_t, subtype) ->
       <:expr< $mk_df "dump_container"$ $mk_df ("dump_" ^ int_t)$ $dump_fun_of_field_type _loc subtype$ >>
+    | FT_Container (_, subtype) ->
+      dump_fun_of_field_type _loc subtype
 
     | FT_Custom (m, n, _) -> exp_qname _loc m ("dump_" ^ n)
 
@@ -508,9 +519,15 @@ let mk_union_print_fun _loc union =
 EXTEND Gram
   GLOBAL: expr ctyp str_item;
 
+  field_type_opt_param: [[
+    "("; e = expr; ")" -> ExprDec e
+  | "["; e = expr; "]" -> VarLenDec e
+  | -> NoDec
+  ]];
+
   field_type_d: [[
     "("; t = SELF; ")" -> t
-  | type_name = ident; e = OPT [ "("; _e = expr; ")" -> _e ]; t = OPT [ "of"; _t = field_type_d -> _t ] ->
+  | type_name = ident; e = field_type_opt_param; t = OPT [ "of"; _t = field_type_d -> _t ] ->
     field_type_of_ident type_name e t
   ]];
 

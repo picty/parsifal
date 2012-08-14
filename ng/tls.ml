@@ -18,7 +18,7 @@ struct change_cipher_spec = {
 
 (* Explicit ("name_type") *)
 union sni_name (Unparsed_SNIName, [enrich]) =
-  | NT_HostName -> HostName of string(uint16)
+  | NT_HostName -> HostName of string[uint16]
 
 struct server_name = {
   sni_name_type : name_type;
@@ -26,7 +26,7 @@ struct server_name = {
 }
 
 union server_name_content (Unparsed_ServerNameContent, [enrich; exhaustive]) =
-  | ClientToServer -> ClientServerName of (list(uint16) of server_name)
+  | ClientToServer -> ClientServerName of (list[uint16] of server_name)
   | ServerToClient -> ServerServerName
 
 union hello_extension_content (Unparsed_HelloExtension, [enrich; param direction]) =
@@ -39,41 +39,41 @@ union hello_extension_content (Unparsed_HelloExtension, [enrich; param direction
 
 struct hello_extension [param direction] = {
   extension_type : extension_type;
-  extension_data : container(uint16) of hello_extension_content(direction; _extension_type)
+  extension_data : container[uint16] of hello_extension_content(direction; _extension_type)
 }
 
 struct client_hello = {
   client_version : tls_version;
   client_random : binstring(32);
-  client_session_id : binstring(uint8);
-  ciphersuites : list(uint16) of ciphersuite;
-  compression_methods : list(uint8) of compression_method;
-  optional client_extensions : list(uint16) of hello_extension(ClientToServer)
+  client_session_id : binstring[uint8];
+  ciphersuites : list[uint16] of ciphersuite;
+  compression_methods : list[uint8] of compression_method;
+  optional client_extensions : list[uint16] of hello_extension(ClientToServer)
 }
 
 struct server_hello = {
   server_version : tls_version;
   server_random : binstring(32);
-  server_session_id : binstring(uint8);
+  server_session_id : binstring[uint8];
   ciphersuite : ciphersuite;
   compression_method : compression_method;
-  optional server_extensions : list(uint16) of hello_extension(ServerToClient)
+  optional server_extensions : list[uint16] of hello_extension(ServerToClient)
 }
 
 struct new_session_ticket = {
   ticket_lifetime_hint : uint32;
-  ticket : binstring(uint16)
+  ticket : binstring[uint16]
 }
 
 struct certificates = {
   (* TODO: change this since it should be either binstring either cert *)
-  certificate_list : list(uint24) of binstring(uint24)
+  certificate_list : list[uint24] of binstring[uint24]
 }
 
 struct server_dh_params = {
-  dh_p : binstring(uint16);
-  dh_g : binstring(uint16);
-  dh_Ys: binstring(uint16)
+  dh_p : binstring[uint16];
+  dh_g : binstring[uint16];
+  dh_Ys: binstring[uint16]
 }
 
 (* TODO: signature? *)
@@ -130,9 +130,9 @@ struct signature_and_hash_algorithm = {
 
 struct certificate_request = {
   certificate_types : client_certificate_type;
-  supported_signature_algorithms : list(uint16) of signature_and_hash_algorithm;
+  supported_signature_algorithms : list[uint16] of signature_and_hash_algorithm;
   (* TODO: change this since it should be either binstring either dn *)
-  certificate_authorities : list(uint16) of binstring(uint16)
+  certificate_authorities : list[uint16] of binstring[uint16]
 }
 
 union handshake_content (Unparsed_HSContent, [enrich; param context]) =
@@ -147,7 +147,7 @@ union handshake_content (Unparsed_HSContent, [enrich; param context]) =
 
 struct handshake_msg [param context] = {
   handshake_type : hs_message_type;
-  handshake_content : container(uint24) of handshake_content(context; _handshake_type)
+  handshake_content : container[uint24] of handshake_content(context; _handshake_type)
 }
 
 
@@ -163,7 +163,7 @@ union record_content (Unparsed_Record, [param context]) =
 struct tls_record [top; param context] = {
   content_type : tls_content_type;
   record_version : tls_version;
-  record_content : container(uint16) of record_content (context; _content_type)
+  record_content : container[uint16] of record_content (context; _content_type)
 }
 
 
