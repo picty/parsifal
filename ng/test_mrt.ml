@@ -3,16 +3,23 @@ open Lwt
 open Mrt
 open ParsingEngine
 open LwtParsingEngine
-
 open Getopt
 
 let set_raw () =
   enrich_mrt_message_content := false;
   enrich_mrt_subtype := false
 
+let stop_after_RIB t st _ = match t, st with
+  | MT_TABLE_DUMP_V2, MST_TABLE_DUMP_V2 RIB_IPV4_UNICAST -> fail (Failure "STOP")
+  | _ -> return ()
+
+let pouet () =
+  lwt_parse_check_function := stop_after_RIB
+
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'r') "raw" (TrivialFun set_raw) "do not parse in depth the MRT messages";
+  mkopt (Some 'S') "stop" (TrivialFun pouet) "fdsjkfsdjm";
 ]
 
 let getopt_params = {
@@ -20,6 +27,7 @@ let getopt_params = {
   options = options;
   postprocess_funs = [];
 }
+
 
 
 let input_of_filename filename =
@@ -39,8 +47,7 @@ let _ =
     | [filename] -> input_of_filename filename >>= handle_input
     | _ -> failwith "Too many files given"
   in
-  try
-    Lwt_unix.run t;
+  try Lwt_unix.run t;
   with
     | End_of_file -> ()
     | ParsingException (e, i) -> emit_parsing_exception false e i

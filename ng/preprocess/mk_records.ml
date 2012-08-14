@@ -99,6 +99,7 @@ type field_type =
   | FT_List of field_len * field_type
   | FT_Container of string * field_type     (* the string corresponds to the integer type for the field length *)
   | FT_Custom of (string option) * string * expr list  (* the expr list is the list of args to apply to parse funs *)
+  | FT_CheckFunction of (string option) * string * expr list * bool  (* the last boolean is set if the function is in fact a reference *)
 
 type record_description = {
   rname : string;
@@ -184,6 +185,13 @@ let rec field_type_of_ident name decorator subtype =
     | <:ident< $lid:("string" | "binstring")$ >> as i, _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid string type")
 
+    | <:ident< $lid:"check"$ >>,      None, Some (FT_Custom (m, n, args)) ->
+      FT_CheckFunction (m, n, args, false)
+    | <:ident< $lid:"checkref"$ >>,      None, Some (FT_Custom (m, n, args)) ->
+      FT_CheckFunction (m, n, args, true)
+    | <:ident< $lid:("check"|"checkref")$ >> as i, _, _ ->
+      Loc.raise (loc_of_ident i) (Failure "invalid check declaration")
+
     | <:ident< $lid:custom_t$ >>, None, None ->
       FT_Custom (None, custom_t, [])
     | <:ident< $lid:custom_t$ >>, Some e, None ->
@@ -212,7 +220,8 @@ let opts_of_seq_expr expr =
 (* Type creation *)
 
 let rec _ocaml_type_of_field_type _loc = function
-  | FT_Empty -> <:ctyp< $lid:"unit"$ >>
+  | FT_Empty
+  | FT_CheckFunction _ -> <:ctyp< $lid:"unit"$ >>
   | FT_Char -> <:ctyp< $lid:"char"$ >>
   | FT_Int _ -> <:ctyp< $lid:"int"$ >>
   | FT_IPv4 | FT_IPv6 -> <:ctyp< $lid:"string"$ >>
@@ -227,9 +236,14 @@ let ocaml_type_of_field_type _loc t opt =
   let real_t = _ocaml_type_of_field_type _loc t in
   if opt then <:ctyp< option $real_t$ >> else real_t
 
+let rec remove_dummy_fields = function
+  | [] -> []
+  | (_, _, FT_Empty, _)::r | (_, _, FT_CheckFunction _, _)::r -> remove_dummy_fields r
+  | f::r -> f::(remove_dummy_fields r)
+
 let mk_record_type _loc record =
   let mk_line (_loc, n, t, opt) = <:ctyp< $lid:n$ : $ocaml_type_of_field_type _loc t opt$ >> in
-  let ctyp_fields = List.map mk_line record.fields in
+  let ctyp_fields = List.map mk_line (remove_dummy_fields record.fields) in
   <:str_item< type $lid:record.rname$ = { $list:ctyp_fields$ } >>
 
 let mk_union_type _loc union =
@@ -277,12 +291,15 @@ let rec fun_of_field_type (prefix, module_prefix) _loc name t =
               $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
 
     | FT_Custom (m, n, e) -> apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
+    | FT_CheckFunction (m, n, e, false) -> apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
+    | FT_CheckFunction (m, n, e, true) -> apply_exprs _loc ( <:expr< ! $exp_qname _loc m (prefix ^ n)$ >> ) e
+
 
 let mk_record_parse_fun _loc record =
   let rec mk_body = function
     | [] ->
       let field_assigns = List.map (fun (_loc, n, _, _) ->
-	<:rec_binding< $lid:n$ = $exp:exp_lid _loc ("_" ^ n)$ >> ) record.fields
+	<:rec_binding< $lid:n$ = $exp:exp_lid _loc ("_" ^ n)$ >> ) (remove_dummy_fields record.fields)
       in <:expr< { $list:field_assigns$ } >>
     | (_loc, n, t, false)::r ->
       let tmp = mk_body r in
@@ -300,7 +317,7 @@ let mk_record_lwt_parse_fun _loc record =
   let rec mk_body = function
     | [] ->
       let field_assigns = List.map (fun (_loc, n, _, _) ->
-	<:rec_binding< $lid:n$ = $exp:exp_lid _loc ("_" ^ n)$ >> ) record.fields
+	<:rec_binding< $lid:n$ = $exp:exp_lid _loc ("_" ^ n)$ >> ) (remove_dummy_fields record.fields)
       in <:expr< Lwt.return { $list:field_assigns$ } >>
     | (_loc, n, t, false)::r ->
       let tmp = mk_body r in
@@ -374,7 +391,7 @@ let mk_exact_parse_fun _loc name parse_params =
 let rec dump_fun_of_field_type _loc t =
   let mk_df fname = <:expr< $uid:"DumpingEngine"$.$lid:fname$ >> in
   match t with
-    | FT_Empty -> mk_df "dump_empty"
+    | FT_Empty | FT_CheckFunction _ -> mk_df "dump_empty"
     | FT_Char -> mk_df "dump_char"
     | FT_Int int_t -> mk_df  ("dump_" ^ int_t)
 
@@ -401,7 +418,7 @@ let mk_record_dump_fun _loc record =
     | (_loc, n, t, true) ->
       <:expr< DumpingEngine.try_dump $dump_fun_of_field_type _loc t$ $lid:record.rname$.$lid:n$ >>
   in
-  let fields_dumped_expr = exp_of_list _loc (List.map dump_one_field record.fields) in
+  let fields_dumped_expr = exp_of_list _loc (List.map dump_one_field (remove_dummy_fields record.fields)) in
   let body =
     <:expr< let $lid:"fields_dumped"$ = $fields_dumped_expr$ in
 	    String.concat "" fields_dumped >>
@@ -429,7 +446,7 @@ let mk_union_dump_fun _loc union =
 let rec print_fun_of_field_type _loc t =
   let mk_pf fname = <:expr< $uid:"PrintingEngine"$.$lid:fname$ >> in
   match t with
-    | FT_Empty -> mk_pf "print_empty"
+    | FT_Empty | FT_CheckFunction _ -> mk_pf "print_empty"
     | FT_Char -> mk_pf "print_char"
     | FT_Int int_t -> mk_pf  ("print_" ^ int_t)
 
@@ -451,7 +468,7 @@ let mk_record_print_fun _loc record =
     | (_loc, n, t, true) ->
 	<:expr< PrintingEngine.try_print $print_fun_of_field_type _loc t$ new_indent $str:n$ $lid:record.rname$.$lid:n$ >>
   in
-  let fields_printed_expr = exp_of_list _loc (List.map print_one_field record.fields) in
+  let fields_printed_expr = exp_of_list _loc (List.map print_one_field (remove_dummy_fields record.fields)) in
   let body =
     <:expr< let new_indent = indent ^ "  " in
 	    let $lid:"fields_printed"$ = $fields_printed_expr$ in

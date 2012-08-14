@@ -123,12 +123,14 @@ let print_ip_prefix ident n ip_prefix =
       PrintingEngine.string_of_ipv6 (s ^ (String.make (16 - l) '\x00')), prefix_length
   in Printf.sprintf "%s%s: %s/%d\n" ident n a len
 
+
 struct rib [param ipa_type] = {
   rib_sequence_number : uint32;
   rib_prefix : ip_prefix(ipa_type);
   rib_entry_count : uint16;
   rib_entries : list of rib_entry
 }
+
 
 union mrt_subtype (UnparsedSubType of uint16, [enrich; with_lwt]) =
   | MT_TABLE_DUMP -> MST_TABLE_DUMP of ip_address_type
@@ -140,9 +142,17 @@ union mrt_message_content (UnparedMRTMessage, [enrich]) =
   | (MT_TABLE_DUMP_V2, MST_TABLE_DUMP_V2 PEER_INDEX_TABLE) -> PeerIndexTable of peer_index_table
   | (MT_TABLE_DUMP_V2, MST_TABLE_DUMP_V2 RIB_IPV4_UNICAST) -> RIB of rib(AFI_IPv4)
 
+
+let default_check_function typ subtyp input = ()
+let parse_check_function = ref default_check_function
+
+let default_lwt_check_function typ subtyp input = Lwt.return ()
+let lwt_parse_check_function = ref default_lwt_check_function
+
 struct mrt_message [top] = {
   mrt_timestamp : uint32;
   mrt_type : mrt_type;
   mrt_subtype : mrt_subtype(_mrt_type);
+  mrt_checkpoint : checkref of check_function(_mrt_type; _mrt_subtype);
   mrt_message : container(uint32) of mrt_message_content(_mrt_type, _mrt_subtype)
 }
