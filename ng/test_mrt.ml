@@ -5,6 +5,8 @@ open ParsingEngine
 open LwtParsingEngine
 open Getopt
 
+let silent = ref false
+
 let set_raw () =
   enrich_mrt_message_content := false;
   enrich_mrt_subtype := false
@@ -19,7 +21,8 @@ let pouet () =
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'r') "raw" (TrivialFun set_raw) "do not parse in depth the MRT messages";
-  mkopt (Some 'S') "stop" (TrivialFun pouet) "fdsjkfsdjm";
+  mkopt None "silent" (Set silent) "silent mode";
+  mkopt (Some 'S') "stop" (TrivialFun pouet) "stop when encountering RIB_IPV4_UNICAST";
 ]
 
 let getopt_params = {
@@ -36,7 +39,7 @@ let input_of_filename filename =
 
 let rec handle_input input =
   lwt_parse_mrt_message input >>= fun mrt_msg ->
-  print_endline (print_mrt_message "" "Message" mrt_msg);
+  if not !silent then print_endline (print_mrt_message "" "Message" mrt_msg);
   handle_input input
 
 

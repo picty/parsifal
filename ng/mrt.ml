@@ -1,8 +1,12 @@
 (* Generic useful types and functions *)
 
-enum ip_address_type (16, Exception InvalidIPAddressType, [with_lwt]) =
+enum address_family_identifier (16, Exception InvalidAddressFamilyIdentifier, [with_lwt]) =
   | 1 -> AFI_IPv4
   | 2 -> AFI_IPv6
+
+enum subsequent_address_family_identifier (8, Exception InvalidSubsequentAddressFamilyIdentifier, []) =
+  | 1 -> SAFI_Unicast
+  | 2 -> SAFI_Multicast
 
 union ip_address (UnparsedIPAddress, [exhaustive; enrich]) =
   | AFI_IPv4 -> IPA_IPv4 of ipv4
@@ -36,6 +40,149 @@ let print_ip_prefix ident n ip_prefix =
       PrintingEngine.string_of_ipv6 (s ^ (String.make (16 - l) '\x00')), prefix_length
   in Printf.sprintf "%s%s: %s/%d\n" ident n a len
 
+
+
+
+
+(* BGP messages *)
+
+struct bgp_open_message = {
+  version : uint8;
+  my_autonomous_system : autonomous_system(16);
+  hold_time : uint16;
+  bgp_identifier : uint32;
+  optional_parameters__unparsed : binstring[uint8] (* TODO *)
+}
+
+type bgp_attribute_len = bool * int
+let parse_bgp_attribute_len attr input =
+  if (attr land 0x10) = 0x10
+  then true, ParsingEngine.parse_uint16 input
+  else false, ParsingEngine.parse_uint8 input
+let dump_bgp_attribute_len (extended, v) =
+  if extended
+  then DumpingEngine.dump_uint16 v
+  else DumpingEngine.dump_uint8 v
+let print_bgp_attribute_len ident name (extended, v) =
+  if extended
+  then PrintingEngine.print_uint16 ident name v
+  else PrintingEngine.print_uint8 ident name v
+
+
+enum bgp_attribute_type (8, UnknownVal UnknownBGPAttributeType, []) =
+  | 1 -> ORIGIN
+  | 2 -> AS_PATH
+  | 3 -> NEXT_HOP
+  | 4 -> MULTI_EXIT_DISC
+  | 5 -> LOCAL_PREF
+  | 6 -> ATOMIC_AGGREGATE
+  | 7 -> AGGREGATOR
+  | 8 -> COMMUNITY
+  | 14 -> MP_REACH_NLRI
+  | 15 -> MP_UNREACH_NLRI
+  | 16 -> EXTENDED_COMMUNITIES
+  | 17 -> AS4_PATH
+  | 18 -> AS4_AGGREGATOR
+
+enum bgp_origin (8, UnknownVal UnknownBGPOrigin, []) =
+  | 0 -> IGP
+  | 1 -> EGP
+  | 2 -> INCOMPLETE
+
+enum path_segment_type (8, UnknownVal UnknownBGPASPath, []) =
+  | 1 -> AS_SET
+  | 2 -> AS_SEQUENCE
+
+struct bgp_as_path_segment [param as_size] = {
+  path_segment_type : path_segment_type;
+  path_segment_length : uint8;
+  path_segment_value : list(_path_segment_length) of autonomous_system(as_size)
+}
+
+struct bgp_aggregator [param as_size] = {
+  agg_as : autonomous_system(as_size);
+  agg_ip : ipv4
+}
+
+struct bgp_reach_nlri = {
+  rn_afi : address_family_identifier;
+  rn_safi : subsequent_address_family_identifier;
+  rn_next_hop : container[uint8] of list of (ip_address(_rn_afi));
+  rn_reserved : uint8;
+  rn_nlri : list of ip_prefix(_rn_afi)
+}  
+
+struct bgp_unreach_nlri = {
+  un_afi : address_family_identifier;
+  un_safi : subsequent_address_family_identifier;
+  un_withdrawn_routes : list of ip_prefix(_un_afi)
+}  
+
+union bgp_attribute_content (UnknownBGPAttributeContent, [enrich; param as_size]) =
+  | ORIGIN -> BAC_Origin of bgp_origin
+  | AS_PATH -> BAC_ASPath of (list of bgp_as_path_segment(as_size))
+  | NEXT_HOP -> BAC_NextHop of ipv4
+  | MULTI_EXIT_DISC -> BAC_MultiExitDisc of uint32
+  | ATOMIC_AGGREGATE -> BAC_AtomicAggregate
+  | AGGREGATOR -> BAC_Aggregator of bgp_aggregator(as_size)
+  | COMMUNITY -> BAC_Community of (list of uint32)
+  | MP_REACH_NLRI -> BAC_MPReachNLRI of bgp_reach_nlri
+  | MP_UNREACH_NLRI -> BAC_MPUnreachNLRI of bgp_unreach_nlri
+  | EXTENDED_COMMUNITIES -> BAC_ExtendedCommunities of (list of binstring(8)) (* TODO rfc4360 *)
+  | AS4_PATH -> BAC_ASPath of (list of bgp_as_path_segment(32))
+  | AS4_AGGREGATOR -> BAC_AS4Aggregator of bgp_aggregator(32)
+(* Some attribute are still missing (see http://www.iana.org/assignments/bgp-parameters/bgp-parameters.xml *)
+
+
+struct bgp_attribute [param as_size] = {
+  attr_flags : uint8;
+  attr_type : bgp_attribute_type;
+  attr_len : bgp_attribute_len(_attr_flags);
+  attr_content : container(snd _attr_len) of bgp_attribute_content(as_size; _attr_type)
+}
+
+struct bgp_update_message [param ipa_type; param as_size] = {
+  withdrawn_routes : container[uint16] of (list of ip_prefix(ipa_type));
+  path_attributes : container[uint16] of (list of bgp_attribute(as_size));
+  network_layer_reachability_information : binstring
+}
+
+struct bgp_route_refresh = {
+  rr_afi : address_family_identifier;
+  rr_reserved : uint8;
+  rr_safi : subsequent_address_family_identifier
+}
+
+
+enum bgp_message_type (8, UnknownVal UnknownBGPMessageType, []) =
+  | 1 -> BMT_OPEN
+  | 2 -> BMT_UPDATE
+  | 3 -> BMT_NOTIFICATION
+  | 4 -> BMT_KEEPALIVE
+  | 5 -> BMT_ROUTE_REFRESH
+
+union bgp_message_content (UnparsedBGPMessageContent of binstring, [enrich; param ipa_type; param as_size]) =
+  | BMT_OPEN -> BGP_Open of bgp_open_message
+  | BMT_UPDATE -> BGP_Update of bgp_update_message(ipa_type; as_size)
+  | BMT_NOTIFICATION -> BGP_Notification of binstring (* TODO *)
+  | BMT_KEEPALIVE -> BGP_KeepAlive
+  | BMT_ROUTE_REFRESH -> BGP_RouteRefresh of bgp_route_refresh
+
+type bgp_message_marker = unit
+let parse_bgp_message_marker input =
+  let s = ParsingEngine.parse_string 16 input in
+  match s with
+    | "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff" -> ()
+    | _ -> raise (Failure "Marker is not valid !")
+let dump_bgp_message_marker () = String.make 16 '\xff'
+let print_bgp_message_marker ident name () = PrintingEngine.print_binstring ident name ""
+
+struct bgp_message [param ipa_type; param as_size] = {
+  bgp_message_marker : bgp_message_marker;
+  bgp_message_size : uint16;
+  bgp_message_type : bgp_message_type;
+  bgp_message_content : container(_bgp_message_size - 19) of bgp_message_content(ipa_type; as_size; _bgp_message_type)
+}
 
 
 
@@ -84,7 +231,7 @@ struct table_dump [param ipa_type] = {
   td_originated_time : uint32;
   td_peer_ip_address : ip_address(ipa_type);
   td_peer_as : uint16;
-  td_attribute : container[uint16] of binstring
+  td_attribute : container[uint16] of (list of bgp_attribute(16))
 }
 
 
@@ -108,14 +255,14 @@ let as_size = function
   | PT_AS16_IPv4 | PT_AS16_IPv6 -> 16
   | PT_AS32_IPv4 | PT_AS32_IPv6 -> 32
 
-let ip_address_type = function
+let afi = function
   | PT_AS16_IPv4 | PT_AS32_IPv4 -> AFI_IPv4
   | PT_AS16_IPv6 | PT_AS32_IPv6 -> AFI_IPv6
 
 struct peer_entry = {
   pe_peer_type : peer_type;
   pe_peer_bgp_id : uint32;
-  pe_peer_ip_address : ip_address(ip_address_type _pe_peer_type);
+  pe_peer_ip_address : ip_address(afi _pe_peer_type);
   pe_peer_as : autonomous_system(as_size _pe_peer_type)
 }
 
@@ -130,7 +277,7 @@ struct peer_index_table = {
 struct rib_entry = {
   rib_peer_index : uint16;
   rib_originated_time : uint32;
-  rib_attribute : container[uint16] of binstring
+  rib_attribute : container[uint16] of (list of bgp_attribute(32))
 }
 
 struct rib [param ipa_type] = {
@@ -142,10 +289,9 @@ struct rib [param ipa_type] = {
 
 struct rib_generic = {
   rg_sequence_number : uint32;
-  (* TODO: here we restrict ourselves to the only ipa we know: IPv4 and IPv6 *)
-  address_family_identifier : ip_address_type;
-  subsequent_afi : uint8;
-  rg_nlri : ip_prefix(_address_family_identifier);
+  rg_afi : address_family_identifier;
+  rg_safi : subsequent_address_family_identifier;
+  rg_nlri : ip_prefix(_rg_afi);
   rg_entry_count : uint16;
   rg_entries : list of rib_entry
 }
@@ -162,59 +308,19 @@ enum bgp4mp_subtype (16, UnknownVal UnknownBGP4MPSubtype, [with_lwt]) =
   | 6 -> BGP4MP_MESSAGE_LOCAL
   | 7 -> BGP4MP_MESSAGE_AS4_LOCAL
 
-type bgp_message_marker = unit
-let parse_bgp_message_marker input =
-  let s = ParsingEngine.parse_string 16 input in
-  match s with
-    | "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff" -> ()
-    | _ -> raise (Failure "Marker is not valid !")
-let dump_bgp_message_marker () = String.make 16 '\xff'
-let print_bgp_message_marker ident name () = PrintingEngine.print_binstring ident name ""
-
-
-enum bgp_message_type (8, UnknownVal UnknownBGPMessageType, []) =
-  | 1 -> BMT_OPEN
-  | 2 -> BMT_UPDATE
-  | 3 -> BMT_NOTIFICATION
-  | 4 -> KEEPALIVE
-
-
-struct bgp_open_message = {
-  version : uint8;
-  my_autonomous_system : autonomous_system(16);
-  hold_time : uint16;
-  bgp_identifier : uint32;
-  optional_parameters : binstring[uint8] (* TODO *)
-}
-
-union bgp_message_content (UnparsedBGPMessageContent of binstring, [enrich]) =
-  | BMT_OPEN -> BGP_Open of bgp_open_message
-  | BMT_UPDATE -> BGP_Update of binstring (* TODO *)
-  | BMT_NOTIFICATION -> BGP_Notification of binstring (* TODO *)
-  | KEEPALIVE -> BGP_KeepAlive
-
-struct bgp_message = {
-  bgp_message_marker : bgp_message_marker;
-  bgp_message_size : uint16;
-  bgp_message_type : bgp_message_type;
-  bgp_message_content : container(_bgp_message_size - 19) of bgp_message_content(_bgp_message_type)
-}
-
-
-
 struct bgp4mp_message [param is_as4] = {
   bm_peer_as_number : autonomous_system(if is_as4 then 32 else 16);
   bm_local_as_number : autonomous_system(if is_as4 then 32 else 16);
   bm_interface_index : uint16;
-  bm_address_family : ip_address_type;
-  bm_peer_ip_address : ip_address(_bm_address_family);
-  bm_local_ip_address : ip_address(_bm_address_family);
-  bm_bgp_message : bgp_message
+  bm_afi : address_family_identifier;
+  bm_peer_ip_address : ip_address(_bm_afi);
+  bm_local_ip_address : ip_address(_bm_afi);
+  bm_bgp_message : bgp_message(_bm_afi; if is_as4 then 32 else 16)
 }
 
 
 union mrt_subtype (UnparsedSubType of uint16, [enrich; with_lwt]) =
-  | MT_TABLE_DUMP -> MST_TABLE_DUMP of ip_address_type
+  | MT_TABLE_DUMP -> MST_TABLE_DUMP of address_family_identifier
   | MT_TABLE_DUMP_V2 -> MST_TABLE_DUMP_V2 of table_dump_v2_subtype
   | MT_BGP4MP -> MST_BGP4MP of bgp4mp_subtype
 
@@ -231,6 +337,8 @@ union mrt_message_content (UnparsedMRTMessage, [enrich]) =
 
   | (MT_BGP4MP, MST_BGP4MP BGP4MP_MESSAGE) -> BGP4MP_Message of bgp4mp_message(false)
   | (MT_BGP4MP, MST_BGP4MP BGP4MP_MESSAGE_AS4) -> BGP4MP_Message of bgp4mp_message(true)
+
+(* TODO: Some types/subtypes are not parsed deeply for the moment *)
 
 
 let default_check_function typ subtyp input = ()
