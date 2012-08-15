@@ -1,4 +1,7 @@
 TODO
+ - Merge ../TODO and this file
+ - Tools: x509show / x509compare / crlshow / crlcompare
+
  - MRT : rfc4271, rfc6396, rfc4760 et http://www.iana.org/assignments/bgp-parameters/bgp-parameters.xml
 
  - Camlp4 : Put preprocess files in a separate directory and produce a real camlp4 syntax package
