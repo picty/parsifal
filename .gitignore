@@ -1,8 +1,8 @@
-*~
 _build
+data-samples
+*~
+*.mk_asn1.ml
+rSAKey.ml
+x509.ml
+util.top
 *.native
-bazar
-*.cmi
-*.cmo
-*.cmx
-*.o

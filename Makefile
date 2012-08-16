@@ -1,8 +1,64 @@
-all:
-	ocamlbuild -cflags -I,+lwt -lflags -I,+lwt -libs unix,bigarray,lwt,lwt-unix facesl.native asn1parse.native test_asn1.native test_asn1Parser.native test_crypto.native test_answerDump.native test_socket.native test_record.native testBgp.native test_x509.native sslproxy.native x509Check.native extract_ciphersuites.native extract_moduli.native extract_subjects.native extract_csv.native test_ssl2.native extract_cert_csv.native describe_client_hello.native describe_client_hello_sslv2.native classify_certchains.native extract_ev.native
+ASN1RECS = rSAKey.ml x509.ml
+SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml printingEngine.ml \
+	$(ASN1RECS) \
+	common.ml x509Util.ml\
+	tlsUtil.ml \
+	test_answerDump.ml test_tls_record.ml test_rsa_private_key.ml test_x509.ml test_random.ml
 
-pouet:
-	ocamlbuild classify_certchains.native
+TEST_PROGRAMS = test_answerDump.native test_tls_record.native test_random.native \
+                test_pkcs1.native test_rsa_private_key.native test_x509.native \
+                test_camlp4_enums.native test_mrt.native
+PROGRAMS = probe_server.native sslproxy.native serveranswer.native
+
+PREPROCESSORS = preprocess/mk_enums.cmo preprocess/mk_records.cmo
+
+
+all: $(ASN1RECS) $(PREPROCESSORS)
+	ocamlbuild -cflags -I,+lwt,-I,+cryptokit \
+                   -lflags -I,+lwt,-I,+cryptokit \
+                   -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit \
+                   -pp "camlp4o $(PREPROCESSORS)" \
+                   $(PROGRAMS) $(TEST_PROGRAMS)
+
+toplevel: $(ASN1RECS)
+	ocamlbuild -cflags -I,+lwt,-I,+cryptokit \
+                   -lflags -I,+lwt,-I,+cryptokit \
+                   -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit \
+                   -pp "camlp4o $(PREPROCESSORS)" \
+                   util.top
+	@echo "rlwrap ./util.top -I _build"
+
+check: $(TEST_PROGRAMS) $(ASN1RECS)
+
+
+preprocessors: $(PREPROCESSORS)
+
+preprocess/%.cmo: preprocess/%.ml
+	ocamlbuild -pp "camlp4o pa_extend.cmo q_MLast.cmo" -cflags -I,+camlp4 -lflags -I,+camlp4 $@
+
 
 clean:
-	ocamlbuild -clean
+	ocamlbuild -build-dir .build.main -clean
+	ocamlbuild -build-dir .build.toplevel -clean
+	rm -f Makefile.depend Makefile.native-depend $(TEST_PROGRAMS) $(PROGRAMS) $(ASN1RECS) \
+              *.cmx *.cmi *.cmo *.mk_binrecs.ml *.mk_choices.ml *.mk_asn1.ml *~ *.o
+
+
+
+# Specific dependencies
+tls.binrecs: _tlsContext.ml
+
+
+%.mk_binrecs.ml: common.ml preprocess/mk_binrecs.ml %.binrecs
+	cat $^ > $@
+
+%.ml: %.mk_binrecs.ml
+	ocaml $< > $@
+
+
+%.mk_asn1.ml: common.ml preprocess/mk_asn1.ml %.asn1
+	cat $^ > $@
+
+%.ml: %.mk_asn1.ml
+	ocaml $< > $@
+

@@ -1,129 +1,101 @@
-(* see https://github.com/avsm/ocaml-cohttpserver/blob/master/server/http_tcp_server.ml *)
-
 open Lwt
 open Unix
 
-(* TODO: Handle Unix exceptions *)
+open ParsingEngine
+open DumpingEngine
+open LwtParsingEngine
+open TlsEnums
+open Tls
+open Getopt
 
+
+let host = ref "www.google.com"
+let port = ref 443
+
+let options = [
+  mkopt (Some 'h') "help" Usage "show this help";
+
+  mkopt (Some 'H') "host" (StringVal host) "host to contact";
+  mkopt (Some 'p') "port" (IntVal port) "port to probe";
+]
+
+let getopt_params = {
+  default_progname = "sslproxy";
+  options = options;
+  postprocess_funs = [];
+}
+
+
+
+(* TODO: Handle exceptions in lwt code, and add timers *)
 
 
 type tls_state = {
   name : string;
-
   mutable clear : bool;
-  mutable cur_buf : string;
-  mutable cur_records : TlsRecord.RecordParser.t list;
 }
 
 let empty_state name =
-  { name = name; clear = true;
-    cur_buf = ""; cur_records = [] }
+  { name = name; clear = true }
 
 
-
-(* write l bytes of string s
- * starting at position p to file descriptor o.
- * Several calls to function Lwt_unix.write may
- * be needed as the system call may write less
- * than l bytes.
- *)
-let rec really_write o s p l =
+let rec _really_write o s p l =
   Lwt_unix.write o s p l >>= fun n ->
   if l = n then
     Lwt.return ()
   else
-    really_write o s (p + n) (l - n)
+    _really_write o s (p + n) (l - n)
 
-
-let parse_records s =
-  let pstate = ParsingEngine.pstate_of_string None s.cur_buf in
-
-  let rec aux accu =
-    let saved_pstate = ParsingEngine.clone_pstate pstate in
-    try
-      let record = TlsRecord.RecordParser.parse pstate in
-      aux (record::accu)
-    with ParsingEngine.OutOfBounds _ ->
-      s.cur_buf <- ParsingEngine.pop_string saved_pstate;
-      s.cur_records <- List.rev accu
-  in
-  aux (List.rev s.cur_records)
-
+let really_write o s = _really_write o s 0 (String.length s)
 
 
 let write_record o record =
-  let s = TlsRecord.RecordParser.dump record in
-  let l = String.length s in
-  really_write o s 0 l
-
-let print_record name record =
-  Common.print (name::(List.map (fun s -> "  " ^ s) (TlsRecord.RecordParser.to_string record)))
-
-let handle_records state =
-  let rec aux deep_parsed ready_to_go pending rest =
-    match state.clear, pending, rest with
-      | _, p, [] -> List.rev deep_parsed, List.rev ready_to_go, List.rev pending
-      | false, [], r::rem -> aux (r::deep_parsed) (r::ready_to_go) [] rem
-      | false, _, _ -> failwith "This should not happen"
-      | true, p, r::rem ->
-	try
-	  let parsed_recs = Tls.TlsLib._deep_parse_aux state.name (List.rev (r::p)) false in
-	  if r.TlsRecord.content_type == 20
-	  then state.clear <- false;
-	  aux (List.rev_append parsed_recs deep_parsed) (r::(p@ready_to_go)) [] rem
-	with _ -> aux deep_parsed ready_to_go (r::p) rest
-  in
-  let deep_parsed, ready_to_go, still_unparsed = aux [] [] [] state.cur_records in
-  List.iter (print_record state.name) deep_parsed;
-  state.cur_records <- still_unparsed;
-  ready_to_go
+  let s = dump_tls_record record in
+  really_write o s
 
 
 let rec forward state i o =
-  let new_buf = String.make 1024 ' ' in
-  Lwt_unix.read i new_buf 0 1024 >>= fun l ->
-  if l > 0 then begin
-    state.cur_buf <- state.cur_buf ^ (String.sub new_buf 0 l);
-    parse_records state;
-    let records = handle_records state in
-    (Lwt_list.iter_s (write_record o) records) >>= fun () ->
+  lwt_parse_tls_record None i >>= fun record ->
+  print_string (print_tls_record "" state.name record);
+  write_record o record >>= fun () ->
+  try
+    begin
+      match record.content_type, state.clear with
+      | CT_Handshake, true ->
+	let hs_msg = parse_handshake_msg None (input_of_string "Handshake" (dump_record_content record.record_content)) in
+	print_endline (print_handshake_msg "  " "Handshake content" hs_msg)
+      | CT_ChangeCipherSpec, true ->
+	let hs_msg = parse_change_cipher_spec (input_of_string "CCS" (dump_record_content record.record_content)) in
+	print_endline (print_change_cipher_spec "  " "CCS content" hs_msg);
+	state.clear <- false
+      | CT_Alert, true ->
+	let hs_msg = parse_tls_alert (input_of_string "Alert" (dump_record_content record.record_content)) in
+	print_endline (print_tls_alert "  " "Alert content" hs_msg)
+      | _ -> print_newline ()
+    end;
     forward state i o
-  end else begin
-    Lwt_unix.shutdown o Unix.SHUTDOWN_SEND;
-    Lwt.return ()
-  end
+  with e -> fail e
 
 
-let new_socket () =
-  Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0
-let local_addr =
-  Unix.ADDR_INET (Unix.inet_addr_any, 8080)
-let remote_addr =
-  let host_entry = Unix.gethostbyname "www.google.com" in
-  let inet_addr = host_entry.Unix.h_addr_list.(0) in
-  Unix.ADDR_INET (inet_addr, 443)
+let catcher = function
+  | ParsingException (e, i) ->
+    Printf.printf "%s in %s\n" (ParsingEngine.print_parsing_exception e)
+      (ParsingEngine.print_string_input i); flush Pervasives.stdout; return ()
+  | e -> print_endline (Printexc.to_string e); flush Pervasives.stdout; return ()
 
-(* Start two threads to forward both input and output,
- * and wait for both threads to end.
- * Close file descriptors and exit
- *)
+
+
 let rec accept sock =
   Lwt_unix.accept sock >>= fun (inp, _) ->
-  ignore
-    (let out = new_socket () in
-     Lwt_unix.connect out remote_addr >>= fun () ->
-     let io = forward (empty_state "C->S") inp out in
-     let oi = forward (empty_state "S->C") out inp in
-     io >>= fun () -> oi >>= fun () ->
-     ignore (Lwt_unix.close out);
-     ignore (Lwt_unix.close inp);
-     Lwt.return ());
+  Util.client_socket !host !port >>= fun out ->
+  let io = forward (empty_state "C->S") (input_of_fd "Client socket" inp) out in
+  let oi = forward (empty_state "S->C") (input_of_fd "Server socket" out) inp in
+  catch (fun () -> pick [io; oi]) catcher >>= fun () ->
+  ignore (Lwt_unix.close out);
+  ignore (Lwt_unix.close inp);
   accept sock
 
 let _ =
-  let socket = new_socket () in
-  Lwt_unix.setsockopt
-  socket Unix.SO_REUSEADDR true;
-  Lwt_unix.bind socket local_addr;
-  Lwt_unix.listen socket 1024;
+  let _ = parse_args getopt_params Sys.argv in
+  let socket = Util.server_socket 8080 in
   Lwt_unix.run (accept socket)

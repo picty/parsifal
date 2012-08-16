@@ -1,7 +1,47 @@
-v0.1 (feb. 2012)
- - Have a bugzilla to put all this stuff
-
+v0.1 (oct. 2012)
+ - General
+   * FIND A NAME TO THIS PROJECT (FAceSL sucks!)
+   * have a bugzilla to put all this stuff
+   * add Pollux' MakefileV6
+   * write quick functions to open and read files with lwt_parse funs
+ - Camlp4
+   * Put preprocess files in a separate directory and produce a real camlp4 syntax package
+   * Write mk_asn1_struct.ml
+   * Swith ident and name arguments of print_* to optional args
+ - MRT
+   * document rfc4271, rfc6396, rfc4760 et http://www.iana.org/assignments/bgp-parameters/bgp-parameters.xml
+   * document file samples at http://data.ris.ripe.net/rrc00/
+ - Tls
+   * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
+   * describe Heartbeat messages
+   * add all the missing enums
+   * Add SSLv2 support
+ - TlsEngine
+   * work on TlsEngine.update* functions
+   * write the automata (client, server, transparent proxy, normalizing proxy)
+   * add a automaton_state field in context
+   * add a check_consistency field in context
+   * add a generic update function relying on the context and the message received to
+     + check the consistency if necessary
+     + update the state
+     + return what to do next?
+   * Move test_answerDump.split_record in TlsUtil?
+   * Clean up code in Tls and TlsEngine
+   * [?] add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
+   * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
+   * put 'a result_type and handle_answer logic from probe_server into TlsEngine
+ - Binrecs
+   * add constraints on list
+ - ASN.1
+   * rewrite the preprocessor using camlp4
+   * handle constraints, optional fields, choices
+   * add UTCTime / ValidityTime handling (choices)
  - X509
+   * add stg to have parse_distinguished_name (we need aliases for sequences of and sets of)
+   * refine AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
+   * add support for RSA/DSA public key and signature
+   * support extensions
+   * parse certificates with all the previous features: RSA handling, DN.short, extensions
    * Add a cert store object
      + hashtable of certs
      + a name and a trust flag
@@ -33,86 +73,78 @@ v0.1 (feb. 2012)
    * Write code to parse DSA PK and Sig.
    * Add a way to enrich/deep parse (to parse PK/sig/exts a posteriori)
    * Add a way to create a certificate object
-
- - FIND A NAME TO THIS PROJECT (FAceSL sucks!)
- - Have a Makefile-based build process!
-   * cmake-ocaml?
-   * ocamlmakefile?
-   * ocamldep -I crypto -I asn1 -I common -I formats -I language -I tls -I tools [^_]*/*ml
- - TLS
-   * Enrich TLS parser.
-   * fake_len -> can override computed len
-   * tls.dump -> calls record.split if needed
-   * record.split -> TODO
-   * Add parser for SSLv2.
- - Misc
-   * Add encode/decode for gzip
-   * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
+ - Crypto
+   * Write test_pkcs1 to check RSA implementation
  - Tools
+   * probe_server: Add a retry option
+   * probe_server: Add a way to handle extensions
+   * bgpdump and/or obsdump
+   * x509show / x509compare
    * x509check (enrich the x509 object before analysing!)
    * chaincheck
-   * servercheck (cert + ciphersuites?)
+   * check_sslserver (see check_sslserver.ml for a complete TODO)
    * Finalize asn1parse / x509 programs with more checks
-   * Add support for CSR
    * Create simple PKI tools to create a RSA key, sign, verify, encrypt, decrypt, handle a simple PKI (rsa tool)
+   * Write acu (AceSL Cert Util) to read certs / pubkeys / privkeys and manipulate them
    * Passive TLS_Proxy
- - Software engineering
-   * Rethink _string_of_value: the options should always be present and we should be able to set a "raw" flag (quotes, 0x) and to override some cases (a function would be called and if it is OK, we take its return value, else we do as usual)
-   * Expand binaryRecord to handle update (when using enumerated for example).
-   * Use V_Unit = None to handle optional fields.
 
 
-v0.2 (apr. 2012)
- - ASN1Constraints
-   * Rewrite the code to be simpler and value-oriented?
- - OCSP and CRL parsers!
- - Crypto
-   * Rewrite is_prime properly (Rabbin Miller + PGCD with little p_i products)
-   * Add a gen_rsa_key in Caml
- - X509
-   * Clean up code about X509_Algorithm, ATV, AccessDescription, QualifierInfo
-   * Add a catalog of all warnings (id, severity, msg, where (possibly recursive where)) / use specific warnings for each interesting X.509 warnings.
-   * Add methods in OCSP/CRL extensions to extract data
-   * Clean up the toString architecture which still stinks
-   * Add functions to be able to change a cert and recompute the signature easily
- - Language
-   * Document native functions (with a help field?)
+v0.2 (feb. 2013)
+ - General
+   * Sort all the files present in AceSL-hg and co.
+   * Make directories (asn1, tls, baseEngines, .generated)
+ - Software Engineering
+   * Write some tests (unit tests, non-regression, etc.)
+   * Write .mli files
+ - Camlp4/Language
+   * Document the preprocessor
    * Add new primitive types (IPv4, IPv6, int32, int64, etc.)
+   * Add a way to access to fields with a "language" (from the command line: tls_record.record_content.handshake_type -> string option)
+   * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
+ - X509
+   * Add support for CSR
+   * OCSP and CRL parsers
+ - Crypto
+   * Look at the code of cryptokit which seems groovy
+   * Simplify the RSA code (to avoid the useless creation of a key object)
+   * Add support for DSA
+   * Think about the bigint (Big_int, Cryptokit, or stg else?)
  - Tools
    * Begin a GUI for PKI tools
+   * crlshow / crlcompare
+   * a tool to re-sign a modified certificate (given you have the adequate private key of course)
    * Add a general config directory, modifiable by cmdline, by general config file and by local config file (which could contain a directory of OIds)
    * s_client
    * Active TLS_Proxy
    * Ajouter liens dgst <- sha1sum
    * dgst : options (-quiet, -hex, -check, -file + args / ou stdin)
    * Gestion du temps passé (man 2 times) et ajout de barres de progression
- - getopt handling to replace Arg
-   * short options
-   * long options
-   * --help handling
- - MRT (file samples at http://data.ris.ripe.net/rrc00/, RFC 6397)?
  - Write some tests to check in browsers
    * certificates with extensions containing images
    * certificates signing each other (A <-> B)
  - PKCS#11 client (prospective)
+ - Misc
+   * Add encode/decode for gzip
+   * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
+   * getopt tuning (help usage messages [principal and details], multiline descriptions)
 
 
-v0.3 (jul. 2012)
- - Software Engineering
-   * Document NewParsingEngine (the invariants in string_input)
-   * Write some tests
+v0.3 (jun. 2013)
  - X509
    * add popular extensions (1.2.840.113549.1.9.15 : sMIMECapabilities; 1.3.6.1.5.5.7.1.12 : logoType)
    * Add a test to really check if the idempotence was broken!
  - Tools
    * s_server
- - Crypto
-   * Clean up crypto code from polar -> only keep the code really used.
-   * Rewrite CBC in Caml (we need to be able to keep a C object with the current context).
+   * think about an interpreter (like facesl was in the old version)?
  - PKCS#11 ressource (prospective)
+ - ParsingEngine/LwtParsingEngine
+   * Rewrite get_in / get_out in lwtParsingEngine in case the length is too big (with a customizable threshold)?
+     + it should use a pipe and call the lwt_parse function for the subtype.
+     + lwt_parse_*_list/string should take an optional parameter lwt?
+     + asn1 only implements DER so we should not need lwt_parse functions.
 
 
-v1.0 (oct 2012)
+v1.0 (oct 2013)
  - Software Engineering
    * Document everything (ocamldoc or doxygen)
    * unit tests for everything
@@ -128,6 +160,7 @@ v1.0 (oct 2012)
  - Crypto
    * ECC (see seccure project)
    * Shamir Secret Sharing (see ssss project)
+
 
 
 Offer the same services as NSS/openssl:
@@ -146,30 +179,9 @@ Checks on certs / chains
 
 Long Term... it could also be moved upstairs...
 
-- Objects : should they have two dictionaries, plus a list of relevant fields (to have stg like @modified)
-
 - Encoding
   * 2022 -> Simple ASCII (NumericString, PrintableString, VisibleString, IA5String)
   * 2022 (T61String, VideotexString, GraphicString, GeneralString)
   * 10646 / Unicode (UniversalString, BMPString, UTF8String)
 
-Modules
- - MapModule: Add a _dict or _params magic objects ? Remove all _ ?
- - Write the missing update/dump functions
- - Problem with @enriched... it does not work if a sub-dictionary is modified...
 
-Language
- - Write a simple compare function instead of all the equal/lt functions
- - Add a library to filter and extract certs, either in native or interpreted form
- - Add a way to import new native functions (Dynlink for native, equivalent to load for scripts)
- - Custom outputs (global _output, _error) for print/errors function
- - Add for loops, break n, continue n ?
- - concurrentmap (Nproc, OutputTemplate, fun (verif pas d'effet de bord hors la fonction))
-
-Lexer / Parser
- - Improve the error messages of the lexer/parser
- - Handle correctly multiply embedded () "" and ${} with a stack ?!
- - Catch parsing errors when they are due to an incomplete parse -> this way, we could wait for what is to come "> for if "-style
-
-typing
- - Add type constraints in the language, to help understanding errors.
