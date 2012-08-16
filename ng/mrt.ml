@@ -144,7 +144,7 @@ struct bgp_attribute [param as_size] = {
 struct bgp_update_message [param ipa_type; param as_size] = {
   withdrawn_routes : container[uint16] of (list of ip_prefix(ipa_type));
   path_attributes : container[uint16] of (list of bgp_attribute(as_size));
-  network_layer_reachability_information : binstring
+  network_layer_reachability_information : list of (ip_prefix(ipa_type))
 }
 
 struct bgp_route_refresh = {
@@ -216,7 +216,7 @@ enum mrt_type (16, UnknownVal MT_Unknown, [with_lwt]) =
 struct ospfv2_message = {
   om_remote_ip : ipv4;
   om_local_ip : ipv4;
-  om_ospf_message_content : binstring
+  om_ospf_message_content : binstring (* TODO *)
 }
 
 
