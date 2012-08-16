@@ -2,7 +2,7 @@ ASN1RECS = rSAKey.ml x509.ml
 SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml printingEngine.ml \
 	$(ASN1RECS) \
 	common.ml x509Util.ml\
-	tlsUtil.ml tlsContext.ml \
+	tlsUtil.ml \
 	test_answerDump.ml test_tls_record.ml test_rsa_private_key.ml test_x509.ml test_random.ml
 
 TEST_PROGRAMS = test_answerDump.native test_tls_record.native test_random.native \
