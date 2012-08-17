@@ -485,9 +485,9 @@ let rec print_fun_of_field_type _loc t =
 let mk_record_print_fun _loc record =
   let print_one_field = function
       (_loc, n, t, false) ->
-	<:expr< $print_fun_of_field_type _loc t$ new_indent $str:n$ $lid:record.rname$.$lid:n$ >>
+	<:expr< $print_fun_of_field_type _loc t$ ~indent:new_indent ~name:$str:n$ $lid:record.rname$.$lid:n$ >>
     | (_loc, n, t, true) ->
-	<:expr< PrintingEngine.try_print $print_fun_of_field_type _loc t$ new_indent $str:n$ $lid:record.rname$.$lid:n$ >>
+	<:expr< PrintingEngine.try_print $print_fun_of_field_type _loc t$ ~indent:new_indent ~name:$str:n$ $lid:record.rname$.$lid:n$ >>
   in
   let fields_printed_expr = exp_of_list _loc (List.map print_one_field (remove_dummy_fields record.fields)) in
   let body =
@@ -497,23 +497,26 @@ let mk_record_print_fun _loc record =
 	    (String.concat "" fields_printed) ^
 	    indent ^ "}\\n" >>
   in
-  <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ record.rname)$ indent name $pat_lid _loc record.rname$ = $exp:body$ >> $ >>
+  <:str_item< value $mk_multiple_args_fun _loc ("print_" ^ record.rname) [record.rname]
+    ~optargs:(["indent", exp_str _loc ""; "name", exp_str _loc record.rname]) body$ >>
 
 let mk_union_print_fun _loc union =
   let mk_case = function
     | _loc, _, c, FT_Empty ->
-      <:match_case< $pat_uid _loc c$ -> PrintingEngine.print_binstring indent name "" >>
+      <:match_case< $pat_uid _loc c$ -> PrintingEngine.print_binstring ~indent:indent ~name:name "" >>
     | _loc, _, c, t ->
-      <:match_case< ( $pat_uid _loc c$ $pat_lid _loc "x"$ ) -> $ <:expr< $print_fun_of_field_type _loc t$ indent name x >> $ >>
+      <:match_case< ( $pat_uid _loc c$ $pat_lid _loc "x"$ ) ->
+                    $ <:expr< $print_fun_of_field_type _loc t$ ~indent:indent ~name:name x >> $ >>
   in
   let last_case =
     <:match_case< ( $pat_uid _loc union.unparsed_constr$ $pat_lid _loc "x"$ ) ->
-                  $ <:expr< $print_fun_of_field_type _loc union.unparsed_type$ indent (name ^ "[Unparsed]") x >> $ >>
+                  $ <:expr< $print_fun_of_field_type _loc union.unparsed_type$
+                                  ~indent:indent ~name:(name ^ "[Unparsed]") x >> $ >>
   in
   let cases = (List.map mk_case (keep_unique_cons union))@[last_case] in
   let body = <:expr< fun [ $list:cases$ ] >> in
-  <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ union.uname)$ indent name = $exp:body$ >> $ >>
-
+  <:str_item< value $mk_multiple_args_fun _loc ("print_" ^ union.uname) []
+    ~optargs:(["indent", exp_str _loc ""; "name", exp_str _loc union.uname]) body$ >>
 
  
 EXTEND Gram

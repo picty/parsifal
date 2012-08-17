@@ -16,6 +16,7 @@ let lid_of_ident = function
 
 let pat_lid _loc name = <:patt< $lid:name$ >>
 let pat_uid _loc name = <:patt< $uid:name$ >>
+let exp_str _loc s = <:expr< $str:s$ >>
 let exp_lid _loc name = <:expr< $lid:name$ >>
 let exp_uid _loc name = <:expr< $uid:name$ >>
 let ctyp_uid _loc name = <:ctyp< $uid:name$ >>
@@ -23,6 +24,18 @@ let ctyp_uid _loc name = <:ctyp< $uid:name$ >>
 let exp_qname _loc m n = match m with
   | None -> <:expr< $lid:n$ >>
   | Some module_name -> <:expr< $uid:module_name$.$lid:n$ >>
+
+let mk_multiple_args_fun _loc fname argnames ?optargs:(optargnames=[]) body =
+  let rec _mk_multiple_args_fun = function
+    | [] -> body
+    | arg::r -> <:expr< fun $pat:pat_lid _loc arg$ -> $exp:_mk_multiple_args_fun r$ >>
+  in
+  let rec _mk_multiple_optargs_fun = function
+    | [] -> _mk_multiple_args_fun argnames
+    | (arg, e)::r -> <:expr< fun $pat:PaOlbi (_loc, arg, pat_lid _loc arg, e)$ -> $exp:_mk_multiple_optargs_fun r$ >>
+  in
+  <:binding< $pat:pat_lid _loc fname$ = $exp:_mk_multiple_optargs_fun optargnames$ >>
+
 
 
 (* Internal type definitions *)
@@ -180,8 +193,12 @@ let mk_parse_dump_print_funs _loc enum =
 	  $exp: <:expr< $df$ ($ioe$ v) >> $ >> $ >>
     end else <:str_item< >>
 
-  and print_fun = <:str_item< value $ <:binding< $pat:pat_lid _loc ("print_" ^ enum.name)$ =
-    $exp: <:expr< PrintingEngine.print_enum $soe$ $ioe$ $int:string_of_int (enum.size / 4)$ >> $ >> $ >>
+  and print_fun =
+    <:str_item< value $mk_multiple_args_fun _loc ("print_" ^ enum.name) []
+                       ~optargs:(["indent", exp_str _loc ""; "name", exp_str _loc enum.name])
+                       <:expr< PrintingEngine.print_enum $soe$ $ioe$ $int:string_of_int (enum.size / 4)$
+                                                         ~indent:indent ~name:name >>
+                      $ >>
 
   in parse_fun, lwt_parse_fun, dump_fun, print_fun
 

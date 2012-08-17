@@ -7,7 +7,6 @@ v0.1 (oct. 2012)
  - Camlp4
    * Put preprocess files in a separate directory and produce a real camlp4 syntax package
    * Write mk_asn1_struct.ml
-   * Swith ident and name arguments of print_* to optional args
  - MRT
    * document rfc4271, rfc6396, rfc4760 et http://www.iana.org/assignments/bgp-parameters/bgp-parameters.xml
    * document file samples at http://data.ris.ripe.net/rrc00/

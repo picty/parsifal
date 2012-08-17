@@ -97,7 +97,7 @@ let rec handle_one_file input =
       | All ->
 	let records, _, error = parse_all_records answer in
 	print_endline ip;
-	List.iter (fun r -> print_endline (print_tls_record "  " "TLS Record" r)) records;
+	List.iter (fun r -> print_endline (print_tls_record r)) records;
 	if error then print_endline "  ERROR";
 	return ()
       | Suite ->

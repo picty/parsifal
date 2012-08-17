@@ -35,7 +35,7 @@ let check_server_version ctx v =
 	     (int_of_tls_version v < int_of_tls_version max))
   then raise (TLS_AlertToSend (AT_ProtocolVersion,
 	        Printf.sprintf "A version between %s and %s was expected"
-		  (print_tls_version "" "" min) (print_tls_version "" "" max)))
+		  (print_tls_version min) (print_tls_version max)))
 
 let check_ciphersuite ctx cs =
   if  not (List.mem cs ctx.future.ciphersuites_proposed)

@@ -30,7 +30,7 @@ let dump_ip_prefix = function
   | IPv4Prefix (s, l)
   | IPv6Prefix (s, l) -> (DumpingEngine.dump_uint8 l) ^ s
 
-let print_ip_prefix ident n ip_prefix =
+let print_ip_prefix ?indent:(indent="") ?name:(n="ip_prefix") ip_prefix =
   let a, len = match ip_prefix with
     | IPv4Prefix (s, prefix_length) ->
       let l = (prefix_length + 7) / 8 in
@@ -38,7 +38,7 @@ let print_ip_prefix ident n ip_prefix =
     | IPv6Prefix (s, prefix_length) ->
       let l = (prefix_length + 7) / 8 in
       PrintingEngine.string_of_ipv6 (s ^ (String.make (16 - l) '\x00')), prefix_length
-  in Printf.sprintf "%s%s: %s/%d\n" ident n a len
+  in Printf.sprintf "%s%s: %s/%d\n" indent n a len
 
 
 
@@ -63,10 +63,10 @@ let dump_bgp_attribute_len (extended, v) =
   if extended
   then DumpingEngine.dump_uint16 v
   else DumpingEngine.dump_uint8 v
-let print_bgp_attribute_len ident name (extended, v) =
+let print_bgp_attribute_len ?indent:(indent="") ?name:(name="bgp_attribute_len") (extended, v) =
   if extended
-  then PrintingEngine.print_uint16 ident name v
-  else PrintingEngine.print_uint8 ident name v
+  then PrintingEngine.print_uint16 ~indent:indent ~name:name v
+  else PrintingEngine.print_uint8 ~indent:indent ~name:name v
 
 
 enum bgp_attribute_type (8, UnknownVal UnknownBGPAttributeType, []) =
@@ -175,7 +175,8 @@ let parse_bgp_message_marker input =
     | "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff" -> ()
     | _ -> raise (Failure "Marker is not valid !")
 let dump_bgp_message_marker () = String.make 16 '\xff'
-let print_bgp_message_marker ident name () = PrintingEngine.print_binstring ident name ""
+let print_bgp_message_marker ?indent:(indent="") ?name:(name="bgp_marker") () =
+  PrintingEngine.print_binstring ~indent:indent ~name:name ""
 
 struct bgp_message [param ipa_type; param as_size] = {
   bgp_message_marker : bgp_message_marker;

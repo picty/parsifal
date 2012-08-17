@@ -26,7 +26,7 @@ let write_record o record =
 
 let rec print_msgs i =
   lwt_parse_tls_record None i >>= fun record ->
-  print_string (print_tls_record "" "Record" record);
+  print_string (print_tls_record record);
   print_msgs i
 
 let expect_clienthello s =

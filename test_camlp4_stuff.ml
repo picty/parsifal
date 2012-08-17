@@ -21,7 +21,7 @@ struct st [top] = {
 
 let test_st s =
   try
-    print_endline (print_st "" "Structure" (exact_parse_st (ParsingEngine.input_of_string "" s)))
+    print_endline (print_st (exact_parse_st (ParsingEngine.input_of_string "" s)))
   with ParsingEngine.ParsingException (e, i) ->
     ParsingEngine.emit_parsing_exception false e i
 

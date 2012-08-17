@@ -39,7 +39,7 @@ let input_of_filename filename =
 
 let rec handle_input input =
   lwt_parse_mrt_message input >>= fun mrt_msg ->
-  if not !silent then print_endline (print_mrt_message "" "Message" mrt_msg);
+  if not !silent then print_endline (print_mrt_message mrt_msg);
   handle_input input
 
 

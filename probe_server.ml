@@ -158,7 +158,7 @@ let handle_answer handle_hs handle_alert s =
 
 
 let print_hs ctx hs =
-  print_endline (print_handshake_msg "" "Handshake (S->C)" hs);
+  print_endline (print_handshake_msg ~name:"Handshake (S->C)" hs);
   match hs.handshake_type, hs.handshake_content with
   | HT_ServerHelloDone, _ -> Result ()
   | _, ServerHello { ciphersuite = cs } ->
@@ -187,7 +187,7 @@ let stop_on_fatal_alert alert =
   else NothingSoFar
 
 let print_alert alert =
-  print_endline (print_tls_alert "" "Alert (S->C)" alert);
+  print_endline (print_tls_alert ~name:"Alert (S->C)" alert);
   if alert.alert_level = AL_Fatal
   then FatalAlert (string_of_tls_alert_type alert.alert_type)
   else NothingSoFar
@@ -200,7 +200,7 @@ let _send_and_receive hs_fun alert_fun =
   Util.client_socket ~timeout:(Some !timeout) !host !port >>= fun s ->
   if !verbose then Printf.fprintf Pervasives.stderr "Connected to %s:%d\n" !host !port;
   let ch = mk_client_hello None in
-  if !verbose then prerr_endline (print_tls_record "" "Sending Handshake (C->S)" ch);
+  if !verbose then prerr_endline (print_tls_record ~name:"Sending Handshake (C->S)" ch);
   send_plain_record s ch >>= fun () ->
   handle_answer hs_fun alert_fun (input_of_fd "Server" s)
 
