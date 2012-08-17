@@ -88,7 +88,6 @@ type field_len =
   | VarLen of string   (* name of the integer type used *)
   | Remaining
 
-(* TODO: Add options for lists (AtLeast, AtMost) and for options *)
 type field_type =
   | FT_Empty
   | FT_Char
@@ -293,7 +292,7 @@ let rec fun_of_field_type (prefix, module_prefix) _loc name t =
 
     | FT_List (ExprLen e, subtype) ->
       <:expr< $mk_pf "list"$ $e$
-              $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
+              $fun_of_field_type (prefix, module_prefix) _loc name subtype$ >>
     | FT_List (VarLen int_t, subtype) ->
       <:expr< $mk_pf "varlen_list"$ $exp_str _loc name$ $mk_pf int_t$
               $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
@@ -306,6 +305,7 @@ let rec fun_of_field_type (prefix, module_prefix) _loc name t =
     | FT_Container (VarLen int_t, subtype) ->
       <:expr< $mk_pf "varlen_container"$ $exp_str _loc name$ $mk_pf int_t$
               $fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype$ >>
+    (* TODO: the following case should never happen *)
     | FT_Container (Remaining, subtype) ->
       fun_of_field_type ("parse_", "ParsingEngine") _loc name subtype
 
@@ -555,7 +555,8 @@ EXTEND Gram
   ]];
 
   str_item: [[
-    "struct"; record_name = ident; opts = option_list; "="; "{"; fields = LIST1 field_desc SEP ";"; "}" ->
+    "struct"; record_name = ident; opts = option_list; "=";
+             "{"; fields = LIST1 field_desc SEP ";"; OPT [ ";" -> () ]; "}" ->
       let record = mk_record_desc (lid_of_ident record_name) fields opts in
       let si1 = mk_record_type _loc record
       and si2 = mk_record_parse_fun _loc record

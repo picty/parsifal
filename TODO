@@ -93,6 +93,7 @@ v0.2 (feb. 2013)
  - General
    * Sort all the files present in AceSL-hg and co.
    * Make directories (asn1, tls, baseEngines, .generated)
+   * Think about the exception system (fatal or not)
  - Software Engineering
    * Write some tests (unit tests, non-regression, etc.)
    * Write .mli files
