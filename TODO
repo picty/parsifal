@@ -103,6 +103,7 @@ v0.2 (feb. 2013)
    * Add new primitive types (IPv4, IPv6, int32, int64, etc.)
    * Add a way to access to fields with a "language" (from the command line: tls_record.record_content.handshake_type -> string option)
    * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
+   * Change the meaning of the ?enrich param: it could be: No, Yes, RecursiveYes (all the way, n steps) or Default (i.e. use the reference)
  - X509
    * Add support for CSR
    * OCSP and CRL parsers

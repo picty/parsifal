@@ -107,13 +107,26 @@ struct bgp_aggregator [param as_size] = {
   agg_ip : ipv4
 }
 
-struct bgp_reach_nlri = {
+
+struct bgp_reach_nlri_full = {
   rn_afi : address_family_identifier;
   rn_safi : subsequent_address_family_identifier;
   rn_next_hop : container[uint8] of list of (ip_address(_rn_afi));
   rn_reserved : uint8;
   rn_nlri : list of ip_prefix(_rn_afi)
 }  
+
+
+(* TODO: clean that by using a union with [parse_fun_name=] and a custom no_parse function *)
+union bgp_reach_nlri (UnparsedNLRI, [exhaustive]) =
+  | true -> FullNLRI of bgp_reach_nlri_full
+  | false -> AbbreviatedNLRI of container[uint8] of list of (ip_address(AFI_IPv6))
+
+(* The use of masking is ugly... *)
+let parse_bgp_reach_nlri input =
+  let afi = ParsingEngine.peek_uint16 input in
+  parse_bgp_reach_nlri (afi = 1 || afi = 2) input
+
 
 struct bgp_unreach_nlri = {
   un_afi : address_family_identifier;

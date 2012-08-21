@@ -29,9 +29,14 @@ let action = ref PrettyPrint
 
 let set_action v = TrivialFun (fun () -> action := v)
 
-let set_raw () =
-  enrich_mrt_message_content := false;
-  enrich_mrt_subtype := false
+(* PrettyPrint options *)
+type pretty_mode =
+  | StandardMode
+  | RawMode
+  | SafeMode
+let pretty_mode = ref StandardMode
+
+let set_mode m = TrivialFun (fun () -> pretty_mode := m)
 
 (* ObsDump options *)
 let do_degrees = ref false
@@ -62,13 +67,14 @@ let options = [
   mkopt (Some 'h') "help" Usage "show this help";
 
   mkopt None "pretty" (set_action PrettyPrint) "simply display message";
-  mkopt (Some 'r') "raw" (TrivialFun set_raw) "do not parse in depth the MRT messages";
+  mkopt None "raw" (set_mode RawMode) "do not parse in depth the MRT messages (in pretty mode)";
+  mkopt None "safe" (set_mode SafeMode) "activate safe mode (in pretty mode)";
 
   mkopt None "silent" (set_action JustParse) "silent mode";
 
   mkopt None "obsdump" (set_action ObsDump) "obsdump mode";
-  mkopt (Some 'A') "add-asn" (IntFun add_asn) "add an ASN to watch";
-  mkopt (Some 'a') "add-asn-file" (StringFun add_asn_file) "add the ASN present in the file to watch"
+  mkopt (Some 'W') "watch-asn" (IntFun add_asn) "add an ASN to watch";
+  mkopt None "degrees" (StringFun add_asn_file) "watch the ASN listed in the file given"
 ]
 
 let getopt_params = {
@@ -192,7 +198,7 @@ let print_prefixes str = function
 
 let print_reach_nlri = function
   | { attr_type = MP_REACH_NLRI;
-      attr_content = BAC_MPReachNLRI { rn_afi = AFI_IPv6; rn_nlri = prefixes} } ->
+      attr_content = BAC_MPReachNLRI (FullNLRI { rn_afi = AFI_IPv6; rn_nlri = prefixes }) } ->
     List.iter (print_prefixes "A") prefixes
   | { attr_type = MP_UNREACH_NLRI;
       attr_content = BAC_MPUnreachNLRI { un_afi = AFI_IPv6; un_withdrawn_routes = prefixes} } ->
@@ -251,16 +257,43 @@ let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
   return (input_of_fd filename fd)
 
-let rec handle_input input =
-  lwt_parse_mrt_message input >>= fun mrt_msg ->
-  begin
-    match !action with
-      | JustParse -> ()
-      | PrettyPrint -> print_endline (print_mrt_message mrt_msg)
-      | ObsDump -> obsdump mrt_msg
-  end;
-  handle_input input
 
+let rec just_parse input =
+  lwt_parse_mrt_message input >>= fun _mrt_msg ->
+  just_parse input
+
+let rec pretty_parse input =
+  lwt_parse_mrt_message input >>= fun mrt_msg ->
+  let real_msg = match !pretty_mode with
+    | SafeMode ->
+      enrich_mrt_message_content := true;
+      enrich_mrt_subtype := true;
+      let res =
+	try parse_mrt_message (input_of_string "" (dump_mrt_message mrt_msg))
+	with _ -> mrt_msg
+      in
+      enrich_mrt_message_content := false;
+      enrich_mrt_subtype := false;
+      res
+    | _ -> mrt_msg
+  in print_endline (print_mrt_message real_msg);
+  pretty_parse input
+
+let rec obsdump_parse input =
+  lwt_parse_mrt_message input >>= fun mrt_msg ->
+  obsdump mrt_msg;
+  obsdump_parse input
+
+
+let handle_input input =
+  match !action, !pretty_mode with
+    | PrettyPrint, (SafeMode | RawMode) ->
+      enrich_mrt_message_content := false;
+      enrich_mrt_subtype := false;
+      pretty_parse input
+    | PrettyPrint, _ -> pretty_parse input
+    | ObsDump, _ -> obsdump_parse input
+    | JustParse, _ -> just_parse input
 
 let _ =
   let args = parse_args getopt_params Sys.argv in
