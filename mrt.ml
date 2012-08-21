@@ -30,7 +30,7 @@ let dump_ip_prefix = function
   | IPv4Prefix (s, l)
   | IPv6Prefix (s, l) -> (DumpingEngine.dump_uint8 l) ^ s
 
-let print_ip_prefix ?indent:(indent="") ?name:(n="ip_prefix") ip_prefix =
+let string_of_ip_prefix ip_prefix =
   let a, len = match ip_prefix with
     | IPv4Prefix (s, prefix_length) ->
       let l = (prefix_length + 7) / 8 in
@@ -38,7 +38,10 @@ let print_ip_prefix ?indent:(indent="") ?name:(n="ip_prefix") ip_prefix =
     | IPv6Prefix (s, prefix_length) ->
       let l = (prefix_length + 7) / 8 in
       PrintingEngine.string_of_ipv6 (s ^ (String.make (16 - l) '\x00')), prefix_length
-  in Printf.sprintf "%s%s: %s/%d\n" indent n a len
+  in Printf.sprintf "%s/%d" a len
+
+let print_ip_prefix ?indent:(indent="") ?name:(n="ip_prefix") ip_prefix =
+  Printf.sprintf "%s%s: %s\n" indent n (string_of_ip_prefix ip_prefix)
 
 
 
@@ -342,16 +345,9 @@ union mrt_message_content (UnparsedMRTMessage, [enrich]) =
 (* TODO: Some types/subtypes are not parsed deeply for the moment *)
 
 
-let default_check_function typ subtyp input = ()
-let parse_check_function = ref default_check_function
-
-let default_lwt_check_function typ subtyp input = Lwt.return ()
-let lwt_parse_check_function = ref default_lwt_check_function
-
 struct mrt_message [top] = {
   mrt_timestamp : uint32;
   mrt_type : mrt_type;
   mrt_subtype : mrt_subtype(_mrt_type);
-  mrt_checkpoint : checkref of check_function(_mrt_type; _mrt_subtype);
   mrt_message : container[uint32] of mrt_message_content(_mrt_type, _mrt_subtype)
 }

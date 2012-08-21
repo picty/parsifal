@@ -4,6 +4,8 @@ v0.1 (oct. 2012)
    * have a bugzilla to put all this stuff
    * add Pollux' MakefileV6
    * write quick functions to open and read files with lwt_parse funs
+ - ParsingEngine...
+   * be more cautious about int32 types...
  - Camlp4
    * Put preprocess files in a separate directory and produce a real camlp4 syntax package
    * Write mk_asn1_struct.ml
