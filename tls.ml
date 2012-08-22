@@ -35,7 +35,19 @@ union hello_extension_content (Unparsed_HelloExtension, [enrich; param direction
   | HE_ClientCertificateURL -> ClientCertificateURL
   (* TODO | HE_TrustedCAKeys -> TrustedCAKeys of ? *)
   | HE_TruncatedMAC -> TruncatedMAC
-  (* TODO: describe the other extensions! *)
+  (* TODO | HE_StatusRequest -> StatusRequest of ? *)
+  (* TODO | HE_UserMapping -> UserMapping of ? *)
+  (* TODO | HE_ClientAuthz -> ClientAuthz of ? *)
+  (* TODO | HE_ServerAuthz -> ServerAuthz of ? *)
+  (* TODO | HE_CertType -> CertType of ? *)
+  | HE_EllipticCurves -> EllipticCurves of (list[uint16] of ec_named_curve)
+  | HE_ECPointFormats -> ECPointFormats of (list[uint8] of ec_point_format)
+  (* TODO | HE_SRP -> SRPExtension of ? *)
+  (* TODO | HE_SignatureAlgorithms -> SignatureAlgorithms of ? *)
+  (* TODO | HE_UseSRTP -> UseSRTP of ? *)
+  | HE_Heartbeat -> HeartbeatExtension of heartbeat_mode
+  (* TODO | HE_SessionTicket -> SessionTicket of ? *)
+  (* TODO | HE_RenegotiationInfo -> RenegotiationInfo of ? *)
 
 struct hello_extension [param direction] = {
   extension_type : extension_type;
@@ -150,6 +162,12 @@ struct handshake_msg [param context] = {
   handshake_content : container[uint24] of handshake_content(context; _handshake_type)
 }
 
+struct heartbeat_msg = {
+  heartbeat_message_type : heartbeat_message_type;
+  heartbeat_payload : binstring[uint16];
+  heartbeat_padding : binstring
+(* TODO: RFC6520 The padding_length MUST be at least 16. *)
+}
 
 
 (* TLS record *)
@@ -159,6 +177,7 @@ union record_content (Unparsed_Record, [param context]) =
   | CT_Handshake -> Handshake of handshake_msg(context)
   | CT_ChangeCipherSpec -> ChangeCipherSpec of change_cipher_spec
   | CT_ApplicationData -> ApplicationData of binstring
+  | CT_Heartbeat -> Heartbeat of heartbeat_msg
 
 struct tls_record [top; param context] = {
   content_type : tls_content_type;

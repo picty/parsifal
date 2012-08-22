@@ -1,21 +1,12 @@
-(* TODO *)
-(* - EC Named Curve Registry *)
-(* - EC Point Format Registry *)
-(* - EC Curve Type Registry *)
-(* - TLS Supplemental Data Formats (SupplementalDataType) *)
-(* - TLS UserMappingType Values *)
-(* - TLS SignatureAlgorithm Registry *)
-(* - TLS Authorization Data Formats *)
-(* - Heartbeat Message Types *)
-(* - Heartbeat Modes *)
-(* - TLS Certificates *)
-
 enum tls_version (16, UnknownVal V_Unknown, [with_lwt]) =
   | 0x0002 -> V_SSLv2, "SSLv2"
   | 0x0300 -> V_SSLv3, "SSLv3"
   | 0x0301 -> V_TLSv1, "TLSv1.0"
   | 0x0302 -> V_TLSv1_1, "TLSv1.1"
   | 0x0303 -> V_TLSv1_2, "TLSv1.2"
+
+
+(* http://www.iana.org/assignments/tls-parameters/tls-parameters.xml *)
 
 enum tls_content_type (8, UnknownVal CT_Unknown, [with_lwt]) =
   | 0x14 -> CT_ChangeCipherSpec, "ChangeCipherSpec"
@@ -392,6 +383,101 @@ enum compression_method (8, UnknownVal CM_UnknownVal, []) =
   | 0 -> CM_Null, "Null"
   | 1 -> CM_Defalte, "Deflate"
 
+enum name_type (8, UnknownVal UnknownNameType, []) =
+  | 0 -> NT_HostName, "HostName"
+
+enum client_certificate_type (8, UnknownVal CCT_Unknown, []) =
+  | 1 -> CCT_RSASign, "RSASign"
+  | 2 -> CCT_DSSSign, "DSSSign"
+  | 3 -> CCT_RSAFixedDH, "RSAFixedDH"
+  | 4 -> CCT_DSSFixedDH, "DSSFixedDH"
+  | 5 -> CCT_RSAEphemeralDH, "RSAEphemeralDH"   (* RESERVED *)
+  | 6 -> CCT_DSSEphemeralDH, "DSSEphemeralDH"   (* RESERVED *)
+  | 20 -> CCT_FortezzaDMS, "FortezzaDMS"         (* RESERVED *)
+  | 64 -> CCT_ECDSASign, "ECDSASign"
+  | 65 -> CCT_RSAFixedECDH, "RSAFixedECDH"
+  | 66 -> CCT_ECDSAFixedECDH, "ECDSAFixedECDH"
+
+enum ec_named_curve (16, UnknownVal EC_Unknown, []) =
+  | 1 -> EC_sect163k1, "sect163k1"
+  | 2 -> EC_sect163r1, "sect163r1"
+  | 3 -> EC_sect163r2, "sect163r2"
+  | 4 -> EC_sect193r1, "sect193r1"
+  | 5 -> EC_sect193r2, "sect193r2"
+  | 6 -> EC_sect233k1, "sect233k1"
+  | 7 -> EC_sect233r1, "sect233r1"
+  | 8 -> EC_sect239k1, "sect239k1"
+  | 9 -> EC_sect283k1, "sect283k1"
+  | 10 -> EC_sect283r1, "sect283r1"
+  | 11 -> EC_sect409k1, "sect409k1"
+  | 12 -> EC_sect409r1, "sect409r1"
+  | 13 -> EC_sect571k1, "sect571k1"
+  | 14 -> EC_sect571r1, "sect571r1"
+  | 15 -> EC_secp160k1, "secp160k1"
+  | 16 -> EC_secp160r1, "secp160r1"
+  | 17 -> EC_secp160r2, "secp160r2"
+  | 18 -> EC_secp192k1, "secp192k1"
+  | 19 -> EC_secp192r1, "secp192r1"
+  | 20 -> EC_secp224k1, "secp224k1"
+  | 21 -> EC_secp224r1, "secp224r1"
+  | 22 -> EC_secp256k1, "secp256k1"
+  | 23 -> EC_secp256r1, "secp256r1"
+  | 24 -> EC_secp384r1, "secp384r1"
+  | 25 -> EC_secp521r1, "secp521r1"
+  | 65281 -> EC_ArbitraryExplicitPrimeCurves, "arbitrary_explicit_prime_curves"
+  | 65282 -> EC_ArbitraryExplicitChar2Curves, "arbitrary_explicit_char2_curves"
+
+enum ec_point_format (8, UnknownVal ECPF_Unknown, []) =
+  | 0 -> ECPF_Uncompressed, "Uncompressed"
+  | 1 -> ECPF_AnsiX962CompressedPrime, "AnsiX962CompressedPrime"
+  | 2 -> ECPF_AnsiX962CompressedChar2, "AnsiX962CompressedChar2"
+
+enum ec_curve_type (8, UnknownVal ECCT_Unknown, []) =
+  | 1 -> ECCT_ExplicitPrime, "ExplicitPrime"
+  | 2 -> ECCT_ExplicitChar2, "ExplicitChar2"
+  | 3 -> ECCT_NamedCurve, "NamedCurve"
+
+enum supplemental_data_format (16, UnknownVal UnknownSupplementalDataFormat, []) =
+  | 0 -> SDF_UserMappingData, "UserMappingData"
+  | 16386 -> SDF_AuthzData, "AuthzData"
+
+enum user_mapping_type (8, UnknownVal UnknownUserMappingType, []) =
+  | 64 -> UMT_UPNDomainHint, "IUPNDomainHint"
+
+enum signature_algorithm (8, UnknownVal SA_Unknown, []) =
+  | 0 -> SA_Anonymous, "Anonymous"
+  | 1 -> SA_RSA, "RSA"
+  | 2 -> SA_DSA, "DSA"
+  | 3 -> SA_ECDSA, "ECDSA"
+
+enum hash_algorithm (8, UnknownVal HA_Unknown, []) =
+  | 0 -> HA_None, "None"
+  | 1 -> HA_MD5, "MD5"
+  | 2 -> HA_SHA1, "SHA1"
+  | 3 -> HA_SHA224, "SHA224"
+  | 4 -> HA_SHA256, "SHA256"
+  | 5 -> HA_SHA384, "SHA384"
+  | 6 -> HA_SHA512, "SHA512"
+
+enum authorization_data_format (8, UnknownVal ADF_Unknown, []) =
+  | 0 -> ADF_X509AttrCert, "X509AttrCert"
+  | 1 -> ADF_SAMLAssertion, "SAMLAssertion"
+  | 2 -> ADF_X509AttrCertURL, "X509AttrCertURL"
+  | 3 -> ADF_SAMLAssertionURL, "SAMLAssertionURL"
+  | 64 -> ADF_KeynoteAssertionList, "KeynoteAssertionList"
+  | 65 -> ADF_KeynoteAssertionListURL, "KeynoteAssertionListURL"
+
+enum heartbeat_message_type (8, UnknownVal HMT_Unknown, []) =
+  | 1 -> HMT_HeartbeatRequest, "HeartbeatRequest"
+  | 2 -> HMT_HeartbeatResponse, "HeartbeatResponse"
+
+enum heartbeat_mode (8, UnknownVal HM_Unknown, []) =
+  | 1 -> HM_PeerAllowedToSend, "PeerAllowedToSend"
+  | 2 -> HM_PeerNotAllowedToSend, "PeerNotAllowedToSend"
+
+
+(* http://www.iana.org/assignments/tls-extensiontype-values *)
+
 enum extension_type (16, UnknownVal HE_Unknown, []) =
   | 0 -> HE_ServerName, "ServerName"
   | 1 -> HE_MaxFragmentLength, "MaxFragmentLength"
@@ -412,36 +498,9 @@ enum extension_type (16, UnknownVal HE_Unknown, []) =
   | 35 -> HE_SessionTicket, "SessionTicket"
   | 65281 -> HE_RenegotiationInfo, "RenegotiationInfo"
 
-enum name_type (8, UnknownVal UnknownNameType, []) =
-  | 0 -> NT_HostName, "HostName"
-
-enum client_certificate_type (8, UnknownVal CCT_Unknown, []) =
-  | 1 -> CCT_RSASign, "RSASign"
-  | 2 -> CCT_DSSSign, "DSSSign"
-  | 3 -> CCT_RSAFixedDH, "RSAFixedDH"
-  | 4 -> CCT_DSSFixedDH, "DSSFixedDH"
-  | 5 -> CCT_RSAEphemeralDH, "RSAEphemeralDH"   (* RESERVED *)
-  | 6 -> CCT_DSSEphemeralDH, "DSSEphemeralDH"   (* RESERVED *)
-  | 20 -> CCT_FortezzaDMS, "FortezzaDMS"         (* RESERVED *)
-  | 64 -> CCT_ECDSASign, "ECDSASign"
-  | 65 -> CCT_RSAFixedECDH, "RSAFixedECDH"
-  | 66 -> CCT_ECDSAFixedECDH, "ECDSAFixedECDH"
-
-enum hash_algorithm (8, UnknownVal HA_Unknown, []) =
-  | 0 -> HA_None, "None"
-  | 1 -> HA_MD5, "MD5"
-  | 2 -> HA_SHA1, "SHA1"
-  | 3 -> HA_SHA224, "SHA224"
-  | 4 -> HA_SHA256, "SHA256"
-  | 5 -> HA_SHA384, "SHA384"
-  | 6 -> HA_SHA512, "SHA512"
-
-enum signature_algorithm (8, UnknownVal SA_Unknown, []) =
-  | 0 -> SA_Anonymous, "Anonymous"
-  | 1 -> SA_RSA, "RSA"
-  | 2 -> SA_DSA, "DSA"
-  | 3 -> SA_ECDSA, "ECDSA"
-
+enum tls_certificate_type (8, UnknownVal TCT_Unknown, []) =
+  | 0 -> TCT_X509, "X.509"
+  | 1 -> TCT_OpenPGP, "OpenPGP"
 
 
 (* Internal types *)

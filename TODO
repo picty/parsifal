@@ -3,7 +3,6 @@ v0.1 (oct. 2012)
    * FIND A NAME TO THIS PROJECT (FAceSL sucks!)
    * have a bugzilla to put all this stuff
    * add Pollux' MakefileV6
-   * write quick functions to open and read files with lwt_parse funs
  - ParsingEngine...
    * be more cautious about int32 types...
  - Camlp4
@@ -14,8 +13,6 @@ v0.1 (oct. 2012)
    * document file samples at http://data.ris.ripe.net/rrc00/
  - Tls
    * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
-   * describe Heartbeat messages
-   * add all the missing enums
    * Add SSLv2 support in probe_server and other programs
  - TlsEngine
    * work on TlsEngine.update* functions
@@ -31,8 +28,6 @@ v0.1 (oct. 2012)
    * [?] add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
    * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
    * put 'a result_type and handle_answer logic from probe_server into TlsEngine
- - Binrecs
-   * add constraints on list
  - ASN.1
    * rewrite the preprocessor using camlp4
    * handle constraints, optional fields, choices
@@ -107,6 +102,8 @@ v0.2 (feb. 2013)
        -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
+ - Tls
+   * Implement missing extensions in Tls (TODO in tls.ml)
  - X509
    * Add support for CSR
    * OCSP and CRL parsers
