@@ -103,7 +103,10 @@ v0.2 (feb. 2013)
    * Add a way to access to fields with a "language" (from the command line: tls_record.record_content.handshake_type -> string option)
    * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
    * Change the meaning of the ?enrich param: it could be: No, Yes, RecursiveYes (all the way, n steps) or Default (i.e. use the reference)
-   * Add another optional-like decorator which would say (try_parse, or else get a binstring) -> MP_REACH_NLRI in Mrt.
+   * Add a "flexible" decorator in structures
+       -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)
+       -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
+       -> Apply it to MP_REACH_NLRI in Mrt.
  - X509
    * Add support for CSR
    * OCSP and CRL parsers

@@ -267,13 +267,11 @@ let rec pretty_parse input =
   let real_msg = match !pretty_mode with
     | SafeMode ->
       enrich_mrt_message_content := true;
-      enrich_mrt_subtype := true;
       let res =
 	try parse_mrt_message (input_of_string "" (dump_mrt_message mrt_msg))
 	with _ -> mrt_msg
       in
       enrich_mrt_message_content := false;
-      enrich_mrt_subtype := false;
       res
     | _ -> mrt_msg
   in print_endline (print_mrt_message real_msg);
@@ -289,7 +287,6 @@ let handle_input input =
   match !action, !pretty_mode with
     | PrettyPrint, (SafeMode | RawMode) ->
       enrich_mrt_message_content := false;
-      enrich_mrt_subtype := false;
       pretty_parse input
     | PrettyPrint, _ -> pretty_parse input
     | ObsDump, _ -> obsdump_parse input
