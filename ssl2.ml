@@ -128,7 +128,7 @@ type ssl2_record = {
   ssl2_long_header : bool;
   ssl2_is_escape : bool;
   ssl2_padding_length : int;
-  ssl2_content_length : int;
+  ssl2_total_length : int;
   ssl2_content : ssl2_content
 }
 
@@ -143,17 +143,19 @@ let parse_ssl2_record context input =
     { ssl2_long_header = false;
       ssl2_is_escape = false;
       ssl2_padding_length = 0;
-      ssl2_content_length = len;
+      ssl2_total_length = len;
       ssl2_content = parse_container name len parse_fun input }
   else begin
     let len = x land 0x3fff in
     let pad_len = parse_uint8 input in
-    let msg = parse_container name (len - pad_len) parse_fun input in
-    drop_bytes pad_len input;
+    let real_len = if context.cleartext then (len - pad_len) else len
+    and real_pad_len = if context.cleartext then pad_len else 0 in
+    let msg = parse_container name real_len parse_fun input in
+    drop_bytes real_pad_len input;
     { ssl2_long_header = true;
       ssl2_is_escape = (x land 0x4000) = 0x4000;
       ssl2_padding_length = pad_len;
-      ssl2_content_length = len - pad_len;
+      ssl2_total_length = len;
       ssl2_content = msg }
   end
 
@@ -167,27 +169,28 @@ let lwt_parse_ssl2_record context input =
     return { ssl2_long_header = false;
 	     ssl2_is_escape = false;
 	     ssl2_padding_length = 0;
-	     ssl2_content_length = len;
+	     ssl2_total_length = len;
 	     ssl2_content = content }
   end else begin
     let len = x land 0x3fff in
     lwt_parse_uint8 input >>= fun pad_len ->
-    lwt_parse_container name (len - pad_len) parse_fun input >>= fun content ->
-    lwt_drop_bytes pad_len input >>= fun _ ->
+    let real_len = if context.cleartext then (len - pad_len) else len
+    and real_pad_len = if context.cleartext then pad_len else 0 in
+    lwt_parse_container name real_len parse_fun input >>= fun content ->
+    lwt_drop_bytes real_pad_len input >>= fun _ ->
     return { ssl2_long_header = true;
       ssl2_is_escape = (x land 0x4000) = 0x4000;
       ssl2_padding_length = pad_len;
-      ssl2_content_length = len - pad_len;
+      ssl2_total_length = len;
       ssl2_content = content }
   end
 
 let dump_ssl2_record record =
   let hdr =
     if record.ssl2_long_header
-    then dump_uint16 (0x8000 lor (record.ssl2_content_length))
+    then dump_uint16 (0x8000 lor (record.ssl2_total_length))
     else begin
-      let len = record.ssl2_content_length + record.ssl2_padding_length in
-      (dump_uint16 (if record.ssl2_is_escape then 0x4000 lor len else len)) ^
+      (dump_uint16 (if record.ssl2_is_escape then 0x4000 lor record.ssl2_total_length else record.ssl2_total_length)) ^
 	(dump_uint8 record.ssl2_padding_length)
     end
   in
@@ -200,7 +203,7 @@ let print_ssl2_record ?indent:(indent="") ?name:(name="ssl2_record") record =
     [ print_string ~indent:new_indent ~name:"long" (string_of_bool record.ssl2_long_header);
       print_string ~indent:new_indent ~name:"escape" (string_of_bool record.ssl2_is_escape);
       print_uint8 ~indent:new_indent ~name:"padding_length" record.ssl2_padding_length;
-      print_uint16 ~indent:new_indent ~name:"content length" record.ssl2_content_length;
+      print_uint16 ~indent:new_indent ~name:"total length" record.ssl2_total_length;
       print_ssl2_content ~indent:new_indent ~name:"content" record.ssl2_content ]
   in
   indent ^ name ^ " {\n" ^ (String.concat "" fields_printed) ^ indent ^ "}\n"
