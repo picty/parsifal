@@ -116,6 +116,8 @@ struct bgp_reach_nlri_full = {
   rn_nlri : list of ip_prefix(_rn_afi)
 }  
 
+(* The abbreviated business is a hack to support some non-compiant files:
+   it should be taken into account with a try_parse and an optional-like parameter *)
 
 (* TODO: clean that by using a union with [parse_fun_name=] and a custom no_parse function *)
 union bgp_reach_nlri (UnparsedNLRI, [exhaustive]) =

@@ -1,13 +1,8 @@
 ASN1RECS = rSAKey.ml x509.ml
-SOURCES = asn1Engine.ml parsingEngine.ml lwtParsingEngine.ml dumpingEngine.ml printingEngine.ml \
-	$(ASN1RECS) \
-	common.ml x509Util.ml\
-	tlsUtil.ml \
-	test_answerDump.ml test_tls_record.ml test_rsa_private_key.ml test_x509.ml test_random.ml
 
 TEST_PROGRAMS = test_answerDump.native test_tls_record.native test_random.native \
                 test_pkcs1.native test_rsa_private_key.native test_x509.native \
-                test_camlp4_stuff.native test_mrt.native
+                test_camlp4_stuff.native test_mrt.native test_ssl2.native
 PROGRAMS = probe_server.native sslproxy.native serveranswer.native
 
 PREPROCESSORS = preprocess/mk_enums.cmo preprocess/mk_records.cmo
@@ -46,16 +41,6 @@ clean:
 
 
 # Specific dependencies
-tls.binrecs: _tlsContext.ml
-
-
-%.mk_binrecs.ml: common.ml preprocess/mk_binrecs.ml %.binrecs
-	cat $^ > $@
-
-%.ml: %.mk_binrecs.ml
-	ocaml $< > $@
-
-
 %.mk_asn1.ml: common.ml preprocess/mk_asn1.ml %.asn1
 	cat $^ > $@
 

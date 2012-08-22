@@ -128,6 +128,11 @@ let parse_char input =
     res
   end else raise (ParsingException (OutOfBounds, input))
 
+let peek_uint8 input =
+  if input.cur_offset < input.cur_length then begin
+    int_of_char (input.str.[input.cur_base + input.cur_offset])
+  end else raise (ParsingException (OutOfBounds, input))
+
 let parse_uint16 input =
   if input.cur_offset + 2 <= input.cur_length then begin
     let res =
