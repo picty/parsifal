@@ -4,19 +4,28 @@
  - TLS RFCs
    * TLS v1.2 : rfc5246
    * TLS v1.1 : rfc4346
-   * TLS Extensions : rfc{4366,6066}
+   * TLS v1.0 : rfc2246
+   * TLS Extensions : rfc{3546,4366,6066}
    * TLS Compression methods : rfc3749
-   * PSK Cipher Suites for TLS : rfc4279
-   * ECC Cipher Suites for TLS : rfc4492
-   * Camellia : rfc6367
+   * TLS Supplemental Data : rfc4680
+   * Million Message Attack : rfc3218.txt
+   * SEED : rfc4162
+   * DES/IDEA : rfc5469
+   * GCM : rfc5288
+   * PSK Cipher Suites for TLS : rfc{4279,5487,5489}
+   * KRB : rfc2712
+   * SRP : rfc5054
+   * ECC Cipher Suites for TLS : rfc{4492,5289}
+   * Camellia : rfc{5932,6367}
+   * ARIA : rfc6209
    * PKCS#1.5 : rfc3447
    * HMAC : rfc2104
    * OCSP : rfc2560
-   * X509 : rfc{3280,5280,3279,4055}
+   * X509 : rfc{3280,5280,3039,3279,3739,4055}
    * SSLv3 : http://www.mozilla.org/projects/security/pki/nss/ssl/draft302.txt, rfc 6101
    * SSLv2 : http://www.mozilla.org/projects/security/pki/nss/ssl/draft02.html
    * PGP : rfc6091
    * DTLS : rfc{4347,6347}
-   * Renégo sécurisée : rfc5746
-   * Heartbeat : rfc5620
- - SSH RFCs : 4250 à 4255
+   * Secure renegotiation : rfc5746
+   * Heartbeat : rfc6520
+   * Session Ticket : rfc4507

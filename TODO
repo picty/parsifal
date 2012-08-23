@@ -8,9 +8,6 @@ v0.1 (oct. 2012)
  - Camlp4
    * Put preprocess files in a separate directory and produce a real camlp4 syntax package
    * Write mk_asn1_struct.ml
- - MRT
-   * document rfc4271, rfc6396, rfc4760 et http://www.iana.org/assignments/bgp-parameters/bgp-parameters.xml
-   * document file samples at http://data.ris.ripe.net/rrc00/
  - Tls
    * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
    * Add SSLv2 support in probe_server and other programs
