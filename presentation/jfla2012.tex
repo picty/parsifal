@@ -1,0 +1,478 @@
+% Functional
+
+% New Ocaml Parser  Preprocessor
+
+% Binary
+% Parser
+% Generator
+
+% Preprocessor
+
+% Universal
+
+
+\documentclass{article}
+\usepackage[latin1]{inputenc}
+\usepackage[french]{babel}
+\usepackage{array}
+\usepackage{listings}
+\lstset{language=Caml}
+ 
+\usepackage{xcolor}
+\newcommand{\TODO}[1]{\textcolor{red}{#1}}
+
+\title{Utilisation de \texttt{camlp4} pour l'écriture rapide de \emph{parsers}}
+\author{Olivier Levillain}
+
+\begin{document}
+
+\maketitle
+
+Dans le cadre de ses activités d'expertise, le laboratoire sécurité
+des réseaux et protocoles (LRP) de l'agence nationale de la sécurité
+des systèmes d'information (ANSSI) est amené à étudier divers
+protocoles de communication. L'étude fine de ces protocoles passe par
+l'utilisation de \emph{parsers} (dissecteurs) de confiance permettant
+d'analyser les messages échangés lors d'une instance du protocole.
+
+L'expérience a montré qu'il était souvent utile (voire nécessaire) de
+disposer d'implémentations indépendantes et robustes pour étudier et
+comprendre les comportements d'un protocole donné, en particulier pour
+détecter et caractériser les messages incorrects. En effet, les
+implémentations disponibles de clients, serveurs ou dissecteurs sont
+parfois limitées (refus de certaines options), laxistes (accetation
+silencieuse de paramètres erronés) ou fragile (terminaison brutale du
+programme pour des valeurs inattendues, qu'elles soient licites ou
+non).
+
+Ce constat a donc conduit au développement de certains outils par les
+membres du laboratoire. L'objectif était de développer
+\emph{rapidement} des dissecteurs \emph{robustes} et
+\emph{efficaces}. Pour cela, plusieurs langages de programmation ont
+été testés (C++, python, OCaml). L'objet de ce document est de
+présenter l'une de ces implémentations, reposant sur le pré-processeur
+\texttt{camlp4} d'OCaml.
+
+
+\section{Contexte}
+
+Le point de départ de ces travaux était l'analyse d'une quantité
+importante de données récoltées concernant le protocole TLS. Ces
+données proviennent de résultats mis à dispositions par l'Electronic
+Frontier Foundation (EFF) et de collectes effectuées par Télécom
+SudParis et l'ANSSI. Les traces analysées contiennent une très grande
+diversité de réponses, et certaines sont incohérentes ou non conformes
+au protocole TLS.
+
+Face à cet imposant corpus, il était difficile d'utiliser des outils
+existants pour extraire de manière fiable l'information pertinente
+pour les analyses. Dans le cas de TLS, l'objectif était d'effectuer un
+état des lieux de la qualité des serveurs TLS dans le monde, et son
+évolution dans le temps. Ces travaux ont fait l'objet d'une
+publication à venir à ACSAC~\cite{ACSAC2012}.
+
+Le premier \emph{parser} pour cette tâche a été écrit en Python,
+permettant d'obtenir rapidement un prototype pour extraire les
+premiers éléments des données. Cependant, ce premier programme s'est
+révélé trop lent face au volume de données à traiter. Une seconde
+implémentation a donc vu le jour, en C++. Celle-ci reposait sur les
+\emph{templates} et la programmation objet, et permettait d'obtenir un
+dissecteur flexible et efficace, mais au prix d'une grande quantité de
+code à écrire et d'erreurs de programmation pas toujours évidentes à
+diagnostiquer (fuites mémoire, erreurs de segmentation).
+
+Pour pallier ce manque de robustesse, une troisième version des outils
+a été entreprise, en OCaml. Afin de conserver la flexibilité imaginée
+pour le second prototype, un langage spécifique a été développé pour
+décrire les structures à disséquer. Les outils résultants étaient
+expressifs, efficaces et plus fiables que la version
+précédente. Pourtant, l'extensibilité de cette implémentation
+nécessitait encore une lourdeur dans l'écriture du code qui s'est
+révélée assez fastidieuse à l'usage.
+
+Finalement, une nouvelle implémentation en OCaml a été réalisée pour
+tenter de réunir l'ensemble des qualités recherchées pour le
+développement de \emph{parsers}:
+\begin{itemize}
+\item rapidité d'écriture;
+\item garanties fortes sur le fonctionnement des outils;
+\item efficacité des programmes produits.
+\end{itemize}
+Cette quatrième mouture, \TODO{FAceSL}, résulte de la fusion entre le
+langage spécifique de description des objets analysés et le langage de
+programmation. Pour cela, le processeur \texttt{camlp4} a été employé
+pour la génération automatique des types et des fonctions à partir de
+descriptions brèves des structures à disséquer.
+
+
+\section{Présentation de \TODO{FAceSL}}
+
+\subsection{Un premier exempe: le format TAR}
+
+L'en-tête du format TAR est décrit dans le
+tableau~\ref{tab:tar-format}, et décrit deux versions du format: le
+format original (TAR) et une variante plus récente
+(\texttt{ustar}). Pour des raisons de compatibilité, les valeurs
+numériques sont systématiquement stockées sous la forme d'une chaîne
+de caractère représentant la valeur numérique en octal\footnote{Cette
+  méthode permet d'éviter de tomber dans les pièges de
+  l'\emph{endianness} par exemple, mais au prix d'une plus grande
+  consommation mémoire.}. L'en-tête est contenu dans un «~bloc~» de
+512~octets, et le contenu du fichier qui suit l'en-tête est complété
+par des caractères nuls pour former des blocs de 512~octets.
+
+\begin{table}
+  \begin{center}
+    \begin{tabular}{|r|r|l|l|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Offset} &
+      \multicolumn{1}{c|}{\bf Long.} &
+      \multicolumn{2}{c|}{\bf Description} \\
+      & & \multicolumn{1}{c|}{\bf TAR} &
+      \multicolumn{1}{c|}{\bf \tt ustar} \\
+      \hline
+
+      \hline
+        0 & 100 & \multicolumn{2}{l|}{Nom du fichier} \\
+      \hline
+      100 &   8 & \multicolumn{2}{l|}{Permissions} \\
+      \hline
+      108 &   8 & \multicolumn{2}{l|}{UID} \\
+      \hline
+      116 &   8 & \multicolumn{2}{l|}{GID} \\
+      \hline
+      124 &  12 & \multicolumn{2}{l|}{Taille du fichier} \\
+      \hline
+      136 &  12 & \multicolumn{2}{l|}{\emph{Timestamp} de la dernière modification} \\
+      \hline
+      148 &   8 & \multicolumn{2}{l|}{Somme de contrôle de l'en-tête} \\
+      \hline
+      156 &   1 & Indicateur de lien & Type de fichier \\
+      \hline
+      157 & 100 & \multicolumn{2}{l|}{Nom du fichier pointé par le lien} \\
+      \hline
+      257 &   6	& \multicolumn{1}{c|}{-} & Indicateur \texttt{"ustar"} \\
+      \hline
+      263 &   2	& \multicolumn{1}{c|}{-} & Version UStar ("00") \\
+      \hline
+      265 &  32 & \multicolumn{1}{c|}{-} & Propriétaire \\
+      \hline
+      297 &  32 & \multicolumn{1}{c|}{-} & Groupe propriétaire \\
+      \hline
+      329 &   8 & \multicolumn{1}{c|}{-} & Numéro majeur du périphérique \\
+      \hline
+      337 &   8 & \multicolumn{1}{c|}{-} & Numéro mineur du périphérique \\
+      \hline
+      345 & 155 & \multicolumn{1}{c|}{-} & Préfixe \\
+      \hline
+    \end{tabular}
+  \end{center}
+
+  \caption{Description de l'en-tête TAR.}
+  \label{tab:tar-format}
+\end{table}
+
+Le champ à l'offset~156 décrit le type de fichier, et a été étendu par
+\texttt{ustar}. La table \ref{tab:tar-filetypes} récapitule les
+différentes valeurs qu'il peut prendre.
+
+\begin{table}
+  \begin{center}
+    \begin{tabular}{|>{\tt}c|l|c|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Caractère} &
+      \multicolumn{1}{c|}{\bf Description} &
+      \multicolumn{1}{c|}{\bf \tt ustar} \\
+      \hline
+
+      \hline
+      <NUL>, 0 & fichier ordinaire & - \\
+      1 & lien dur & - \\
+      2 & lien symbolique & - \\
+      \hline
+      3 & périphérique en mode caractères & oui \\
+      4 & périphérique en mode blocs & oui \\
+      5 & répertoire & oui \\
+      6 & file FIFO & oui \\
+      7 & fichier contigu & oui \\
+      \hline
+    \end{tabular}
+  \end{center}
+
+  \caption{Valeurs du champ «~Indicateur de lien/Type de fichier~».
+    La colonne \texttt{ustar} indique si la valeur est spécifique à
+    la version étendue du format.}
+  \label{tab:tar-filetypes}
+\end{table}
+
+
+Afin d'utiliser notre préprocesseur pour décrire les fichiers au
+format TAR, commençons par décrire les valeurs du champ «~Indicateur
+de lien/Type de fichier~». Il s'agit d'une énumération sur 8~bits,
+dont nous connaissons certaines valeurs qui s'écrit avec le nouveau
+mot-clé \texttt{enum}. Si l'analyseur généré rencontre un type
+inconnu, il est possible d'utiliser un constructeur spécifique ou de
+lever une exception. Nous avons choisi le premier cas, avec le
+constructeur spécifique \texttt{UnknownFileType}:
+
+{\footnotesize
+\begin{lstlisting}
+enum file_type (8, UnknownVal UnknownFileType, []) =
+  | 0 -> NormalFile
+  | 0x30 -> NormalFile
+  | 0x31 -> HardLink
+  | 0x32 -> SymbolicLink
+  | 0x33 -> CharacterSpecial
+  | 0x34 -> BlockSpecial
+  | 0x35 -> Directory
+  | 0x36 -> FIFO
+  | 0x37 -> ContiguousFile
+\end{lstlisting}
+}
+
+Ensuite, on peut décrire l'enregistrement contenant les différents
+champs constituant d'un en-tête à l'aide du mot clé \texttt{struct},
+qui ressemble à la description d'un enregistrement Caml, mais qui
+accepte des types enrichis nommés \TODO{FAceSLTypes}:
+{\footnotesize
+\begin{lstlisting}
+struct tar_header = {
+  file_name : string(100);
+  file_mode : string(8);
+  owner_uid : string(8);
+  owner_gid : string(8);
+  file_size : string(12);
+  timestamp : string(12);
+  checksum  : string(8);
+  file_type : file_type;
+  linked_file : string(100);
+  ustar_magic : magic("ustar\x0000");
+  owner_user : string(32);
+  owner_group : string(32);
+  device_major : string(8);
+  device_minor : string(8);
+  filename_prefix : string(155);
+  hdr_padding : binstring(12);
+}
+
+struct tar_entry = {
+  header : tar_header;
+  file_content : binstring(header.file_size);
+  file_padding : binstring(512 - (header.file_size % 512))
+}
+
+alias tar_file = list of tar_entry;
+\end{lstlisting}
+}
+
+Ouvrir une archive se fait alors simplement à l'aide de la fonction
+\texttt{parse\_tar\_file}, qui prend en entier la chaîne de caractères
+correspondant au contenu du fichier. Afin de traiter des données
+importantes de manière efficace, il est également possible de produire
+une version du \emph{parser} en mode flux, qui repose sur la
+bibliothèque \texttt{lwt}. Pour cela, il suffit de redéfinir l'alias
+en lui adjoignant la et d'utiliser cette fois la fonction
+\texttt{lwt\_parse\_tar\_file}:
+{\footnotesize
+\begin{lstlisting}
+alias tar_file [lwt] = list of tar_entry;
+
+let handle_filename filename =
+  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd
+  lwt_parse_tar_file (input_of_fd filename fd) >>= fun tar_file
+  let print_filename entry = print_string entry.file_name in
+  List.iter print_filename tar_file;
+  return ()
+
+let _ =
+  Lwt_unix.run (handle_filename "test.tar");
+\end{lstlisting}
+}
+
+
+\subsection{Pour aller plus loin}
+
+La première version proposée est fonctionnelle, mais si l'on souhaite
+proprement prendre en compte les vieilles archives, ne contenant pas
+l'en-tête étendu commençant par le marqueur \texttt{ustar}, on peut
+réécrire la description de l'en-tête de la manière suivante, en
+éclatant l'en-tête en deux morceaux, dont un optionnel.
+{\footnotesize
+\begin{lstlisting}
+struct ustar_header = {
+  ustar_magic : magic("ustar\x0000");
+  owner_user : string(32);
+  owner_group : string(32);
+  device_major : string(8);
+  device_minor : string(8);
+  filename_prefix : string(155);
+}
+
+struct tar_header = {
+  file_name : string(100);
+  file_mode : string(8);
+  owner_uid : string(8);
+  owner_gid : string(8);
+  file_size : string(12);
+  timestamp : string(12);
+  checksum  : string(8);
+  file_type : file_type;
+  linked_file : string(100);
+  optional ustar_header : ustar_header;
+  hdr_padding : binstring;
+}
+
+struct tar_entry = {
+  header : container(512) of tar_header;
+  file_content : binstring(header.file_size);
+  file_padding : binstring(512 - (header.file_size % 512))
+  checksum_verification : check of crc32 (header, file_content, file_padding);
+}
+
+alias tar_file = list of tar_entry;
+\end{lstlisting}
+}
+
+Avec cette seconde version, on utilise un conteneur de 512 octets pour
+lire l'en-tête. Si l'en-tête est étendu, le champ
+\texttt{ustar\_header} sera peuplé et le champ \texttt{hdr\_padding},
+une chaîne binaire consommant les octets restants du conteneur,
+contiendra~12~octets; dans le cas contraire, la fonction
+\texttt{parse\_ustar\_header} échouera, le champ
+\texttt{ustar\_header} vaudra \texttt{None} et \texttt{hdr\_padding}
+aura une longueur de 255~octets.
+
+Le lecteur attentif aura également remarqué l'ajout d'un pseudo-champ
+\texttt{checksum\_verification}, qui permet d'exécuter une
+vérification de la somme de contrôle une fois l'entrée TAR entièrement
+disséquée. Cette ligne ne produit pas de champ dans le type
+\texttt{tar\_entry} généré. On pourrait utiliser ce type de champs
+pour vérifier d'autres propriétés (le champ \texttt{hdr\_padding} est
+par exemple censé ne contenir que des caractères nuls).
+
+Le format TAR faisant un usage important des chaînes de caractères
+encodant une valeur numérique, on pourrait aussi créer de toute pièce
+un nouveau type, \texttt{tar\_numstring}, de la manière
+suivante\footnote{Pour des raisons historiques, un champ de 8~octets
+  sera terminé par un espace ou un caractère nul, ne laissant ainsi en
+  pratique que 7~octets pour encoder la valeur.}:
+{\footnotesize
+\begin{lstlisting}
+type tar_numstring = int * int
+
+let parse_tar_numstring len input =
+  let octal_value = parse_string (len - 1) input in
+  drop_bytes 1 input;
+  int_of_string ("0o" ^ octal_value)
+
+let dump_tar_numstring len v =
+  Printf.printf "%*.*o\x00" len len v
+
+let print_tar_numstring ?indent:(indent="") ?name:(name="numstring") v =
+  Printf.sprintf "%s%s: %d (%o)\n" indent name v v
+\end{lstlisting}
+}
+
+Il est alors possible de remplacer le type du champ
+\texttt{owner\_uid}, \texttt{string(8)} par
+\texttt{tar\_numstring(8)}, et de faire de même pour l'ensemble des
+champs représentant des valeurs numériques en octal. L'expressivité de
+\TODO{FAceSL} peut ainsi être étendue facilement à l'aide de
+\TODO{FAceSLTypes} personnalisés.
+
+
+\section{Description des extensions du langage}
+
+\paragraph{}
+
+\begin{tabbing}
+  \textit{enumération} ::= \textbf{\tt enum} \= \textit{identifiant} (\textit{taille}, \textit{comportement}, \textit{options}) = \\
+  \> $\vert$ \textit{pattern} $\rightarrow$ \textit{Constructeur} [, \textit{texte}\footnote{Ce
+    texte sera renvoyé par \texttt{string\_of\_enum} pour cette valeur de l'énumération.
+    Si aucun texte n'est donné, le nom du constructeur sera utilisé.}] \\
+  \> ... \\
+  \> $\vert$ \textit{pattern} $\rightarrow$ \textit{Constructeur} [, \textit{texte}] \\
+  \\
+  \textbf{comportement} ::= \= $\vert$ \textbf{UnknownVal} \textit{Constructor} \\
+  \> $\vert$ \textbf{Exception} \textit{Exception} \\
+  \\
+  \textbf{option} \= ::= \textbf{lwt} \\
+\end{tabbing}
+
+enum (options, syntaxe, exemple)
+
+Description des types scalaires
+
+struct
+
+union
+
+alias
+
+
+Description des types ASN.1 de base
+
+asn1\_struct
+
+asn1\_alias
+
+
+\subsection{Quelques mots sur l'implémentation \texttt{camlp4}}
+
+Nb de lignes
+
+Disponibilité du package
+
+
+\section{Applications}
+
+\subsection{TLS et X.509}
+
+Le point de départ de ces travaux sur les \emph{parsers} était
+l'analyse de données TLS~\cite{rfc5246} contenant des certificats
+X.509~\cite{rfc5280} (structures ASN.1 encodées au format DER). Il
+s'agit donc logiquement de la première application concrète de
+\TODO{FAceSL}.
+
+nombre de lignes de code (nb pour les descriptions, nb pour la glu),
+quelques exemples de types (struct, etc.), efficacité, description des
+outils.
+
+\subsection{MRT}
+
+BGP est l'un des protocoles étudiés dans le laboratoire sécurité des
+réseaux et protocoles. Le format d'échange utilisé pour archiver et
+transmettre l'ensemble des annonces vues par une sonde est
+\emph{Multi-Threaded Routing Toolkit} (MRT)~\cite{rfc6396}.
+
+Là encore, deux outils étaient utilisés pour analyser une grande
+quantité de données au format MRT, le premier en C\footnote{Il est à
+  noter que cet outil en C se terminait parfois de manière brutale sur
+  certains fichiers sans aucune explication}, le second en OCaml. Il a
+suffi de 4 jours pour décrire en \TODO{FAceSL} les structures MRT
+pertinentes pour les études menées au laboratoire et obtenir un outil
+indépendant des deux autres, plus rapide que l'implémentation en OCaml
+pré-existante et plus fiable que l'implémentation en C.
+
+nb de lignes de code, tableau de comparaison de l'efficacité
+
+\subsection{Troisième application?}
+
+
+\section{Related work et perspectives}
+
+Les extensions du langage écrites en \texttt{camlp4} ressemblent à scapy / hachoir ?
+
+Intérêt de la solution retenue : peu de lignes, très expressif, robuste (typage), efficace!
+
+Impact d'OCaml 4 ?
+
+Autres parsers: DNS, pcap, etc.
+
+
+
+\bibliographystyle{plain}
+\bibliography{biblio,rfc}
+
+
+\end{document}

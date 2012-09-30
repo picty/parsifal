@@ -1,0 +1,222 @@
+% Définitions de SSL/TLS hors RFCs
+
+@inproceedings{RSA768,
+    hal_id = {inria-00444693},
+    url = {http://hal.inria.fr/inria-00444693},
+    title = {{Factorization of a 768-bit RSA modulus}},
+    author = {Kleinjung, Thorsten and Aoki, Kazumaro and Franke, Jens and Lenstra, K., Arjen and Thom{\'e}, Emmanuel and Bos, W., Joppe and Gaudry, Pierrick and Kruppa, Alexander and Montgomery, L., Peter and Osvik, Dag Arne and Te Riele, Herman and Timofeev, Andrey and Zimmermann, Paul},
+    abstract = {{This paper reports on the factorization of the 768-bit number RSA-768 by the number field sieve factoring method and discusses some implications for RSA.}},
+    keywords = {RSA ; number field sieve},
+    language = {English},
+    affiliation = {Laboratory for Cryptologic Algorithms - LACAL , NTT Information Sharing Platform Laboratories - ISL , Department of Mathematics - University of Bonn , CARAMEL - INRIA Nancy - Grand Est / LORIA , Microsoft Research , Scientific Computing and Control Theory - MAS2},
+    booktitle = {{CRYPTO 2010}},
+    publisher = {Springer Verlag},
+    pages = {333-350},
+    address = {Santa Barbara, United States},
+    volume = {6223},
+    editor = {Tal Rabin },
+    series = {Lecture Notes in Computer Science },
+    note = {The original publication is available at www.springerlink.com },
+    audience = {international },
+    doi = {10.1007/978-3-642-14623-7\_18 },
+    year = {2010},
+    pdf = {http://hal.inria.fr/inria-00444693/PDF/rsa768.pdf},
+}
+
+
+@misc{netscape:ssl2,
+  title={The {SSL} {P}rotocol},
+  author={Kipp E.B. Hickman},
+  year={1994-1995},
+  institution={Netscape Communication Corp.},
+  url={http://www.mozilla.org/projects/security/pki/nss/ssl/draft02.html}
+}
+
+@misc{netscape:ssl3,
+  title={The {SSL} {P}rotocol {V}ersion 3.0},
+  author={Alan O. Freier AND Philip Karlton AND Paul C. Kocher},
+  year={1996},
+  institution={Netscape Communication Corp.},
+  url={http://www.mozilla.org/projects/security/pki/nss/ssl/draft302.txt}
+}
+
+@misc{iana-tls-parameters,
+  title={{T}ransport {L}ayer {S}ecurity ({TLS}) {P}arameters},
+  author={{IANA}},
+  year={2005-2012},
+  url={http://www.iana.org/assignments/tls-parameters/tls-parameters.xml}
+}
+
+@book{Rescorla2001,
+  title={{SSL} and {TLS}: {D}esigning and {B}uilding {S}ecure {S}ystems},
+  author={Eric Rescorla},
+  year={2001},
+  publisher={Addison-Wesley Pub Co.},
+  note={ISBN 0-201-61598-3}
+}
+
+@misc{unfortunate_https,
+  title={{U}nfortunate current practices for {HTTP} over {TLS}},
+  author={{A}dam {L}angley},
+  year={2011},
+  url={http://www.imperialviolet.org/2011/02/04/oppractices.html}
+}
+
+@misc{fips186_2,
+  title={{FIPS} 186-2 {D}igital {S}ignature {S}tandard},
+  author={{NIST}},
+  year={2000},
+  url={http://csrc.nist.gov/publications/fips/archive/fips186-2/fips186-2.pdf}
+}
+
+@misc{fips186_3,
+  title={{FIPS} 186-3 {D}igital {S}ignature {S}tandard},
+  author={{NIST}},
+  year={2000},
+  url={http://csrc.nist.gov/publications/fips/fips186-3/fips_186-3.pdf}
+}
+
+
+% Attaques
+
+@misc{mozilla-tiny-dhparams,
+  title={{B}ug 583337 - {F}irefox detects, won't work with, server doing {SSL} {DHE} cipher suites with tiny keys},
+  author={{M}ozilla},
+  year={2010-2011},
+  url={https://bugzilla.mozilla.org/show_bug.cgi?id=583337}
+}
+
+@misc{malaysian-fiasco,
+  title = {{E}ntrust {B}ulletin on {C}ertificates {I}ssued with {W}eak 512-bit {RSA} {K}eys by {D}igicert {M}alaysia},
+  author = {Entrust},
+  year = {2011},
+  url = {http://www.entrust.net/advisories/malaysia.htm}
+}
+
+
+@misc{renego-vuln,
+  title={{A}uthentication {G}ap in {TLS} {R}enegotiation},
+  author={M. Ray},
+  year={2009},
+  url={http://extendedsubset.com/?p=8}
+}
+
+
+@misc{renego-annalysis-zoller,
+  title={{TLS}/{SSLv3} renegotiation vulnerability explained},
+  author={T. Zoller},
+  year={2009-2011},
+  url={http://www.g-sec.lu/practicaltls.pdf}
+}
+
+
+@inproceedings{bleichenbacher98,
+  author    = {Daniel Bleichenbacher},
+  title     = {{C}hosen {C}iphertext {A}ttacks {A}gainst {P}rotocols {B}ased on the
+               {RSA} {E}ncryption {S}tandard {PKCS} \#1},
+  booktitle = {CRYPTO},
+  year      = {1998},
+}
+
+
+@misc{RGS_B1,
+  title = {{RGS} {A}nnexe {B}1 : {M}écanismes cryptographiques, règles et recommandations concernant le choix et le dimensionnement des mécanismes cryptographiques, version 1.20},
+  author = {ANSSI},
+  year = {2010},
+  url={http://www.ssi.gouv.fr/IMG/pdf/RGS_B_1.pdf}
+}
+
+
+@misc{TIKeys,
+  title = {All TI Signing Keys Factored},
+  author = {ticalc.org},
+  year = {2009}, 
+  url = {http://www.ticalc.org/archives/news/articles/14/145/145273.html}
+}
+
+
+@misc{LenstraEFF,
+    author = {{A}rjen {K}. {L}enstra and {J}ames {P}. {H}ughes and {M}axime {A}ugier and {J}oppe {W}. {B}os and {T}horsten {K}leinjung and {C}hristophe {W}achter},
+    title = {{R}on was wrong, {W}hit is right},
+    howpublished = {{C}ryptology e{P}rint {A}rchive, {R}eport 2012/064},
+    year = {2012},
+    url = {http://eprint.iacr.org/2012/064},
+}
+
+
+@inproceedings{Vaudenay02,
+  author    = {Serge Vaudenay},
+  title     = {Security Flaws Induced by CBC Padding - Applications to
+               SSL, IPSEC, WTLS ...},
+  booktitle = {EUROCRYPT},
+  year      = {2002},
+  pages     = {534-546},
+  ee        = {http://dx.doi.org/10.1007/3-540-46035-7_35},
+  crossref  = {Eurocrypt02},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@proceedings{Eurocrypt02,
+  editor    = {Lars R. Knudsen},
+  title     = {Advances in Cryptology - EUROCRYPT 2002, International Conference
+               on the Theory and Applications of Cryptographic Techniques,
+               Amsterdam, The Netherlands, April 28 - May 2, 2002, Proceedings},
+  booktitle = {EUROCRYPT},
+  publisher = {Springer},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {2332},
+  year      = {2002},
+  isbn      = {3-540-43553-0},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@misc{openssl-tls-cbc,
+  title = {{S}ecurity of {CBC} {C}iphersuites in {SSL}/{TLS}: {P}roblems and {C}ountermeasures},
+  author = {{B}odo {M}oeller},
+  year = {2002-2004},
+  url = {http://www.openssl.org/~bodo/tls-cbc.txt}
+}
+
+@misc{beast,
+  title = {{BEAST}: {S}urprising crypto attack against {HTTPS}},
+  author = {{T}hai {D}uong and {J}uliano {R}izzo},
+  year = {2011},
+}
+
+@misc{moxie_nullchar,
+  title = {{M}ore {T}ricks {F}or {D}efeating {SSL} {I}n {P}ractice},
+  author = {{M}oxie {M}arlinspike},
+  year = {2009},
+  url = {http://www.blackhat.com/presentations/bh-usa-09/MARLINSPIKE/BHUSA09-Marlinspike-DefeatSSL-SLIDES.pdf}
+}
+
+
+@misc{verisign_ms,
+  title = {{M}icrosoft {S}ecurity {B}ulletin {MS}01-017: {E}rroneous {V}eri{S}ign-{I}ssued {D}igital {C}ertificates {P}ose {S}poofing {H}azard},
+  author = {Microsoft},
+  year = {2001},
+  url = {http://technet.microsoft.com/en-us/security/bulletin/ms01-017}
+}
+
+@misc{comodo_fiasco,
+  title = {{C}omodo {R}eport of {I}ncident - {C}omodo detected and thwarted an intrusion on 26-{MAR}-2011},
+  author = {Comodo},
+  year = {2011},
+  url = {http://www.comodo.com/Comodo-Fraud-Incident-2011-03-23.html}
+}
+
+@misc{trustwave_fiasco,
+  title = {{C}larifying {T}he {T}rustwave {CA} {P}olicy {U}pdate},
+  author = {Trustwave},
+  year = {2012},
+  url = {http://blog.spiderlabs.com/2012/02/clarifying-the-trustwave-ca-policy-update.html}
+}
+
+
+@inproceedings{ACSAC2012,
+  author    = {Olivier Levillain},
+  title     = {One year of SSL measurement},
+  booktitle = {ACSAC},
+  year      = {2012},
+}
+
