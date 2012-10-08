@@ -14,9 +14,9 @@ enum tls_version_bis (16, Exception E_Unknown, []) =
 
 struct st [top] = {
   x : uint8;
-  y : string(_x);
+  y : string(x);
   len : uint8;
-  l : list(_len) of uint16
+  l : list(len) of uint16
 }
 
 let test_st s =

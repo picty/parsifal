@@ -99,7 +99,7 @@ enum path_segment_type (8, UnknownVal UnknownBGPASPath, []) =
 struct bgp_as_path_segment [param as_size] = {
   path_segment_type : path_segment_type;
   path_segment_length : uint8;
-  path_segment_value : list(_path_segment_length) of autonomous_system(as_size)
+  path_segment_value : list(path_segment_length) of autonomous_system(as_size)
 }
 
 struct bgp_aggregator [param as_size] = {
@@ -111,9 +111,9 @@ struct bgp_aggregator [param as_size] = {
 struct bgp_reach_nlri_full = {
   rn_afi : address_family_identifier;
   rn_safi : subsequent_address_family_identifier;
-  rn_next_hop : container[uint8] of list of (ip_address(_rn_afi));
+  rn_next_hop : container[uint8] of list of (ip_address(rn_afi));
   rn_reserved : uint8;
-  rn_nlri : list of ip_prefix(_rn_afi)
+  rn_nlri : list of ip_prefix(rn_afi)
 }  
 
 (* The abbreviated business is a hack to support some non-compiant files:
@@ -133,7 +133,7 @@ let parse_bgp_reach_nlri input =
 struct bgp_unreach_nlri = {
   un_afi : address_family_identifier;
   un_safi : subsequent_address_family_identifier;
-  un_withdrawn_routes : list of ip_prefix(_un_afi)
+  un_withdrawn_routes : list of ip_prefix(un_afi)
 }  
 
 union bgp_attribute_content (UnknownBGPAttributeContent, [enrich; param as_size]) =
@@ -155,8 +155,8 @@ union bgp_attribute_content (UnknownBGPAttributeContent, [enrich; param as_size]
 struct bgp_attribute [param as_size] = {
   attr_flags : uint8;
   attr_type : bgp_attribute_type;
-  attr_len : bgp_attribute_len(_attr_flags);
-  attr_content : container(snd _attr_len) of bgp_attribute_content(as_size; _attr_type)
+  attr_len : bgp_attribute_len(attr_flags);
+  attr_content : container(snd attr_len) of bgp_attribute_content(as_size; attr_type)
 }
 
 struct bgp_update_message [param ipa_type; param as_size] = {
@@ -200,7 +200,7 @@ struct bgp_message [param ipa_type; param as_size] = {
   bgp_message_marker : bgp_message_marker;
   bgp_message_size : uint16;
   bgp_message_type : bgp_message_type;
-  bgp_message_content : container(_bgp_message_size - 19) of bgp_message_content(ipa_type; as_size; _bgp_message_type)
+  bgp_message_content : container(bgp_message_size - 19) of bgp_message_content(ipa_type; as_size; bgp_message_type)
 }
 
 
@@ -281,8 +281,8 @@ let afi = function
 struct peer_entry = {
   pe_peer_type : peer_type;
   pe_peer_bgp_id : uint32;
-  pe_peer_ip_address : ip_address(afi _pe_peer_type);
-  pe_peer_as : autonomous_system(as_size _pe_peer_type)
+  pe_peer_ip_address : ip_address(afi pe_peer_type);
+  pe_peer_as : autonomous_system(as_size pe_peer_type)
 }
 
 
@@ -310,7 +310,7 @@ struct rib_generic = {
   rg_sequence_number : uint32;
   rg_afi : address_family_identifier;
   rg_safi : subsequent_address_family_identifier;
-  rg_nlri : ip_prefix(_rg_afi);
+  rg_nlri : ip_prefix(rg_afi);
   rg_entry_count : uint16;
   rg_entries : list of rib_entry
 }
@@ -332,9 +332,9 @@ struct bgp4mp_message [param is_as4] = {
   bm_local_as_number : autonomous_system(if is_as4 then 32 else 16);
   bm_interface_index : uint16;
   bm_afi : address_family_identifier;
-  bm_peer_ip_address : ip_address(_bm_afi);
-  bm_local_ip_address : ip_address(_bm_afi);
-  bm_bgp_message : bgp_message(_bm_afi; if is_as4 then 32 else 16)
+  bm_peer_ip_address : ip_address(bm_afi);
+  bm_local_ip_address : ip_address(bm_afi);
+  bm_bgp_message : bgp_message(bm_afi; if is_as4 then 32 else 16)
 }
 
 
@@ -363,6 +363,6 @@ union mrt_message_content (UnparsedMRTMessage, [enrich]) =
 struct mrt_message [top] = {
   mrt_timestamp : uint32;
   mrt_type : mrt_type;
-  mrt_subtype : mrt_subtype(_mrt_type);
-  mrt_message : container[uint32] of mrt_message_content(_mrt_type, _mrt_subtype)
+  mrt_subtype : mrt_subtype(mrt_type);
+  mrt_message : container[uint32] of mrt_message_content(mrt_type, mrt_subtype)
 }

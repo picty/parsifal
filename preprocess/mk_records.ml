@@ -318,14 +318,14 @@ let mk_record_parse_fun _loc record =
   let rec mk_body = function
     | [] ->
       let field_assigns = List.map (fun (_loc, n, _, _) ->
-	<:rec_binding< $lid:n$ = $exp:exp_lid _loc ("_" ^ n)$ >> ) (remove_dummy_fields record.fields)
+	<:rec_binding< $lid:n$ = $exp:exp_lid _loc n$ >> ) (remove_dummy_fields record.fields)
       in <:expr< { $list:field_assigns$ } >>
     | (_loc, n, t, false)::r ->
       let tmp = mk_body r in
-      <:expr< let $lid:("_" ^ n)$ = $fun_of_field_type ("parse_", "ParsingEngine") _loc n t$ input in $tmp$ >>
+      <:expr< let $lid:n$ = $fun_of_field_type ("parse_", "ParsingEngine") _loc n t$ input in $tmp$ >>
     | (_loc, n, t, true)::r ->
       let tmp = mk_body r in
-      <:expr< let $lid:("_" ^ n)$ = ParsingEngine.try_parse $fun_of_field_type ("parse_", "ParsingEngine") _loc n t$ input in $tmp$ >>
+      <:expr< let $lid:n$ = ParsingEngine.try_parse $fun_of_field_type ("parse_", "ParsingEngine") _loc n t$ input in $tmp$ >>
   in
 
   let body = mk_body record.fields in
@@ -336,14 +336,14 @@ let mk_record_lwt_parse_fun _loc record =
   let rec mk_body = function
     | [] ->
       let field_assigns = List.map (fun (_loc, n, _, _) ->
-	<:rec_binding< $lid:n$ = $exp:exp_lid _loc ("_" ^ n)$ >> ) (remove_dummy_fields record.fields)
+	<:rec_binding< $lid:n$ = $exp:exp_lid _loc n$ >> ) (remove_dummy_fields record.fields)
       in <:expr< Lwt.return { $list:field_assigns$ } >>
     | (_loc, n, t, false)::r ->
       let tmp = mk_body r in
-      <:expr< Lwt.bind ($fun_of_field_type ("lwt_parse_", "LwtParsingEngine") _loc n t$ input) (fun $lid:("_" ^ n)$ -> $tmp$ ) >>
+      <:expr< Lwt.bind ($fun_of_field_type ("lwt_parse_", "LwtParsingEngine") _loc n t$ input) (fun $lid:n$ -> $tmp$ ) >>
     | (_loc, n, t, true)::r ->
       let tmp = mk_body r in
-      <:expr< Lwt.bind (LwtParsingEngine.try_lwt_parse $fun_of_field_type ("lwt_parse_", "LwtParsingEngine") _loc n t$ input) (fun $lid:("_" ^ n)$ -> $tmp$ ) >>
+      <:expr< Lwt.bind (LwtParsingEngine.try_lwt_parse $fun_of_field_type ("lwt_parse_", "LwtParsingEngine") _loc n t$ input) (fun $lid:n$ -> $tmp$ ) >>
   in
 
   let body = mk_body record.fields in
