@@ -42,6 +42,8 @@ CKE:
  - check whether the CKE anti-downgrade mechanism is checked
    * the first time
    * in case of renegotiation or session resumption
+ - check the different versions to write 0 in DHE
+ - check the server avoids DHE values in {-1;0;1}
 
 Record protocol
  - one Handshake message spanning over several records
