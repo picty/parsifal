@@ -349,7 +349,7 @@ suivante\footnote{Pour des raisons historiques, un champ de 8~octets
   sera terminé par un espace ou un caractère nul, ne laissant ainsi en
   pratique que 7~octets pour encoder la valeur.}:
 \begin{lstlisting}
-type tar_numstring = int * int
+type tar_numstring = int
 
 let parse_tar_numstring len input =
   let octal_value = parse_string (len - 1) input in
@@ -454,14 +454,14 @@ par \texttt{struct} et \texttt{union}.
 
 \shorthandoff{:}
 \begin{tabbing}
-  \textit{\FAceSLType} ::\= = \= \texttt{char} \\
+  \textit{\FAceSLType} ::\= = \= \textbf{\tt char} \\
   \> $\vert$ \> \textbf{\tt uintN} \\
   \> $\vert$ \> \textbf{\tt ipv4} \\
   \> $\vert$ \> \textbf{\tt ipv6} \\
   \> $\vert$ \> \textbf{\tt string} \\
   \> $\vert$ \> \textbf{\tt string} (\textit{expression}) \\
   \> $\vert$ \> \textbf{\tt string} [\textit{type entier}] \\
-  \> $\vert$ \> \textbf{\tt list} of \textit{\FAceSLType} \\
+  \> $\vert$ \> \textbf{\tt list} \textbf{\tt of} \textit{\FAceSLType} \\
   \> $\vert$ \> \textbf{\tt list} (\textit{expression}) \textbf{\tt of} \textit{\FAceSLType} \\
   \> $\vert$ \> \textbf{\tt list} [\textit{type entier}] \textbf{\tt of} \textit{\FAceSLType} \\
   \> $\vert$ \> \textbf{\tt container} (\textit{expression}) \textbf{\tt of} \textit{\FAceSLType} \\
@@ -663,7 +663,34 @@ alias comme nous l'avons fait pour le format TAR.
 
 \subsection{Types ASN.1}
 
-\TODO{TODO}
+Pour décrire les structures ASN.1, il est nécessaire de disposer des
+types ASN.1 de bases.
+
+\shorthandoff{:}
+\begin{tabbing}
+  \textit{ASN1Type} ::\= = \= \textbf{\tt asn1\_bool} \\
+  \> $\vert$ \> \textbf{\tt asn1\_integer} \\
+  \> $\vert$ \> \textbf{\tt asn1\_bitstring} \\
+  \> $\vert$ \> \textbf{\tt asn1\_enumerated} \\
+  \> $\vert$ \> \textbf{\tt asn1\_octetstring} \\
+  \> $\vert$ \> \textbf{\tt asn1\_null} \\
+  \> $\vert$ \> \textbf{\tt asn1\_oid} \\
+  \> $\vert$ \> \textbf{\tt asn1\_string} \\
+  \> $\vert$ \> \textbf{\tt asn1\_list} \textbf{\tt of} \textit{\FAceSLType} \\
+  \> $\vert$ \> \textbf{\tt asn1\_container} \textbf{\tt of} \textit{\FAceSLType} \\
+  \> $\vert$ \> \textbf{asn1\_anything} \\
+  \> $\vert$ \> \textit{custom type} \\
+  \> $\vert$ \> \textit{custom type} (\textit{paramètres}) \\
+\end{tabbing}
+\shorthandon{:}
+
+\TODO{options for enumerated, string}
+
+\TODO{ici on a les types des contenus}
+
+\TODO{list (min,max) => sequence of / set of}
+
+\TODO{description à part des en-têtes}
 
 
 \subsection{Structures ASN.1}
@@ -688,12 +715,13 @@ alias comme nous l'avons fait pour le format TAR.
 
 \subsection{Anecdotes}
 
-Difficulté à écrire du camlp4 car peu de documentation, mais une fois
-les types compris, la manipulation de l'AST est extrêmement riche.
+\TODO{Difficulté à écrire du camlp4 car peu de documentation, mais une
+  fois les types compris, la manipulation de l'AST est extrêmement
+  riche.}
 
-Comportement surprenant: camlp4o <preprocessors> <fichier.ml> a un
-comportement différent selon que la sortie standard est un pipe ou une
-console...
+\TODO{Comportement surprenant: camlp4o <preprocessors> <fichier.ml> a
+  un comportement différent selon que la sortie standard est un pipe
+  ou une console...}
 
 
 
@@ -708,9 +736,44 @@ X.509~\cite{rfc5280} (structures ASN.1 encodées au format DER). Il
 s'agit donc logiquement de la première application concrète de
 \FAceSL.
 
-nombre de lignes de code (nb pour les descriptions, nb pour la glu),
-quelques exemples de types (struct, etc.), efficacité, description des
-outils.
+À ce jour, une grande partie des messages du protocole a pu être
+décrite à l'aide de \FAceSL, ainsi que les certificats X.509. La
+répartition du nombre de lignes de code est la suivante:
+\begin{itemize}
+\item énumérations TLS\footnote{L'énumération décrivant l'ensemble des
+    suites cryptographiques comportent en particulier~300~valeurs.}:
+  500~lignes;
+\item description des messages TLS: 150~lignes;
+\item description des certificats X.509 : 100~lignes;
+\item outil pour tester un serveur TLS (test des versions et suites
+  cryptographiques supportées, affichage de la partie en clair de
+  l'échange): 250~lignes.
+\end{itemize}
+
+\TODO{Exemple de struct/union}
+
+Ainsi, en environ 1000~lignes de code\footnote{Ce décompte ne comprend
+  évidemment pas le préprocesseur ni les fonctions auxiliaires
+  fournissant les services de base (\texttt{parse\_uint8} et
+  \texttt{dump\_ipv4} par exemple) discutées dans la section
+  précédente.}, il a été possible de décrire une grande partie du
+protocole TLS ainsi qu'un outil de test.
+
+Afin d'arriver à une implémentation complète d'une pile TLS, il
+faudrait encore ajouter les éléments suivants:
+\begin{itemize}
+\item détailler les extensions X.509 qui ne sont que partiellement
+  enrichies aujourd'hui;
+\item écrire et animer l'automate du protocole de négociation TLS (à
+  ce jour, seule une animation rudimentaire a été développée pour
+  réaliser le programme de tests);
+\item ajouter les appels aux fonctions cryptographiques pour mettre
+  réellement en \oe uvre le tunnel négocié.
+\end{itemize}
+
+
+\TODO{Cette première ébauche a été testée avec succès pour
+  ... efficacité, description des outils.}
 
 
 \subsection{MRT}
@@ -729,22 +792,31 @@ pertinentes pour les études menées au laboratoire et obtenir un outil
 indépendant des deux autres, plus rapide que l'implémentation en OCaml
 pré-existante et plus fiable que l'implémentation en C.
 
-nb de lignes de code, tableau de comparaison de l'efficacité
+\TODO{nb de lignes de code, tableau de comparaison de l'efficacité}
 
 
-\subsection{Troisième application?}
+\subsection{TAR}
+
+Développée pour les besoin de cet article, la description avec \FAceSL
+du format d'archive TAR en moins de~100~lignes a permis d'écrire
+ensuite un outil pour lister une archive TAR en quelques lignes. Il ne
+s'agit cependant pas d'une réelle application, mais uniquement d'un
+exemple.
 
 
+\section{Conclusion et perspectives}
 
-\section{Related work et perspectives}
+\TODO{Les extensions du langage écrites en \texttt{camlp4} ressemblent
+  à scapy / hachoir ?}
 
-Les extensions du langage écrites en \texttt{camlp4} ressemblent à scapy / hachoir ?
+\TODO{Intérêt de la solution retenue : peu de lignes, très expressif,
+  robuste (typage), efficace!}
 
-Intérêt de la solution retenue : peu de lignes, très expressif, robuste (typage), efficace!
+\TODO{Impact d'OCaml 4 ?}
 
-Impact d'OCaml 4 ?
+\TODO{Autres parsers: DNS, pcap, etc.}
 
-Autres parsers: DNS, pcap, etc.
+\TODO{Question de l'automate et de l'animation}
 
 
 
