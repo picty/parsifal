@@ -67,8 +67,8 @@ pour les analyses. Dans le cas de TLS, l'objectif était d'effectuer un
 évolution dans le temps. Ces travaux ont fait l'objet d'une
 publication à venir à ACSAC~\cite{ACSAC2012}.
 
-Le premier \emph{parser} pour cette tâche a été écrit en Python,
-permettant d'obtenir rapidement un prototype pour extraire les
+Le premier \emph{parser} réalisé pour cette tâche a été écrit en
+Python, permettant d'obtenir rapidement un prototype pour extraire les
 premiers éléments des données. Cependant, ce premier programme s'est
 révélé trop lent face au volume de données à traiter. Une seconde
 implémentation a donc vu le jour, en C++. Celle-ci reposait sur les
@@ -325,12 +325,12 @@ alias tar_file = list of tar_entry;
 
 Avec cette seconde version, on utilise un conteneur de 512 octets pour
 lire l'en-tête. Si l'en-tête est étendu, le champ
-\texttt{ustar\_header} sera peuplé et le champ \texttt{hdr\_padding},
-une chaîne binaire consommant les octets restants du conteneur,
-contiendra~12~octets; dans le cas contraire, la fonction
-\texttt{parse\_ustar\_header} échouera, le champ
-\texttt{ustar\_header} vaudra \texttt{None} et \texttt{hdr\_padding}
-aura une longueur de 255~octets.
+\texttt{ustar\_header} sera peuplé par la fonction
+\texttt{parse\_ustar\_header} et le champ \texttt{hdr\_padding}, une
+chaîne binaire consommant les octets restants du conteneur,
+contiendra~12~octets; dans le cas contraire, la fonction échouera, le
+champ \texttt{ustar\_header} vaudra \texttt{None} et
+\texttt{hdr\_padding} aura une longueur de 255~octets.
 
 Le lecteur attentif aura également remarqué l'ajout d'un champ intitulé
 \texttt{checksum\_verification}, qui permet d'exécuter une
@@ -376,14 +376,17 @@ en octal en replaçant le type \texttt{string(n)} par
 
 \subsection{\'Enumérations}
 
+La première construction ajoutée par \FAceSL est l'énumération, qui
+ressemble à l'\texttt{enum} du C, le typage fort en plus.
+
 \shorthandoff{:}
 \begin{tabbing}
   \textit{énumération} ::= \textbf{\tt enum} \= \textit{identifiant} (\textit{taille}, \textit{comportement}, \textit{enum\_options}) = \\
-  \> $\vert$ \textit{pattern} $\rightarrow$ \textit{Constructeur} [, \textit{texte}\footnote{Ce
+  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [, \textit{texte}\footnote{Ce
     texte sera renvoyé par \texttt{string\_of\_enum} pour cette valeur de l'énumération.
     Si aucun texte n'est donné, le nom du constructeur sera utilisé.}] \\
   \> ... \\
-  \> $\vert$ \textit{pattern} $\rightarrow$ \textit{Constructeur} [, \textit{texte}] \\
+  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [, \textit{texte}] \\
   \\
   \textit{comportement} ::\= = \= \textbf{\tt UnknownVal} \textit{Constructor} \\
   \> $\vert$ \> \textbf{\tt Exception} \textit{Exception} \\
@@ -445,6 +448,10 @@ structure à afficher.
 
 \subsection{\FAceSLTypes}
 
+Avant de poursuivre avec les constructions apportées par \FAceSL, il
+est nécessaire de décrire les \FAceSLTypes, les types binaires compris
+par \texttt{struct} et \texttt{union}.
+
 \shorthandoff{:}
 \begin{tabbing}
   \textit{\FAceSLType} ::\= = \= \texttt{char} \\
@@ -464,11 +471,60 @@ structure à afficher.
 \end{tabbing}
 \shorthandon{:}
 
-Parler de binstring, de la logique de (), [] et du fonctionnement de
-custom et des paramètres.
+\FAceSL implémente les fonctions \texttt{parse}, \texttt{lwt\_parse},
+\texttt{dump} et \texttt{print} pour un certain nombre de types de
+base: les entiers non signés, les adresses IPv4 et IPv6 encodées en
+binaire, les chaînes de caractères\footnote{En plus des types
+  \texttt{string} présentés ici, qui correspondent à des chaînes de
+  caractères imprimables, un type \texttt{binstring} est également
+  disponible. La seule différence entre ces deux types est que la
+  fonction \texttt{print} générée affichera la chaîne directement, ou
+  sous sa représentation héxadécimale.}.
+
+En plus de ces types scalaires, le type \texttt{list} permet de
+décrire des listes d'objets du même type; le type \texttt{container}
+sert à encapsuler un sous-type en spécifiant la taille de la
+sous-chaîne à lire depuis l'entrée. Nous l'avons utilisé pour la
+gestion de l'en-tête TAR qui est contenu dans un bloc de 512~octets
+mais dont la partie utile peut varier (selon qu'il soit conforme au
+standard \texttt{ustar} ou non).
+
+Pour les chaînes de caractères et les listes, les \emph{parsers}
+générés par défaut essaient de lire l'ensemble de la chaîne qui leur
+est passée en entrée. On peut cependant préciser avec une expression
+entre parenthèses la taille attendue pour une chaîne de caractères en
+octets ou le nombre d'éléments attendus pour une liste. Un autre
+format fréquemment rencontré pour les chaînes de caractères ou les
+listes est de faire précéder la chaîne ou la liste par un champ
+longueur qui définit le nombre d'octets utiles pour l'élément qui
+suit; on peut spécifier à l'aide de crochets qu'un tel type est
+attendu: \texttt{\textbf{list} [uint16] \textbf{of} uint16} permet de
+décrire une liste d'entiers sur 16~bits dont la longueur totale en
+octets est codées sur un entier 16~bits\footnote{Ce type particulier
+  peut servir à décrire la liste des suites cryptographiques
+  (\emph{ciphersuites}) proposées par un client dans le protocole
+  TLS.}. Pour un conteneur, on utilisera les parenthèses ou les
+crochets pour décrire comment trouver la taille en octet du champ
+encapsulé.
+
+Enfin, pour étendre les types binaires, il suffit de créer un nouveau
+type OCaml, d'écrire les fonctions \texttt{parse}, \texttt{dump} et
+\texttt{print} correspondantes\footnote{On écrira également la
+  fonction \texttt{lwt\_parse} si besoin.} avant de pouvoir utiliser
+ce nouveau type comme un \FAceSLType. Il est de plus possible de
+spécifier des paramètres à passer aux fonctions \texttt{parse},
+\texttt{lwt\_parse} et \texttt{dump} dans le cas de types
+personnalisés. Il peut s'agir de structures ou d'unions, mais
+également de types pour lesquels on a écrit à la main les fonctions
+nécessaires, comme cela a été fait précédemment pour
+\texttt{tar\_numstring}.
 
 
 \subsection{Structures}
+
+Les structures \texttt{struct} que l'on peut exprimer en \FAceSL sont
+des enregistrements qui viennent avec leurs fonctions \texttt{parse},
+\texttt{dump} et texttt{print} automatiquement générées.
 
 \shorthandoff{:}
 \begin{tabbing}
@@ -485,23 +541,56 @@ custom et des paramètres.
 \end{tabbing}
 \shorthandon{:}
 
-Exemple de structure et des fonctions générées.
+Un exemple simple est donné par les messages d'alerte du protocole
+TLS. À partir de deux types énumérations sur 8~bits, on peut créer
+l'enregistrement simplement:
+\begin{lstlisting}
+enum tls_alert_level (8, UnknownVal AL_Unknown, []) =
+  | 1 -> AL_Warning, "Warning"
+  | 2 -> AL_Fatal, "Fatal"
 
-top = with\_lwt + with\_exact
+enum tls_alert_type (8, UnknownVal AT_Unknown, []) =
+  | 0 -> AT_CloseNotify, "CloseNotify"
+  | 10 -> AT_UnexpectedMessage, "UnexpectedMessage"
+    ...
+  | 115 -> AT_UnknownPSKIdentity, "UnknownPSKIdentity"
 
-param permet d'ajouter des paramètres aux fonctions parse et dump
+struct tls_alert = {
+  alert_level : tls_alert_level;
+  alert_type : tls_alert_type
+}
+\end{lstlisting}
+
+L'option \texttt{with\_lwt} déclenche la génération de la fonction
+\texttt{lwt\_parse}. L'option \texttt{with\_exact} permet de créer une
+fonction \texttt{exact\_parse} qui vérifie que la chaîne de caractères
+fournie en entrée correspond exactement à l'objet disséqué et qu'il
+n'existe pas d'octets à la fin de la chaîne de caractères. L'option
+\texttt{top} est un raccourci pour les deux options précédentes,
+puisqu'elle décrit un objet au niveau le plus haut. Enfin, il est
+possible d'ajouter des paramères aux fonctions \texttt{parse} et
+\texttt{dump} générées; ces paramètres pourront être utilisés dans les
+expressions entre parenthèses (pour indiquer une longueur ou pour
+transmettre un argument à un type personnalisé.
 
 \subsection{Unions}
+
+Empruntant encore la terminologie du langage C, les unions sont en
+réalité des types somme augmentés par un constructeur par
+défaut. L'idée est d'utiliser un discriminant passé en argument à la
+fonction \texttt{parse} pour en déduire le constructeur du type somme
+à utiliser. Ce discriminant va être comparé aux différents
+motifs proposés dans la description de l'union.
 
 \shorthandoff{:}
 \begin{tabbing}
   \textit{union} ::= \textbf{\tt union} \= \textit{identifiant} (\textit{comportement}, \textit{union\_options}) = \\
-  \> $\vert$ \textit{pattern} $\rightarrow$ \textit{Constructeur} [\textbf{\tt of} \textit{\FAceSLType}] \\
+  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [\textbf{\tt of} \textit{\FAceSLType}] \\
   \> ... \\
-  \> $\vert$ \textit{pattern} $\rightarrow$ \textit{Constructeur} [\textbf{\tt of} \textit{\FAceSLType}] \\
+  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [\textbf{\tt of} \textit{\FAceSLType}] \\
   \\
   \textit{comportement} ::\= = \= \textit{Constructor} \\
-  \> $\vert$ \> \textit{Constructor} of \textit{\FAceSLType} \\
+  \> $\vert$ \> \textit{Constructor} \textbf{\tt of} \textit{\FAceSLType} \\
   \\
   \textit{struct\_option} ::\= = \= \textbf{\tt with\_lwt} \\
   \> $\vert$ \> \textbf{\tt with\_exact} \\
@@ -512,21 +601,58 @@ param permet d'ajouter des paramètres aux fonctions parse et dump
 \end{tabbing}
 \shorthandon{:}
 
-Exemple d'union
+Si on ne souhaite pas enrichir l'union ou que le discriminant n'a pas
+une valeur attendue, on utilise le constructeur par défaut, qui
+récupère par défaut la chaîne de caractères restant. Cela peut être
+modifié en spécifiant un \FAceSLType dans le comportement.
 
-parse/lwt\_parse prend systématiquement un argument en plus. Ce dernier
-argument est le discriminant, qui va être comparé aux différents
-motifs proposés dans la description de l'union. Si l'option
-\texttt{exhaustive} est positionnée, ce \emph{pattern matching} devra
-être exhaustif. Si l'option \texttt{enrich} est positionnée, le
-\emph{parser} généré tentera d'enrichir l'union par défaut; sinon, il
-construira systématiquement des unions non enrichies (en utilisant le
-constructeur du comportement donné)
+L'enrichissement de l'union \texttt{u} est contrôlé par une variable
+globale \texttt{enrich\_u}, initialisée à \texttt{true} si l'option
+\texttt{enrich} est activée, à \texttt{false} sinon. De plus, on peut
+surcharger cette valeur par un argument optionnel \texttt{~enrich} de
+la fonction \texttt{parse}. Si l'option \texttt{exhaustive} est
+positionnée, le \emph{pattern matching} généré pour l'enrichissement
+devra être exhaustif.
 
-top, lwt, exact et param ont le même sens qu'avant.
+Les options \texttt{with\_lwt}, \texttt{with\_exact}, \texttt{top} et
+\texttt{param} ont le même sens que pour les structures.
+
+Le protocole BGP définit la notion de système autonome (AS), un numéro
+identifiant un opérateur. Initialiement, les AS étaient représentés
+sur 16~bits, mais cela n'est plus suffisant désormais et les AS sont
+parfois décrits sur 32~bits. L'exemple suivant montre comment décrire
+un AS avec une union, et comment employer le type généré dans une
+structure:
+\begin{lstlisting}
+union autonomous_system (UnparsedAS, [enrich]) =
+  | 16 -> AS16 of uint16
+  | 32 -> AS32 of uint32
+
+struct bgp_as_path_segment [param as_size] = {
+  path_segment_type : uint8;
+  path_segment_length : uint8;
+  path_segment_value : list(path_segment_length)
+                           of autonomous_system(as_size)
+}
+\end{lstlisting}
+
+Le type \texttt{autonomous\_system} sera vu comme un entier~16~bits si
+le discriminant qui lui est passé en argument vaut 16, ou un entier
+32~bits s'il vaut 32. La déclaration de la structure
+\texttt{bgp\_as\_path\_segment} conduit à la génération d'une fonction
+\texttt{parse\_bgp\_as\_path\_segment} qui prend un argument
+supplémentaire (\texttt{as\_size}), puis tente de lire le type de
+segment (un octet), la longueur du segment (un autre octet), puis une
+liste d'AS contenant \texttt{path\_segment\_length} éléments du type
+union défini. On remarquera que la valeur \texttt{as\_size} est alors
+passée comme discriminant à \texttt{parse\_autonomous\_system}.
 
 
 \subsection{Alias}
+
+Pour permettre de produire simplement des fonctions \texttt{parse},
+\texttt{dump} et \texttt{print} pour des listes, on peut déclarer des
+alias comme nous l'avons fait pour le format TAR.
 
 \shorthandoff{:}
 \begin{tabbing}
@@ -534,16 +660,20 @@ top, lwt, exact et param ont le même sens qu'avant.
 \end{tabbing}
 \shorthandon{:}
 
-Exemple d'alias
 
 \subsection{Types ASN.1}
+
+\TODO{TODO}
 
 
 \subsection{Structures ASN.1}
 
+\TODO{TODO}
+
 
 \subsection{Alias ASN.1}
 
+\TODO{TODO}
 
 
 \section{Quelques mots sur l'implémentation \texttt{camlp4}}
@@ -551,9 +681,9 @@ Exemple d'alias
 
 \subsection{Des chiffres}
 
-Nb de lignes
+\TODO{Nb de lignes}
 
-Disponibilité du package
+\TODO{Disponibilité du package}
 
 
 \subsection{Anecdotes}
