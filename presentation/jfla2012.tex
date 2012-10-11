@@ -12,9 +12,9 @@
 \usepackage{xcolor}
 \newcommand{\TODO}[1]{\textcolor{red}{#1}}
 
-\newcommand{\FAceSL}{\TODO{FAceSL}\xspace}
-\newcommand{\FAceSLTypes}{\TODO{FAceSLTypes}\xspace}
-\newcommand{\FAceSLType}{\TODO{FAceSLType}\xspace}
+\newcommand{\FAceSL}{Parsifal\xspace}
+\newcommand{\FAceSLTypes}{BinTypes\xspace}
+\newcommand{\FAceSLType}{BinType\xspace}
 
 \title{Utilisation de \texttt{camlp4} pour l'écriture rapide de \emph{parsers}}
 \author{Olivier Levillain}
@@ -204,7 +204,7 @@ différentes valeurs qu'il peut prendre.
 \end{table}
 
 
-Afin d'utiliser notre préprocesseur pour décrire les fichiers au
+Afin d'utiliser notre pré-processeur pour décrire les fichiers au
 format TAR, commençons par décrire les valeurs du champ «~Indicateur
 de lien/Type de fichier~». Il s'agit d'une énumération sur 8~bits,
 dont nous connaissons certaines valeurs qui s'écrit avec le nouveau
@@ -258,7 +258,7 @@ struct tar_entry = {
 alias tar_file = list of tar_entry;
 \end{lstlisting}
 
-Le code resultant du préprocesseur permet alors d'ouvrir une archive
+Le code resultant du pré-processeur permet alors d'ouvrir une archive
 simplement à l'aide de la fonction \texttt{parse\_tar\_file}, qui
 prend en entier la chaîne de caractères correspondant au contenu du
 fichier. Afin de traiter des données importantes de manière efficace,
@@ -668,64 +668,123 @@ types ASN.1 de bases.
 
 \shorthandoff{:}
 \begin{tabbing}
-  \textit{ASN1Type} ::\= = \= \textbf{\tt asn1\_bool} \\
+  \textit{ASN1Header} ::= \textit{ASN1Class} \textbf{\tt *} \textit{ASN1Tag} \\
+  \\
+  \textit{ASN1Type} ::= \textit{ASN1Header} \texttt{option} \textbf{\tt *}
+                        \textit{ASN1TypeContent} \\
+  \\
+  \textit{ASN1TypeContent} ::\= = \= \textbf{\tt asn1\_bool} \\
   \> $\vert$ \> \textbf{\tt asn1\_integer} \\
   \> $\vert$ \> \textbf{\tt asn1\_bitstring} \\
   \> $\vert$ \> \textbf{\tt asn1\_enumerated} \\
   \> $\vert$ \> \textbf{\tt asn1\_octetstring} \\
   \> $\vert$ \> \textbf{\tt asn1\_null} \\
   \> $\vert$ \> \textbf{\tt asn1\_oid} \\
-  \> $\vert$ \> \textbf{\tt asn1\_string} \\
-  \> $\vert$ \> \textbf{\tt asn1\_list} \textbf{\tt of} \textit{\FAceSLType} \\
-  \> $\vert$ \> \textbf{\tt asn1\_container} \textbf{\tt of} \textit{\FAceSLType} \\
+  \> $\vert$ \> \textbf{\tt asn1\_list} \textbf{\tt of} \textit{ASN1Type} \\
+  \> $\vert$ \> \textbf{\tt asn1\_container} \textbf{\tt of} \textit{ASN1Type} \\
   \> $\vert$ \> \textbf{asn1\_anything} \\
   \> $\vert$ \> \textit{custom type} \\
   \> $\vert$ \> \textit{custom type} (\textit{paramètres}) \\
 \end{tabbing}
 \shorthandon{:}
 
-\TODO{options for enumerated, string}
+Les \textit{ASN1TypeContents} décrivent le contenu des objets ASN.1
+classiques: booléens, entiers, chaînes de bit ou d'octets, OIds,
+etc. Le type \texttt{asn1\_enumerated} correspond à un cas particulier
+des chaînes de bit pour représenter un \texttt{bitmap} (par exemple,
+le \emph{KeyUsage} X.509). Le conteneur permet d'encapsuler facilement
+un type ASN.1 dans un objet ASN.1 de type construit (on trouve de tels
+conteneurs pour encapsuler la version ou les extensions dans un
+certificat X.509).
 
-\TODO{ici on a les types des contenus}
+Pour chaque type de base \texttt{T}, les fonctions
+\texttt{parse\_T\_content}, \texttt{dump\_T\_content} et
+\texttt{print\_T\_content} sont déjà fournies et permettent de traiter
+le contenu de ces types. Des fonctions plus haut niveau, simplement
+nommée \texttt{parse\_T}, \texttt{dump\_T} et \texttt{print\_T}
+prennent en compte l'en-tête ASN.1 par défaut. De plus, deux fonctions
+permettent respectivement de \emph{parser} et de \emph{dumper} des
+objets ASN.1 à partir d'un en-tête et d'un type contenu:
+\begin{lstlisting}
+val parse_asn1_object : ?name:string -> asn1_header ->
+                        (string_input -> 'a) -> string_input -> 'a
+val dump_asn1_object : asn1_header -> bool ->
+                       ('a -> string) -> 'a -> string
+\end{lstlisting}
 
-\TODO{list (min,max) => sequence of / set of}
-
-\TODO{description à part des en-têtes}
-
-
-\subsection{Structures ASN.1}
-
-\TODO{TODO}
+% Pour que cette représentation des types ASN.1 soit complète, il
+% faudrait pouvoir ajouter des contraintes sur les champs de bits
+% d'énumération ou sur les chaînes de caractères
+% (\texttt{PrintableString}, \texttt{UTF8String}, etc.).
 
 
 \subsection{Alias ASN.1}
 
-\TODO{TODO}
+Les structures ASN.1 peuvent s'exprimer simmplement à l'aide des
+structures binaires avec des types ASN.1. Cependant, de telles
+structures ne décrivent que le contenu de l'objet. Pour finaliser la
+description de ces objets, il est nécessaire de leur associer un
+en-tête par défaut. C'est à cela que sert la contruction
+\texttt{asn1\_alias}.
+
+\shorthandoff{:}
+\begin{tabbing}
+  \textit{alias} ::= \textbf{\tt asn1\_alias} \textit{identifiant} = \textit{ASN1Type} \\
+\end{tabbing}
+\shorthandon{:}
+
+Ainsi la description d'un objet ASN.1 ressemblera à l'exemple suivant
+(la description d'une clé privée RSA):
+\begin{lstlisting}
+struct private_rsa_key_content = {
+  version : asn1_integer;
+  modulus : asn1_integer;
+  publicExponent : asn1_integer;
+  privateExponent : asn1_integer;
+  prime1 : asn1_integer;
+  prime2 : asn1_integer;
+  exponent1 : asn1_integer;
+  exponent2 : asn1_integer;
+  coefficient : asn1_integer;
+}
+
+asn1_alias private_rsa_key = (C_Universal, T_Sequence),
+                             private_rsa_key_content
+\end{lstlisting}
 
 
-\section{Quelques mots sur l'implémentation \texttt{camlp4}}
-
-
-\subsection{Des chiffres}
-
-\TODO{Nb de lignes}
-
-\TODO{Disponibilité du package}
-
-
-\subsection{Anecdotes}
-
-\TODO{Difficulté à écrire du camlp4 car peu de documentation, mais une
-  fois les types compris, la manipulation de l'AST est extrêmement
-  riche.}
-
-\TODO{Comportement surprenant: camlp4o <preprocessors> <fichier.ml> a
-  un comportement différent selon que la sortie standard est un pipe
-  ou une console...}
+% TODO:
+%  - unions ASN.1 ?
+%  - optional fields in ASN.1 structures ?
+%  - AO_EnrichRawString -> pour struct!
+%  - AO_EnrichASN1Info
+%  - AO_TopLevel
 
 
 
 \section{Applications}
+
+
+\subsection{Quelques mots sur l'implémentation \texttt{camlp4}}
+
+L'implémentation complète de \FAceSL comporte
+\begin{itemize}
+\item des pré-processeurs \texttt{camlp4}, qui comportent environ
+  1200~lignes de code;
+\item des bibliothèques annexes pour implémenter la gestion des types
+  de base, sur 1300~lignes de code.
+\end{itemize}
+
+Ce travail a nécessité de comprendre le fonctionnement de
+\texttt{camlp4} dont la documentation n'est pas toujours facile
+d'accès, mais une fois les différents types de \texttt{camlp4}
+assimilés, il est possible de réaliser des manipulations extrêmement
+riches sur l'arbre de syntaxe abstraite.
+
+% Pour la présentation
+% \TODO{Comportement surprenant: camlp4o <preprocessors> <fichier.ml> a
+%   un comportement différent selon que la sortie standard est un pipe
+%   ou une console...}
 
 
 \subsection{TLS et X.509}
@@ -745,19 +804,24 @@ répartition du nombre de lignes de code est la suivante:
   500~lignes;
 \item description des messages TLS: 150~lignes;
 \item description des certificats X.509 : 100~lignes;
-\item outil pour tester un serveur TLS (test des versions et suites
-  cryptographiques supportées, affichage de la partie en clair de
-  l'échange): 250~lignes.
+\item outil pour tester les versions et suites cryptographiques
+  supportées par un serveur donné, ou encore pour afficher la partie
+  en clair de l'échange: 250~lignes.
 \end{itemize}
 
-\TODO{Exemple de struct/union}
+%\TODO{Exemple de struct/union} ?
 
 Ainsi, en environ 1000~lignes de code\footnote{Ce décompte ne comprend
-  évidemment pas le préprocesseur ni les fonctions auxiliaires
+  évidemment pas le pré-processeur ni les fonctions auxiliaires
   fournissant les services de base (\texttt{parse\_uint8} et
   \texttt{dump\_ipv4} par exemple) discutées dans la section
   précédente.}, il a été possible de décrire une grande partie du
 protocole TLS ainsi qu'un outil de test.
+
+À partir de ces \emph{parsers}, d'autres outils ont été écrits pour
+analyser plusieurs centaines de giga-octets de réponses TLS provenant
+de plusieurs campagnes de mesure sur internet. Les résultats de ces
+analyses ont fait l'objet d'une publication~\cite{ACSAC2012}.
 
 Afin d'arriver à une implémentation complète d'une pile TLS, il
 faudrait encore ajouter les éléments suivants:
@@ -772,10 +836,6 @@ faudrait encore ajouter les éléments suivants:
 \end{itemize}
 
 
-\TODO{Cette première ébauche a été testée avec succès pour
-  ... efficacité, description des outils.}
-
-
 \subsection{MRT}
 
 BGP est l'un des protocoles étudiés dans le laboratoire sécurité des
@@ -787,12 +847,14 @@ Là encore, deux outils étaient utilisés pour analyser une grande
 quantité de données au format MRT, le premier en C\footnote{Il est à
   noter que cet outil en C se terminait parfois de manière brutale sur
   certains fichiers sans aucune explication}, le second en OCaml. Il a
-suffi de 4 jours pour décrire en \FAceSL les structures MRT
+suffi de~4~jours pour décrire en \FAceSL les structures MRT
 pertinentes pour les études menées au laboratoire et obtenir un outil
 indépendant des deux autres, plus rapide que l'implémentation en OCaml
 pré-existante et plus fiable que l'implémentation en C.
 
-\TODO{nb de lignes de code, tableau de comparaison de l'efficacité}
+La description des messages MRT nécessite moins de~400~lignes de code,
+alors que l'outil permettant d'afficher le contenu disséqué de manière
+similaire aux outils existants en comporte~300.
 
 
 \subsection{TAR}
@@ -806,17 +868,47 @@ exemple.
 
 \section{Conclusion et perspectives}
 
-\TODO{Les extensions du langage écrites en \texttt{camlp4} ressemblent
-  à scapy / hachoir ?}
+L'écriture de \FAceSL, qui résulte de la fusion du langage spécifique
+utilisé pour décrire les objets étudiés et du langage permettant de
+raisonner sur les objets construits, a permis d'obtenir, à l'aide
+de~2500~lignes de code, un générateur de dissecteurs réunissant toutes
+les propriétés recherchées:
+\begin{itemize}
+\item rapidité d'écriture;
+\item expressivité des types;
+\item garanties fortes sur le fonctionnement des outils;
+\item efficacité des programmes produits.
+\end{itemize}
 
-\TODO{Intérêt de la solution retenue : peu de lignes, très expressif,
-  robuste (typage), efficace!}
+Deux projets écrits en Python présentent des similarités avec les
+travaux exposés ici:
+\begin{itemize}
+\item \texttt{scapy}, une boîte à outils pour manipuler les paquets
+  réseau; ce projet permet également de définir rapidement de nouveaux
+  protocoles réseau pour étendre la boîte à outils;
+\item \texttt{hachoir}, une bibliothèque pour écrire rapidement des
+  dissecteurs pour des formats de fichiers.
+\end{itemize}
+\noindent Le langage Python semble un candidat naturel pour réaliser
+ce genre de projet, de par ses capacités d'introspection. Il est
+intéressant de remarquer que l'utilisation d'un pré-processeur en Caml
+pour manipuler du Caml permet d'arriver au même résultat.
 
-\TODO{Impact d'OCaml 4 ?}
+Parmi les développements prévus pour \FAceSL, les pistes suivantes
+sont envisagées:
+\begin{itemize}
+\item ajout d'options pour améliorer la dissection ASN.1 (par exemple,
+  lors de la dissection d'un certificat X.509, il est utile de
+  conserver la chaîne de caractère décrivant le bloc de données à
+  signer (\texttt{tbsCertificate}) pour pouvoir simplement vérifier la
+  signature du certificat);
+\item description de nouveaux formats de fichiers et de nouveaux
+  protocoles (DNS, \texttt{pcap}, etc.);
+\item automatiser l'animation des protocoles et la génération des
+  automates permettant l'étude d'exécutions du protocoles.
+\end{itemize}
 
-\TODO{Autres parsers: DNS, pcap, etc.}
-
-\TODO{Question de l'automate et de l'animation}
+%\TODO{ASN.1: ajout d'options, ajout des unions et de spécifités}
 
 
 
