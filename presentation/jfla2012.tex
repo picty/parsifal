@@ -1,4 +1,5 @@
-\documentclass{article}
+\documentclass[a4]{article}
+\usepackage[hscale=0.75, vscale=0.75]{geometry}
 \usepackage[latin1]{inputenc}
 \usepackage[french]{babel}
 \usepackage{array}
@@ -13,8 +14,8 @@
 \newcommand{\TODO}[1]{\textcolor{red}{#1}}
 
 \newcommand{\FAceSL}{Parsifal\xspace}
-\newcommand{\FAceSLTypes}{BinTypes\xspace}
-\newcommand{\FAceSLType}{BinType\xspace}
+\newcommand{\FAceSLTypes}{PTypes\xspace}
+\newcommand{\FAceSLType}{PType\xspace}
 
 \title{Utilisation de \texttt{camlp4} pour l'écriture rapide de \emph{parsers}}
 \author{Olivier Levillain}
@@ -31,7 +32,7 @@ l'utilisation de \emph{parsers} (dissecteurs) de confiance permettant
 d'analyser les messages échangés lors d'une instance du protocole.
 
 L'expérience a montré qu'il était souvent utile (voire nécessaire) de
-disposer d'implémentations indépendantes et robustes pour étudier et
+disposer d'implémentations in\-dé\-pen\-dant\-es et robustes pour étudier et
 comprendre les comportements d'un protocole donné, en particulier pour
 détecter et caractériser les messages incorrects. En effet, les
 implémentations disponibles de clients, serveurs ou dissecteurs sont
@@ -55,22 +56,23 @@ présenter l'une de ces implémentations, reposant sur le pré-processeur
 Le point de départ de ces travaux était l'analyse d'une quantité
 importante de données récoltées concernant le protocole TLS. Ces
 données proviennent de résultats mis à dispositions par l'Electronic
-Frontier Foundation (EFF) et de collectes effectuées par Télécom
-SudParis et l'ANSSI. Les traces analysées contiennent une très grande
-diversité de réponses, et certaines sont incohérentes ou non conformes
-au protocole TLS.
+Frontier Foundation~\cite{eff-observatory, eckersley-obs1,
+  eckersley-obs2} et de collectes effectuées par Télécom SudParis et
+l'ANSSI. Les traces analysées contiennent une très grande diversité de
+réponses, et certaines sont incohérentes ou non conformes au protocole
+TLS.
 
 Face à cet imposant corpus, il était difficile d'utiliser des outils
 existants pour extraire de manière fiable l'information pertinente
 pour les analyses. Dans le cas de TLS, l'objectif était d'effectuer un
 état des lieux de la qualité des serveurs TLS dans le monde, et son
 évolution dans le temps. Ces travaux ont fait l'objet d'une
-publication à venir à ACSAC~\cite{ACSAC2012}.
+publication à ACSAC~2012~\cite{ACSAC2012}.
 
 Le premier \emph{parser} réalisé pour cette tâche a été écrit en
 Python, permettant d'obtenir rapidement un prototype pour extraire les
 premiers éléments des données. Cependant, ce premier programme s'est
-révélé trop lent face au volume de données à traiter. Une seconde
+révélé trop lent face au volume à traiter. Une seconde
 implémentation a donc vu le jour, en C++. Celle-ci reposait sur les
 \emph{templates} et la programmation objet, et permettait d'obtenir un
 dissecteur flexible et efficace, mais au prix d'une grande quantité de
@@ -87,8 +89,8 @@ nécessitait encore une lourdeur dans l'écriture du code qui s'est
 révélée assez fastidieuse à l'usage.
 
 Finalement, une nouvelle implémentation en OCaml a été réalisée pour
-tenter de réunir l'ensemble des qualités recherchées pour le
-développement de \emph{parsers}:
+réunir l'ensemble des qualités recherchées pour le développement de
+\emph{parsers}:
 \begin{itemize}
 \item rapidité d'écriture;
 \item garanties fortes sur le fonctionnement des outils;
@@ -96,8 +98,9 @@ développement de \emph{parsers}:
 \end{itemize}
 Cette quatrième mouture, \FAceSL, résulte de la fusion entre le
 langage spécifique de description des objets analysés et le langage de
-programmation. Pour cela, le processeur \texttt{camlp4} a été employé
-pour la génération automatique des types et des fonctions à partir de
+programmation: on utilise directement le langage OCaml pour les deux
+usages. Pour cela, le processeur \texttt{camlp4} a été employé pour la
+génération automatique des types et des fonctions à partir de
 descriptions brèves des structures à disséquer.
 
 
@@ -113,11 +116,11 @@ format original (colonne TAR) et une variante plus récente (colonne
 \texttt{ustar}). Pour des raisons de compatibilité, les valeurs
 numériques sont systématiquement stockées sous la forme d'une chaîne
 de caractère représentant la valeur numérique en octal\footnote{Cette
-  méthode permet d'éviter de tomber dans les pièges de
-  l'\emph{endianness} par exemple, mais au prix d'une plus grande
+  méthode permet des difficultés d'encodage telles que la prise en
+  compte de l'\emph{endianness}, mais au prix d'une plus grande
   consommation mémoire.}. L'en-tête est contenu dans un «~bloc~» de
-512~octets, et le contenu du fichier qui suit l'en-tête est complété
-par des caractères nuls pour former des blocs de 512~octets.
+512~octets, et le contenu du fichier qui suit l'en-tête est lui-aussi
+complété par des caractères nuls pour former des blocs de 512~octets.
 
 \begin{table}
   \begin{center}
@@ -151,7 +154,7 @@ par des caractères nuls pour former des blocs de 512~octets.
       \hline
       257 &   6	& \multicolumn{1}{c|}{-} & Indicateur \texttt{"ustar"} \\
       \hline
-      263 &   2	& \multicolumn{1}{c|}{-} & Version UStar ("00") \\
+      263 &   2	& \multicolumn{1}{c|}{-} & Version \texttt{ustar} ("00") \\
       \hline
       265 &  32 & \multicolumn{1}{c|}{-} & Propriétaire \\
       \hline
@@ -171,7 +174,7 @@ par des caractères nuls pour former des blocs de 512~octets.
 \end{table}
 
 Le champ à l'offset~156 décrit le type de fichier, et a été étendu par
-\texttt{ustar}. La table \ref{tab:tar-filetypes} récapitule les
+\texttt{ustar}. Le tableau \ref{tab:tar-filetypes} récapitule les
 différentes valeurs qu'il peut prendre.
 
 \begin{table}
@@ -205,13 +208,9 @@ différentes valeurs qu'il peut prendre.
 
 
 Afin d'utiliser notre pré-processeur pour décrire les fichiers au
-format TAR, commençons par décrire les valeurs du champ «~Indicateur
-de lien/Type de fichier~». Il s'agit d'une énumération sur 8~bits,
-dont nous connaissons certaines valeurs qui s'écrit avec le nouveau
-mot-clé \texttt{enum}. Si l'analyseur généré rencontre un type
-inconnu, il est possible d'utiliser un constructeur spécifique ou de
-lever une exception. Nous avons choisi le premier cas, avec le
-constructeur spécifique \texttt{UnknownFileType}:
+format TAR, commençons par décrire les valeurs de ce champ
+«~Indicateur de lien/Type de fichier~». Il s'agit d'une énumération
+sur 8~bits qui s'écrit avec le nouveau mot-clé \texttt{enum}:
 \begin{lstlisting}
 enum file_type (8, UnknownVal UnknownFileType, []) =
   | 0 -> NormalFile
@@ -227,7 +226,7 @@ enum file_type (8, UnknownVal UnknownFileType, []) =
 
 Ensuite, on peut décrire l'enregistrement contenant les différents
 champs constituant d'un en-tête à l'aide du mot clé \texttt{struct},
-qui ressemble à la description d'un enregistrement Caml, mais qui
+qui ressemble à la description d'un enregistrement OCaml, mais qui
 accepte des types enrichis nommés \FAceSLTypes:
 \begin{lstlisting}
 struct tar_header = {
@@ -260,12 +259,13 @@ alias tar_file = list of tar_entry;
 
 Le code resultant du pré-processeur permet alors d'ouvrir une archive
 simplement à l'aide de la fonction \texttt{parse\_tar\_file}, qui
-prend en entier la chaîne de caractères correspondant au contenu du
+prend en argument la chaîne de caractères correspondant au contenu du
 fichier. Afin de traiter des données importantes de manière efficace,
 il est également possible de produire une version du \emph{parser} en
 mode flux, qui repose sur la bibliothèque \texttt{lwt}. Pour cela, il
-suffit de redéfinir l'alias en lui adjoignant la et d'utiliser cette
-fois la fonction \texttt{lwt\_parse\_tar\_file}:
+suffit de redéfinir l'alias en lui adjoignant l'option
+\texttt{with\_lwt} et d'utiliser cette fois la fonction
+\texttt{lwt\_parse\_tar\_file}, comm le montre l'exemple suivant:
 \begin{lstlisting}
 alias tar_file [with_lwt] = list of tar_entry;
 
@@ -282,12 +282,13 @@ let _ =
 
 
 \subsection{Pour aller plus loin}
+\label{sec:aller-plus-loin}
 
 La première version proposée est fonctionnelle, mais si l'on souhaite
 proprement prendre en compte les vieilles archives, ne contenant pas
 l'en-tête étendu commençant par le marqueur \texttt{ustar}, on peut
 réécrire la description de l'en-tête de la manière suivante, en
-éclatant l'en-tête en deux morceaux, dont un optionnel.
+éclatant l'en-tête en deux morceaux, dont un est déclaré optionnel.
 \begin{lstlisting}
 struct ustar_header = {
   ustar_magic : magic("ustar\x0000");
@@ -316,8 +317,7 @@ struct tar_entry = {
   header : container(512) of tar_header;
   file_content : binstring(header.file_size);
   file_padding : binstring(512 - (header.file_size % 512))
-  checksum_verification : check of check_crc32 (header,
-                                    file_content, file_padding);
+  checksum_verification : check of check_crc32 (header, file_content, file_padding);
 }
 
 alias tar_file = list of tar_entry;
@@ -332,15 +332,20 @@ contiendra~12~octets; dans le cas contraire, la fonction échouera, le
 champ \texttt{ustar\_header} vaudra \texttt{None} et
 \texttt{hdr\_padding} aura une longueur de 255~octets.
 
-Le lecteur attentif aura également remarqué l'ajout d'un champ intitulé
-\texttt{checksum\_verification}, qui permet d'exécuter une
+Le lecteur attentif aura également remarqué l'ajout d'un champ
+intitulé \texttt{checksum\_verification}, qui permet d'exécuter une
 vérification de la somme de contrôle une fois l'entrée TAR entièrement
 disséquée. Cette ligne ne produit pas de champ dans le type OCaml
 \texttt{tar\_entry} généré, mais appelle la fonction
-\texttt{check\_crc32} (à écrire) sur les champs déjà disséqués. On
-pourrait utiliser ce type de champs pour vérifier d'autres propriétés
-(le champ \texttt{hdr\_padding} est par exemple censé ne contenir que
-des caractères nuls).
+\texttt{check\_crc32}\footnote{une fonction à écrire dont le prototype
+  attendu est \lstinline+tar_header -> string -> string -> unit+ qui
+  pourra lever une exception en cas d'erreur sur la somme de
+  contrôle.}  sur les champs déjà disséqués. On pourrait utiliser ce
+type de champs pour vérifier d'autres propriétés (le champ
+\texttt{hdr\_padding} et les champs inutilisés sont par exemple censés
+ne contenir que des caractères nuls).
+
+\medskip
 
 Le format TAR faisant un usage important des chaînes de caractères
 encodant une valeur numérique, on pourrait aussi créer de toute pièce
@@ -359,19 +364,48 @@ let parse_tar_numstring len input =
 let dump_tar_numstring len v =
   Printf.printf "%*.*o\x00" len len v
 
-let print_tar_numstring ?indent:(indent="")
-                        ?name:(name="numstring") v =
+let print_tar_numstring ?indent:(indent="") ?name:(name="numstring") v =
   Printf.sprintf "%s%s: %d (%o)\n" indent name v v
 \end{lstlisting}
 
-On peut alors modifier les champs représentant des valeurs numériques
-en octal en replaçant le type \texttt{string(n)} par
-\texttt{tar\_numstring(n)}. L'expressivité de \FAceSL peut ainsi être
-étendue facilement à l'aide de \FAceSLTypes personnalisés.
+En effet, définir un nouveau type consiste simplement à déclarer un
+type OCaml et à écrire les fonctions de base pour traiter ce type, ce
+qui permet d'étendre facilement l'expressivité de \FAceSL à l'aide de
+\FAceSLTypes personnalisés.
+
+Une fois ce nouveau type défini, on peut modifier les champs
+représentant des valeurs numériques en octal en replaçant le type
+\texttt{string(n)} par \texttt{tar\_numstring(n)}.
 
 
 
 \section{Description des extensions du langage}
+
+L'idée générale de \FAceSL est d'interpréter des descriptions courtes
+rédigées par le développeur et de générer automatiquement
+\begin{itemize}
+\item des types OCaml décrivant des structures binaires;
+\item des fonctions pour disséquer les objets correspondants depuis
+  une chaîne de caractère (\texttt{parse\_t}) ou depuis un flux
+  (\texttt{lwt\_parse\_t});
+\item des fonctions pour exporter les objets sous forme binaire
+  (\texttt{dump\_t}) ou dans une représentation imprimable
+  (\texttt{print\_t}).
+\end{itemize}
+
+\noindent
+Ces fonctions correspondront au type suivant:
+\begin{lstlisting}
+val parse_t : string_input -> t
+val lwt_parse_t : lwt_input -> t
+val dump_t : t -> string
+val print_t : ?indent:string -> ?name:string -> t -> string
+\end{lstlisting}
+
+La fonction \texttt{print} accepte des options pour modifier
+l'indentation et le nom de la structure à afficher. Les fonctions
+\texttt{parse}, \texttt{lwt\_parse} et \texttt{dump} peuvent
+éventuellement accepter des paramètres supplémentaires.
 
 
 \subsection{\'Enumérations}
@@ -382,9 +416,7 @@ ressemble à l'\texttt{enum} du C, le typage fort en plus.
 \shorthandoff{:}
 \begin{tabbing}
   \textit{énumération} ::= \textbf{\tt enum} \= \textit{identifiant} (\textit{taille}, \textit{comportement}, \textit{enum\_options}) = \\
-  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [, \textit{texte}\footnote{Ce
-    texte sera renvoyé par \texttt{string\_of\_enum} pour cette valeur de l'énumération.
-    Si aucun texte n'est donné, le nom du constructeur sera utilisé.}] \\
+  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [, \textit{texte}]\footnotemark\\
   \> ... \\
   \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [, \textit{texte}] \\
   \\
@@ -394,6 +426,9 @@ ressemble à l'\texttt{enum} du C, le typage fort en plus.
   \textit{enum\_option} \= ::= \textbf{\tt with\_lwt} \\
 \end{tabbing}
 \shorthandon{:}
+\footnotetext{Ce texte sera renvoyé par \texttt{string\_of\_enum} pour
+  cette valeur de l'énumération.  Si aucun texte n'est donné, le nom
+  du constructeur sera utilisé.}
 
 Une déclaration d'énumération \texttt{enum} est alors transformée en
 une déclaration de type OCaml et un ensemble de fonctions. Par
@@ -424,26 +459,20 @@ val tls_version_of_string : string -> tls_version
 val parse_tls_version : string_input -> tls_version
 val lwt_parse_tls_version : lwt_input -> tls_version
 val dump_tls_version : tls_version -> string
-val print_tls_version : ?indent:string -> ?name:string ->
-                        tls_version -> string
+val print_tls_version : ?indent:string -> ?name:string -> tls_version -> string
 \end{lstlisting}
 
 Les quatre premières fonctions générées permettent simplement de
 convertir le type énumération depuis et vers les entiers et les
 chaînes de caractères. Le \textit{comportement} de la grammaire
 ci-dessus indique comment \texttt{tls\_version\_of\_int} doit traiter
-une valeur non fournie dans l'énumération: ici, \texttt{UnknownVal
-  V\_Unknown} indique qu'il faut renvoyer une valeur
+une valeur non fournie dans l'énumération: dans l'exemple ci-dessus,
+\texttt{UnknownVal V\_Unknown} indique qu'il faut renvoyer une valeur
 \texttt{V\_Unknown i} où \texttt{i} est la valeur non
 reconnue. L'autre comportement possible est de lever une exception.
 
-Les quatre fonctions suivantes fournissent des services de plus haut
-niveau: \emph{parser} l'énumération depuis une chaîne de caractères
-(\texttt{parse}) ou un flux \texttt{Lwt} (\texttt{lwt\_parse}),
-exporter une structure au format binaire (\texttt{dump}) ou en obtenir
-une version affichable (\texttt{print}). Cette dernière fonction
-accepte des options pour modifier l'indentation et le nom de la
-structure à afficher.
+Les quatre fonctions suivantes fournissent les services de plus haut
+niveau décrits précédemment.
 
 
 \subsection{\FAceSLTypes}
@@ -466,23 +495,24 @@ par \texttt{struct} et \texttt{union}.
   \> $\vert$ \> \textbf{\tt list} [\textit{type entier}] \textbf{\tt of} \textit{\FAceSLType} \\
   \> $\vert$ \> \textbf{\tt container} (\textit{expression}) \textbf{\tt of} \textit{\FAceSLType} \\
   \> $\vert$ \> \textbf{\tt container} [\textit{type entier}] \textbf{\tt of} \textit{\FAceSLType} \\
-  \> $\vert$ \> \textit{custom type} \\
-  \> $\vert$ \> \textit{custom type} (\textit{paramètres}) \\
+  \> $\vert$ \> \textit{type personnalisé} \\
+  \> $\vert$ \> \textit{type personnalisé} (\textit{paramètres}) \\
 \end{tabbing}
 \shorthandon{:}
 
 \FAceSL implémente les fonctions \texttt{parse}, \texttt{lwt\_parse},
 \texttt{dump} et \texttt{print} pour un certain nombre de types de
 base: les entiers non signés, les adresses IPv4 et IPv6 encodées en
-binaire, les chaînes de caractères\footnote{En plus des types
+binaire et les chaînes de caractères\footnote{En plus des types
   \texttt{string} présentés ici, qui correspondent à des chaînes de
   caractères imprimables, un type \texttt{binstring} est également
   disponible. La seule différence entre ces deux types est que la
-  fonction \texttt{print} générée affichera la chaîne directement, ou
-  sous sa représentation héxadécimale.}.
+  fonction \texttt{print} générée affichera la chaîne directement dans
+  le premier cas, ou sous sa représentation héxadécimale dans le
+  second cas.}.
 
 En plus de ces types scalaires, le type \texttt{list} permet de
-décrire des listes d'objets du même type; le type \texttt{container}
+décrire des listes d'objets du même type. Le type \texttt{container}
 sert à encapsuler un sous-type en spécifiant la taille de la
 sous-chaîne à lire depuis l'entrée. Nous l'avons utilisé pour la
 gestion de l'en-tête TAR qui est contenu dans un bloc de 512~octets
@@ -492,39 +522,39 @@ standard \texttt{ustar} ou non).
 Pour les chaînes de caractères et les listes, les \emph{parsers}
 générés par défaut essaient de lire l'ensemble de la chaîne qui leur
 est passée en entrée. On peut cependant préciser avec une expression
-entre parenthèses la taille attendue pour une chaîne de caractères en
-octets ou le nombre d'éléments attendus pour une liste. Un autre
-format fréquemment rencontré pour les chaînes de caractères ou les
-listes est de faire précéder la chaîne ou la liste par un champ
-longueur qui définit le nombre d'octets utiles pour l'élément qui
-suit; on peut spécifier à l'aide de crochets qu'un tel type est
-attendu: \texttt{\textbf{list} [uint16] \textbf{of} uint16} permet de
-décrire une liste d'entiers sur 16~bits dont la longueur totale en
-octets est codées sur un entier 16~bits\footnote{Ce type particulier
-  peut servir à décrire la liste des suites cryptographiques
-  (\emph{ciphersuites}) proposées par un client dans le protocole
-  TLS.}. Pour un conteneur, on utilisera les parenthèses ou les
-crochets pour décrire comment trouver la taille en octet du champ
-encapsulé.
+entre parenthèses la taille en octets attendue pour une chaîne de
+caractères en octets ou le nombre d'éléments attendus pour une
+liste. Un autre format fréquemment rencontré pour les chaînes de
+caractères ou les listes est de faire précéder la chaîne ou la liste
+par un champ longueur qui définit le nombre d'octets utiles pour
+l'élément qui suit; on peut spécifier à l'aide de crochets qu'un tel
+type est attendu: \texttt{\textbf{list} [uint16] \textbf{of} uint16}
+permet de décrire une liste d'entiers sur 16~bits dont la longueur
+totale en octets est codées sur un entier 16~bits\footnote{Ce type
+  particulier peut servir à décrire la liste des suites
+  cryptographiques (\emph{ciphersuites}) proposées par un client dans
+  le protocole TLS.}. Pour un conteneur, on utilisera les parenthèses
+ou les crochets pour décrire la taille en octet du champ encapsulé.
 
-Enfin, pour étendre les types binaires, il suffit de créer un nouveau
-type OCaml, d'écrire les fonctions \texttt{parse}, \texttt{dump} et
-\texttt{print} correspondantes\footnote{On écrira également la
-  fonction \texttt{lwt\_parse} si besoin.} avant de pouvoir utiliser
-ce nouveau type comme un \FAceSLType. Il est de plus possible de
-spécifier des paramètres à passer aux fonctions \texttt{parse},
-\texttt{lwt\_parse} et \texttt{dump} dans le cas de types
-personnalisés. Il peut s'agir de structures ou d'unions, mais
-également de types pour lesquels on a écrit à la main les fonctions
-nécessaires, comme cela a été fait précédemment pour
-\texttt{tar\_numstring}.
+\medskip
+
+Enfin, n'importe quel type peut être utilisé comme type personnalisé,
+dès lors qu'il existe un type OCaml valide, ainsi que les fonctions
+\texttt{parse}, \texttt{dump} et \texttt{print} correspondantes. Il
+est évidemment possible de construire de nouveaux types à l'aide de
+\texttt{struct} et \texttt{union} décrits ci-dessous; un développeur
+peut aussi choisir de créer un nouveau type OCaml et d'écrire lui-même
+les fonctions nécessaires, comme \texttt{tar\_numstring} dans
+l'exemple de la section~\ref{sec:aller-plus-loin}. De plus, il est
+possible de spécifier des paramètres à passer aux fonctions
+\texttt{parse}, \texttt{lwt\_parse} et \texttt{dump} dans le cas de
+types personnalisés.
 
 
 \subsection{Structures}
 
-Les structures \texttt{struct} que l'on peut exprimer en \FAceSL sont
-des enregistrements qui viennent avec leurs fonctions \texttt{parse},
-\texttt{dump} et texttt{print} automatiquement générées.
+Les structures que l'on peut exprimer en \FAceSL sont des
+enregistrements.
 
 \shorthandoff{:}
 \begin{tabbing}
@@ -543,7 +573,7 @@ des enregistrements qui viennent avec leurs fonctions \texttt{parse},
 
 Un exemple simple est donné par les messages d'alerte du protocole
 TLS. À partir de deux types énumérations sur 8~bits, on peut créer
-l'enregistrement simplement:
+l'enregistrement à l'aide du code suivant:
 \begin{lstlisting}
 enum tls_alert_level (8, UnknownVal AL_Unknown, []) =
   | 1 -> AL_Warning, "Warning"
@@ -569,9 +599,11 @@ n'existe pas d'octets à la fin de la chaîne de caractères. L'option
 \texttt{top} est un raccourci pour les deux options précédentes,
 puisqu'elle décrit un objet au niveau le plus haut. Enfin, il est
 possible d'ajouter des paramères aux fonctions \texttt{parse} et
-\texttt{dump} générées; ces paramètres pourront être utilisés dans les
-expressions entre parenthèses (pour indiquer une longueur ou pour
-transmettre un argument à un type personnalisé.
+\texttt{dump} générées avec l'option \texttt{param}; ces paramètres
+pourront être utilisés dans les expressions entre parenthèses (pour
+indiquer une longueur ou pour transmettre un argument à un type
+personnalisé), comme nous le verrons dans le prochain exemple.
+
 
 \subsection{Unions}
 
@@ -579,8 +611,9 @@ Empruntant encore la terminologie du langage C, les unions sont en
 réalité des types somme augmentés par un constructeur par
 défaut. L'idée est d'utiliser un discriminant passé en argument à la
 fonction \texttt{parse} pour en déduire le constructeur du type somme
-à utiliser. Ce discriminant va être comparé aux différents
-motifs proposés dans la description de l'union.
+à utiliser. Ce discriminant va être comparé aux différents motifs
+proposés dans la description de l'union, et le constructeur adapté
+sera choisi.
 
 \shorthandoff{:}
 \begin{tabbing}
@@ -603,19 +636,23 @@ motifs proposés dans la description de l'union.
 
 Si on ne souhaite pas enrichir l'union ou que le discriminant n'a pas
 une valeur attendue, on utilise le constructeur par défaut, qui
-récupère par défaut la chaîne de caractères restant. Cela peut être
-modifié en spécifiant un \FAceSLType dans le comportement.
+récupère par défaut la chaîne de caractères restant\footnote{Il est
+  possible de spécifier un autre \FAceSLType pour le constructeur par
+  défaut en le spécifiant dans le comportement.}.
 
 L'enrichissement de l'union \texttt{u} est contrôlé par une variable
 globale \texttt{enrich\_u}, initialisée à \texttt{true} si l'option
 \texttt{enrich} est activée, à \texttt{false} sinon. De plus, on peut
-surcharger cette valeur par un argument optionnel \texttt{~enrich} de
+surcharger cette valeur par un argument optionnel \texttt{enrich} de
 la fonction \texttt{parse}. Si l'option \texttt{exhaustive} est
 positionnée, le \emph{pattern matching} généré pour l'enrichissement
-devra être exhaustif.
+sera exclusivement composé des motifs de la description (sans motif
+par défaut \texttt{\_}).
 
 Les options \texttt{with\_lwt}, \texttt{with\_exact}, \texttt{top} et
 \texttt{param} ont le même sens que pour les structures.
+
+\medskip
 
 Le protocole BGP définit la notion de système autonome (AS), un numéro
 identifiant un opérateur. Initialiement, les AS étaient représentés
@@ -631,28 +668,62 @@ union autonomous_system (UnparsedAS, [enrich]) =
 struct bgp_as_path_segment [param as_size] = {
   path_segment_type : uint8;
   path_segment_length : uint8;
-  path_segment_value : list(path_segment_length)
-                           of autonomous_system(as_size)
+  path_segment_value : list(path_segment_length) of autonomous_system(as_size)
 }
 \end{lstlisting}
 
-Le type \texttt{autonomous\_system} sera vu comme un entier~16~bits si
-le discriminant qui lui est passé en argument vaut 16, ou un entier
-32~bits s'il vaut 32. La déclaration de la structure
-\texttt{bgp\_as\_path\_segment} conduit à la génération d'une fonction
-\texttt{parse\_bgp\_as\_path\_segment} qui prend un argument
-supplémentaire (\texttt{as\_size}), puis tente de lire le type de
-segment (un octet), la longueur du segment (un autre octet), puis une
-liste d'AS contenant \texttt{path\_segment\_length} éléments du type
-union défini. On remarquera que la valeur \texttt{as\_size} est alors
-passée comme discriminant à \texttt{parse\_autonomous\_system}.
+Le type \texttt{autonomous\_system} sera vu comme un
+entier~16~ou~32~bits selon le discriminant qui lui est passé. La
+déclaration de la structure \texttt{bgp\_as\_path\_segment} conduit à
+la génération d'une fonction \texttt{parse\_bgp\_as\_path\_segment}
+qui prend un argument supplémentaire (\texttt{as\_size}), puis tente
+de lire le type de segment (un octet), la longueur du segment (un
+autre octet), puis une liste contenant \texttt{path\_segment\_length}
+éléments du type union défini. On remarquera que la valeur
+\texttt{as\_size} est alors passée comme discriminant à
+\texttt{parse\_autonomous\_system}.
+
+
+Voici des extraits du code généré par \FAceSL à partir des deux types
+ci-dessus:
+\begin{lstlisting}
+let enrich_autonomous_system = ref true
+
+type autonomous_system = | AS16 of int | AS32 of int | UnparsedAS of string
+
+let parse_autonomous_system ?enrich:(enrich = false) discriminator input =
+  if !enrich_autonomous_system || enrich then
+    (match discriminator with
+     | 16 -> AS16 (parse_uint16 input)
+     | 32 -> AS32 (parse_uint32 input)
+     | _ -> UnparsedAS (parse_rem_string input))
+  else UnparsedAS (parse_rem_string input)
+
+type bgp_as_path_segment =
+  { path_segment_type : int; path_segment_length : int;
+    path_segment_value : autonomous_system list }
+
+let parse_bgp_as_path_segment as_size input =
+  let path_segment_type = parse_uint8 input in
+  let path_segment_length = parse_uint8 input in
+  let path_segment_value = parse_list path_segment_length
+      (parse_autonomous_system as_size) input
+  in
+    {
+      path_segment_type = path_segment_type;
+      path_segment_length = path_segment_length;
+      path_segment_value = path_segment_value;
+    }
+\end{lstlisting}
+
+% TODO: ~enrich should be Default|AlwaysOn|AlwaysOff|OnForDepth of int
 
 
 \subsection{Alias}
 
 Pour permettre de produire simplement des fonctions \texttt{parse},
 \texttt{dump} et \texttt{print} pour des listes, on peut déclarer des
-alias comme nous l'avons fait pour le format TAR.
+alias comme dans le cas du format TAR.
 
 \shorthandoff{:}
 \begin{tabbing}
@@ -688,8 +759,8 @@ types ASN.1 de bases.
 \end{tabbing}
 \shorthandon{:}
 
-Les \textit{ASN1TypeContents} décrivent le contenu des objets ASN.1
-classiques: booléens, entiers, chaînes de bit ou d'octets, OIds,
+Les premiers \textit{ASN1TypeContents} décrivent le contenu des objets
+ASN.1 classiques: booléens, entiers, chaînes de bit ou d'octets, OIds,
 etc. Le type \texttt{asn1\_enumerated} correspond à un cas particulier
 des chaînes de bit pour représenter un \texttt{bitmap} (par exemple,
 le \emph{KeyUsage} X.509). Le conteneur permet d'encapsuler facilement
@@ -702,7 +773,7 @@ Pour chaque type de base \texttt{T}, les fonctions
 \texttt{print\_T\_content} sont déjà fournies et permettent de traiter
 le contenu de ces types. Des fonctions plus haut niveau, simplement
 nommée \texttt{parse\_T}, \texttt{dump\_T} et \texttt{print\_T}
-prennent en compte l'en-tête ASN.1 par défaut. De plus, deux fonctions
+prennent en compte l'en-tête ASN.1 par défaut. De plus, des fonctions
 permettent respectivement de \emph{parser} et de \emph{dumper} des
 objets ASN.1 à partir d'un en-tête et d'un type contenu:
 \begin{lstlisting}
@@ -748,10 +819,11 @@ struct private_rsa_key_content = {
   coefficient : asn1_integer;
 }
 
-asn1_alias private_rsa_key = (C_Universal, T_Sequence),
-                             private_rsa_key_content
+asn1_alias private_rsa_key = (C_Universal, T_Sequence), private_rsa_key_content
 \end{lstlisting}
 
+
+% TODO: décrire parse_private_rsa_key avec parse_asn1_object et parse_private_rsa_key_content
 
 % TODO:
 %  - unions ASN.1 ?
@@ -805,8 +877,8 @@ répartition du nombre de lignes de code est la suivante:
 \item description des messages TLS: 150~lignes;
 \item description des certificats X.509 : 100~lignes;
 \item outil pour tester les versions et suites cryptographiques
-  supportées par un serveur donné, ou encore pour afficher la partie
-  en clair de l'échange: 250~lignes.
+  supportées par un serveur donné, et afficher la partie en clair de
+  l'échange: 250~lignes.
 \end{itemize}
 
 %\TODO{Exemple de struct/union} ?
@@ -814,14 +886,15 @@ répartition du nombre de lignes de code est la suivante:
 Ainsi, en environ 1000~lignes de code\footnote{Ce décompte ne comprend
   évidemment pas le pré-processeur ni les fonctions auxiliaires
   fournissant les services de base (\texttt{parse\_uint8} et
-  \texttt{dump\_ipv4} par exemple) discutées dans la section
-  précédente.}, il a été possible de décrire une grande partie du
-protocole TLS ainsi qu'un outil de test.
+  \texttt{dump\_ipv4} par exemple).}, il a été possible de décrire une
+grande partie du protocole TLS ainsi qu'un outil de test.
 
 À partir de ces \emph{parsers}, d'autres outils ont été écrits pour
 analyser plusieurs centaines de giga-octets de réponses TLS provenant
 de plusieurs campagnes de mesure sur internet. Les résultats de ces
 analyses ont fait l'objet d'une publication~\cite{ACSAC2012}.
+
+\medskip
 
 Afin d'arriver à une implémentation complète d'une pile TLS, il
 faudrait encore ajouter les éléments suivants:
@@ -843,18 +916,20 @@ réseaux et protocoles. Le format d'échange utilisé pour archiver et
 transmettre l'ensemble des annonces vues par une sonde est
 \emph{Multi-Threaded Routing Toolkit} (MRT)~\cite{rfc6396}.
 
-Là encore, deux outils étaient utilisés pour analyser une grande
-quantité de données au format MRT, le premier en C\footnote{Il est à
-  noter que cet outil en C se terminait parfois de manière brutale sur
-  certains fichiers sans aucune explication}, le second en OCaml. Il a
-suffi de~4~jours pour décrire en \FAceSL les structures MRT
-pertinentes pour les études menées au laboratoire et obtenir un outil
-indépendant des deux autres, plus rapide que l'implémentation en OCaml
-pré-existante et plus fiable que l'implémentation en C.
+Là encore, deux outils étaient utilisés au sein du laboratoire pour
+analyser une grande quantité de données au format MRT, le premier en
+C\footnote{Il est à noter que cet outil en C se terminait parfois de
+  manière brutale sur certains fichiers sans aucune explication.}, le
+second en OCaml. Il a suffi de~4~jours pour décrire en \FAceSL les
+structures MRT pertinentes pour les études menées au laboratoire et
+obtenir un outil indépendant des deux autres, plus rapide que
+l'implémentation en OCaml pré-existante et plus fiable que
+l'implémentation en C.
 
-La description des messages MRT nécessite moins de~400~lignes de code,
+La description des messages MRT nécessite moins de~300~lignes de code,
 alors que l'outil permettant d'afficher le contenu disséqué de manière
-similaire aux outils existants en comporte~300.
+similaire aux outils existants en comporte~250. L'implémentation
+précédente en OCaml comptait~1200 lignes environ.
 
 
 \subsection{TAR}
@@ -874,7 +949,7 @@ raisonner sur les objets construits, a permis d'obtenir, à l'aide
 de~2500~lignes de code, un générateur de dissecteurs réunissant toutes
 les propriétés recherchées:
 \begin{itemize}
-\item rapidité d'écriture;
+\item rapidité d'écriture pour étendre avec de nouveaux types;
 \item expressivité des types;
 \item garanties fortes sur le fonctionnement des outils;
 \item efficacité des programmes produits.
@@ -883,16 +958,18 @@ les propriétés recherchées:
 Deux projets écrits en Python présentent des similarités avec les
 travaux exposés ici:
 \begin{itemize}
-\item \texttt{scapy}, une boîte à outils pour manipuler les paquets
+\item \texttt{scapy}~\cite{scapy}, une boîte à outils pour manipuler les paquets
   réseau; ce projet permet également de définir rapidement de nouveaux
   protocoles réseau pour étendre la boîte à outils;
-\item \texttt{hachoir}, une bibliothèque pour écrire rapidement des
+\item \texttt{hachoir}~\cite{hachoir}, une bibliothèque pour écrire rapidement des
   dissecteurs pour des formats de fichiers.
 \end{itemize}
 \noindent Le langage Python semble un candidat naturel pour réaliser
-ce genre de projet, de par ses capacités d'introspection. Il est
-intéressant de remarquer que l'utilisation d'un pré-processeur en Caml
-pour manipuler du Caml permet d'arriver au même résultat.
+ce genre de projet, grâce à ses capacités d'introspection. Il est
+intéressant de remarquer que l'utilisation d'un pré-processeur en OCaml
+pour manipuler du OCaml permet d'arriver au même résultat.
+
+\medskip
 
 Parmi les développements prévus pour \FAceSL, les pistes suivantes
 sont envisagées:
@@ -900,12 +977,12 @@ sont envisagées:
 \item ajout d'options pour améliorer la dissection ASN.1 (par exemple,
   lors de la dissection d'un certificat X.509, il est utile de
   conserver la chaîne de caractère décrivant le bloc de données à
-  signer (\texttt{tbsCertificate}) pour pouvoir simplement vérifier la
+  signer, \texttt{tbsCertificate}, pour pouvoir simplement vérifier la
   signature du certificat);
 \item description de nouveaux formats de fichiers et de nouveaux
   protocoles (DNS, \texttt{pcap}, etc.);
-\item automatiser l'animation des protocoles et la génération des
-  automates permettant l'étude d'exécutions du protocoles.
+\item automatisation de l'animation des protocoles par la génération
+  d'automates permettant l'étude d'exécutions du protocoles.
 \end{itemize}
 
 %\TODO{ASN.1: ajout d'options, ajout des unions et de spécifités}
