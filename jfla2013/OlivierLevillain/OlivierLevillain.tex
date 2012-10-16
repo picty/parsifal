@@ -47,8 +47,8 @@ disposer d'implémentations in\-dé\-pen\-dant\-es et robustes pour étudier et
 comprendre les comportements d'un protocole donné, en particulier pour
 détecter et caractériser les messages incorrects. En effet, les
 implémentations disponibles de clients, serveurs ou dissecteurs sont
-parfois limitées (refus de certaines options), laxistes (accetation
-silencieuse de paramètres erronés) ou fragile (terminaison brutale du
+parfois limitées (refus de certaines options), laxistes (acceptation
+silencieuse de paramètres erronés) ou fragiles (terminaison brutale du
 programme pour des valeurs inattendues, qu'elles soient licites ou
 non).
 
@@ -58,55 +58,106 @@ membres du laboratoire. L'objectif était de développer
 \emph{efficaces}. Pour cela, plusieurs langages de programmation ont
 été testés (C++, python, OCaml). L'objet de ce document est de
 présenter l'une de ces implémentations, reposant sur le pré-processeur
-\texttt{camlp4} d'OCaml.
+\texttt{camlp4} d'OCaml. La section~\ref{sec:historique} présente
+l'historique du projet et deux applications fonctionnelles concernant
+TLS et BGP. La section~\ref{sec:tar} présente un exemple complet
+d'utilisation de \FAceSL, le format d'archive TAR. Enfin, la
+section~\ref{sec:description} donne un aperçu de l'ensemble des
+constructions apportées par \FAceSL (la grammaire exacte est donnée en
+annexe).
 
 
 
-\section{Contexte}
+\section{Historique du projet}
+\label{sec:historique}
+
+
+\subsection{Motivation initiale: analyser de nombreuses réponses TLS}
 
 Le point de départ de ces travaux était l'analyse d'une quantité
-importante de données récoltées concernant le protocole TLS. Ces
-données proviennent de résultats mis à dispositions par l'Electronic
-Frontier Foundation~\cite{eff-observatory, eckersley-obs1,
-  eckersley-obs2} et de collectes effectuées par Télécom SudParis et
-l'ANSSI. Les traces analysées contiennent une très grande diversité de
-réponses, et certaines sont incohérentes ou non conformes au protocole
-TLS.
+importante de données récoltées concernant le protocole SSL/TLS. SSL
+(\emph{Secure Sockets Layer}) et TLS (\emph{Transport Layer Security})
+sont deux variantes d'un même protocole, dont la dernière version est
+TLSv1.2~\cite{rfc5246}. Leur objectif est de fournir un certain nombre
+de services pour sécuriser un canal de communication:
+\begin{itemize}
+\item authentification unilatérale ou mutuelle;
+\item confidentialité des données échangées de bout en bout;
+\item intégrité des données de bout en bout.
+\end{itemize}
 
-Face à cet imposant corpus, il était difficile d'utiliser des outils
-existants pour extraire de manière fiable l'information pertinente
-pour les analyses. Dans le cas de TLS, l'objectif était d'effectuer un
-état des lieux de la qualité des serveurs TLS dans le monde, et son
-évolution dans le temps. Ces travaux ont fait l'objet d'une
-publication à ACSAC~2012~\cite{ACSAC2012}.
+SSL a initalement été mis au point par Netscape pour protéger les
+connexions HTTP. Le résultat de cette association (HTTP~+~SSL) est
+désigné par l'acronyme HTTPS. Même si SSL/TLS peut être utilisé pour
+sécuriser d'autres protocoles applicatifs, HTTPS reste l'application
+principale de la couche cryptographique SSL/TLS. C'est la raison pour
+laquelle plusieurs équipes de recherche ont récemment entrepris des
+collectes sur l'ensemble des serveurs HTTPS accessibles sur internet,
+afin d'évaluer la qualité des réponses TLS apportées par tous ces
+serveurs.
+
+Afin de pouvoir interpréter correctement les différents types de
+réponses, il est nécessaire de comprendre les différentes versions du
+protocole (SSLv2, SSLv3, TLSv1.0, TLSv1.1 et TLSv1.2), qui apportent
+chacune des subtilités dans les messages échangés. Parmi les messages
+pertinents pour ce type d'étude, le message \texttt{Certificate}
+contient la chaîne de certification permettant l'authentification du
+serveur. Elle contient des certificats X.509~\cite{rfc5280}, dont le
+format repose sur l'ASN.1, une syntaxe pour encoder de manière
+structurée des entiers, des chaînes de caractères ou encore des objets
+binaires\footnote{Plus précisément, l'ASN.1 (\emph{Abstract Syntax
+    Notation One}) permet de décrire de manière abstraite la structure
+  d'un certificat X.509; l'encodage utilisé pour les certificat et le
+  DER (\emph{Distinguished Encoding Rules}), une représentation
+  concrète canonique de l'ASN.1.}, ce qui apporte une complexité
+supplémentaire pour la dissection des messages.
+
+Le LRP a mené des travaux sur de nombreuses traces HTTPS depuis deux
+ans. Les données utilisées proviennent de résultats mis à dispositions
+par l'Electronic Frontier Foundation~\cite{eff-observatory,
+  eckersley-obs1, eckersley-obs2} en 2010 et de collectes effectuées
+par Télécom SudParis et l'ANSSI en 2011. Les traces analysées
+contiennent une très grande diversité de réponses, et certaines sont
+incohérentes ou non conformes au protocole TLS. Face à cet imposant
+corpus, il était difficile d'utiliser des outils existants pour
+extraire de manière fiable l'information pertinente pour les
+analyses. En effet, les implémentations existantes ont généralement un
+comportement inadapté à l'analyse, qu'il s'agisse d'un comportement
+limité (refus de certaines options), laxiste (acceptation silencieuse
+de paramètres erronés) ou fragiles (terminaison brutale du programme
+pour des valeurs inattendues, qu'elles soient licites ou non).
+
+Des outils spécifiques, maîtrisés par le laboratoire, ont donc été
+développés pour analyser ce grand volume de données (180~Go).
+
+
+\subsection{Démarche de développement des outils}
 
 Le premier \emph{parser} réalisé pour cette tâche a été écrit en
-Python, permettant d'obtenir rapidement un prototype pour extraire les
-premiers éléments des données. Cependant, ce premier programme s'est
-révélé trop lent face au volume à traiter. Une seconde
-implémentation a donc vu le jour, en C++. Celle-ci reposait sur les
-\emph{templates} et la programmation objet, et permettait d'obtenir un
-dissecteur flexible et efficace, mais au prix d'une grande quantité de
-code à écrire et d'erreurs de programmation pas toujours évidentes à
-diagnostiquer (fuites mémoire, erreurs de segmentation).
+Python. Nous avons ainsi obtenu rapidement un prototype pour extraire
+les premiers éléments des données. Cependant, ce premier programme
+s'est révélé trop lent face au volume à traiter.
 
-Pour pallier ce manque de robustesse, une troisième version des outils
-a été entreprise, en OCaml. Afin de conserver la flexibilité imaginée
-pour le second prototype, un langage spécifique a été développé pour
-décrire les structures à disséquer. Les outils résultants étaient
-expressifs, efficaces et plus fiables que la version
-précédente. Pourtant, l'extensibilité de cette implémentation
+Une seconde implémentation a donc vu le jour, en C++. Celle-ci
+reposait sur les \emph{templates} et la programmation objet, et
+permettait d'obtenir un dissecteur flexible et efficace, mais au prix
+d'une grande quantité de code à écrire et d'erreurs de programmation
+pas toujours évidentes à diagnostiquer (fuites mémoire, erreurs de
+segmentation).
+
+Pour pallier ce manque de robustesse, le développement d'une troisième
+version des outils a été entreprise, en OCaml. Afin de conserver la
+flexibilité imaginée pour le second prototype, un langage spécifique a
+été développé pour décrire les structures à disséquer. Les outils
+résultants étaient expressifs, efficaces et plus fiables que la
+version précédente. Pourtant, l'extensibilité de cette implémentation
 nécessitait encore une lourdeur dans l'écriture du code qui s'est
 révélée assez fastidieuse à l'usage.
 
 Finalement, une nouvelle implémentation en OCaml a été réalisée pour
 réunir l'ensemble des qualités recherchées pour le développement de
-\emph{parsers}:
-\begin{itemize}
-\item rapidité d'écriture;
-\item garanties fortes sur le fonctionnement des outils;
-\item efficacité des programmes produits.
-\end{itemize}
+\emph{parsers} (rapidité d'écriture, garanties fortes sur le
+fonctionnement des outils et efficacité des programmes produits).
 Cette quatrième mouture, \FAceSL, résulte de la fusion entre le
 langage spécifique de description des objets analysés et le langage de
 programmation: on utilise directement le langage OCaml pour les deux
@@ -115,23 +166,66 @@ génération automatique des types et des fonctions à partir de
 descriptions brèves des structures à disséquer.
 
 
+\subsection{Autre application: MRT}
 
-\section{Présentation de \FAceSL}
+BGP (\emph{Border Gateway Protocol}~\cite{rfc4271}) est un autre
+protocole étudié par le laboratoire. Il s'agit du protocole de routage
+utilisé pour interconnecter les différents réseaux qui forment
+l'internet. Il existe de nombreuses RFC décrivant BGP, ses extensions,
+ainsi que des protocoles connexes. En particulier, MRT
+(\emph{Multi-Threaded Routing Toolkit}~\cite{rfc6396}) est un format
+d'échange utilisé pour archiver et transmettre l'ensemble des annonces
+vues par un routeur.
+
+Certains projets proposent d'accéder aux informations de routage de
+l'internet collectées depuis plusieurs points dans le monde, et
+exportées au format MRT. Ces données sont d'un grand intérêt pour
+analyser l'état de l'internet, détecter et comprendre d'éventuels
+incidents affectant les informations de routage. L'observatoire de la
+résilience de l'internet français~\cite{observatoire}, mis en place
+par l'ANSSI en 2012, utilise donc cette source de données et doit donc
+disposer d'outils capables d'interpréter les fichiers MRT. Le projet
+RIS (\emph{Routing Information Service}) fournit trois fois par jour
+une vision complète de~16~routeurs disséminés sur la planète, ce qui
+correspond à plusieurs centaines de méga-octets par jour, d'où le
+besoin d'avoir des dissecteurs robustes et efficaces.
+
+Deux outils étaient utilisés au sein du laboratoire pour analyser
+cette grande quantité de données au format MRT. Le premier est un
+outil libre écrit en C, dont la qualité de code laisse à
+désirer\footnote{Cet outil en C se terminait parfois de manière
+  brutale sur certains fichiers sans donner aucune explication.}. Le
+second est un développement interne en OCaml, plus fiable que le
+premier.
+
+Afin de valider la possibilité d'écrire rapidement avec \FAceSL des
+\emph{parsers} efficaces et robustes, un nouveau développement des
+outils d'analyse pour MRT a été réalisé. Il a suffi de~4~jours pour
+décrire en \FAceSL les structures pertinentes pour les études menées
+et obtenir un outil indépendant des deux autres, plus rapide que
+l'implémentation en OCaml pré-existante et plus fiable que
+l'implémentation en C.
 
 
-\subsection{Un premier exempe: le format TAR}
 
-L'en-tête du format TAR est décrit dans le
-tableau~\ref{tab:tar-format}, et décrit deux versions du format: le
-format original (colonne TAR) et une variante plus récente (colonne
-\texttt{ustar}). Pour des raisons de compatibilité, les valeurs
-numériques sont systématiquement stockées sous la forme d'une chaîne
-de caractère représentant la valeur numérique en octal\footnote{Cette
-  méthode permet des difficultés d'encodage telles que la prise en
-  compte de l'\emph{endianness}, mais au prix d'une plus grande
-  consommation mémoire.}. L'en-tête est contenu dans un «~bloc~» de
-512~octets, et le contenu du fichier qui suit l'en-tête est lui-aussi
-complété par des caractères nuls pour former des blocs de 512~octets.
+\section{Présentation de \FAceSL par l'exemple: le format TAR}
+\label{sec:tar}
+
+Le tableau~\ref{tab:tar-format} décrit deux versions de l'en-tête
+utilisé dans les archives TAR: le format original (colonne TAR) et une
+variante plus récente (colonne \texttt{ustar}). Pour des raisons de
+compatibilité, les valeurs numériques sont systématiquement stockées
+sous la forme d'une chaîne de caractère représentant la valeur
+numérique en octal\footnote{Cette méthode permet d'éviter des
+  difficultés d'encodage telles que la prise en compte de
+  l'\emph{endianness}, mais au prix d'une plus grande consommation
+  mémoire.}. L'en-tête est contenu dans un «~bloc~» de 512~octets, et
+le contenu du fichier qui suit l'en-tête est lui-aussi complété par
+des caractères nuls pour former des blocs de 512~octets.
+
+Le champ à l'offset~156 décrit le type de fichier, et a été étendu par
+\texttt{ustar}. Le tableau \ref{tab:tar-filetypes} récapitule les
+différentes valeurs qu'il peut prendre.
 
 \begin{table}
   \begin{center}
@@ -184,10 +278,6 @@ complété par des caractères nuls pour former des blocs de 512~octets.
   \label{tab:tar-format}
 \end{table}
 
-Le champ à l'offset~156 décrit le type de fichier, et a été étendu par
-\texttt{ustar}. Le tableau \ref{tab:tar-filetypes} récapitule les
-différentes valeurs qu'il peut prendre.
-
 \begin{table}
   \begin{center}
     \begin{tabular}{|>{\tt}c|l|c|}
@@ -217,6 +307,29 @@ différentes valeurs qu'il peut prendre.
   \label{tab:tar-filetypes}
 \end{table}
 
+\begin{table}
+  \begin{center}
+    \begin{tabular}{|r|r|l|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Offset} &
+      \multicolumn{1}{c|}{\bf Long.} &
+      \multicolumn{1}{c|}{\bf Description} \\
+      \hline
+
+      \hline
+        0 & 512 & En-tête TAR, complété par des zéros \\
+      \hline
+      512 & \emph{«~Taille du fichier~»}, alignée à 512~octets & Contenu du fichier, complété par des zéros \\
+      \hline
+    \end{tabular}
+  \end{center}
+
+  \caption{Description d'une entrée TAR.}
+  \label{tab:tar-entry}
+\end{table}
+
+
+\subsection{Une première implémentation}
 
 Afin d'utiliser notre pré-processeur pour décrire les fichiers au
 format TAR, commençons par décrire les valeurs de ce champ
@@ -240,6 +353,9 @@ champs constituant d'un en-tête à l'aide du mot clé \texttt{struct},
 qui ressemble à la description d'un enregistrement OCaml, mais qui
 accepte des types enrichis nommés \FAceSLTypes:
 \begin{lstlisting}
+let int_of_tarstring octal_value =
+  int_of_string ("0o" ^ octal_value)
+
 struct tar_header = {
   file_name : string(100);
   file_mode : string(8);
@@ -261,8 +377,8 @@ struct tar_header = {
 
 struct tar_entry = {
   header : tar_header;
-  file_content : binstring(header.file_size);
-  file_padding : binstring(512 - (header.file_size % 512))
+  file_content : binstring(int_of_tarstring header.file_size);
+  file_padding : binstring(512 - ((int_of_tarstring header.file_size) % 512))
 }
 
 alias tar_file = list of tar_entry;
@@ -276,7 +392,7 @@ il est également possible de produire une version du \emph{parser} en
 mode flux, qui repose sur la bibliothèque \texttt{lwt}. Pour cela, il
 suffit de redéfinir l'alias en lui adjoignant l'option
 \texttt{with\_lwt} et d'utiliser cette fois la fonction
-\texttt{lwt\_parse\_tar\_file}, comm le montre l'exemple suivant:
+\texttt{lwt\_parse\_tar\_file}, comme le montre l'exemple suivant:
 \begin{lstlisting}
 alias tar_file [with_lwt] = list of tar_entry;
 
@@ -299,7 +415,7 @@ La première version proposée est fonctionnelle, mais si l'on souhaite
 proprement prendre en compte les vieilles archives, ne contenant pas
 l'en-tête étendu commençant par le marqueur \texttt{ustar}, on peut
 réécrire la description de l'en-tête de la manière suivante, en
-éclatant l'en-tête en deux morceaux, dont un est déclaré optionnel.
+séparant l'en-tête en deux morceaux, dont un est déclaré optionnel.
 \begin{lstlisting}
 struct ustar_header = {
   ustar_magic : magic("ustar\x0000");
@@ -391,9 +507,11 @@ représentant des valeurs numériques en octal en replaçant le type
 
 
 \section{Description des extensions du langage}
+\label{sec:description}
+
 
 L'idée générale de \FAceSL est d'interpréter des descriptions courtes
-rédigées par le développeur et de générer automatiquement
+rédigées par le développeur et de générer automatiquement:
 \begin{itemize}
 \item des types OCaml décrivant des structures binaires;
 \item des fonctions pour disséquer les objets correspondants depuis
@@ -418,32 +536,16 @@ l'indentation et le nom de la structure à afficher. Les fonctions
 \texttt{parse}, \texttt{lwt\_parse} et \texttt{dump} peuvent
 éventuellement accepter des paramètres supplémentaires.
 
+Les sections suivantes décrivent les différentes constructions
+apportées par \FAceSL, et des exemples permettant de comprendre ce
+qu'elles apportent. La grammaire détaillée est donnée en annexe.
+
 
 \subsection{\'Enumérations}
 
 La première construction ajoutée par \FAceSL est l'énumération, qui
-ressemble à l'\texttt{enum} du C, le typage fort en plus.
-
-\shorthandoff{:}
-\begin{tabbing}
-  \textit{énumération} ::= \textbf{\tt enum} \= \textit{identifiant} (\textit{taille}, \textit{comportement}, \textit{enum\_options}) = \\
-  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [, \textit{texte}]\footnotemark\\
-  \> ... \\
-  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [, \textit{texte}] \\
-  \\
-  \textit{comportement} ::\= = \= \textbf{\tt UnknownVal} \textit{Constructor} \\
-  \> $\vert$ \> \textbf{\tt Exception} \textit{Exception} \\
-  \\
-  \textit{enum\_option} \= ::= \textbf{\tt with\_lwt} \\
-\end{tabbing}
-\shorthandon{:}
-\footnotetext{Ce texte sera renvoyé par \texttt{string\_of\_enum} pour
-  cette valeur de l'énumération.  Si aucun texte n'est donné, le nom
-  du constructeur sera utilisé.}
-
-Une déclaration d'énumération \texttt{enum} est alors transformée en
-une déclaration de type OCaml et un ensemble de fonctions. Par
-exemple, la déclaration suivante:
+ressemble à l'\texttt{enum} du C, le typage fort en plus. Par exemple,
+la déclaration suivante:
 \begin{lstlisting}
 enum tls_version (16, UnknownVal V_Unknown, [with_lwt]) =
   | 0x0002 -> V_SSLv2, "SSLv2"
@@ -453,14 +555,15 @@ enum tls_version (16, UnknownVal V_Unknown, [with_lwt]) =
   | 0x0303 -> V_TLSv1_2, "TLSv1.2"
 \end{lstlisting}
 
-\noindent génère le type somme suivant:
+\noindent correspond au champ encodant la version du protocole SSL/TLS
+sur un entier~16~bits, et génère le type somme suivant:
 \begin{lstlisting}
 type tls_version =
   | V_SSLv2 | V_SSLv3 | V_TLSv1 | V_TLSv1_1 | V_TLSv1_2
   | V_Unknown of int
 \end{lstlisting}
 
-\noindent et les fonctions suivantes:
+\noindent ainsi que les fonctions suivantes:
 \begin{lstlisting}
 val string_of_tls_version : tls_version -> string
 val int_of_tls_version : tls_version -> int
@@ -475,12 +578,13 @@ val print_tls_version : ?indent:string -> ?name:string -> tls_version -> string
 
 Les quatre premières fonctions générées permettent simplement de
 convertir le type énumération depuis et vers les entiers et les
-chaînes de caractères. Le \textit{comportement} de la grammaire
-ci-dessus indique comment \texttt{tls\_version\_of\_int} doit traiter
-une valeur non fournie dans l'énumération: dans l'exemple ci-dessus,
-\texttt{UnknownVal V\_Unknown} indique qu'il faut renvoyer une valeur
-\texttt{V\_Unknown i} où \texttt{i} est la valeur non
-reconnue. L'autre comportement possible est de lever une exception.
+chaînes de caractères. Il est possible de décrire comment
+\texttt{tls\_version\_of\_int} doit traiter une valeur non fournie
+dans l'énumération: dans l'exemple ci-dessus, \texttt{UnknownVal
+  V\_Unknown} indique qu'il faut renvoyer une valeur
+\texttt{V\_Unknown i}, où \texttt{i} est la valeur non
+reconnue. L'autre comportement possible est de lever une exception en
+cas de motif inconnu.
 
 Les quatre fonctions suivantes fournissent les services de plus haut
 niveau décrits précédemment.
@@ -492,35 +596,13 @@ Avant de poursuivre avec les constructions apportées par \FAceSL, il
 est nécessaire de décrire les \FAceSLTypes, les types binaires compris
 par \texttt{struct} et \texttt{union}.
 
-\shorthandoff{:}
-\begin{tabbing}
-  \textit{\FAceSLType} ::\= = \= \textbf{\tt char} \\
-  \> $\vert$ \> \textbf{\tt uintN} \\
-  \> $\vert$ \> \textbf{\tt ipv4} \\
-  \> $\vert$ \> \textbf{\tt ipv6} \\
-  \> $\vert$ \> \textbf{\tt string} \\
-  \> $\vert$ \> \textbf{\tt string} (\textit{expression}) \\
-  \> $\vert$ \> \textbf{\tt string} [\textit{type entier}] \\
-  \> $\vert$ \> \textbf{\tt list} \textbf{\tt of} \textit{\FAceSLType} \\
-  \> $\vert$ \> \textbf{\tt list} (\textit{expression}) \textbf{\tt of} \textit{\FAceSLType} \\
-  \> $\vert$ \> \textbf{\tt list} [\textit{type entier}] \textbf{\tt of} \textit{\FAceSLType} \\
-  \> $\vert$ \> \textbf{\tt container} (\textit{expression}) \textbf{\tt of} \textit{\FAceSLType} \\
-  \> $\vert$ \> \textbf{\tt container} [\textit{type entier}] \textbf{\tt of} \textit{\FAceSLType} \\
-  \> $\vert$ \> \textit{type personnalisé} \\
-  \> $\vert$ \> \textit{type personnalisé} (\textit{paramètres}) \\
-\end{tabbing}
-\shorthandon{:}
+\medskip
 
-\FAceSL implémente les fonctions \texttt{parse}, \texttt{lwt\_parse},
-\texttt{dump} et \texttt{print} pour un certain nombre de types de
-base: les entiers non signés, les adresses IPv4 et IPv6 encodées en
-binaire et les chaînes de caractères\footnote{En plus des types
-  \texttt{string} présentés ici, qui correspondent à des chaînes de
-  caractères imprimables, un type \texttt{binstring} est également
-  disponible. La seule différence entre ces deux types est que la
-  fonction \texttt{print} générée affichera la chaîne directement dans
-  le premier cas, ou sous sa représentation héxadécimale dans le
-  second cas.}.
+Tout d'abord, \FAceSL propose des types de base pour lesquels les
+implémentations des fonctions \texttt{parse}, \texttt{lwt\_parse},
+\texttt{dump} et \texttt{print} sont déjà disponibles: les entiers non
+signés, les adresses IPv4 et IPv6 encodées en binaire et les chaînes
+de caractères.
 
 En plus de ces types scalaires, le type \texttt{list} permet de
 décrire des listes d'objets du même type. Le type \texttt{container}
@@ -528,63 +610,56 @@ sert à encapsuler un sous-type en spécifiant la taille de la
 sous-chaîne à lire depuis l'entrée. Nous l'avons utilisé pour la
 gestion de l'en-tête TAR qui est contenu dans un bloc de 512~octets
 mais dont la partie utile peut varier (selon qu'il soit conforme au
-standard \texttt{ustar} ou non).
+standard \texttt{ustar} ou non): \lstinline+container(512) of tar_header+
+
+\medskip
 
 Pour les chaînes de caractères et les listes, les \emph{parsers}
 générés par défaut essaient de lire l'ensemble de la chaîne qui leur
 est passée en entrée. On peut cependant préciser avec une expression
 entre parenthèses la taille en octets attendue pour une chaîne de
 caractères en octets ou le nombre d'éléments attendus pour une
-liste. Un autre format fréquemment rencontré pour les chaînes de
-caractères ou les listes est de faire précéder la chaîne ou la liste
-par un champ longueur qui définit le nombre d'octets utiles pour
-l'élément qui suit; on peut spécifier à l'aide de crochets qu'un tel
-type est attendu: \texttt{\textbf{list} [uint16] \textbf{of} uint16}
-permet de décrire une liste d'entiers sur 16~bits dont la longueur
-totale en octets est codées sur un entier 16~bits\footnote{Ce type
-  particulier peut servir à décrire la liste des suites
-  cryptographiques (\emph{ciphersuites}) proposées par un client dans
-  le protocole TLS.}. Pour un conteneur, on utilisera les parenthèses
-ou les crochets pour décrire la taille en octet du champ encapsulé.
+liste (\lstinline+binstring(header.file_size)+).
+
+Un autre format fréquemment rencontré pour les chaînes de caractères
+ou les listes est de faire précéder la chaîne ou la liste par un champ
+longueur qui définit le nombre d'octets utiles pour l'élément qui
+suit; on peut spécifier à l'aide de crochets qu'un tel type est
+attendu: \texttt{\textbf{list} [uint16] \textbf{of} uint16} permet de
+décrire une liste d'entiers sur 16~bits dont la longueur totale en
+octets est codées sur un entier 16~bits\footnote{Ce type particulier
+  peut servir à décrire la liste des suites cryptographiques
+  (\emph{ciphersuites}) proposées par un client dans le protocole
+  TLS.}.
 
 \medskip
 
 Enfin, n'importe quel type peut être utilisé comme type personnalisé,
 dès lors qu'il existe un type OCaml valide, ainsi que les fonctions
 \texttt{parse}, \texttt{dump} et \texttt{print} correspondantes. Il
-est évidemment possible de construire de nouveaux types à l'aide de
-\texttt{struct} et \texttt{union} décrits ci-dessous; un développeur
-peut aussi choisir de créer un nouveau type OCaml et d'écrire lui-même
-les fonctions nécessaires, comme \texttt{tar\_numstring} dans
-l'exemple de la section~\ref{sec:aller-plus-loin}. De plus, il est
-possible de spécifier des paramètres à passer aux fonctions
-\texttt{parse}, \texttt{lwt\_parse} et \texttt{dump} dans le cas de
-types personnalisés.
+existe deux moyens de construire de nouveaux types:
+\begin{itemize}
+\item à l'aide de \texttt{struct} et \texttt{union} décrits
+  ci-dessous;
+\item en écrivant un nouveau type OCaml et les fonctions nécessaires,
+  comme nous l'avons fait pour \texttt{tar\_numstring} dans l'exemple
+  de la section~\ref{sec:aller-plus-loin}.
+\end{itemize}
 
 
 \subsection{Structures}
 
 Les structures que l'on peut exprimer en \FAceSL sont des
-enregistrements.
+enregistrements qui viennent avec des fonctions \texttt{parse},
+\texttt{dump} et \texttt{print} auto-générées.
 
-\shorthandoff{:}
-\begin{tabbing}
-  \textit{structure} ::= \= \textbf{\tt struct} \= \textit{identifiant} [\textit{struct\_options}] = \{ \\
-  \> \> [\textbf{\tt optional}] \textit{identifiant} : \textit{\FAceSLType}; \\
-  \> \> ... \\
-  \> \> [\textbf{\tt optional}] \textit{identifiant} : \textit{\FAceSLType} \\
-  \> \} \\
-  \\
-  \textit{struct\_option} ::\= = \= \textbf{\tt with\_lwt} \\
-  \> $\vert$ \> \textbf{\tt with\_exact} \\
-  \> $\vert$ \> \textbf{\tt top} \\
-  \> $\vert$ \> \textbf{\tt param} \textit{expression} \\
-\end{tabbing}
-\shorthandon{:}
+Un exemple simple illustrant le mot clé \texttt{struct} est donné par
+les messages d'alerte du protocole TLS. De tels messages contiennent
+deux octets: le niveau et le type de l'alerte.
 
-Un exemple simple est donné par les messages d'alerte du protocole
-TLS. À partir de deux types énumérations sur 8~bits, on peut créer
-l'enregistrement à l'aide du code suivant:
+ À partir de deux types
+énumérations sur 8~bits, on peut créer l'enregistrement à l'aide du
+code suivant:
 \begin{lstlisting}
 enum tls_alert_level (8, UnknownVal AL_Unknown, []) =
   | 1 -> AL_Warning, "Warning"
@@ -658,7 +733,7 @@ surcharger cette valeur par un argument optionnel \texttt{enrich} de
 la fonction \texttt{parse}. Si l'option \texttt{exhaustive} est
 positionnée, le \emph{pattern matching} généré pour l'enrichissement
 sera exclusivement composé des motifs de la description (sans motif
-par défaut \texttt{\_}).
+par défaut «~\texttt{\_}~»).
 
 Les options \texttt{with\_lwt}, \texttt{with\_exact}, \texttt{top} et
 \texttt{param} ont le même sens que pour les structures.
@@ -802,7 +877,7 @@ val dump_asn1_object : asn1_header -> bool ->
 
 \subsection{Alias ASN.1}
 
-Les structures ASN.1 peuvent s'exprimer simmplement à l'aide des
+Les structures ASN.1 peuvent s'exprimer simplement à l'aide des
 structures binaires avec des types ASN.1. Cependant, de telles
 structures ne décrivent que le contenu de l'objet. Pour finaliser la
 description de ces objets, il est nécessaire de leur associer un
@@ -872,6 +947,14 @@ riches sur l'arbre de syntaxe abstraite.
 
 \subsection{TLS et X.509}
 
+
+
+ Dans le cas de TLS, l'objectif était d'effectuer un
+état des lieux de la qualité des serveurs TLS dans le monde, et son
+évolution dans le temps. Ces travaux ont fait l'objet d'une
+publication à ACSAC~2012~\cite{ACSAC2012}.
+
+
 Le point de départ de ces travaux sur les \emph{parsers} était
 l'analyse de données TLS~\cite{rfc5246} contenant des certificats
 X.509~\cite{rfc5280} (structures ASN.1 encodées au format DER). Il
@@ -883,7 +966,7 @@ décrite à l'aide de \FAceSL, ainsi que les certificats X.509. La
 répartition du nombre de lignes de code est la suivante:
 \begin{itemize}
 \item énumérations TLS\footnote{L'énumération décrivant l'ensemble des
-    suites cryptographiques comportent en particulier~300~valeurs.}:
+    suites cryptographiques comporte en particulier~300~valeurs.}:
   500~lignes;
 \item description des messages TLS: 150~lignes;
 \item description des certificats X.509 : 100~lignes;
@@ -922,20 +1005,20 @@ faudrait encore ajouter les éléments suivants:
 
 \subsection{MRT}
 
-BGP est l'un des protocoles étudiés dans le laboratoire sécurité des
+BGP est l'un des protocoles étudiés par le laboratoire sécurité des
 réseaux et protocoles. Le format d'échange utilisé pour archiver et
 transmettre l'ensemble des annonces vues par une sonde est
 \emph{Multi-Threaded Routing Toolkit} (MRT)~\cite{rfc6396}.
 
 Là encore, deux outils étaient utilisés au sein du laboratoire pour
-analyser une grande quantité de données au format MRT, le premier en
-C\footnote{Il est à noter que cet outil en C se terminait parfois de
-  manière brutale sur certains fichiers sans aucune explication.}, le
-second en OCaml. Il a suffi de~4~jours pour décrire en \FAceSL les
-structures MRT pertinentes pour les études menées au laboratoire et
-obtenir un outil indépendant des deux autres, plus rapide que
-l'implémentation en OCaml pré-existante et plus fiable que
-l'implémentation en C.
+analyser une grande quantité de données au format MRT, le premier est
+un outil libre écrit en C\footnote{Il est à noter que cet outil en C
+  se terminait parfois de manière brutale sur certains fichiers sans
+  aucune explication.}, le second est un développement interne en
+OCaml. Il a suffi de~4~jours pour décrire en \FAceSL les structures
+MRT pertinentes pour les études menées au laboratoire et obtenir un
+outil indépendant des deux autres, plus rapide que l'implémentation en
+OCaml pré-existante et plus fiable que l'implémentation en C.
 
 La description des messages MRT nécessite moins de~300~lignes de code,
 alors que l'outil permettant d'afficher le contenu disséqué de manière
@@ -999,54 +1082,171 @@ sont envisagées:
 %\TODO{ASN.1: ajout d'options, ajout des unions et de spécifités}
 
 
-\begin{thebibliography}{10}
-\bibitem{scapy}
-P.~{B}iondi and the~{S}capy community.
-\newblock {S}capy, 2003-2012.
-\newblock \url{http://www.secdev.org/projects/scapy/}
+\bibliographystyle{unsrt}
+\bibliography{biblio,rfc}
 
-\bibitem{rfc6396}
-L.~Blunk, M.~Karir, and C.~Labovitz.
-\newblock {Multi-Threaded Routing Toolkit (MRT) Routing Information Export
-  Format}.
-\newblock RFC 6396 (Proposed Standard), October 2011.
+% \begin{thebibliography}{10}
+% \bibitem{eff-observatory}
+% {E}lectronic~{F}rontier {F}oundation.
+% \newblock {T}he {EFF} {SSL} {O}bservatory, 2010-2012.
+% \newblock \url{https://www.eff.org/observatory}
 
-\bibitem{rfc5280}
-D.~Cooper, S.~Santesson, S.~Farrell, S.~Boeyen, R.~Housley, and W.~Polk.
-\newblock {Internet X.509 Public Key Infrastructure Certificate and Certificate
-  Revocation List (CRL) Profile}.
-\newblock RFC 5280 (Proposed Standard), May 2008.
+% \bibitem{eckersley-obs1}
+% P.~{E}ckersley and J.~{B}urns.
+% \newblock {A}n {O}bservatory for the {SSL}iverse, {T}alk at {D}efcon 18, 2010.
 
-\bibitem{rfc5246}
-T.~Dierks and E.~Rescorla.
-\newblock {The Transport Layer Security (TLS) Protocol Version 1.2}.
-\newblock RFC 5246 (Proposed Standard), August 2008.
-\newblock Updated by RFCs 5746, 5878, 6176.
+% \bibitem{eckersley-obs2}
+% P.~{E}ckersley and {J}. {B}urns.
+% \newblock {I}s the {SSL}iverse a safe place?, {T}alk at {27C3}, 2010.
 
-\bibitem{eckersley-obs1}
-P.~{E}ckersley and J.~{B}urns.
-\newblock {A}n {O}bservatory for the {SSL}iverse, {T}alk at {D}efcon 18, 2010.
+% \bibitem{ACSAC2012}
+% Olivier Levillain.
+% \newblock One {Y}ear of {SSL} {M}easurement.
+% \newblock In {\em ACSAC}, 2012.
 
-\bibitem{eckersley-obs2}
-P.~{E}ckersley and {J}. {B}urns.
-\newblock {I}s the {SSL}iverse a safe place?, {T}alk at {27C3}, 2010.
+% \bibitem{rfc5246}
+% T.~Dierks and E.~Rescorla.
+% \newblock {The Transport Layer Security (TLS) Protocol Version 1.2}.
+% \newblock RFC 5246 (Proposed Standard), August 2008.
+% \newblock Updated by RFCs 5746, 5878, 6176.
 
-\bibitem{eff-observatory}
-{E}lectronic~{F}rontier {F}oundation.
-\newblock {T}he {EFF} {SSL} {O}bservatory, 2010-2012.
-\newblock \url{https://www.eff.org/observatory}
+% \bibitem{rfc5280}
+% D.~Cooper, S.~Santesson, S.~Farrell, S.~Boeyen, R.~Housley, and W.~Polk.
+% \newblock {Internet X.509 Public Key Infrastructure Certificate and Certificate
+%   Revocation List (CRL) Profile}.
+% \newblock RFC 5280 (Proposed Standard), May 2008.
 
-\bibitem{ACSAC2012}
-Olivier Levillain.
-\newblock One {Y}ear of {SSL} {M}easurement.
-\newblock In {\em ACSAC}, 2012.
+% \bibitem{rfc6396}
+% L.~Blunk, M.~Karir, and C.~Labovitz.
+% \newblock {Multi-Threaded Routing Toolkit (MRT) Routing Information Export
+%   Format}.
+% \newblock RFC 6396 (Proposed Standard), October 2011.
 
-\bibitem{hachoir}
-V.~{S}tinner.
-\newblock {H}achoir, 2009-2012.
-\newblock \url{https://bitbucket.org/haypo/hachoir/wiki/Home}
+% \bibitem{scapy}
+% P.~{B}iondi and the~{S}capy community.
+% \newblock {S}capy, 2003-2012.
+% \newblock \url{http://www.secdev.org/projects/scapy/}
 
-\end{thebibliography}
+% \bibitem{hachoir}
+% V.~{S}tinner.
+% \newblock {H}achoir, 2009-2012.
+% \newblock \url{https://bitbucket.org/haypo/hachoir/wiki/Home}
+
+% \end{thebibliography}
+
+
+\appendix
+\section{Annexe: grammaire des extensions}
+
+
+\subsection{Options}
+
+\shorthandoff{:}
+\begin{tabbing}
+  \textit{option} ::\= = \= \textbf{\tt with\_lwt} \\
+  \> $\vert$ \> \textbf{\tt with\_exact}\footnotemark \\
+  \> $\vert$ \> \textbf{\tt top}\addtocounter{footnote}{-1}\footnotemark \\
+  \> $\vert$ \> \textbf{\tt param} \textit{expression}\addtocounter{footnote}{-1}\footnotemark \\
+  \> $\vert$ \> \textbf{\tt enrich}\footnotemark \\
+  \> $\vert$ \> \textbf{\tt exhaustive}\addtocounter{footnote}{-1}\footnotemark
+\end{tabbing}
+\shorthandon{:}
+\addtocounter{footnote}{-1}\footnotetext{Ces options n'ont de sens
+  que pour les structures, les unions et les alias.}
+\addtocounter{footnote}{1}\footnotetext{Ces options n'ont de sens
+  que pour les unions.}
+
+
+\subsection{\FAceSLTypes}
+
+\shorthandoff{:}
+\begin{tabbing}
+  \textit{\FAceSLType} ::\= = \= \textbf{\tt char} \\
+  \> $\vert$ \> \textbf{\tt uintN} \\
+  \> $\vert$ \> \textbf{\tt ipv4} \\
+  \> $\vert$ \> \textbf{\tt ipv6} \\
+  \> $\vert$ \> \textbf{\tt string} \\
+  \> $\vert$ \> \textbf{\tt string} (\textit{expression}) \\
+  \> $\vert$ \> \textbf{\tt string} [\textit{type entier}] \\
+  \> $\vert$ \> \textbf{\tt binstring} \\
+  \> $\vert$ \> \textbf{\tt binstring} (\textit{expression}) \\
+  \> $\vert$ \> \textbf{\tt binstring} [\textit{type entier}] \\
+  \> $\vert$ \> \textbf{\tt list} \textbf{\tt of} \textit{\FAceSLType} \\
+  \> $\vert$ \> \textbf{\tt list} (\textit{expression}) \textbf{\tt of} \textit{\FAceSLType} \\
+  \> $\vert$ \> \textbf{\tt list} [\textit{type entier}] \textbf{\tt of} \textit{\FAceSLType} \\
+  \> $\vert$ \> \textbf{\tt container} (\textit{expression}) \textbf{\tt of} \textit{\FAceSLType} \\
+  \> $\vert$ \> \textbf{\tt container} [\textit{type entier}] \textbf{\tt of} \textit{\FAceSLType} \\
+  \> $\vert$ \> \textit{type personnalisé} \\
+  \> $\vert$ \> \textit{type personnalisé} (\textit{paramètres})
+\end{tabbing}
+
+
+\subsection{Énumérations}
+
+\shorthandoff{:}
+\begin{tabbing}
+  \textit{énumération} ::= \textbf{\tt enum} \= \textit{identifiant} (\textit{taille}, \textit{comportement\_enum}, \textit{options}) = \\
+  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [, \textit{texte}]\footnotemark\\
+  \> ... \\
+  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [, \textit{texte}] \\
+  \\
+  \textit{comportement\_enum} ::\= = \= \textbf{\tt UnknownVal} \textit{Constructor} \\
+  \> $\vert$ \> \textbf{\tt Exception} \textit{Exception}
+\end{tabbing}
+\shorthandon{:}
+\footnotetext{Ce texte sera renvoyé par \texttt{string\_of\_enum} pour
+  cette valeur de l'énumération.  Si aucun texte n'est donné, le nom
+  du constructeur sera utilisé.}
+
+
+\subsection{Structures, unions et alias}
+
+\shorthandoff{:}
+\begin{tabbing}
+  \textit{structure} ::= \= \textbf{\tt struct} \= \textit{identifiant} [\textit{struct\_options}] = \{ \\
+  \> \> [\textbf{\tt optional}] \textit{identifiant} : \textit{\FAceSLType}; \\
+  \> \> ... \\
+  \> \> [\textbf{\tt optional}] \textit{identifiant} : \textit{\FAceSLType} \\
+  \> \} \\
+  \\
+  \textit{union} ::= \textbf{\tt union} \= \textit{identifiant} (\textit{comportement\_union}, \textit{union\_options}) = \\
+  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [\textbf{\tt of} \textit{\FAceSLType}] \\
+  \> ... \\
+  \> $\vert$ \textit{motif} $\rightarrow$ \textit{Constructeur} [\textbf{\tt of} \textit{\FAceSLType}] \\
+  \\
+  \textit{comportement\_union} ::\= = \= \textit{Constructor} \\
+  \> $\vert$ \> \textit{Constructor} \textbf{\tt of} \textit{\FAceSLType} \\
+  \\
+  \textit{alias} ::= \textbf{\tt alias} \textit{identifiant} = \textit{\FAceSLType}
+\end{tabbing}
+\shorthandon{:}
+
+
+\subsection{Description des objets ASN.1}
+
+\shorthandoff{:}
+\begin{tabbing}
+  \textit{ASN1Header} ::= \textit{ASN1Class} \textbf{\tt *} \textit{ASN1Tag} \\
+  \\
+  \textit{ASN1Type} ::= \textit{ASN1Header} \texttt{option} \textbf{\tt *}
+                        \textit{ASN1TypeContent} \\
+  \\
+  \textit{ASN1TypeContent} ::\= = \= \textbf{\tt asn1\_bool} \\
+  \> $\vert$ \> \textbf{\tt asn1\_integer} \\
+  \> $\vert$ \> \textbf{\tt asn1\_bitstring} \\
+  \> $\vert$ \> \textbf{\tt asn1\_enumerated} \\
+  \> $\vert$ \> \textbf{\tt asn1\_octetstring} \\
+  \> $\vert$ \> \textbf{\tt asn1\_null} \\
+  \> $\vert$ \> \textbf{\tt asn1\_oid} \\
+  \> $\vert$ \> \textbf{\tt asn1\_list} \textbf{\tt of} \textit{ASN1Type} \\
+  \> $\vert$ \> \textbf{\tt asn1\_container} \textbf{\tt of} \textit{ASN1Type} \\
+  \> $\vert$ \> \textbf{asn1\_anything} \\
+  \> $\vert$ \> \textit{custom type} \\
+  \> $\vert$ \> \textit{custom type} (\textit{paramètres}) \\
+  \\
+  \textit{alias\_ASN.1} ::= \textbf{\tt asn1\_alias} \textit{identifiant} = \textit{ASN1Type}
+\end{tabbing}
+\shorthandon{:}
 
 
 \pagebreak
