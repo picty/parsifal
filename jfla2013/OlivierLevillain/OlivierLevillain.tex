@@ -1,7 +1,10 @@
-\documentclass[a4]{article}
-\usepackage[hscale=0.75, vscale=0.75]{geometry}
+\documentclass[twoside]{article}
 \usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{actes}
 \usepackage[french]{babel}
+
+\usepackage{url}
 \usepackage{array}
 \usepackage{listings}
 \lstset{language=Caml, basicstyle=\footnotesize,
@@ -9,19 +12,27 @@
                 asn1_struct, asn1_alias,
                 UnknownVal, with_lwt, Exception}}
 \usepackage{xspace}
- 
-\usepackage{xcolor}
-\newcommand{\TODO}[1]{\textcolor{red}{#1}}
-
 \newcommand{\FAceSL}{Parsifal\xspace}
 \newcommand{\FAceSLTypes}{PTypes\xspace}
 \newcommand{\FAceSLType}{PType\xspace}
 
 \title{Utilisation de \texttt{camlp4} pour l'écriture rapide de \emph{parsers}}
-\author{Olivier Levillain}
+\author{Olivier Levillain$^{1,2}$}
+\titlehead{Écriture rapide de \emph{parsers} en \texttt{camlp4}}
+\authorhead{O. Levillain}
+\affiliation{\begin{tabular}{rr} 
+      \\ 1:  Agence nationale de la sécurité des systèmes d'information (ANSSI)
+      \\     51 boulevard Latour Maubourg, 75700 Paris 07 SP
+      \\     {\tt olivier.levillain@ssi.gouv.fr} 
+      \\ 2:  Télécom Sud Paris
+      \\     9 rue Charles Fourier, 91011 Evry
+    \end{tabular}
+}
+
 
 \begin{document}
 
+\setcounter{page}{1}
 \maketitle
 
 Dans le cadre de ses activités d'expertise, le laboratoire sécurité
@@ -988,9 +999,58 @@ sont envisagées:
 %\TODO{ASN.1: ajout d'options, ajout des unions et de spécifités}
 
 
+\begin{thebibliography}{10}
+\bibitem{scapy}
+P.~{B}iondi and the~{S}capy community.
+\newblock {S}capy, 2003-2012.
+\newblock \url{http://www.secdev.org/projects/scapy/}
 
-\bibliographystyle{plain}
-\bibliography{biblio,rfc}
+\bibitem{rfc6396}
+L.~Blunk, M.~Karir, and C.~Labovitz.
+\newblock {Multi-Threaded Routing Toolkit (MRT) Routing Information Export
+  Format}.
+\newblock RFC 6396 (Proposed Standard), October 2011.
 
+\bibitem{rfc5280}
+D.~Cooper, S.~Santesson, S.~Farrell, S.~Boeyen, R.~Housley, and W.~Polk.
+\newblock {Internet X.509 Public Key Infrastructure Certificate and Certificate
+  Revocation List (CRL) Profile}.
+\newblock RFC 5280 (Proposed Standard), May 2008.
+
+\bibitem{rfc5246}
+T.~Dierks and E.~Rescorla.
+\newblock {The Transport Layer Security (TLS) Protocol Version 1.2}.
+\newblock RFC 5246 (Proposed Standard), August 2008.
+\newblock Updated by RFCs 5746, 5878, 6176.
+
+\bibitem{eckersley-obs1}
+P.~{E}ckersley and J.~{B}urns.
+\newblock {A}n {O}bservatory for the {SSL}iverse, {T}alk at {D}efcon 18, 2010.
+
+\bibitem{eckersley-obs2}
+P.~{E}ckersley and {J}. {B}urns.
+\newblock {I}s the {SSL}iverse a safe place?, {T}alk at {27C3}, 2010.
+
+\bibitem{eff-observatory}
+{E}lectronic~{F}rontier {F}oundation.
+\newblock {T}he {EFF} {SSL} {O}bservatory, 2010-2012.
+\newblock \url{https://www.eff.org/observatory}
+
+\bibitem{ACSAC2012}
+Olivier Levillain.
+\newblock One {Y}ear of {SSL} {M}easurement.
+\newblock In {\em ACSAC}, 2012.
+
+\bibitem{hachoir}
+V.~{S}tinner.
+\newblock {H}achoir, 2009-2012.
+\newblock \url{https://bitbucket.org/haypo/hachoir/wiki/Home}
+
+\end{thebibliography}
+
+
+\pagebreak
+\thispagestyle{colloquetitle}
+\cleardoublepage
 
 \end{document}
