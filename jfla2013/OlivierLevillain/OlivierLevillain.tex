@@ -16,6 +16,11 @@
 \newcommand{\FAceSLTypes}{PTypes\xspace}
 \newcommand{\FAceSLType}{PType\xspace}
 
+
+\usepackage{xcolor}
+\newcommand{\TODO}[1]{\textcolor{red}{#1}}
+
+
 \title{Utilisation de \texttt{camlp4} pour l'écriture rapide de \emph{parsers}}
 \author{Olivier Levillain$^{1,2}$}
 \titlehead{Écriture rapide de \emph{parsers} en \texttt{camlp4}}
@@ -39,32 +44,31 @@ Dans le cadre de ses activités d'expertise, le laboratoire sécurité
 des réseaux et protocoles (LRP) de l'agence nationale de la sécurité
 des systèmes d'information (ANSSI) est amené à étudier divers
 protocoles de communication. L'étude fine de ces protocoles passe par
-l'utilisation de \emph{parsers} (dissecteurs) de confiance permettant
-d'analyser les messages échangés lors d'une instance du protocole.
+l'utilisation de \emph{parsers}, ou dissecteurs, de confiance permettant
+d'analyser les messages échangés lors d'une exécution du protocole.
 
-L'expérience a montré qu'il était souvent utile (voire nécessaire) de
-disposer d'implémentations in\-dé\-pen\-dant\-es et robustes pour étudier et
-comprendre les comportements d'un protocole donné, en particulier pour
-détecter et caractériser les messages incorrects. En effet, les
-implémentations disponibles de clients, serveurs ou dissecteurs sont
-parfois limitées (refus de certaines options), laxistes (acceptation
-silencieuse de paramètres erronés) ou fragiles (terminaison brutale du
-programme pour des valeurs inattendues, qu'elles soient licites ou
-non).
+L'expérience a montré qu'il était nécessaire de disposer
+d'implémentations indépendantes et robustes pour étudier et comprendre
+les comportements d'un protocole donné, en particulier pour détecter
+et caractériser les anomalies. En effet, les implémentations
+disponibles de clients, serveurs ou dissecteurs sont parfois limitées
+(refus de certaines options), laxistes (acceptation silencieuse de
+paramètres erronés) ou fragiles (terminaison brutale du programme pour
+des valeurs inattendues, qu'elles soient licites ou non).
 
-Ce constat a donc conduit au développement de certains outils par les
-membres du laboratoire. L'objectif était de développer
-\emph{rapidement} des dissecteurs \emph{robustes} et
+Ce constat a conduit au développement d'outils, l'objectif étant de
+développer \emph{rapidement} des dissecteurs \emph{robustes} et
 \emph{efficaces}. Pour cela, plusieurs langages de programmation ont
-été testés (C++, python, OCaml). L'objet de ce document est de
-présenter l'une de ces implémentations, reposant sur le pré-processeur
-\texttt{camlp4} d'OCaml. La section~\ref{sec:historique} présente
-l'historique du projet et deux applications fonctionnelles concernant
-TLS et BGP. La section~\ref{sec:tar} présente un exemple complet
-d'utilisation de \FAceSL, le format d'archive TAR. Enfin, la
+été successivement utilisés (C, C++, python, OCaml). L'objet de ce
+document est de présenter l'une de ces implémentations, reposant sur
+le pré-processeur \texttt{camlp4} d'OCaml, et de la comparer avec les
+autres. La section~\ref{sec:historique} présente l'historique du
+projet et deux applications concernant TLS et BGP.  La
 section~\ref{sec:description} donne un aperçu de l'ensemble des
-constructions apportées par \FAceSL (la grammaire exacte est donnée en
-annexe).
+constructions apportées par \FAceSL et la section~\ref{sec:tar}
+présente un exemple complet d'utilisation de \FAceSL: le format
+d'archive TAR. Enfin, la section~\ref{sec:conclusion} conclut cette
+article et présente les perspectives d'évolution.
 
 
 
@@ -75,11 +79,12 @@ annexe).
 \subsection{Motivation initiale: analyser de nombreuses réponses TLS}
 
 Le point de départ de ces travaux était l'analyse d'une quantité
-importante de données récoltées concernant le protocole SSL/TLS. SSL
-(\emph{Secure Sockets Layer}) et TLS (\emph{Transport Layer Security})
-sont deux variantes d'un même protocole, dont la dernière version est
-TLSv1.2~\cite{rfc5246}. Leur objectif est de fournir un certain nombre
-de services pour sécuriser un canal de communication:
+importante (180~Go) de données récoltées concernant le protocole
+SSL/TLS. SSL (\emph{Secure Sockets Layer}) et TLS (\emph{Transport
+  Layer Security}) sont deux variantes d'un même protocole, dont la
+dernière version est TLSv1.2~\cite{rfc5246}. Leur objectif est de
+fournir un certain nombre de services pour sécuriser un canal de
+communication:
 \begin{itemize}
 \item authentification unilatérale ou mutuelle;
 \item confidentialité des données échangées de bout en bout;
@@ -117,18 +122,18 @@ ans. Les données utilisées proviennent de résultats mis à dispositions
 par l'Electronic Frontier Foundation~\cite{eff-observatory,
   eckersley-obs1, eckersley-obs2} en 2010 et de collectes effectuées
 par Télécom SudParis et l'ANSSI en 2011. Les traces analysées
-contiennent une très grande diversité de réponses, et certaines sont
-incohérentes ou non conformes au protocole TLS. Face à cet imposant
-corpus, il était difficile d'utiliser des outils existants pour
-extraire de manière fiable l'information pertinente pour les
-analyses. En effet, les implémentations existantes ont généralement un
-comportement inadapté à l'analyse, qu'il s'agisse d'un comportement
-limité (refus de certaines options), laxiste (acceptation silencieuse
-de paramètres erronés) ou fragiles (terminaison brutale du programme
-pour des valeurs inattendues, qu'elles soient licites ou non).
+contiennent une très grande diversité de réponses, parfois
+incohérentes ou non conformes. Face à cet imposant corpus, il était
+difficile d'utiliser des outils existants pour extraire de manière
+fiable l'information pertinente pour les analyses. En effet, les
+implémentations existantes ont généralement un comportement inadapté à
+l'analyse, qu'il s'agisse d'un comportement limité (refus de certaines
+options), laxiste (acceptation silencieuse de paramètres erronés) ou
+fragiles (terminaison brutale du programme pour des valeurs
+inattendues, qu'elles soient licites ou non).
 
 Des outils spécifiques, maîtrisés par le laboratoire, ont donc été
-développés pour analyser ce grand volume de données (180~Go).
+développés pour analyser ce grand volume de données.
 
 
 \subsection{Démarche de développement des outils}
@@ -142,7 +147,7 @@ Une seconde implémentation a donc vu le jour, en C++. Celle-ci
 reposait sur les \emph{templates} et la programmation objet, et
 permettait d'obtenir un dissecteur flexible et efficace, mais au prix
 d'une grande quantité de code à écrire et d'erreurs de programmation
-pas toujours évidentes à diagnostiquer (fuites mémoire, erreurs de
+parfois difficiles à diagnostiquer (fuites mémoire, erreurs de
 segmentation).
 
 Pour pallier ce manque de robustesse, le développement d'une troisième
@@ -150,15 +155,19 @@ version des outils a été entreprise, en OCaml. Afin de conserver la
 flexibilité imaginée pour le second prototype, un langage spécifique a
 été développé pour décrire les structures à disséquer. Les outils
 résultants étaient expressifs, efficaces et plus fiables que la
-version précédente. Pourtant, l'extensibilité de cette implémentation
-nécessitait encore une lourdeur dans l'écriture du code qui s'est
-révélée assez fastidieuse à l'usage.
+version précédente. Malheureusement, à l'usage, si l'extensibilité
+était réelle, elle nécessitait des développements fastidieux.
 
 Finalement, une nouvelle implémentation en OCaml a été réalisée pour
 réunir l'ensemble des qualités recherchées pour le développement de
-\emph{parsers} (rapidité d'écriture, garanties fortes sur le
-fonctionnement des outils et efficacité des programmes produits).
-Cette quatrième mouture, \FAceSL, résulte de la fusion entre le
+\emph{parsers}:
+\begin{itemize}
+\item rapidité de développement;
+\item garanties fortes sur la robustesse et la correction;
+\item efficacité des programmes (en temps comme en consommation mémoire).
+\end{itemize}
+\noindent
+Cette quatrième mouture, baptisée \FAceSL, résulte de la fusion entre le
 langage spécifique de description des objets analysés et le langage de
 programmation: on utilise directement le langage OCaml pour les deux
 usages. Pour cela, le processeur \texttt{camlp4} a été employé pour la
@@ -183,7 +192,7 @@ exportées au format MRT. Ces données sont d'un grand intérêt pour
 analyser l'état de l'internet, détecter et comprendre d'éventuels
 incidents affectant les informations de routage. L'observatoire de la
 résilience de l'internet français~\cite{observatoire}, mis en place
-par l'ANSSI en 2012, utilise donc cette source de données et doit donc
+par l'ANSSI en 2012, utilise donc cette source de données et doit
 disposer d'outils capables d'interpréter les fichiers MRT. Le projet
 RIS (\emph{Routing Information Service}) fournit trois fois par jour
 une vision complète de~16~routeurs disséminés sur la planète, ce qui
@@ -208,310 +217,13 @@ l'implémentation en C.
 
 
 
-\section{Présentation de \FAceSL par l'exemple: le format TAR}
-\label{sec:tar}
-
-Le tableau~\ref{tab:tar-format} décrit deux versions de l'en-tête
-utilisé dans les archives TAR: le format original (colonne TAR) et une
-variante plus récente (colonne \texttt{ustar}). Pour des raisons de
-compatibilité, les valeurs numériques sont systématiquement stockées
-sous la forme d'une chaîne de caractère représentant la valeur
-numérique en octal\footnote{Cette méthode permet d'éviter des
-  difficultés d'encodage telles que la prise en compte de
-  l'\emph{endianness}, mais au prix d'une plus grande consommation
-  mémoire.}. L'en-tête est contenu dans un «~bloc~» de 512~octets, et
-le contenu du fichier qui suit l'en-tête est lui-aussi complété par
-des caractères nuls pour former des blocs de 512~octets.
-
-Le champ à l'offset~156 décrit le type de fichier, et a été étendu par
-\texttt{ustar}. Le tableau \ref{tab:tar-filetypes} récapitule les
-différentes valeurs qu'il peut prendre.
-
-\begin{table}
-  \begin{center}
-    \begin{tabular}{|r|r|l|l|}
-      \hline
-      \multicolumn{1}{|c|}{\bf Offset} &
-      \multicolumn{1}{c|}{\bf Long.} &
-      \multicolumn{2}{c|}{\bf Description} \\
-      & & \multicolumn{1}{c|}{\bf TAR} &
-      \multicolumn{1}{c|}{\bf \tt ustar} \\
-      \hline
-
-      \hline
-        0 & 100 & \multicolumn{2}{l|}{Nom du fichier} \\
-      \hline
-      100 &   8 & \multicolumn{2}{l|}{Permissions} \\
-      \hline
-      108 &   8 & \multicolumn{2}{l|}{UID} \\
-      \hline
-      116 &   8 & \multicolumn{2}{l|}{GID} \\
-      \hline
-      124 &  12 & \multicolumn{2}{l|}{Taille du fichier} \\
-      \hline
-      136 &  12 & \multicolumn{2}{l|}{\emph{Timestamp} de la dernière modification} \\
-      \hline
-      148 &   8 & \multicolumn{2}{l|}{Somme de contrôle de l'en-tête} \\
-      \hline
-      156 &   1 & Indicateur de lien & Type de fichier \\
-      \hline
-      157 & 100 & \multicolumn{2}{l|}{Nom du fichier pointé par le lien} \\
-      \hline
-      257 &   6	& \multicolumn{1}{c|}{-} & Indicateur \texttt{"ustar"} \\
-      \hline
-      263 &   2	& \multicolumn{1}{c|}{-} & Version \texttt{ustar} ("00") \\
-      \hline
-      265 &  32 & \multicolumn{1}{c|}{-} & Propriétaire \\
-      \hline
-      297 &  32 & \multicolumn{1}{c|}{-} & Groupe propriétaire \\
-      \hline
-      329 &   8 & \multicolumn{1}{c|}{-} & Numéro majeur du périphérique \\
-      \hline
-      337 &   8 & \multicolumn{1}{c|}{-} & Numéro mineur du périphérique \\
-      \hline
-      345 & 155 & \multicolumn{1}{c|}{-} & Préfixe \\
-      \hline
-    \end{tabular}
-  \end{center}
-
-  \caption{Description de l'en-tête TAR.}
-  \label{tab:tar-format}
-\end{table}
-
-\begin{table}
-  \begin{center}
-    \begin{tabular}{|>{\tt}c|l|c|}
-      \hline
-      \multicolumn{1}{|c|}{\bf Caractère} &
-      \multicolumn{1}{c|}{\bf Description} &
-      \multicolumn{1}{c|}{\bf \tt ustar} \\
-      \hline
-
-      \hline
-      <NUL>, 0 & fichier ordinaire & - \\
-      1 & lien dur & - \\
-      2 & lien symbolique & - \\
-      \hline
-      3 & périphérique en mode caractères & oui \\
-      4 & périphérique en mode blocs & oui \\
-      5 & répertoire & oui \\
-      6 & file FIFO & oui \\
-      7 & fichier contigu & oui \\
-      \hline
-    \end{tabular}
-  \end{center}
-
-  \caption{Valeurs du champ «~Indicateur de lien/Type de fichier~».
-    La colonne \texttt{ustar} indique si la valeur est spécifique à
-    la version étendue du format.}
-  \label{tab:tar-filetypes}
-\end{table}
-
-\begin{table}
-  \begin{center}
-    \begin{tabular}{|r|r|l|}
-      \hline
-      \multicolumn{1}{|c|}{\bf Offset} &
-      \multicolumn{1}{c|}{\bf Long.} &
-      \multicolumn{1}{c|}{\bf Description} \\
-      \hline
-
-      \hline
-        0 & 512 & En-tête TAR, complété par des zéros \\
-      \hline
-      512 & \emph{«~Taille du fichier~»}, alignée à 512~octets & Contenu du fichier, complété par des zéros \\
-      \hline
-    \end{tabular}
-  \end{center}
-
-  \caption{Description d'une entrée TAR.}
-  \label{tab:tar-entry}
-\end{table}
-
-
-\subsection{Une première implémentation}
-
-Afin d'utiliser notre pré-processeur pour décrire les fichiers au
-format TAR, commençons par décrire les valeurs de ce champ
-«~Indicateur de lien/Type de fichier~». Il s'agit d'une énumération
-sur 8~bits qui s'écrit avec le nouveau mot-clé \texttt{enum}:
-\begin{lstlisting}
-enum file_type (8, UnknownVal UnknownFileType, []) =
-  | 0 -> NormalFile
-  | 0x30 -> NormalFile
-  | 0x31 -> HardLink
-  | 0x32 -> SymbolicLink
-  | 0x33 -> CharacterSpecial
-  | 0x34 -> BlockSpecial
-  | 0x35 -> Directory
-  | 0x36 -> FIFO
-  | 0x37 -> ContiguousFile
-\end{lstlisting}
-
-Ensuite, on peut décrire l'enregistrement contenant les différents
-champs constituant d'un en-tête à l'aide du mot clé \texttt{struct},
-qui ressemble à la description d'un enregistrement OCaml, mais qui
-accepte des types enrichis nommés \FAceSLTypes:
-\begin{lstlisting}
-let int_of_tarstring octal_value =
-  int_of_string ("0o" ^ octal_value)
-
-struct tar_header = {
-  file_name : string(100);
-  file_mode : string(8);
-  owner_uid : string(8);
-  owner_gid : string(8);
-  file_size : string(12);
-  timestamp : string(12);
-  checksum  : string(8);
-  file_type : file_type;
-  linked_file : string(100);
-  ustar_magic : magic("ustar\x0000");
-  owner_user : string(32);
-  owner_group : string(32);
-  device_major : string(8);
-  device_minor : string(8);
-  filename_prefix : string(155);
-  hdr_padding : binstring(12);
-}
-
-struct tar_entry = {
-  header : tar_header;
-  file_content : binstring(int_of_tarstring header.file_size);
-  file_padding : binstring(512 - ((int_of_tarstring header.file_size) % 512))
-}
-
-alias tar_file = list of tar_entry;
-\end{lstlisting}
-
-Le code resultant du pré-processeur permet alors d'ouvrir une archive
-simplement à l'aide de la fonction \texttt{parse\_tar\_file}, qui
-prend en argument la chaîne de caractères correspondant au contenu du
-fichier. Afin de traiter des données importantes de manière efficace,
-il est également possible de produire une version du \emph{parser} en
-mode flux, qui repose sur la bibliothèque \texttt{lwt}. Pour cela, il
-suffit de redéfinir l'alias en lui adjoignant l'option
-\texttt{with\_lwt} et d'utiliser cette fois la fonction
-\texttt{lwt\_parse\_tar\_file}, comme le montre l'exemple suivant:
-\begin{lstlisting}
-alias tar_file [with_lwt] = list of tar_entry;
-
-let handle_filename filename =
-  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd
-  lwt_parse_tar_file (input_of_fd filename fd) >>= fun tar_file
-  let print_filename entry = print_string entry.file_name in
-  List.iter print_filename tar_file;
-  return ()
-
-let _ =
-  Lwt_unix.run (handle_filename "test.tar");
-\end{lstlisting}
-
-
-\subsection{Pour aller plus loin}
-\label{sec:aller-plus-loin}
-
-La première version proposée est fonctionnelle, mais si l'on souhaite
-proprement prendre en compte les vieilles archives, ne contenant pas
-l'en-tête étendu commençant par le marqueur \texttt{ustar}, on peut
-réécrire la description de l'en-tête de la manière suivante, en
-séparant l'en-tête en deux morceaux, dont un est déclaré optionnel.
-\begin{lstlisting}
-struct ustar_header = {
-  ustar_magic : magic("ustar\x0000");
-  owner_user : string(32);
-  owner_group : string(32);
-  device_major : string(8);
-  device_minor : string(8);
-  filename_prefix : string(155);
-}
-
-struct tar_header = {
-  file_name : string(100);
-  file_mode : string(8);
-  owner_uid : string(8);
-  owner_gid : string(8);
-  file_size : string(12);
-  timestamp : string(12);
-  checksum  : string(8);
-  file_type : file_type;
-  linked_file : string(100);
-  optional ustar_header : ustar_header;
-  hdr_padding : binstring;
-}
-
-struct tar_entry = {
-  header : container(512) of tar_header;
-  file_content : binstring(header.file_size);
-  file_padding : binstring(512 - (header.file_size % 512))
-  checksum_verification : check of check_crc32 (header, file_content, file_padding);
-}
-
-alias tar_file = list of tar_entry;
-\end{lstlisting}
-
-Avec cette seconde version, on utilise un conteneur de 512 octets pour
-lire l'en-tête. Si l'en-tête est étendu, le champ
-\texttt{ustar\_header} sera peuplé par la fonction
-\texttt{parse\_ustar\_header} et le champ \texttt{hdr\_padding}, une
-chaîne binaire consommant les octets restants du conteneur,
-contiendra~12~octets; dans le cas contraire, la fonction échouera, le
-champ \texttt{ustar\_header} vaudra \texttt{None} et
-\texttt{hdr\_padding} aura une longueur de 255~octets.
-
-Le lecteur attentif aura également remarqué l'ajout d'un champ
-intitulé \texttt{checksum\_verification}, qui permet d'exécuter une
-vérification de la somme de contrôle une fois l'entrée TAR entièrement
-disséquée. Cette ligne ne produit pas de champ dans le type OCaml
-\texttt{tar\_entry} généré, mais appelle la fonction
-\texttt{check\_crc32}\footnote{une fonction à écrire dont le prototype
-  attendu est \lstinline+tar_header -> string -> string -> unit+ qui
-  pourra lever une exception en cas d'erreur sur la somme de
-  contrôle.}  sur les champs déjà disséqués. On pourrait utiliser ce
-type de champs pour vérifier d'autres propriétés (le champ
-\texttt{hdr\_padding} et les champs inutilisés sont par exemple censés
-ne contenir que des caractères nuls).
-
-\medskip
-
-Le format TAR faisant un usage important des chaînes de caractères
-encodant une valeur numérique, on pourrait aussi créer de toute pièce
-un nouveau type, \texttt{tar\_numstring}, de la manière
-suivante\footnote{Pour des raisons historiques, un champ de 8~octets
-  sera terminé par un espace ou un caractère nul, ne laissant ainsi en
-  pratique que 7~octets pour encoder la valeur.}:
-\begin{lstlisting}
-type tar_numstring = int
-
-let parse_tar_numstring len input =
-  let octal_value = parse_string (len - 1) input in
-  drop_bytes 1 input;
-  int_of_string ("0o" ^ octal_value)
-
-let dump_tar_numstring len v =
-  Printf.printf "%*.*o\x00" len len v
-
-let print_tar_numstring ?indent:(indent="") ?name:(name="numstring") v =
-  Printf.sprintf "%s%s: %d (%o)\n" indent name v v
-\end{lstlisting}
-
-En effet, définir un nouveau type consiste simplement à déclarer un
-type OCaml et à écrire les fonctions de base pour traiter ce type, ce
-qui permet d'étendre facilement l'expressivité de \FAceSL à l'aide de
-\FAceSLTypes personnalisés.
-
-Une fois ce nouveau type défini, on peut modifier les champs
-représentant des valeurs numériques en octal en replaçant le type
-\texttt{string(n)} par \texttt{tar\_numstring(n)}.
-
-
-
 \section{Description des extensions du langage}
 \label{sec:description}
 
 
 L'idée générale de \FAceSL est d'interpréter des descriptions courtes
-rédigées par le développeur et de générer automatiquement:
+utilisant de nouveaux mots-clés (\texttt{enum}, \texttt{struct},
+\texttt{union}, \texttt{alias}, \TODO{asn1\_alias}) pour générer automatiquement:
 \begin{itemize}
 \item des types OCaml décrivant des structures binaires;
 \item des fonctions pour disséquer les objets correspondants depuis
@@ -523,7 +235,7 @@ rédigées par le développeur et de générer automatiquement:
 \end{itemize}
 
 \noindent
-Ces fonctions correspondront au type suivant:
+Le prototype de chacune de ces fonctions est:
 \begin{lstlisting}
 val parse_t : string_input -> t
 val lwt_parse_t : lwt_input -> t
@@ -576,9 +288,10 @@ val dump_tls_version : tls_version -> string
 val print_tls_version : ?indent:string -> ?name:string -> tls_version -> string
 \end{lstlisting}
 
-Les quatre premières fonctions générées permettent simplement de
-convertir le type énumération depuis et vers les entiers et les
-chaînes de caractères. Il est possible de décrire comment
+En plus des quatre fonctions annoncées plus haut, les quatre premières
+fonctions générées permettent simplement de convertir le type
+énumération depuis et vers les entiers et les chaînes de
+caractères. Il est possible de décrire comment
 \texttt{tls\_version\_of\_int} doit traiter une valeur non fournie
 dans l'énumération: dans l'exemple ci-dessus, \texttt{UnknownVal
   V\_Unknown} indique qu'il faut renvoyer une valeur
@@ -586,31 +299,28 @@ dans l'énumération: dans l'exemple ci-dessus, \texttt{UnknownVal
 reconnue. L'autre comportement possible est de lever une exception en
 cas de motif inconnu.
 
-Les quatre fonctions suivantes fournissent les services de plus haut
-niveau décrits précédemment.
-
 
 \subsection{\FAceSLTypes}
 
 Avant de poursuivre avec les constructions apportées par \FAceSL, il
 est nécessaire de décrire les \FAceSLTypes, les types binaires compris
-par \texttt{struct} et \texttt{union}.
+par \texttt{struct}, \texttt{union} et \texttt{alias}.
 
 \medskip
 
 Tout d'abord, \FAceSL propose des types de base pour lesquels les
 implémentations des fonctions \texttt{parse}, \texttt{lwt\_parse},
-\texttt{dump} et \texttt{print} sont déjà disponibles: les entiers non
-signés, les adresses IPv4 et IPv6 encodées en binaire et les chaînes
-de caractères.
+\texttt{dump} et \texttt{print} sont déjà disponibles: les entiers et
+les chaînes de caractères.
 
-En plus de ces types scalaires, le type \texttt{list} permet de
-décrire des listes d'objets du même type. Le type \texttt{container}
+En plus de ces types scalaires, le \FAceSLType \texttt{list} permet de
+décrire des listes d'objets du même type et le type \texttt{container}
 sert à encapsuler un sous-type en spécifiant la taille de la
-sous-chaîne à lire depuis l'entrée. Nous l'avons utilisé pour la
+sous-chaîne à lire depuis l'entrée. \TODO{Nous l'avons utilisé pour la
 gestion de l'en-tête TAR qui est contenu dans un bloc de 512~octets
 mais dont la partie utile peut varier (selon qu'il soit conforme au
-standard \texttt{ustar} ou non): \lstinline+container(512) of tar_header+
+standard \texttt{ustar} ou non): \lstinline+container(512) of
+tar_header+}
 
 \medskip
 
@@ -657,7 +367,7 @@ Un exemple simple illustrant le mot clé \texttt{struct} est donné par
 les messages d'alerte du protocole TLS. De tels messages contiennent
 deux octets: le niveau et le type de l'alerte.
 
-\TODO{Ajouter le passage de la RFC}
+%\TODO{Ajouter le passage de la RFC}
 
  À partir de deux types
 énumérations sur 8~bits, on peut créer l'enregistrement à l'aide du
@@ -686,7 +396,7 @@ fournie en entrée correspond exactement à l'objet disséqué et qu'il
 n'existe pas d'octets à la fin de la chaîne de caractères. L'option
 \texttt{top} est un raccourci pour les deux options précédentes,
 puisqu'elle décrit un objet au niveau le plus haut. Enfin, il est
-possible d'ajouter des paramères aux fonctions \texttt{parse} et
+possible d'ajouter des paramètres aux fonctions \texttt{parse} et
 \texttt{dump} générées avec l'option \texttt{param}; ces paramètres
 pourront être utilisés dans les expressions entre parenthèses (pour
 indiquer une longueur ou pour transmettre un argument à un type
@@ -695,7 +405,7 @@ personnalisé), comme nous le verrons dans le prochain exemple.
 
 \subsection{Unions}
 
-Empruntant encore la terminologie du langage C, les unions sont en
+Empruntant encore à la terminologie du langage C, les unions sont en
 réalité des types somme augmentés par un constructeur par
 défaut. L'idée est d'utiliser un discriminant passé en argument à la
 fonction \texttt{parse} pour en déduire le constructeur du type somme
@@ -811,7 +521,7 @@ let parse_bgp_as_path_segment as_size input =
 
 Pour permettre de produire simplement des fonctions \texttt{parse},
 \texttt{dump} et \texttt{print} pour des listes, on peut déclarer des
-alias comme dans le cas du format TAR.
+alias\TODO{ comme dans le cas du format TAR.}
 
 \shorthandoff{:}
 \begin{tabbing}
@@ -922,6 +632,321 @@ asn1_alias private_rsa_key = (C_Universal, T_Sequence), private_rsa_key_content
 
 
 
+
+\section{Exemple d'un développement avec \FAceSL: le format TAR}
+\label{sec:tar}
+
+\subsection{Présentation du format}
+
+TAR est un format d'archive classique utilisé dans le monde Unix. Son
+rôle est d'agréger un ensemble de fichiers à archiver dans un seul
+gros fichier, qui pourra éventuellement être compressé ensuite.
+
+Une archive s'organise en une succession d'entrées, dont le contenu
+est décrit dans la table~\ref{tab:tar-entry}. Chaque entrée commence
+par un en-tête dont les champs varient en fonction de la version du
+format utilisée; la table~\ref{tab:tar-format} décrit deux de ces
+versions: le format original (colonne TAR) et une variante plus
+récente (colonne \texttt{ustar}). L'en-tête est contenu dans un
+«~bloc~» de 512~octets, et le contenu du fichier qui suit l'en-tête
+est lui-aussi complété par des caractères nuls pour former des blocs
+de 512~octets.
+
+TAR présente une particularité quant au stockage des valeurs entières:
+celles-ci sont systématiquement stockées sous la forme d'une chaîne de
+caractère représentant la valeur numérique en octal. Cette méthode
+permet d'éviter des difficultés d'encodage telles que la prise en
+compte de l'\emph{endianness}, mais au prix d'une plus grande
+consommation mémoire.
+
+Le champ à l'offset~156 décrit le type de fichier. La table
+\ref{tab:tar-filetypes} récapitule les différentes valeurs qu'il peut
+prendre (dont certaines sont uniquement accessibles avec le format
+étendu \texttt{ustar}). En fonction de la valeur prise par ce champ,
+certains des champs de l'en-tête ne sont pas pertinents et devront
+être remplis de caractères nuls.
+
+\begin{table}
+  \begin{center}
+    \begin{tabular}{|r|r|l|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Offset} &
+      \multicolumn{1}{c|}{\bf Long.} &
+      \multicolumn{1}{c|}{\bf Description} \\
+      \hline
+
+      \hline
+        0 & 512 & En-tête TAR, complété par des zéros \\
+      \hline
+      512 & \multicolumn{1}{p{4cm}|}{\emph{«~Taille du fichier~»},\newline
+        alignée à 512~octets} &
+      Contenu du fichier, complété par des zéros \\
+      \hline
+    \end{tabular}
+  \end{center}
+
+  \caption{Description d'une entrée TAR.}
+  \label{tab:tar-entry}
+\end{table}
+
+\begin{table}
+  \begin{center}
+    \begin{tabular}{|r|r|l|l|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Offset} &
+      \multicolumn{1}{c|}{\bf Long.} &
+      \multicolumn{2}{c|}{\bf Description} \\
+      & & \multicolumn{1}{c|}{\bf TAR} &
+      \multicolumn{1}{c|}{\bf \tt ustar} \\
+      \hline
+
+      \hline
+        0 & 100 & \multicolumn{2}{l|}{Nom du fichier} \\
+      \hline
+      100 &   8 & \multicolumn{2}{l|}{Permissions} \\
+      \hline
+      108 &   8 & \multicolumn{2}{l|}{UID} \\
+      \hline
+      116 &   8 & \multicolumn{2}{l|}{GID} \\
+      \hline
+      124 &  12 & \multicolumn{2}{l|}{Taille du fichier} \\
+      \hline
+      136 &  12 & \multicolumn{2}{l|}{\emph{Timestamp} de la dernière modification} \\
+      \hline
+      148 &   8 & \multicolumn{2}{l|}{Somme de contrôle de l'en-tête} \\
+      \hline
+      156 &   1 & Indicateur de lien & Type de fichier \\
+      \hline
+      157 & 100 & \multicolumn{2}{l|}{Nom du fichier pointé par le lien} \\
+      \hline
+      257 &   6	& \multicolumn{1}{c|}{-} & Indicateur \texttt{"ustar"} \\
+      \hline
+      263 &   2	& \multicolumn{1}{c|}{-} & Version \texttt{ustar} ("00") \\
+      \hline
+      265 &  32 & \multicolumn{1}{c|}{-} & Propriétaire \\
+      \hline
+      297 &  32 & \multicolumn{1}{c|}{-} & Groupe propriétaire \\
+      \hline
+      329 &   8 & \multicolumn{1}{c|}{-} & Numéro majeur du périphérique \\
+      \hline
+      337 &   8 & \multicolumn{1}{c|}{-} & Numéro mineur du périphérique \\
+      \hline
+      345 & 155 & \multicolumn{1}{c|}{-} & Préfixe \\
+      \hline
+    \end{tabular}
+  \end{center}
+
+  \caption{Description de l'en-tête TAR.}
+  \label{tab:tar-format}
+\end{table}
+
+\begin{table}
+  \begin{center}
+    \begin{tabular}{|>{\tt}c|l|c|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Caractère} &
+      \multicolumn{1}{c|}{\bf Description} &
+      \multicolumn{1}{c|}{\bf Spécifique à \tt ustar} \\
+      \hline
+
+      \hline
+      <NUL>, 0 & fichier ordinaire & - \\
+      1 & lien dur & - \\
+      2 & lien symbolique & - \\
+      \hline
+      3 & périphérique en mode caractères & oui \\
+      4 & périphérique en mode blocs & oui \\
+      5 & répertoire & oui \\
+      6 & file FIFO & oui \\
+      7 & fichier contigu & oui \\
+      \hline
+    \end{tabular}
+  \end{center}
+
+  \caption{Valeurs du champ «~Indicateur de lien/Type de fichier~».}
+  \label{tab:tar-filetypes}
+\end{table}
+
+
+\subsection{Une première implémentation}
+
+Afin d'utiliser notre pré-processeur pour décrire les fichiers au
+format TAR, commençons par décrire les valeurs de ce champ
+«~Indicateur de lien/Type de fichier~». Il s'agit d'une énumération
+sur 8~bits qui s'écrit avec le nouveau mot-clé \texttt{enum}:
+\begin{lstlisting}
+enum file_type (8, UnknownVal UnknownFileType, []) =
+  | 0 -> NormalFile
+  | 0x30 -> NormalFile
+  | 0x31 -> HardLink
+  | 0x32 -> SymbolicLink
+  | 0x33 -> CharacterSpecial
+  | 0x34 -> BlockSpecial
+  | 0x35 -> Directory
+  | 0x36 -> FIFO
+  | 0x37 -> ContiguousFile
+\end{lstlisting}
+
+Ensuite, on peut décrire l'enregistrement contenant les différents
+champs constituant d'un en-tête à l'aide du mot clé \texttt{struct},
+qui ressemble à la description d'un enregistrement OCaml, mais qui
+accepte des types \TODO{enrichis (annotations pour ajouter des vérifications dynamiques)} nommés \FAceSLTypes:
+\begin{lstlisting}
+let int_of_tarstring octal_value =
+  int_of_string ("0o" ^ octal_value)
+
+struct tar_header = {
+  file_name : string(100);
+  file_mode : string(8);
+  owner_uid : string(8);
+  owner_gid : string(8);
+  file_size : string(12);
+  timestamp : string(12);
+  checksum  : string(8);
+  file_type : file_type;
+  linked_file : string(100);
+  ustar_magic : magic("ustar\x0000");
+  owner_user : string(32);
+  owner_group : string(32);
+  device_major : string(8);
+  device_minor : string(8);
+  filename_prefix : string(155);
+  hdr_padding : binstring(12);
+}
+
+struct tar_entry = {
+  header : tar_header;
+  file_content : binstring(int_of_tarstring header.file_size);
+  file_padding : binstring(512 - ((int_of_tarstring header.file_size) % 512))
+}
+
+alias tar_file = list of tar_entry;
+\end{lstlisting}
+
+Le code resultant du pré-processeur permet alors d'ouvrir une archive
+simplement à l'aide de la fonction \texttt{parse\_tar\_file}, qui
+prend en argument la chaîne de caractères correspondant au contenu du
+fichier. Afin de traiter des données importantes de manière efficace,
+il est également possible de produire une version du \emph{parser} en
+mode flux, qui repose sur la bibliothèque \texttt{lwt} TODO{Ref: bibliothèque de threads avec une interface de monades}. Pour cela, il
+suffit de redéfinir l'alias en lui adjoignant l'option
+\texttt{with\_lwt} et d'utiliser cette fois la fonction
+\texttt{lwt\_parse\_tar\_file}, comme le montre l'exemple suivant:
+\begin{lstlisting}
+alias tar_file [with_lwt] = list of tar_entry;
+
+let handle_filename filename =
+  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd
+  lwt_parse_tar_file (input_of_fd filename fd) >>= fun tar_file
+  let print_filename entry = print_string entry.file_name in
+  List.iter print_filename tar_file;
+  return ()
+
+let _ =
+  Lwt_unix.run (handle_filename "test.tar");
+\end{lstlisting}
+
+\TODO{Dire que la version fonctionne + les commandes pour compiler}
+
+
+\subsection{Pour aller plus loin}
+\label{sec:aller-plus-loin}
+
+La première version proposée est fonctionnelle, mais si l'on souhaite
+proprement prendre en compte les vieilles archives, ne contenant pas
+l'en-tête étendu commençant par le marqueur \texttt{ustar}, on peut
+réécrire la description de l'en-tête de la manière suivante, en
+séparant l'en-tête en deux morceaux, dont un est déclaré optionnel.
+\begin{lstlisting}
+struct ustar_header = {
+  ustar_magic : magic("ustar\x0000");
+  owner_user : string(32);
+  owner_group : string(32);
+  device_major : string(8);
+  device_minor : string(8);
+  filename_prefix : string(155);
+}
+
+struct tar_header = {
+  file_name : string(100);
+  file_mode : string(8);
+  owner_uid : string(8);
+  owner_gid : string(8);
+  file_size : string(12);
+  timestamp : string(12);
+  checksum  : string(8);
+  file_type : file_type;
+  linked_file : string(100);
+  optional ustar_header : ustar_header;
+  hdr_padding : binstring;
+}
+
+struct tar_entry = {
+  header : container(512) of tar_header;
+  file_content : binstring(header.file_size);
+  file_padding : binstring(512 - (header.file_size % 512))
+  checksum_verification : check of check_crc32 (header, file_content, file_padding);
+}
+
+alias tar_file = list of tar_entry;
+\end{lstlisting}
+
+Avec cette seconde version, on utilise un conteneur de 512 octets pour
+lire l'en-tête. Si l'en-tête est étendu, le champ
+\texttt{ustar\_header} sera peuplé par la fonction
+\texttt{parse\_ustar\_header} et le champ \texttt{hdr\_padding}, une
+chaîne binaire consommant les octets restants du conteneur,
+contiendra~12~octets; dans le cas contraire, la fonction échouera, le
+champ \texttt{ustar\_header} vaudra \texttt{None} et
+\texttt{hdr\_padding} aura une longueur de 255~octets.
+
+Le lecteur attentif aura également remarqué l'ajout d'un champ
+intitulé \texttt{checksum\_verification}, qui permet d'exécuter une
+vérification de la somme de contrôle une fois l'entrée TAR entièrement
+disséquée. Cette ligne ne produit pas de champ dans le type OCaml
+\texttt{tar\_entry} généré, mais appelle la fonction
+\texttt{check\_crc32}\footnote{une fonction à écrire dont le prototype
+  attendu est \lstinline+tar_header -> string -> string -> unit+ qui
+  pourra lever une exception en cas d'erreur sur la somme de
+  contrôle.}  sur les champs déjà disséqués. On pourrait utiliser ce
+type de champs pour vérifier d'autres propriétés (le champ
+\texttt{hdr\_padding} et les champs inutilisés sont par exemple censés
+ne contenir que des caractères nuls).
+
+\medskip
+
+Le format TAR faisant un usage important des chaînes de caractères
+encodant une valeur numérique, on pourrait aussi créer de toute pièce
+un nouveau type, \texttt{tar\_numstring}, de la manière
+suivante\footnote{Pour des raisons historiques, un champ de 8~octets
+  sera terminé par un espace ou un caractère nul, ne laissant ainsi en
+  pratique que 7~octets pour encoder la valeur.}:
+\begin{lstlisting}
+type tar_numstring = int
+
+let parse_tar_numstring len input =
+  let octal_value = parse_string (len - 1) input in
+  drop_bytes 1 input;
+  int_of_string ("0o" ^ octal_value)
+
+let dump_tar_numstring len v =
+  Printf.printf "%*.*o\x00" len len v
+
+let print_tar_numstring ?indent:(indent="") ?name:(name="numstring") v =
+  Printf.sprintf "%s%s: %d (%o)\n" indent name v v
+\end{lstlisting}
+
+En effet, définir un nouveau type consiste simplement à déclarer un
+type OCaml et à écrire les fonctions de base pour traiter ce type, ce
+qui permet d'étendre facilement l'expressivité de \FAceSL à l'aide de
+\FAceSLTypes personnalisés.
+
+Une fois ce nouveau type défini, on peut modifier les champs
+représentant des valeurs numériques en octal en replaçant le type
+\texttt{string(n)} par \texttt{tar\_numstring(n)}.
+
+
+
 \section{Applications}
 
 
@@ -982,7 +1007,7 @@ répartition du nombre de lignes de code est la suivante:
 Ainsi, en environ 1000~lignes de code\footnote{Ce décompte ne comprend
   évidemment pas le pré-processeur ni les fonctions auxiliaires
   fournissant les services de base (\texttt{parse\_uint8} et
-  \texttt{dump\_ipv4} par exemple).}, il a été possible de décrire une
+  \texttt{dump\_list} par exemple).}, il a été possible de décrire une
 grande partie du protocole TLS ainsi qu'un outil de test.
 
 À partir de ces \emph{parsers}, d'autres outils ont été écrits pour
@@ -1039,7 +1064,7 @@ exemple.
 
 \section{Conclusion et perspectives}
 
-\TODO{Reformuler tout le paragraphe suivant car pas clair}
+%\TODO{Reformuler tout le paragraphe suivant car pas clair}
 
 L'écriture de \FAceSL, qui résulte de la fusion du langage spécifique
 utilisé pour décrire les objets étudiés et du langage permettant de
@@ -1079,7 +1104,7 @@ sont envisagées:
   signature du certificat);
 \item description de nouveaux formats de fichiers et de nouveaux
   protocoles (DNS, OCSP) ou formats de fichiers (\texttt{pcap}, PE);
-\item automatisation de \TODO{l'animation} des protocoles par la génération
+\item automatisation de TODO{l'animation} des protocoles par la génération
   d'automates permettant l'étude d'exécutions du protocoles.
 \end{itemize}
 
@@ -1167,8 +1192,6 @@ sont envisagées:
 \begin{tabbing}
   \textit{\FAceSLType} ::\= = \= \textbf{\tt char} \\
   \> $\vert$ \> \textbf{\tt uintN} \\
-  \> $\vert$ \> \textbf{\tt ipv4} \\
-  \> $\vert$ \> \textbf{\tt ipv6} \\
   \> $\vert$ \> \textbf{\tt string} \\
   \> $\vert$ \> \textbf{\tt string} (\textit{expression}) \\
   \> $\vert$ \> \textbf{\tt string} [\textit{type entier}] \\
@@ -1200,7 +1223,7 @@ sont envisagées:
 \shorthandon{:}
 \footnotetext{Ce texte sera renvoyé par \texttt{string\_of\_enum} pour
   cette valeur de l'énumération.  Si aucun texte n'est donné, le nom
-  du constructeur sera utilisé.}
+  du constructeur sera utilisé automatiquement à la place.}
 
 
 \subsection{Structures, unions et alias}
@@ -1257,4 +1280,10 @@ sont envisagées:
 \thispagestyle{colloquetitle}
 \cleardoublepage
 
+\TODO{Dessins des formats}
+
+\TODO{Remerciements : EJ, GV, VS, JA, BM? et LD?}
+
+
 \end{document}
+
