@@ -49,6 +49,13 @@ let handle_input input =
       in
       print_endline (string_of_bool (result));
       return ()
+    | Subject ->
+      let extract_string atv = match atv.attributeValue with
+	| { Asn1Engine.a_content = Asn1Engine.String (s, _)} -> "\"" ^ s ^ "\""
+	| _ -> "\"\""
+      in
+      print_endline ("[" ^ String.concat ", " (List.map extract_string (List.flatten certificate.tbsCertificate.subject)) ^ "]");
+      return ()
     | _ -> fail (Common.NotImplemented "")
 
 let input_of_filename filename =

@@ -7,8 +7,9 @@ open AnswerDump
 open TlsEnums
 open Tls
 open Getopt
+open X509
 
-type action = IP | All | Suite | SKE
+type action = IP | All | Suite | SKE | Subject
 let action = ref IP
 let verbose = ref false
 let raw_records = ref false
@@ -23,6 +24,7 @@ let options = [
   mkopt (Some 'I') "ip" (TrivialFun (fun () -> action := IP)) "only show the IP of the answers";
   mkopt (Some 's') "ciphersuite" (TrivialFun (fun () -> action := Suite)) "only show the ciphersuite chosen";
   mkopt (Some 'S') "ske" (TrivialFun (fun () -> action := SKE)) "only show information relative to ServerKeyExchange";
+  mkopt None "cn" (TrivialFun (fun () -> action := Subject)) "show the subect";
 ]
 
 let getopt_params = {
@@ -126,6 +128,32 @@ let rec handle_one_file input =
 	  match ske with
 	    | None -> ()
 	    | Some s -> Printf.printf "%s: %s\n" ip s;
+	end;
+	return ()
+      | Subject ->
+	let records, _, _ = parse_all_records answer in
+	let rec extractSubjectOfFirstCert = function
+	  | [] -> None
+	  | { content_type = CT_Handshake;
+	      record_content = Handshake {
+		handshake_type = HT_Certificate;
+		handshake_content = Certificate {certificate_list = cert_string::_} }}::_ ->
+	    begin
+	      try
+		let cert = parse_certificate (input_of_string "" cert_string) in
+		let extract_string atv = match atv.attributeValue with
+		  | { Asn1Engine.a_content = Asn1Engine.String (s, _)} -> "\"" ^ s ^ "\""
+		  | _ -> "\"\""
+		in
+		Some (String.concat ", " (List.map extract_string (List.flatten cert.tbsCertificate.subject)))
+	      with _ -> None
+	    end
+	  | _::r -> extractSubjectOfFirstCert r
+	in
+	begin
+	  match extractSubjectOfFirstCert records with
+	    | None -> ()
+	    | Some subject -> Printf.printf "%s: %s\n" ip subject
 	end;
 	return ()
   end >>= fun () ->
