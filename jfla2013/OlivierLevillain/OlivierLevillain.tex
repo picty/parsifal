@@ -17,13 +17,9 @@
 \newcommand{\FAceSLType}{PType\xspace}
 
 
-\usepackage{xcolor}
-\newcommand{\TODO}[1]{\textcolor{red}{#1}}
-
-
-\title{Utilisation de \texttt{camlp4} pour l'écriture rapide de \emph{parsers}}
+\title{\FAceSL: utilisation de \texttt{camlp4} pour l'écriture rapide de \emph{parsers}}
 \author{Olivier Levillain$^{1,2}$}
-\titlehead{Écriture rapide de \emph{parsers} en \texttt{camlp4}}
+\titlehead{\FAceSL: écriture rapide de \emph{parsers} en \texttt{camlp4}}
 \authorhead{O. Levillain}
 \affiliation{\begin{tabular}{rr} 
       \\ 1:  Agence nationale de la sécurité des systèmes d'information (ANSSI)
@@ -67,9 +63,9 @@ projet et deux applications concernant TLS et BGP.  La
 section~\ref{sec:description} donne un aperçu de l'ensemble des
 constructions apportées par \FAceSL et la section~\ref{sec:tar}
 présente un exemple complet d'utilisation de \FAceSL: le format
-d'archive TAR. La section~\ref{sec:chiffres} donne quelques chiffres
+d'archive TAR. La section~\ref{sec:resultats} donne quelques chiffres
 pour comparer les programmes utilisant \FAceSL avec d'autres
-implémentations équivalentes. Enfin, la section~\ref{sec:conclusion}
+implémentations équivalentes. Enfin, la section~\ref{sec:resultats}
 conclut cette article et présente les perspectives d'évolution.
 
 
@@ -110,21 +106,22 @@ protocole (SSLv2, SSLv3, TLSv1.0, TLSv1.1 et TLSv1.2), qui apportent
 chacune des subtilités dans les messages échangés. Parmi les messages
 pertinents pour ce type d'étude, le message \texttt{Certificate}
 contient la chaîne de certification permettant l'authentification du
-serveur. Elle contient des certificats X.509~\cite{rfc5280}, dont le
+serveur. Elle est composée de certificats X.509~\cite{rfc5280}, dont le
 format repose sur l'ASN.1, une syntaxe pour encoder de manière
 structurée des entiers, des chaînes de caractères ou encore des objets
 binaires\footnote{Plus précisément, l'ASN.1 (\emph{Abstract Syntax
     Notation One}) permet de décrire de manière abstraite la structure
-  d'un certificat X.509; l'encodage utilisé pour les certificat et le
+  d'un certificat X.509; l'encodage utilisé pour les certificat est le
   DER (\emph{Distinguished Encoding Rules}), une représentation
   concrète canonique de l'ASN.1.}, ce qui apporte une complexité
 supplémentaire pour la dissection des messages.
 
-Le LRP a mené des travaux sur de nombreuses traces HTTPS depuis deux
+Le laboratoire sécurité des réseaux et protocoles a mené des travaux
+sur de nombreuses traces HTTPS depuis deux
 ans. Les données utilisées proviennent de résultats mis à dispositions
 par l'Electronic Frontier Foundation~\cite{eff-observatory,
   eckersley-obs1, eckersley-obs2} en 2010 et de collectes effectuées
-par Télécom SudParis et l'ANSSI en 2011. Les traces analysées
+en 2011. Les traces analysées
 contiennent une très grande diversité de réponses, parfois
 incohérentes ou non conformes. Face à cet imposant corpus, il était
 difficile d'utiliser des outils existants pour extraire de manière
@@ -132,7 +129,7 @@ fiable l'information pertinente pour les analyses. En effet, les
 implémentations existantes ont généralement un comportement inadapté à
 l'analyse, qu'il s'agisse d'un comportement limité (refus de certaines
 options), laxiste (acceptation silencieuse de paramètres erronés) ou
-fragiles (terminaison brutale du programme pour des valeurs
+fragile (terminaison brutale du programme pour des valeurs
 inattendues, qu'elles soient licites ou non).
 
 Des outils spécifiques, maîtrisés par le laboratoire, ont donc été
@@ -173,8 +170,8 @@ réunir l'ensemble des qualités recherchées pour le développement de
 Cette quatrième mouture, baptisée \FAceSL, résulte de la fusion entre le
 langage spécifique de description des objets analysés et le langage de
 programmation: on utilise directement le langage OCaml pour les deux
-usages. Pour cela, le processeur \texttt{camlp4} a été employé pour la
-génération automatique des types et des fonctions à partir de
+usages. Pour cela, le processeur \texttt{camlp4} est employé pour
+générer automatiquement des types et des fonctions à partir de
 descriptions brèves des structures à disséquer.
 
 
@@ -184,7 +181,7 @@ descriptions brèves des structures à disséquer.
 BGP (\emph{Border Gateway Protocol}~\cite{rfc4271}) est un autre
 protocole étudié par le laboratoire. Il s'agit du protocole de routage
 utilisé pour interconnecter les différents réseaux qui forment
-l'internet. Il existe de nombreuses RFC décrivant BGP, ses extensions,
+l'internet. Il existe de nombreuses RFC\footnote{Les RFC (\emph{Request For Comments}) sont des documents publiés par l'IETF (\emph{Internet Engineering Task Force}) qui décrivent entre autres les protocoles réseau de l'internet.} décrivant BGP, ses extensions,
 ainsi que des protocoles connexes. En particulier, MRT
 (\emph{Multi-Threaded Routing Toolkit}~\cite{rfc6396}) est un format
 d'échange utilisé pour archiver et transmettre l'ensemble des annonces
@@ -196,12 +193,12 @@ exportées au format MRT. Ces données sont d'un grand intérêt pour
 analyser l'état de l'internet, détecter et comprendre d'éventuels
 incidents affectant les informations de routage. L'observatoire de la
 résilience de l'internet français~\cite{observatoire}, mis en place
-par l'ANSSI en 2012, utilise donc cette source de données et doit
+par l'ANSSI en 2012, utilise de telles sources de données et doit
 disposer d'outils capables d'interpréter les fichiers MRT. Le projet
 RIS (\emph{Routing Information Service}) fournit trois fois par jour
 une vision complète de~16~routeurs disséminés sur la planète, ce qui
 correspond à plusieurs centaines de méga-octets par jour, d'où le
-besoin d'avoir des dissecteurs robustes et efficaces.
+besoin d'avoir des dissecteurs efficaces.
 
 Deux outils étaient utilisés au sein du laboratoire pour analyser
 cette grande quantité de données au format MRT. Le premier est un
@@ -217,7 +214,7 @@ outils d'analyse pour MRT a été réalisé. Il a suffi de~4~jours pour
 décrire en \FAceSL les structures pertinentes pour les études menées
 et obtenir un outil indépendant des deux autres, plus rapide que
 l'implémentation en OCaml pré-existante et plus fiable que
-l'implémentation en C.
+l'implémentation~C.
 
 
 
@@ -248,13 +245,13 @@ val dump_t : t -> string
 val print_t : ?indent:string -> ?name:string -> t -> string
 \end{lstlisting}
 
-Les fonctions \texttt{parse} travaillent directement sur des chaînes
+Les fonctions \texttt{parse} travaillent sur des chaînes
 de caractères alors que \texttt{lwt\_parse} utilisent les flux issus
-de la bibliothèque Lwt~\cite{lwt}, une bibliothèque implémentant des
+de la Lwt~\cite{lwt}, une bibliothèque implémentant des
 threads synchrones à l'aide d'une interface monadique.
 
 La fonction \texttt{print} accepte des options pour modifier
-l'indentation et le nom de la structure à afficher. Les fonctions
+l'indentation et le nom de la structure à afficher. De plus, les fonctions
 \texttt{parse}, \texttt{lwt\_parse} et \texttt{dump} peuvent
 éventuellement accepter des paramètres supplémentaires.
 
@@ -326,7 +323,7 @@ implémentations des fonctions \texttt{parse}, \texttt{lwt\_parse},
 les chaînes de caractères.
 
 En plus de ces types scalaires, le \FAceSLType \texttt{list} permet de
-décrire des listes d'objets du même type et le type \texttt{container}
+décrire des listes d'objets du même type et \texttt{container}
 sert à encapsuler un sous-type en spécifiant la taille de la
 sous-chaîne à lire depuis l'entrée.
 
@@ -336,13 +333,11 @@ Pour les chaînes de caractères et les listes, les \emph{parsers}
 générés par défaut essaient de lire l'ensemble de la chaîne qui leur
 est passée en entrée. On peut cependant préciser avec une expression
 entre parenthèses la taille en octets attendue pour une chaîne de
-caractères en octets ou le nombre d'éléments attendus pour une
-liste (\lstinline+binstring(header.file_size)+).
+caractères en octets ou le nombre d'éléments attendus pour une liste
+(\texttt{string(10)} correspond ainsi à une chaîne de 10~caractères).
 
-Un autre format fréquemment rencontré pour les chaînes de caractères
-ou les listes est de faire précéder la chaîne ou la liste par un champ
-longueur qui définit le nombre d'octets utiles pour l'élément qui
-suit; on peut spécifier à l'aide de crochets qu'un tel type est
+Parfois, une chaîne de caractères ou une liste a une taille variable,
+spécifiée par un champ longueur le ou la précédent. Avec \FAceSL, on peut spécifier à l'aide de crochets qu'un tel type est
 attendu: \texttt{\textbf{list} [uint16] \textbf{of} uint16} permet de
 décrire une liste d'entiers sur 16~bits dont la longueur totale en
 octets est codées sur un entier 16~bits\footnote{Ce type particulier
@@ -352,8 +347,8 @@ octets est codées sur un entier 16~bits\footnote{Ce type particulier
 
 \medskip
 
-Enfin, n'importe quel type peut être utilisé comme type personnalisé,
-dès lors qu'il s'agisse d'un type OCaml, et que les fonctions
+Enfin, n'importe quel type peut être utilisé comme \FAceSLType personnalisé,
+dès lors qu'il s'agit d'un type OCaml, et que les fonctions
 \texttt{parse}, \texttt{dump} et \texttt{print} correspondantes
 existent. Il existe deux moyens de construire de nouveaux types:
 \begin{itemize}
@@ -363,8 +358,8 @@ existent. Il existe deux moyens de construire de nouveaux types:
 
 Pour illustrer le premier point, prenons un exemple tiré de MRT,
 présenté dans la section~\ref{sec:mrt}. De nombreux champs du
-protocole sont des adresses IPv4 et IPv6 encodés directement en
-binaires, sur 32 ou 128~bits. Le code suivant montre comment ajouter
+protocole BGP sont des adresses IPv4 et IPv6 encodées directement en
+binaires, respectivement sur 32 et 128~bits. Le code suivant montre comment ajouter
 \texttt{ipv4} à l'arsenal des \FAceSLTypes disponibles:
 \begin{lstlisting}
 type ipv4 = string
@@ -379,7 +374,7 @@ let print_ipv4 ?indent:(indent="") ?name:(name="ipv4") s =
   Printf.sprintf "%s%s: %s\n" indent name res
 \end{lstlisting}
 
-Le second point consiste à utiliser les mots-clés \texttt{struct} et
+L'autre manière de créer un \FAceSLType consiste à utiliser les mots-clés \texttt{struct} et
 \texttt{union} pour décrire des types complexes à partir de
 \FAceSLTypes existant, qui sont décrits dans les paragraphes suivants.
 
@@ -388,9 +383,7 @@ Le second point consiste à utiliser les mots-clés \texttt{struct} et
 
 Les structures que l'on peut décrire avec \FAceSL sont des
 enregistrements qui viennent avec des fonctions \texttt{parse},
-\texttt{dump} et \texttt{print} auto-générées.
-
-Afin de présenter le fonctionnement du mot-clé \texttt{struct}, on
+\texttt{dump} et \texttt{print} auto-générées. Afin de présenter le fonctionnement du mot-clé \texttt{struct}, on
 peut s'intéresser à la manière d'implémenter les messages d'alerte
 TLS. Ces messages sont spécifiés de la manière suivante dans
 TLSv1.2~\cite{rfc5246} (pages 27 et 28):
@@ -427,7 +420,8 @@ enum tls_alert_type (8, UnknownVal AT_Unknown, []) =
     ...
   | 110 -> AT_UnsupportedExtension, "UnsupportedExtension"
 
-struct tls_alert = {
+struct tls_alert =
+{
   alert_level : tls_alert_level;
   alert_type : tls_alert_type
 }
@@ -441,7 +435,7 @@ d'utiliser les fonctions générées telles que
 
 \subsection{Unions}
 
-Empruntant encore à la terminologie du langage C, les unions sont en
+Empruntant encore à la terminologie du langage C, les unions de \FAceSL sont en
 réalité des types somme augmentés par un constructeur par
 défaut. L'idée est d'utiliser un discriminant passé en argument à la
 fonction \texttt{parse} pour en déduire le constructeur du type somme
@@ -451,7 +445,7 @@ sera choisi.
 
 Pour illustrer ce concept, prenons un exemple issu du format MRT. Pour
 décrire les différents systèmes interconnectés par BGP, on utilise la
-notion de système autonome (AS), un numéro identifiant un
+notion de système autonome (AS, \emph{Autonomous Systems}), un numéro identifiant un
 opérateur. Initialiement, ces AS étaient représentés sur 16~bits, mais
 cela n'est plus suffisant désormais et les AS sont parfois décrits sur
 32~bits. L'exemple suivant montre comment décrire un AS avec une
@@ -461,7 +455,8 @@ union autonomous_system (UnparsedAS, [enrich]) =
   | 16 -> AS16 of uint16
   | 32 -> AS32 of uint32
 
-struct bgp_as_path_segment [param as_size] = {
+struct bgp_as_path_segment [param as_size] =
+{
   path_segment_type : uint8;
   path_segment_length : uint8;
   path_segment_value : list(path_segment_length) of autonomous_system(as_size)
@@ -491,8 +486,11 @@ let parse_autonomous_system discriminator input =
     | _ -> UnparsedAS (parse_rem_string input)
 
 type bgp_as_path_segment =
-  { path_segment_type : int; path_segment_length : int;
-    path_segment_value : autonomous_system list }
+{
+  path_segment_type : int;
+  path_segment_length : int;
+  path_segment_value : autonomous_system list
+}
 
 let parse_bgp_as_path_segment as_size input =
   let path_segment_type = parse_uint8 input in
@@ -512,15 +510,19 @@ let parse_bgp_as_path_segment as_size input =
 
 \subsection{Autres constructions}
 
-\FAceSL propose d'autres mots-clés, qui ne seront pas décrits en
-détails ici:
+\FAceSL propose d'autres mots-clés et fonctionnalités, qui ne seront
+pas décrits en détails ici:
 \begin{itemize}
 \item pour permettre de produire simplement des fonctions
   \texttt{parse}, \texttt{dump} et \texttt{print} pour des listes, on
   peut déclarer des alias avec le mot clé \texttt{alias};
 \item afin de permettre la description de structures ASN.1 encodées au
   format DER (par exemple les certificats X.509), \FAceSL fournit des
-  types prédéfinis et un mot-clé \texttt{asn1\_alias}.
+  types prédéfinis et un mot-clé \texttt{asn1\_alias};
+\item parfois, la dissection de messages complexes ne requiert pas une
+  dissection en profondeur de toutes les structures. Afin d'accélérer
+  les outils, il est possible de désactiver l'enrichissement des
+  unions non pertinentes à l'aide d'un paramètre \texttt{enrich}.
 \end{itemize}
 
 
@@ -569,9 +571,9 @@ certains des champs de l'en-tête ne sont pas pertinents et devront
       \hline
         0 & 512 & En-tête TAR, complété par des zéros \\
       \hline
-      512 & \multicolumn{1}{p{4cm}|}{\emph{«~Taille du fichier~»},\newline
-        alignée à 512~octets} &
+      512 & \multicolumn{1}{c}{\emph{«~Taille du fichier~»}} &
       Contenu du fichier, complété par des zéros \\
+      & \multicolumn{1}{c}{alignée à 512~octets} & \\
       \hline
     \end{tabular}
   \end{center}
@@ -682,7 +684,8 @@ Ensuite, on peut décrire l'enregistrement contenant les différents
 champs constituant d'un en-tête à l'aide du mot clé \texttt{struct} de
 la manière suivante:
 \begin{lstlisting}
-struct tar_header = {
+struct tar_header =
+{
   file_name : string(100);
   file_mode : string(8);
   owner_uid : string(8);
@@ -704,7 +707,7 @@ struct tar_header = {
 
 On obtient alors un type enregistrement \texttt{tar\_header}. Il
 contient en particulier un champ \texttt{file\_size} de type chaîne de
-caractères, encodant la taille du fichier en octal. Comme cette valeur
+caractères, encodant la taille du fichier en octal. Comme la valeur entière
 est nécessaire pour savoir combien d'octets lire pour le contenu du
 fichier, il nous faut une fonction de conversion\footnote{Pour des
   raisons historiques, les chaînes de caractères décrivant la
@@ -725,7 +728,8 @@ let int_of_tarstring octal_value =
 Il ne nous reste plus qu'à finaliser l'implémentatin en décrivant ce
 qu'est une entrée TAR et en créant un alias décrivant un fichier:
 \begin{lstlisting}
-struct tar_entry = {
+struct tar_entry =
+{
   header : tar_header;
   file_content : binstring(int_of_tarstring header.file_size);
   file_padding : binstring(512 - ((int_of_tarstring header.file_size) % 512))
@@ -775,7 +779,8 @@ séparant l'en-tête en deux morceaux, dont un est déclaré
 optionnel. Pour cela, on remplace les déclarations de
 \texttt{tar\_header} et \texttt{tar\_entry} par le code suivant:
 \begin{lstlisting}
-struct ustar_header = {
+struct ustar_header =
+{
   ustar_magic : magic("ustar\x0000");
   owner_user : string(32);
   owner_group : string(32);
@@ -783,8 +788,11 @@ struct ustar_header = {
   device_minor : string(8);
   filename_prefix : string(155);
 }
+\end{lstlisting}
 
-struct tar_header = {
+\begin{lstlisting}
+struct tar_header =
+{
   file_name : string(100);
   file_mode : string(8);
   owner_uid : string(8);
@@ -797,8 +805,11 @@ struct tar_header = {
   optional ustar_header : ustar_header;
   hdr_padding : binstring;
 }
+\end{lstlisting}
 
-struct tar_entry = {
+\begin{lstlisting}
+struct tar_entry =
+{
   header : container(512) of tar_header;
   file_content : binstring(int_of_tarstring header.file_size);
   file_padding : binstring(512 - ((int_of_tarstring header.file_size) % 512))
@@ -826,9 +837,8 @@ proposées ci-dessus encodent simplement ces champs comme une chaîne de
 caractères d'une taille donnée. Afin d'améliorer l'ergonomie des types
 construits, on pourrait créer de toute pièce un nouveau type,
 \texttt{tar\_numstring} pour prendre en compte ce format
-particulier. Il suffit pour cela de définir un nouveau type et les
-fonctions associées\footnote{La fonction \texttt{int\_of\_tarstring}
-  définie plus haut devient alors inutile.}:
+particulier. Il suffit pour cela de définir un nouveau type OCaml et les
+fonctions associées:
 \begin{lstlisting}
 type tar_numstring = int
 
@@ -851,9 +861,11 @@ représentant des valeurs numériques en octal (comme
 de \texttt{ustar\_header} et de \texttt{tar\_header}; ensuite, la
 description de \texttt{tar\_entry} se simplifie puisque
 \texttt{header.file\_size} est désormais de type
-\texttt{tar\_numstring}, c'est-à-dire un entier:
+\texttt{tar\_numstring}, c'est-à-dire un entier\footnote{La fonction \texttt{int\_of\_tarstring}
+  définie plus haut devient alors inutile.}:
 \begin{lstlisting}
-struct tar_entry = {
+struct tar_entry =
+{
   header : container(512) of tar_header;
   file_content : binstring(header.file_size);
   file_padding : binstring(512 - (header.file_size % 512))
@@ -862,14 +874,18 @@ struct tar_entry = {
 
 
 
-\section{Quelques chiffres}
+\section{Quelques résultats}
+\label{sec:resultats}
 
-L'implémentation de \FAceSL comporte
+\FAceSL fournit les \FAceSLTypes suivants: les types scalaires de base
+(entiers, chaînes de caractères), les types liste et conteneur,
+quelques types utiles (\texttt{magic}, \texttt{ipv4}, etc.) et les
+types ASN.1 de base. Pour cela, l'implémentation repose sur
 \begin{itemize}
 \item des pré-processeurs \texttt{camlp4}, qui comportent environ
   1200~lignes de code;
-\item des bibliothèques annexes pour implémenter la gestion des types
-  de base, sur 1300~lignes de code.
+\item des bibliothèques annexes pour implémenter la gestion des
+  \FAceSLTypes, sur 1300~lignes de code.
 \end{itemize}
 
 % Ce travail a nécessité de comprendre le fonctionnement de
@@ -884,17 +900,8 @@ L'implémentation de \FAceSL comporte
 %   ou une console...}
 
 
-\subsection{Formats et protocoles implémentés}
-
-\FAceSL fournit l'implémentation pour les types suivants:
-\begin{itemize}
-\item les types scalaires de base (entiers, chaînes de caractères);
-\item les types liste et conteneur;
-\item quelques types utiles (\texttt{magic}, \texttt{ipv4}, etc.);
-\item les types ASN.1 de base.
-\end{itemize}
-
-\`A partir de cela, les formats et protocoles suivants ont été implémentés:
+Comme indiqué plus haut, plusieurs formats et protocoles suivants ont
+été implémentés à partir de ces briques de base:
 \begin{itemize}
 \item les certificats X.509 (100~lignes);
 \item les messages du protocole TLS (600~lignes);
@@ -902,43 +909,59 @@ L'implémentation de \FAceSL comporte
 \item le format TAR, pour les besoins de cet article (moins de 100~lignes).
 \end{itemize}
 
+\medskip
+
 Une fois ces formats et protocoles décrits, il est possible d'écrire
 des outils utilisant les fonctions \texttt{parse}, \texttt{dump} et
-\texttt{print}.
-
-
-\subsection{Comparaison des différentes implémentations}
-\label{sec:chiffres}
-
-Les deux applications décrites dans les
-sections~\ref{sec:tls}~et~\ref{sec:mrt} ont donné lieu à plusieurs
-applications:
+\texttt{print}. Parmi ces outils, citons-en deux issus des études
+décrites dans les sections~\ref{sec:tls}~et~\ref{sec:mrt}:
 \begin{itemize}
-\item un outil pour extraire les certificats des réponses TLS;
-\item un outil de test des versions et suites cryptographiques
-  supportées par un serveur TLS donné;
+\item un outil pour extraire les certificats des réponses TLS (\texttt{answer2certs});
 \item un programme pour afficher les annonces de route BGP à partir
-  d'un fichier MRT.
+  d'un fichier MRT (\texttt{mrtdump}).
 \end{itemize}
 
-Pour ces trois applications, nous disposons de plusieurs
-implémentations dans différents langages, disponibles sur étagère ou
-recodées au sein du laboratoire. Le tableau suivant récapitule le
-nombre de lignes et le temps d'exécution pour les différentes
-implémentations pour chacune des application:
-\begin{tabular}{c|r|r|r|r|}
-& \multicolumn{1}{c|}{C} & \multicolumn{1}{c|}{C++} & \multicolumn{1}{c|}{OCaml} & \multicolumn{1}{c|}{OCaml + \FAceSL\footnotemark} \\
+Pour ces deux applications, nous disposons de plusieurs
+implémentations dans différents langages. Le tableau suivant
+récapitule le nombre de lignes et le temps d'exécution sur des données
+caractéristiques des différentes implémentations:
+\begin{center}
+\begin{tabular}{l||l|r|r|r|}
+& \multicolumn{1}{c|}{C ou C++} & \multicolumn{1}{c|}{OCaml} & \multicolumn{1}{c|}{OCaml + \FAceSL\footnotemark} \\
 \hline
-Extraction de certificats & & & & \\
 \hline
-Test de serveurs TLS & & & & \\
+\texttt{answer2certs} & \multicolumn{1}{c|}{Dev. interne (C++)} &
+                        \multicolumn{1}{c|}{Dev. interne} &
+                        \multicolumn{1}{c|}{Dev. interne} \\
+\multicolumn{1}{r||}{Nb lignes} & 8~500 & 4~000  & 1~000 \\
+\multicolumn{1}{r||}{Temps}     & 100~s & 40~s   & 8~s   \\
 \hline
-Affichage des annonces de routes & & & & \\
+\texttt{mrtdump} & \multicolumn{1}{c|}{\texttt{libbgpdump}\footnotemark} &
+                        \multicolumn{1}{c|}{Dev. interne} &
+                        \multicolumn{1}{c|}{Dev. interne} \\
+\multicolumn{1}{r||}{Nb lignes} & 4~000 & 1~200  & 550  \\
+\multicolumn{1}{r||}{Temps}     & 23~s & 180~s   & 35~s \\
 \hline
 \end{tabular}
+\end{center}
+\addtocounter{footnote}{-1}
 \footnotetext{Pour la colonne «~OCaml + \FAceSL~», le décompte ne
   comprend ni le pré-processeur ni les fonctions auxiliaires de base.}
+\addtocounter{footnote}{1}
+\footnotetext{Le projet \texttt{bgpdump} est disponible à l'adresse \url{www.ris.ripe.net/source/bgpdump}.}
 
+Dans tous les cas, on constate que l'implémentation utilisant \FAceSL
+requiert bien moins de lignes de code que les implémentations
+équivalentes étudiées. Du point de vue des performances, il est
+intéressant de constater que l'implantation initiale en C++ de
+\texttt{answer2certs} n'était pas très bonne, alors que sa réécriture
+en OCaml puis avec \FAceSL se sont révélées non seulement plus
+succinctes, mais aussi beaucoup plus rapide; en revanche,
+l'implémantation disponible sur étagère pour disséquer des fichiers
+MRT en C est 33~\% plus rapide que la version reposant sur \FAceSL,
+mais les deux versions ne sont pas tout à fait iso-fonctionnelles,
+puisque certains fichiers MRT font échouer \texttt{libbgpdump} alors
+que nos développements les traitent correctement.
 
 
 % \begin{itemize}
