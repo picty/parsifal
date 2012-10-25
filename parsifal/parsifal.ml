@@ -177,13 +177,14 @@ let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
   input_of_fd filename fd
 
-let lwt_really_read ch len =
+let lwt_really_read input len =
   let buf = String.make len ' ' in
-  Lwt_io.read_into_exactly ch buf 0 len >>= fun () ->
+  Lwt_io.read_into_exactly input.ch buf 0 len >>= fun () ->
+  input.lwt_offset <- input.lwt_offset + len;
   return buf
 
 let lwt_get_in input name len =
-  really_read input.lwt_ch len >>= fun s ->
+  lwt_really_read input.lwt_ch len >>= fun s ->
   return {
     str = s;
     cur_name = name;
@@ -196,10 +197,7 @@ let lwt_get_in input name len =
 let lwt_get_out old_input input =
   if input.cur_offset < input.cur_length
   then fail (ParsingException (UnexpectedTrailingBytes, LwtInput input))
-  else begin
-    old_input.lwt_offset <- old_input.lwt_offset + input.cur_length;
-    return ()
-  end
+  else old_input.lwt_offset <- old_input.lwt_offset + input.cur_length;
 
 let lwt_eos input =
   input.lwt_rewindable && (input.lwt_offset >= input.lwt_length)
@@ -260,16 +258,12 @@ let peek_uint8 input =
   end else raise (ParsingException (OutOfBounds, input))
 
 let lwt_parse_uint8 input =
-  really_read input.lwt_ch 1 >>= fun s ->
-  let res = int_of_char (s.[0]) in
-  input.lwt_offset <- input.lwt_offset + 1;
-  return res
+  lwt_really_read input 1 >>= fun s ->
+  return (int_of_char (s.[0]))
 
 let lwt_parse_char input =
-  really_read input.lwt_ch 1 >>= fun s ->
-  let res = s.[0] in
-  input.lwt_offset <- input.lwt_offset + 1;
-  return res
+  lwt_really_read input 1 >>= fun s ->
+  return (s.[0])
 
 let dump_uint8 v = String.make 1 (char_of_int (v land 0xff))
 
@@ -299,10 +293,8 @@ let peek_uint16 input =
   end else raise (ParsingException (OutOfBounds, input))
 
 let lwt_parse_uint16 input =
-  really_read input.lwt_ch 2 >>= fun s ->
-  let res = ((int_of_char s.[0]) lsl 8) lor (int_of_char s.[1]) in
-  input.lwt_offset <- input.lwt_offset + 2;
-  return res
+  lwt_really_read input 2 >>= fun s ->
+  return (((int_of_char s.[0]) lsl 8) lor (int_of_char s.[1]))
 
 let dump_uint16 v =
   let c0 = char_of_int ((v lsr 8) land 0xff)
@@ -327,11 +319,9 @@ let parse_uint24 input =
   end else raise (ParsingException (OutOfBounds, input))
 
 let lwt_parse_uint24 input =
-  really_read input.lwt_ch 3 >>= fun s ->
-  let res = ((int_of_char s.[0]) lsl 16) lor
-    ((int_of_char s.[1]) lsl 8) lor (int_of_char s.[2]) in
-  input.lwt_offset <- input.lwt_offset + 3;
-  return res
+  lwt_really_read input 3 >>= fun s ->
+  return (((int_of_char s.[0]) lsl 16) lor
+    ((int_of_char s.[1]) lsl 8) lor (int_of_char s.[2]))
 
 let dump_uint24 v =
   let c0 = char_of_int ((v lsr 16) land 0xff)
@@ -359,11 +349,9 @@ let parse_uint32 input =
   end else raise (ParsingException (OutOfBounds, input))
 
 let lwt_parse_uint32 input =
-  really_read input.lwt_ch 4 >>= fun s ->
-  let res = ((int_of_char s.[0]) lsl 24) lor ((int_of_char s.[1]) lsl 16)
-    lor ((int_of_char s.[2]) lsl 8) lor (int_of_char s.[3]) in
-  input.lwt_offset <- input.lwt_offset + 4;
-  return res
+  lwt_really_read input 4 >>= fun s ->
+  return (((int_of_char s.[0]) lsl 24) lor ((int_of_char s.[1]) lsl 16)
+    lor ((int_of_char s.[2]) lsl 8) lor (int_of_char s.[3]))
 
 let dump_uint32 v =
   let c0 = char_of_int ((v lsr 24) land 0xff)
@@ -380,3 +368,80 @@ let print_uint32 ?indent:(indent="") ?name:(name="uint32") v =
   Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
 
 
+
+(* Enums *)
+
+let print_enum string_of_val int_of_val nchars ?indent:(indent="") ?name:(name="enum") v =
+  Printf.sprintf "%s%s: %s (%*.*x)\n" indent name (string_of_val v) nchars nchars (int_of_val v)
+
+
+
+(* Strings *)
+
+let parse_string n input =
+  if input.cur_offset + n <= input.cur_length then begin
+    let res = String.sub input.str (input.cur_base + input.cur_offset) n in
+    input.cur_offset <- input.cur_offset + n;
+    res
+  end else raise (ParsingException (OutOfBounds, input))
+
+let lwt_parse_string n input = lwt_really_read input n
+
+let parse_rem_string input =
+  let res = String.sub input.str (input.cur_base + input.cur_offset) (input.cur_length - input.cur_offset) in
+  input.cur_offset <- input.cur_length;
+  res
+
+let lwt_parse_rem_string input =
+  if input.rewindable
+  then lwt_really_read input (input.lwt_length - input.lwt_offset)
+  else fail (Common.NotImplemented "lwt_parse_rem_string")
+
+
+let parse_varlen_string name len_fun input =
+  let n = len_fun input in
+  let new_input = get_in input name n in
+  let res = parse_rem_string new_input in
+  get_out input new_input;
+  res
+
+let lwt_parse_varlen_string name len_fun input =
+  len_fun input >>= fun n ->
+  get_in input name n >>= fun str_input ->
+  let res = parse_rem_string str_input in
+  get_out input str_input >>= fun () ->
+  return res
+
+
+let drop_bytes n input =
+  if input.cur_offset + n <= input.cur_length
+  then input.cur_offset <- input.cur_offset + n
+  else raise (ParsingException (OutOfBounds, input))
+
+let lwt_drop_bytes n input =
+  lwt_really_read input n >>= fun _ -> return ()
+
+let drop_rem_bytes input =
+  input.cur_offset <- input.cur_length
+
+let lwt_drop_rem_bytes input =
+  if input.rewindable then begin
+    lwt_really_read input (input.lwt_length - input.lwt_offset) >>= fun _ ->
+    return ()
+  end else fail (Common.NotImplemented "lwt_drop_rem_bytes")
+
+
+let dump_string s = s
+
+let dump_varlen_string len_fun s =
+  let n = String.length s in
+  (len_fun n) ^ s
+
+
+let print_string ?indent:(indent="") ?name:(name="string") = function
+  | "" -> Printf.sprintf "%s%s\n" indent name
+  | s  -> Printf.sprintf "%s%s: \"%s\"\n" indent name (Common.quote_string s)
+
+let print_binstring ?indent:(indent="") ?name:(name="binstring") = function
+  | "" -> Printf.sprintf "%s%s\n" indent name
+  | s -> Printf.sprintf "%s%s: %s\n" indent name (Common.hexdump s)

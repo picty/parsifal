@@ -1,12 +1,3 @@
-(* String dumping *)
-
-let dump_string s = s
-
-let dump_varlen_string len_fun s =
-  let n = String.length s in
-  (len_fun n) ^ s
-
-
 (* List dumping *)
 
 let dump_list dump_fun l =

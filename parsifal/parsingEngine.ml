@@ -1,34 +1,3 @@
-(* String parsing *)
-
-let parse_string n input =
-  if input.cur_offset + n <= input.cur_length then begin
-    let res = String.sub input.str (input.cur_base + input.cur_offset) n in
-    input.cur_offset <- input.cur_offset + n;
-    res
-  end else raise (ParsingException (OutOfBounds, input))
-
-let parse_rem_string input =
-  let res = String.sub input.str (input.cur_base + input.cur_offset) (input.cur_length - input.cur_offset) in
-  input.cur_offset <- input.cur_length;
-  res
-
-let parse_varlen_string name len_fun input =
-  let n = len_fun input in
-  let new_input = get_in input name n in
-  let res = parse_rem_string new_input in
-  get_out input new_input;
-  res
-
-let drop_bytes n input =
-  if input.cur_offset + n <= input.cur_length
-  then input.cur_offset <- input.cur_offset + n
-  else raise (ParsingException (OutOfBounds, input))
-
-let drop_rem_bytes input =
-  input.cur_offset <- input.cur_length
-
-
-
 (* List parsing *)
 
 let parse_list n parse_fun input =
