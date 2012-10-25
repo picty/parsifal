@@ -1,19 +1,4 @@
-(* Integer printing *)
-
-let print_uint8 ?indent:(indent="") ?name:(name="uint8") v =
-  Printf.sprintf "%s%s: %d (%2.2x)\n" indent name v v
-
-let print_uint16 ?indent:(indent="") ?name:(name="uint16") v =
-  Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
-
-let print_uint24 ?indent:(indent="") ?name:(name="uint24") v =
-  Printf.sprintf "%s%s: %d (%6.6x)\n" indent name v v
-
-let print_uint32 ?indent:(indent="") ?name:(name="uint32") v =
-  Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
-
-let print_char ?indent:(indent="") ?name:(name="char") c =
-  Printf.sprintf "%s%s: %c (%2.2x)\n" indent name c (int_of_char c)
+(* Enum printing *)
 
 let print_enum string_of_val int_of_val nchars ?indent:(indent="") ?name:(name="enum") v =
   Printf.sprintf "%s%s: %s (%*.*x)\n" indent name (string_of_val v) nchars nchars (int_of_val v)
