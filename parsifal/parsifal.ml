@@ -1,6 +1,82 @@
 open Lwt
 
 
+(********************)
+(* Useful functions *)
+(********************)
+
+
+let pop_opt default = function
+  | None -> default
+  | Some x -> x
+
+
+let hexa_char = "0123456789abcdef"
+
+let hexdump s =
+  let len = String.length s in
+  let res = String.make (len * 2) ' ' in
+  for i = 0 to (len - 1) do
+    let x = int_of_char (String.get s i) in
+    res.[i * 2] <- hexa_char.[(x lsr 4) land 0xf];
+    res.[i * 2 + 1] <- hexa_char.[x land 0xf];
+  done;
+  res
+
+
+let quote_string s =
+  let n = String.length s in
+
+  let estimate_len_char c =
+    match c with
+      | '\n' | '\t' | '\\' | '"' -> 2
+      | c -> let x = int_of_char c in
+	     if x >= 32 && x < 128 then 1 else 4
+  in
+  let rec estimate_len accu offset =
+    if offset = n then accu
+    else estimate_len (accu + estimate_len_char (s.[offset])) (offset + 1)
+  in
+
+  let newlen = estimate_len 0 0 in
+  let res = String.make newlen ' ' in
+
+  let mk_two_char c offset =
+    res.[offset] <- '\\';
+    res.[offset + 1] <- c;
+    offset + 2
+  in
+  let write_char c offset =
+    match c with
+      | '\n' -> mk_two_char 'n' offset
+      | '\t' -> mk_two_char 't' offset
+      | '\\' -> mk_two_char '\\' offset
+      | '"' -> mk_two_char '"' offset
+      | c ->
+	let x = int_of_char c in
+	if x >= 32 && x < 128
+	then begin
+	  res.[offset] <- c;
+	  offset + 1
+	end else begin
+	  res.[offset] <- '\\';
+	  res.[offset + 1] <- 'x';
+	  res.[offset + 2] <- hexa_char.[x lsr 4];
+	  res.[offset + 3] <- hexa_char.[x land 15];
+	  offset + 4
+	end
+  in
+  let rec write_string src_offset dst_offset =
+    if src_offset < n then begin
+      let new_offset = write_char s.[src_offset] dst_offset in
+      write_string (src_offset + 1) (new_offset)
+    end
+  in
+  write_string 0 0;
+  res
+
+
+
 
 (**********************)
 (* Parsing structures *)
@@ -54,6 +130,8 @@ type parsing_exception =
   | EmptyHistory
   | NonEmptyHistory
   | UnableToRewind
+  | CustomException of string
+  | NotImplemented of string
 
 let print_parsing_exception = function
   | OutOfBounds -> "OutOfBounds"
@@ -177,11 +255,19 @@ let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
   input_of_fd filename fd
 
+
 let lwt_really_read input len =
   let buf = String.make len ' ' in
-  Lwt_io.read_into_exactly input.ch buf 0 len >>= fun () ->
-  input.lwt_offset <- input.lwt_offset + len;
-  return buf
+  let _really_read () =
+    Lwt_io.read_into_exactly input.ch buf 0 len
+  and finalize_ok () =
+    input.lwt_offset <- input.lwt_offset + len;
+    return buf
+  and finalize_nok = function
+    | End_of_file -> fail (ParsingException (OutOfBounds, LwtInput input))
+    | e -> fail e
+  in
+    try_bind really_read finalize_ok finalize_nok
 
 let lwt_get_in input name len =
   lwt_really_read input.lwt_ch len >>= fun s ->
@@ -212,7 +298,7 @@ let lwt_try_parse lwt_parse_fun input =
   if eos input then None else begin
     let saved_offset = input.lwt_offset in
     let finalize_ok x = return (Some x)
-    and finalie_nok = function
+    and finalize_nok = function
       | ParsingException _ ->
 	input.lwt_offset <- saved_offset;
 	if input.lwt_rewindable
@@ -221,7 +307,7 @@ let lwt_try_parse lwt_parse_fun input =
 	  return None
 	end else fail (ParsingError (UnableToRewind, LwtInput input))
       | e -> fail e
-    in try_bind (parse_fun input) finalize_ok finalize_nok
+    in try_bind (fun () -> parse_fun input) finalize_ok finalize_nok
   end
 
 let lwt_exact_parse lwt_parse_fun input =
@@ -395,7 +481,7 @@ let parse_rem_string input =
 let lwt_parse_rem_string input =
   if input.rewindable
   then lwt_really_read input (input.lwt_length - input.lwt_offset)
-  else fail (Common.NotImplemented "lwt_parse_rem_string")
+  else fail (ParsingException (NotImplemented "lwt_parse_rem_string", LwtInput input))
 
 
 let parse_varlen_string name len_fun input =
@@ -428,7 +514,7 @@ let lwt_drop_rem_bytes input =
   if input.rewindable then begin
     lwt_really_read input (input.lwt_length - input.lwt_offset) >>= fun _ ->
     return ()
-  end else fail (Common.NotImplemented "lwt_drop_rem_bytes")
+  end else fail (ParsingException (NotImplemented "lwt_drop_rem_bytes", LwtInput input))
 
 
 let dump_string s = s
@@ -440,8 +526,127 @@ let dump_varlen_string len_fun s =
 
 let print_string ?indent:(indent="") ?name:(name="string") = function
   | "" -> Printf.sprintf "%s%s\n" indent name
-  | s  -> Printf.sprintf "%s%s: \"%s\"\n" indent name (Common.quote_string s)
+  | s  -> Printf.sprintf "%s%s: \"%s\"\n" indent name (quote_string s)
 
 let print_binstring ?indent:(indent="") ?name:(name="binstring") = function
   | "" -> Printf.sprintf "%s%s\n" indent name
-  | s -> Printf.sprintf "%s%s: %s\n" indent name (Common.hexdump s)
+  | s -> Printf.sprintf "%s%s: %s\n" indent name (hexdump s)
+
+
+
+(* List and container *)
+
+let parse_list n parse_fun input =
+  let rec aux accu = function
+    | 0 -> List.rev accu
+    | i ->
+      let x = parse_fun input in
+      aux (x::accu) (i-1)
+  in aux [] n
+
+let lwt_parse_list n parse_fun input =
+  let rec aux accu = function
+    | 0 -> return (List.rev accu)
+    | i ->
+      parse_fun input >>= fun x ->
+      aux (x::accu) (i-1)
+  in aux [] n
+
+
+let parse_rem_list parse_fun input =
+  let rec aux accu =
+    if eos input
+    then List.rev accu
+    else begin
+      let x = parse_fun input in
+      aux (x::accu)
+    end
+  in aux []
+
+let lwt_parse_rem_list name input =
+  let rec aux accu =
+    if lwt_eos input
+    then return (List.rev accu)
+    else begin
+      let saved_offset = input.lwt_offset
+      and finalize_ok x = aux (x::accu)
+      and finalize_nok x = function
+	| (ParsingException _) as e ->
+	    if input.lwt_offset = saved_offset
+	    then return (List.rev accu)
+	    else fail e
+	| e -> fail e
+      in try_bind (fun () -> lwt_parse_fun input) finalize_ok finalize_nok
+    end
+  in aux []
+
+
+let parse_varlen_list name len_fun parse_fun input =
+  let n = len_fun input in
+  let new_input = get_in input name n in
+  let res = parse_rem_list parse_fun new_input in
+  get_out input new_input;
+  res
+
+let lwt_parse_varlen_list name len_fun parse_fun input =
+  len_fun input >>= fun n ->
+  get_in input name n >>= fun str_input ->
+  wrap2 parse_rem_list parse_fun str_input >>= fun res ->
+  get_out input str_input >>= fun () ->
+  return res
+
+
+let dump_list dump_fun l =
+  String.concat "" (List.map dump_fun l)
+
+let dump_varlen_list len_fun dump_fun l =
+  let res = dump_list dump_fun l in
+  let n = String.length res in
+  (len_fun n) ^ res
+
+let try_print (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?indent:(indent="") ?name (x:'a option) =
+  match name, x with
+  | _, None -> ""
+  | None, Some x -> print_fun ~indent:indent x
+  | Some n, Some x -> print_fun ~indent:indent ~name:n x
+
+
+let parse_container name n parse_fun input =
+  let new_input = get_in input name n in
+  let res = parse_fun new_input in
+  get_out input new_input;
+  res
+
+let lwt_parse_container name n parse_fun input =
+  get_in input name n >>= fun str_input ->
+  wrap1 parse_fun str_input >>= fun res ->
+  get_out input str_input >>= fun () ->
+  return res
+
+let dump_container len_fun dump_fun content =
+  let res = dump_fun content in
+  let n = String.length res in
+  (len_fun n) ^ res
+
+
+let parse_varlen_container name len_fun parse_fun input =
+  let n = len_fun input in
+  parse_container name n parse_fun input
+
+let lwt_parse_varlen_container name len_fun parse_fun input =
+  len_fun input >>= fun n ->
+  lwt_parse_container name n parse_fun input
+
+
+
+(* Misc *)
+
+let try_dump dump_fun = function
+  | None -> ""
+  | Some x -> dump_fun x
+
+let try_print (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?indent:(indent="") ?name (x:'a option) =
+  match name, x with
+  | _, None -> ""
+  | None, Some x -> print_fun ~indent:indent x
+  | Some n, Some x -> print_fun ~indent:indent ~name:n x

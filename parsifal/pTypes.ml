@@ -1,43 +1,7 @@
-(* List parsing *)
-
-let parse_list n parse_fun input =
-  let rec aux accu = function
-    | 0 -> List.rev accu
-    | i ->
-      let x = parse_fun input in
-      aux (x::accu) (i-1)
-  in aux [] n
-
-let parse_rem_list parse_fun input =
-  let rec aux accu =
-    if eos input
-    then List.rev accu
-    else begin
-      let x = parse_fun input in
-      aux (x::accu)
-    end
-  in aux []
-
-let parse_varlen_list name len_fun parse_fun input =
-  let n = len_fun input in
-  let new_input = get_in input name n in
-  let res = parse_rem_list parse_fun new_input in
-  get_out input new_input;
-  res
-
-let parse_container name n parse_fun input =
-  let new_input = get_in input name n in
-  let res = parse_fun new_input in
-  get_out input new_input;
-  res
-
-let parse_varlen_container name len_fun parse_fun input =
-  let n = len_fun input in
-  parse_container name n parse_fun input
+open Parsifal
 
 
-
-(* Pre-defined types *)
+(* IPv4 and IPv6 *)
 
 type ipv4 = string
 
@@ -75,3 +39,27 @@ let string_of_ipv6 s =
 let print_ipv6 ?indent:(indent="") ?name:(name="ipv6") s =
   let res = string_of_ipv6 s in
   Printf.sprintf "%s%s: %s\n" indent name res
+
+
+
+(* Magic *)
+
+type magic = unit
+
+let parse_magic magic_expected input =
+  let s = parse_string (String.length magic_expected) input in
+  if s = magic_expected then ()
+  else raise (ParsingException (CustomException "invalid magic (\"" ^
+				  (hexdump s) ^ "\")", StringInput input))
+
+let lwt_parse_magic magic_expected input =
+  lwt_parse_string (String.length magic_expected) input >>= fun s ->
+  if s = magic_expected then return ()
+  else fail (ParsingException (CustomException "invalid magic (\"" ^
+				 (hexdump s) ^ "\")", LwtInput input))
+
+let dump_magic magic_expected () =
+  String.copy magic_expected
+
+let print_magic_expected ?indent:(indent="") ?name:(name="magic") () =
+  print_binstring ~indent:indent ~name:name ""
