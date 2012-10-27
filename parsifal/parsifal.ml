@@ -468,6 +468,13 @@ let print_enum string_of_val int_of_val nchars ?indent:(indent="") ?name:(name="
   Printf.sprintf "%s%s: %s (%*.*x)\n" indent name (string_of_val v) nchars nchars (int_of_val v)
 
 
+(* Unions *)
+
+(* TODO: local_arg should be more than just a boolean *)
+let should_enrich global_ref local_arg =
+  !global_ref || local_arg
+
+
 
 (* Strings *)
 
