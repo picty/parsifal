@@ -329,6 +329,14 @@ let lwt_exact_parse lwt_parse_fun input =
 (**************)
 
 
+(* Empty *)
+
+let parse_empty _ = ()
+let lwt_parse_empty _ = return ()
+let dump_empty () = ""
+let print_empty ?indent:(indent="") ?name:(name="empty") _ = ""
+
+
 (* Integers *)
 
 let parse_uint8 input =
@@ -558,11 +566,11 @@ let parse_list n parse_fun input =
       aux (x::accu) (i-1)
   in aux [] n
 
-let lwt_parse_list n parse_fun input =
+let lwt_parse_list n lwt_parse_fun input =
   let rec aux accu = function
     | 0 -> return (List.rev accu)
     | i ->
-      parse_fun input >>= fun x ->
+      lwt_parse_fun input >>= fun x ->
       aux (x::accu) (i-1)
   in aux [] n
 
@@ -618,11 +626,11 @@ let dump_varlen_list len_fun dump_fun l =
   let n = String.length res in
   (len_fun n) ^ res
 
-let try_print (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?indent:(indent="") ?name (x:'a option) =
-  match name, x with
-  | _, None -> ""
-  | None, Some x -> print_fun ~indent:indent x
-  | Some n, Some x -> print_fun ~indent:indent ~name:n x
+
+let print_list (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?indent:(indent="") ?name:(name="list") l =
+  (Printf.sprintf "%s%s {\n" indent name) ^
+  (String.concat "" (List.map (fun x -> print_fun ~indent:(indent ^ "  ") ~name:name x) l)) ^
+  (Printf.sprintf "%s}\n" indent)
 
 
 let parse_container name n parse_fun input =
