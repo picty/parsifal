@@ -191,22 +191,28 @@ let get_out old_input input =
 
 let append_to_input input next_string =
   if input.cur_base = 0 && input.history = []
-  then { input with
-    str =  (String.sub input.str input.cur_offset (input.cur_length - input.cur_offset)) ^ next_string;
-    cur_offset = 0;
-    cur_length = String.length input.str
-  } else { input with
+  then begin
+    let new_str = (String.sub input.str input.cur_offset (input.cur_length - input.cur_offset)) ^ next_string in
+    { input with
+      str = new_str;
+      cur_offset = 0;
+      cur_length = String.length new_str
+    }
+  end else { input with
     str = input.str ^ next_string;
     cur_length = input.cur_length + (String.length next_string);
   }
 
 let drop_used_string input =
   if input.cur_base = 0 && input.history = []
-  then { input with
-    str = (String.sub input.str input.cur_offset (input.cur_length - input.cur_offset));
-    cur_offset = 0;
-    cur_length = String.length input.str
-  } else raise (ParsingException (NonEmptyHistory, StringInput input))
+  then begin
+    let new_str = String.sub input.str input.cur_offset (input.cur_length - input.cur_offset) in
+    { input with
+      str = new_str;
+      cur_offset = 0;
+      cur_length = String.length new_str
+    }
+  end else raise (ParsingException (NonEmptyHistory, StringInput input))
 
 
 let eos input =
