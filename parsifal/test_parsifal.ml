@@ -21,9 +21,19 @@ struct st [top] = {
   l : list(len) of uint16
 }
 
+struct st2 [top] = {
+  l : uint8;
+  a : array(l) of uint16
+}
+
 let test_st s =
   try
     print_endline (print_st (exact_parse_st (input_of_string "" s)))
+  with ParsingException (e, StringInput i) -> emit_parsing_exception false e i
+
+let test_st2 s2 =
+  try
+    print_endline (print_st2 (exact_parse_st2 (input_of_string "" s2)))
   with ParsingException (e, StringInput i) -> emit_parsing_exception false e i
 
 let _ =
@@ -31,4 +41,7 @@ let _ =
   print_endline (string_of_tls_version_bis (tls_version_bis_of_int 768));
   test_st "\x04toto\x02AA";
   test_st "\x04toto\x02AABB";
-  test_st "\x04toto\x02AABBCC"
+  test_st "\x04toto\x02AABBCC";
+  test_st2 "\x02AABB";
+  test_st2 "\x03AABBCC";
+  test_st2 "\x02"

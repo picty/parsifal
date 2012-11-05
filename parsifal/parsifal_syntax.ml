@@ -150,6 +150,7 @@ type ptype =
   | PT_Char
   | PT_Int of string                        (* name of the integer type *)
   | PT_String of field_len * bool
+  | PT_Array of expr * ptype
   | PT_List of field_len * ptype
   | PT_Container of field_len * ptype  (* the string corresponds to the integer type for the field length *)
   | PT_Custom of (string option) * string * expr list  (* the expr list is the list of args to apply to parse funs *)
@@ -237,6 +238,8 @@ let ptype_of_ident name decorator subtype =
     | <:ident< $lid:"list"$ >> as i,   _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid list type")
 
+    | <:ident< $lid:"array"$ >>, ExprDec e, Some t ->
+      PT_Array (e, t)
     | <:ident< $lid:"container"$ >>, ExprDec e, Some t ->
       PT_Container (ExprLen e, t)
     | <:ident< $lid:"container"$ >>, VarLenDec <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, Some t ->
@@ -362,6 +365,7 @@ let rec ocaml_type_of_ptype _loc = function
   | PT_Int _ -> <:ctyp< $lid:"int"$ >>
   | PT_String _ -> <:ctyp< $lid:"string"$ >>
   | PT_List (_, subtype) -> <:ctyp< list $ocaml_type_of_ptype _loc subtype$ >>
+  | PT_Array (_, subtype) -> <:ctyp< array $ocaml_type_of_ptype _loc subtype$ >>
   | PT_Container (_, subtype) -> ocaml_type_of_ptype _loc subtype
   | PT_Custom (None, n, _) -> <:ctyp< $lid:n$ >>
   | PT_Custom (Some m, n, _) -> <:ctyp< $uid:m$.$lid:n$ >>
@@ -469,6 +473,14 @@ let rec fun_of_ptype ftype _loc name t =
     | PT_List (VarLen int_t, subtype), (Parse|LwtParse) ->
       <:expr< $mkf "varlen_list"$ $str:name$ $mkf int_t$
               $fun_of_ptype Parse _loc name subtype$ >>
+
+  (* Array *)
+    | PT_Array (_, subtype), (Dump|Print) ->
+      <:expr< $mkf "array"$ $fun_of_ptype ftype _loc name subtype$ >>
+
+    | PT_Array (e, subtype), (Parse|LwtParse) ->
+      <:expr< $mkf "array"$ $e$
+              $fun_of_ptype ftype _loc name subtype$ >>
 
   (* Container *)
     | PT_Container (VarLen int_t, subtype), Dump ->

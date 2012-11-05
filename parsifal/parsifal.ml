@@ -661,6 +661,26 @@ let lwt_parse_varlen_container name len_fun parse_fun input =
 
 
 
+(* Array *)
+
+let parse_array n parse_fun input =
+  Array.init n (fun _ -> parse_fun input)
+
+(* TODO: Is it possible to do better? *)
+let lwt_parse_array n lwt_parse_fun input =
+  lwt_parse_list n lwt_parse_fun input >>= fun l ->
+  return (Array.of_list l)
+
+let dump_array dump_fun a =
+  String.concat "" (Array.to_list (Array.map dump_fun a))
+
+let print_array (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?indent:(indent="") ?name:(name="list") a =
+  (Printf.sprintf "%s%s {\n" indent name) ^
+  (String.concat "" (Array.to_list (Array.map (fun x -> print_fun ~indent:(indent ^ "  ") ~name:name x) a))) ^
+  (Printf.sprintf "%s}\n" indent)
+
+
+
 (* Misc *)
 
 let try_dump dump_fun = function
