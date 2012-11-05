@@ -443,7 +443,7 @@ let rec fun_of_ptype ftype _loc name t =
     | PT_String (_, _), Dump -> mkf "string"
 
     | PT_String (_, true), Print -> mkf "binstring"
-    | PT_String (_, false), Print -> mkf "string"
+    | PT_String (_, false), Print -> mkf "printablestring"
 
     | PT_String (ExprLen e, _), (Parse|LwtParse) ->
       <:expr< $mkf "string"$ $e$ >>
@@ -456,10 +456,7 @@ let rec fun_of_ptype ftype _loc name t =
     | PT_List (VarLen int_t, subtype), Dump ->
       <:expr< $mkf "varlen_list"$ $mkf int_t$
 	      $fun_of_ptype ftype _loc name subtype$ >>
-    | PT_List (_, subtype), Dump ->
-      <:expr< $mkf "list"$ $fun_of_ptype ftype _loc name subtype$ >>
-
-    | PT_List (_, subtype), Print ->
+    | PT_List (_, subtype), (Dump|Print) ->
       <:expr< $mkf "list"$ $fun_of_ptype ftype _loc name subtype$ >>
 
     | PT_List (ExprLen e, subtype), (Parse|LwtParse) ->
@@ -491,8 +488,10 @@ let rec fun_of_ptype ftype _loc name t =
       fun_of_ptype ftype _loc name subtype
 
   (* Custom *)
-    | PT_Custom (m, n, e), (Parse|LwtParse|Dump) ->
+    | PT_Custom (m, n, e), (Parse|LwtParse) ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
+    | PT_Custom (m, n, _), Dump ->
+      apply_exprs _loc (exp_qname _loc m (prefix ^ n)) []
     | PT_Custom (m, n, _), Print -> exp_qname _loc m (prefix ^ n)
 
   (* Check functions *)

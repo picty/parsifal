@@ -546,7 +546,7 @@ let dump_varlen_string len_fun s =
   (len_fun n) ^ s
 
 
-let print_string ?indent:(indent="") ?name:(name="string") = function
+let print_printablestring ?indent:(indent="") ?name:(name="string") = function
   | "" -> Printf.sprintf "%s%s\n" indent name
   | s  -> Printf.sprintf "%s%s: \"%s\"\n" indent name (quote_string s)
 

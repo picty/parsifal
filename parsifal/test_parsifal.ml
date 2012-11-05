@@ -24,8 +24,7 @@ struct st [top] = {
 let test_st s =
   try
     print_endline (print_st (exact_parse_st (input_of_string "" s)))
-  with ParsingException (e, StringInput i) ->
-    emit_parsing_exception false e i
+  with ParsingException (e, StringInput i) -> emit_parsing_exception false e i
 
 let _ =
   print_endline (string_of_tls_version (tls_version_of_int 768));

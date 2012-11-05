@@ -1,4 +1,5 @@
 open Parsifal
+open Lwt
 
 
 (* IPv4 and IPv6 *)
@@ -31,8 +32,8 @@ let string_of_ipv6 s =
   let res = String.make 39 ':' in
   for i = 0 to 15 do
     let x = int_of_char (String.get s i) in
-    res.[(i / 2) + i * 2] <- Common.hexa_char.[(x lsr 4) land 0xf];
-    res.[(i / 2) + i * 2 + 1] <- Common.hexa_char.[x land 0xf];
+    res.[(i / 2) + i * 2] <- hexa_char.[(x lsr 4) land 0xf];
+    res.[(i / 2) + i * 2 + 1] <- hexa_char.[x land 0xf];
   done;
   res
 
@@ -49,17 +50,17 @@ type magic = unit
 let parse_magic magic_expected input =
   let s = parse_string (String.length magic_expected) input in
   if s = magic_expected then ()
-  else raise (ParsingException (CustomException "invalid magic (\"" ^
-				  (hexdump s) ^ "\")", StringInput input))
+  else raise (ParsingException (CustomException ("invalid magic (\"" ^
+				  (hexdump s) ^ "\")"), StringInput input))
 
 let lwt_parse_magic magic_expected input =
   lwt_parse_string (String.length magic_expected) input >>= fun s ->
   if s = magic_expected then return ()
-  else fail (ParsingException (CustomException "invalid magic (\"" ^
-				 (hexdump s) ^ "\")", LwtInput input))
+  else fail (ParsingException (CustomException ("invalid magic (\"" ^
+				 (hexdump s) ^ "\")"), LwtInput input))
 
 let dump_magic magic_expected () =
   String.copy magic_expected
 
-let print_magic_expected ?indent:(indent="") ?name:(name="magic") () =
+let print_magic ?indent:(indent="") ?name:(name="magic") () =
   print_binstring ~indent:indent ~name:name ""
