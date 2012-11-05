@@ -1,15 +1,14 @@
-open Common
 open Lwt
-open ParsingEngine
+open Parsifal
 
 
-enum asn1_class (2, Exception UnknownAsn1Class, []) =
+enum asn1_class (2, Exception UnknownAsn1Class) =
   | 0 -> C_Universal, "Universal"
   | 1 -> C_Application, "Application"
   | 2 -> C_ContextSpecific, "Context Specific"
   | 3 -> C_Private, "Private"
 
-enum asn1_tag (5, UnknownVal T_Unknown, []) =
+enum asn1_tag (5, UnknownVal T_Unknown) =
   | 0 -> T_EndOfContents, "EOC"
   | 1 -> T_Boolean, "Boolean"
   | 2 -> T_Integer, "Integer"
@@ -212,7 +211,7 @@ let extract_asn1_object_opt name header_constraint parse_content input =
 
 let dump_header c isC t =
   let t_int = int_of_asn1_tag t in
-  if t_int >= 0x1f then raise (NotImplemented "long type");
+  if t_int >= 0x1f then raise (Common.NotImplemented "long type");
   let h = ((int_of_asn1_class c) lsl 6) lor
     (if isC then 0x20 else 0) lor t_int in
   String.make 1 (char_of_int h)
@@ -244,7 +243,7 @@ let dump_asn1_object c isC t dump_content v =
 
 let lwt_extract_longtype input =
   let rec aux accu =
-    LwtParsingEngine.lwt_parse_uint8 input >>= fun byte ->
+    lwt_parse_uint8 input >>= fun byte ->
     let new_accu = (accu lsl 7) lor (byte land 0x7f) in
     if (byte land 0x80) = 0
     then return new_accu
@@ -252,7 +251,7 @@ let lwt_extract_longtype input =
   in aux 0 >>= fun x -> return (T_Unknown x)
 
 let lwt_extract_header input =
-  LwtParsingEngine.lwt_parse_uint8 input >>= fun hdr ->
+  lwt_parse_uint8 input >>= fun hdr ->
   let c = extract_class hdr in
   let isC = extract_isConstructed hdr in
   let hdr_t = hdr land 31 in
@@ -267,20 +266,20 @@ let lwt_extract_header input =
   end
 
 let lwt_extract_length input =
-  LwtParsingEngine.lwt_parse_uint8 input >>= fun first ->
+  lwt_parse_uint8 input >>= fun first ->
   if first land 0x80 = 0
   then return first
   else begin
     let rec aux accu = function
       | 0 -> return accu
       | i ->
-	LwtParsingEngine.lwt_parse_uint8 input >>= fun x ->
+	lwt_parse_uint8 input >>= fun x ->
 	aux ((accu lsl 8) lor x) (i-1)
     in aux 0 (first land 0x7f)
   end
 
 let _lwt_extract_asn1_object name header_constraint parse_content input =
-  let offset = input.LwtParsingEngine.lwt_offset in
+  let offset = input.lwt_offset in
   lwt_extract_header input >>= fun (c, isC, t) ->
   let fake_input = {
     str = "";
@@ -291,9 +290,9 @@ let _lwt_extract_asn1_object name header_constraint parse_content input =
     history = []
   } in
   check_header header_constraint fake_input c isC t;
-  let hlen = input.LwtParsingEngine.lwt_offset - offset in
+  let hlen = input.lwt_offset - offset in
   lwt_extract_length input >>= fun len ->
-  LwtParsingEngine.get_in input name len >>= fun new_input ->
+  lwt_get_in input name len >>= fun new_input ->
   let asn1_info = {
     a_offset = offset;
     a_hlen = hlen;
@@ -304,7 +303,7 @@ let _lwt_extract_asn1_object name header_constraint parse_content input =
   }
   and raw_string () = (dump_header c isC t) ^ (dump_length len) ^ new_input.str in
   let res = parse_content new_input in
-  LwtParsingEngine.get_out input new_input >>= fun () ->
+  lwt_get_out input new_input >>= fun () ->
   return (res, asn1_info, raw_string)
 
 let lwt_extract_asn1_object name header_constraint parse_content input =
@@ -433,7 +432,7 @@ let parse_der_oid input =
       try
 	let next = parse_subid input in
 	next::(aux ())
-      with ParsingException (OutOfBounds, i) ->
+      with ParsingException (OutOfBounds, StringInput i) ->
 	emit false OIdNotInNormalForm i;
 	[]
     end

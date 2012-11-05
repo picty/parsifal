@@ -28,6 +28,14 @@ struct st2 [top] = {
 
 alias l1 [top] = list of st
 
+(* struct rsa_public_key_content = { *)
+(*   p_modulus : asn1_integer; *)
+(*   p_publicExponent : asn1_integer; *)
+(* } *)
+
+(* asn1_alias rsa_public_key [top] *)
+
+
 
 let test parse dump print name s =
   try
@@ -43,6 +51,7 @@ let test parse dump print name s =
 let test_st = test exact_parse_st dump_st print_st "st"
 let test_st2 = test exact_parse_st2 dump_st2 print_st2 "st2"
 let test_l1 = test exact_parse_l1 dump_l1 print_l1 "l1"
+(* let test_rsa = test exact_parse_rsa_public_key dump_rsa_public_key print_rsa_public_key "rsa_public_key" *)
 
 let _ =
   print_endline (string_of_tls_version (tls_version_of_int 768));
@@ -53,4 +62,6 @@ let _ =
   test_st2 "\x02AABB";
   test_st2 "\x03AABBCC";
   test_st2 "\x02";
-  test_l1 "\x04toto\x02AABB\x02yo\x00"
+  test_l1 "\x04toto\x02AABB\x02yo\x00";
+  (* test_rsa "\x30\x0d\x02\x08AABBCCDD\x02\x01\x03"; *)
+  ()
