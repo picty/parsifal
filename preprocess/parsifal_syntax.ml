@@ -840,7 +840,7 @@ let mk_asn1_alias_parse_fun _loc alias =
   let body =
     if alias.aalist
     then <:expr< Asn1Engine.extract_der_seqof $str:alias.aaname$ $header_constraint$ $parse_content$ >>
-    else <:expr< Asn1Engine.extract_asn1_object $str:alias.aaname$ $header_constraint$ $parse_content$ >>
+    else <:expr< Asn1Engine.extract_der_object $str:alias.aaname$ $header_constraint$ $parse_content$ >>
   in
   [ mk_multiple_args_fun _loc ("parse_" ^ alias.aaname) alias.aaparse_params body ]
 
@@ -852,7 +852,7 @@ let mk_asn1_alias_lwt_parse_fun _loc alias =
     let body =
       if alias.aalist
       then <:expr< Asn1Engine.lwt_extract_der_seqof $str:alias.aaname$ $header_constraint$ $parse_content$ >>
-      else <:expr< Asn1Engine.lwt_extract_asn1_object $str:alias.aaname$ $header_constraint$ $parse_content$ >>
+      else <:expr< Asn1Engine.lwt_extract_der_object $str:alias.aaname$ $header_constraint$ $parse_content$ >>
     in
     [ mk_multiple_args_fun _loc ("lwt_parse_" ^ alias.aaname) alias.aaparse_params body ]
   end else []
@@ -869,7 +869,7 @@ let mk_asn1_alias_dump_fun _loc alias =
   let body =
     if alias.aalist
     then <:expr< Asn1Engine.produce_der_seqof $c$ $isC$ $t$ $dump_content$ >>
-    else <:expr< Asn1Engine.produce_asn1_object $c$ $isC$ $t$ $dump_content$ >>
+    else <:expr< Asn1Engine.produce_der_object $c$ $isC$ $t$ $dump_content$ >>
   in
   [ mk_multiple_args_fun _loc ("dump_" ^ alias.aaname) alias.aadump_params body ]
   

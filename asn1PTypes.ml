@@ -362,8 +362,8 @@ let isConstructed o = match o.a_content with
 let rec parse_der_object input =
   let _offset = input.cur_base + input.cur_offset in
   let old_cur_offset = input.cur_offset in
-  let c, isC, t = extract_header input in
-  let len = extract_length input in
+  let c, isC, t = extract_der_header input in
+  let len = extract_der_length input in
   let _hlen = input.cur_offset - old_cur_offset in
   let new_input = get_in input (print_header (c, isC, t)) len in
   let content = match c, isC, t with
@@ -417,12 +417,12 @@ and parse_der_constructed_content input =
 
 
 let rec dump_der_object o =
-  let hdr = dump_header o.a_class (isConstructed o) o.a_tag in
-  let content = dump_asn1_content o.a_content in
-  let len = dump_length (String.length content) in
+  let hdr = dump_der_header o.a_class (isConstructed o) o.a_tag in
+  let content = dump_der_content o.a_content in
+  let len = dump_der_length (String.length content) in
   hdr ^ len ^ content
 
-and dump_asn1_content = function
+and dump_der_content = function
   | Boolean b -> dump_der_boolean_content b
   | Integer i -> dump_der_integer_content i
   | BitString (nBits, s) -> dump_der_bitstring_content (nBits, s)

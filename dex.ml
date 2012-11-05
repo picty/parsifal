@@ -7,7 +7,6 @@ let check_header_size = function
   | _ -> raise Pouet
 
 (* TODO: Auto-generate little and big endian variants when asked *)
-(* TODO: Add array to the expressiveness *)
 
 
 struct file_content = {
