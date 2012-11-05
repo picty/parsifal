@@ -1,9 +1,8 @@
 open Common
 open Lwt
 open Mrt
-open ParsingEngine
-open LwtParsingEngine
-open PrintingEngine
+open Parsifal
+open PTypes
 open Getopt
 
 
@@ -13,7 +12,7 @@ let string_of_ip_prefix_space ip_prefix =
   let a, len = match ip_prefix with
     | IPv4Prefix (s, prefix_length) ->
       let l = (prefix_length + 7) / 8 in
-      PrintingEngine.string_of_ipv4 (s ^ (String.make (4 - l) '\x00')), prefix_length
+      string_of_ipv4 (s ^ (String.make (4 - l) '\x00')), prefix_length
     | IPv6Prefix (s, prefix_length) ->
       let l = (prefix_length + 7) / 8 in
       string_of_ipv6 (s ^ (String.make (16 - l) '\x00')), prefix_length
@@ -255,7 +254,7 @@ let obsdump mrt = match mrt.mrt_type, mrt.mrt_subtype, mrt.mrt_message with
 
 let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  return (input_of_fd filename fd)
+  input_of_fd filename fd
 
 
 let rec just_parse input =
@@ -295,13 +294,13 @@ let handle_input input =
 let _ =
   let args = parse_args getopt_params Sys.argv in
   let t = match args with
-    | [] -> handle_input (input_of_channel "(stdin)" Lwt_io.stdin)
+    | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= handle_input
     | [filename] -> input_of_filename filename >>= handle_input
     | _ -> failwith "Too many files given"
   in
   try Lwt_unix.run t;
   with
     | End_of_file -> ()
-    | ParsingException (e, i) -> emit_parsing_exception false e i
-    | LwtParsingException (e, i) -> emit_lwt_parsing_exception false e i
+    | ParsingException (e, i) ->
+      Printf.fprintf stderr "%s in %s\n" (print_parsing_exception e) (print_fuzzy_input i)
     | e -> print_endline (Printexc.to_string e)

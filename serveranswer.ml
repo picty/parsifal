@@ -1,9 +1,7 @@
 open Lwt
 open Unix
 
-open ParsingEngine
-open DumpingEngine
-open LwtParsingEngine
+open Parsifal
 open TlsEnums
 open Tls
 
@@ -30,7 +28,7 @@ let rec print_msgs i =
   print_msgs i
 
 let expect_clienthello s =
-  let input = input_of_fd "Socket" s in
+  input_of_fd "Socket" s >>= fun input ->
   lwt_parse_tls_record None input >>= fun record ->
   match record.record_content with
   | Handshake {handshake_content = ClientHello ch} ->
@@ -67,9 +65,9 @@ let local_addr =
   Unix.ADDR_INET (Unix.inet_addr_any, 8080)
 
 let catcher = function
-  | ParsingException (e, i) ->
-    Printf.printf "%s in %s\n" (ParsingEngine.print_parsing_exception e)
-      (ParsingEngine.print_string_input i); flush Pervasives.stdout; return ()
+  | ParsingException (e, StringInput i) ->
+    Printf.printf "%s in %s\n" (print_parsing_exception e)
+      (print_string_input i); flush Pervasives.stdout; return ()
   | e -> print_endline (Printexc.to_string e); flush Pervasives.stdout; return ()
 
 

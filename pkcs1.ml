@@ -1,4 +1,5 @@
 open Asn1Engine
+open Asn1PTypes
 open CryptoUtil
 
 exception NotFound of string
@@ -135,13 +136,13 @@ let raw_sign rnd_state typ hash msg n d =
 				   mk_object C_Universal T_Null Null]);
 		  mk_object C_Universal T_OctetString (String (digest, true))])
   in
-  encrypt rnd_state typ (dump_asn1_object asn1_struct) n d
+  encrypt rnd_state typ (dump_der_object asn1_struct) n d
 
 let raw_verify typ msg s n e =
   try
     let digest_info = decrypt typ None s n e in
-    let input = ParsingEngine.input_of_string "DigestInfo" digest_info in
-    let asn1_obj = parse_asn1_object input in
+    let input = Parsifal.input_of_string "DigestInfo" digest_info in
+    let asn1_obj = parse_der_object input in
     (* TODO: This is rather ugly. Could it be a little cleaner *)
     match asn1_obj with
       | {a_class = C_Universal; a_tag = T_Sequence; a_content = Constructed
@@ -157,4 +158,4 @@ let raw_verify typ msg s n e =
 	f msg = digest
       | _ -> false
   with
-    | Not_found _ | ParsingEngine.ParsingException _ -> false
+    | Not_found _ | Parsifal.ParsingException _ -> false

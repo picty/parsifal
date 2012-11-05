@@ -1,6 +1,7 @@
 open Common
 open Asn1Engine
-open ParsingEngine
+open Parsifal
+open Asn1PTypes
 
 (* Generic functions for asn1Qualified objects *)
 
@@ -17,18 +18,13 @@ let parse_asn1_qualified_object_content dir input =
   let _object_value = parse_fun input in
   dir.finalizer _object_type _object_value
 
-let parse_asn1_qualified_object dir input =
-  extract_asn1_object dir.qualified_object_name
-    (AH_Simple (C_Universal, true, T_Sequence))
-    (parse_asn1_qualified_object_content dir) input
-
 
 
 (* AlgorithmIdentifier *)
 
-type algorithmIdentifier = {
+type algorithmIdentifier_content = {
   algorithmId : int list;
-  algorithmParams : asn1_object option;
+  algorithmParams : der_object option
 }
 
 let finalize_algorithmIdentifier i p = {
@@ -38,13 +34,19 @@ let finalize_algorithmIdentifier i p = {
 
 let algorithmIdentifier_directory = {
   qualified_object_name = "algorithmIdentifier";
-  object_type_parse_fun = extract_asn1_object "algorithmId" (AH_Simple (C_Universal, false, T_OId)) (parse_der_oid);
-  get_parser = (fun _ -> parse_asn1_object_opt);
+  object_type_parse_fun = parse_der_oid;
+  get_parser = (fun _ -> try_parse parse_der_object);
   finalizer = finalize_algorithmIdentifier;
 }
 
 let parse_algorithmIdentifier_content = parse_asn1_qualified_object_content algorithmIdentifier_directory
-let parse_algorithmIdentifier = parse_asn1_qualified_object algorithmIdentifier_directory
+let dump_algorithmIdentifier_content (_x : algorithmIdentifier_content) = failwith "NotImplemented: dump_algorithmIdentifier"
+let print_algorithmIdentifier_content ?indent:(indent="") ?name:(name="algorithmIdentifier") (_x : algorithmIdentifier_content) =
+    failwith "NotImplemented: print_algorithmIdentifier"
+
+asn1_alias algorithmIdentifier
+
+
 
 
 
@@ -52,9 +54,9 @@ let parse_algorithmIdentifier = parse_asn1_qualified_object algorithmIdentifier_
 
 type subjectPublicKey_content =
   | RSA of RSAKey.rsa_public_key
-  | UnparsedPublicKey of asn1_object
+  | UnparsedPublicKey of der_object
 
-type subjectPublicKeyInfo = {
+type subjectPublicKeyInfo_content = {
   algorithm : algorithmIdentifier;
   subjectPublicKey : subjectPublicKey_content;
 }
@@ -64,17 +66,14 @@ let finalize_subjectPublicKeyInfo a spk = {
   subjectPublicKey = spk;
 }
 
-let pki_parsers : (int list, (asn1_object option -> string_input -> subjectPublicKey_content)) Hashtbl.t = Hashtbl.create 10
+let pki_parsers : (int list, (der_object option -> string_input -> subjectPublicKey_content)) Hashtbl.t = Hashtbl.create 10
 
-let default_parser _ input = UnparsedPublicKey (parse_asn1_object input)
+let default_parser _ input = UnparsedPublicKey (parse_der_object input)
 
 let get_pki_parser algo =
   let f = hash_get pki_parsers algo.algorithmId default_parser in
   let pki_parser input =
-    let (_nbits, pki_content) = extract_asn1_object "subjectPublicKey_bitstring"
-                                (AH_Simple (C_Universal, false, T_BitString))
-				(parse_der_bitstring) input
-    in
+    let (_nbits, pki_content) = parse_der_bitstring input in
     (* TODO:    if nbits <> 0 then *)
     let new_input = { (input_of_string "subjectPublicKey_content" pki_content)
 		      with history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history }
@@ -91,8 +90,11 @@ let subjectPublicKeyInfo_directory = {
 }
 
 let parse_subjectPublicKeyInfo_content = parse_asn1_qualified_object_content subjectPublicKeyInfo_directory
-let parse_subjectPublicKeyInfo = parse_asn1_qualified_object subjectPublicKeyInfo_directory
+let dump_subjectPublicKeyInfo_content (_x : subjectPublicKeyInfo_content) = failwith "NotImplemented: dump_subjectPublicKeyInfo"
+let print_subjectPublicKeyInfo_content ?indent:(indent="") ?name:(name="subjectPublicKeyInfo") (_x : subjectPublicKeyInfo_content) =
+    failwith "NotImplemented: print_subjectPublicKeyInfo"
 
+asn1_alias subjectPublicKeyInfo
 
 
 (* register the OId in a general table *)

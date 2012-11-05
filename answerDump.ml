@@ -1,5 +1,5 @@
 struct answer_dump [top] = {
-  ip : ipv4;
+  ip : PTypes.ipv4;
   port : uint16;
   name : string[uint16];
   client_hello_type : uint8;

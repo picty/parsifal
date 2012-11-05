@@ -1,15 +1,12 @@
 open Lwt
-open ParsingEngine
-open LwtParsingEngine
-open DumpingEngine
-open PrintingEngine
+open Parsifal
 
 type ssl2_context = {
   cleartext : bool
 }
 
 
-enum pure_ssl2_cipher_spec (24, UnknownVal UnknownSSL2CipherSpec, []) =
+enum pure_ssl2_cipher_spec (24, UnknownVal UnknownSSL2CipherSpec) =
   | 0x010080 -> SSL2_CK_RC4_128_WITH_MD5
   | 0x020080 -> SSL2_CK_RC4_128_EXPORT40_WITH_MD5
   | 0x030080 -> SSL2_CK_RC2_128_CBC_WITH_MD5
@@ -18,7 +15,7 @@ enum pure_ssl2_cipher_spec (24, UnknownVal UnknownSSL2CipherSpec, []) =
   | 0x060040 -> SSL2_CK_DES_64_CBC_WITH_MD5
   | 0x0700C0 -> SSL2_CK_DES_192_EDE3_CBC_WITH_MD5	
 
-union ssl2_cipher_spec (UnparsedSSL2CipherSpec, [enrich; exhaustive]) =
+union ssl2_cipher_spec [enrich; exhaustive] (UnparsedSSL2CipherSpec) =
   | true -> SSL2CipherSpec of pure_ssl2_cipher_spec
   | false -> TLSCipherSpec of TlsEnums.ciphersuite
 
@@ -34,20 +31,20 @@ let dump_ssl2_cipher_spec = function
   | UnparsedSSL2CipherSpec s -> s
 
 
-enum ssl2_certificate_type (8, UnknownVal UnknownSSL2CertficateType, []) =
+enum ssl2_certificate_type (8, UnknownVal UnknownSSL2CertficateType) =
   | 0x01 -> SSL2_CT_X509_CERTIFICATE
 
-enum ssl2_authentifcation_type (8, UnknownVal UnknownSSL2AuthenticationType, []) =
+enum ssl2_authentifcation_type (8, UnknownVal UnknownSSL2AuthenticationType) =
   | 0x01 -> SSL2_AT_MD5_WITH_RSA_ENCRYPTION
 
-enum ssl2_error (16, UnknownVal UnknownSSL2Error, []) =
+enum ssl2_error (16, UnknownVal UnknownSSL2Error) =
   | 0x0001 -> SSL2_ERR_NO_CIPHER			
   | 0x0002 -> SSL2_ERR_NO_CERTIFICATE			
   | 0x0004 -> SSL2_ERR_BAD_CERTIFICATE			
   | 0x0006 -> SSL2_ERR_UNSUPPORTED_CERTIFICATE_TYPE	
 
 
-enum ssl2_handshake_type (8, UnknownVal UnknownSSL2HandshakeType, []) =
+enum ssl2_handshake_type (8, UnknownVal UnknownSSL2HandshakeType) =
   | 0 -> SSL2_HT_ERROR
   | 1 -> SSL2_HT_CLIENT_HELLO
   | 2 -> SSL2_HT_CLIENT_MASTER_KEY
@@ -63,9 +60,9 @@ struct ssl2_client_hello = {
   ssl2_client_cipher_specs_length : uint16;
   ssl2_client_session_id_length : uint16;
   ssl2_challenge_length : uint16;
-  ssl2_client_cipher_specs : container(_ssl2_client_cipher_specs_length) of list of ssl2_cipher_spec;
-  ssl2_client_session_id : binstring(_ssl2_client_session_id_length);
-  ssl2_challenge : binstring(_ssl2_challenge_length)
+  ssl2_client_cipher_specs : container(ssl2_client_cipher_specs_length) of list of ssl2_cipher_spec;
+  ssl2_client_session_id : binstring(ssl2_client_session_id_length);
+  ssl2_challenge : binstring(ssl2_challenge_length)
 }
 
 struct ssl2_client_master_key = {
@@ -73,9 +70,9 @@ struct ssl2_client_master_key = {
   ssl2_clear_key_length : uint16;
   ssl2_encrypted_key_length : uint16;
   ssl2_key_arg_length : uint16;
-  ssl2_clear_key : binstring(_ssl2_clear_key_length);
-  ssl2_encrypted_key : binstring(_ssl2_encrypted_key_length);
-  ssl2_key_arg : binstring(_ssl2_key_arg_length)
+  ssl2_clear_key : binstring(ssl2_clear_key_length);
+  ssl2_encrypted_key : binstring(ssl2_encrypted_key_length);
+  ssl2_key_arg : binstring(ssl2_key_arg_length)
 }
 
 struct ssl2_server_hello = {
@@ -85,9 +82,9 @@ struct ssl2_server_hello = {
   ssl2_server_certificate_length : uint16;
   ssl2_server_cipher_specs_length : uint16;
   ssl2_server_session_id_length : uint16;
-  ssl2_server_certificate : binstring(_ssl2_server_certificate_length); (* TODO *)
-  ssl2_server_cipher_specs : container(_ssl2_server_cipher_specs_length) of list of ssl2_cipher_spec;
-  ssl2_server_session_id : binstring(_ssl2_server_session_id_length)
+  ssl2_server_certificate : binstring(ssl2_server_certificate_length); (* TODO *)
+  ssl2_server_cipher_specs : container(ssl2_server_cipher_specs_length) of list of ssl2_cipher_spec;
+  ssl2_server_session_id : binstring(ssl2_server_session_id_length)
 }
 
 struct ssl2_request_certificate = {
@@ -99,12 +96,12 @@ struct ssl2_client_certificate = {
   ssl2_client_certificate_type : ssl2_certificate_type;
   ssl2_client_certificate_length : uint16;
   ssl2_response_length : uint16;
-  ssl2_client_certificate : binstring(_ssl2_client_certificate_length); (* TODO *)
-  ssl2_response : binstring(_ssl2_response_length) (* TODO *)
+  ssl2_client_certificate : binstring(ssl2_client_certificate_length); (* TODO *)
+  ssl2_response : binstring(ssl2_response_length) (* TODO *)
 }
 
 
-union ssl2_handshake_content (UnparsedSSL2HandshakeContent, [enrich]) =
+union ssl2_handshake_content [enrich] (UnparsedSSL2HandshakeContent) =
   | SSL2_HT_ERROR -> SSL2Error of ssl2_error
   | SSL2_HT_CLIENT_HELLO -> SSL2ClientHello of ssl2_client_hello
   | SSL2_HT_CLIENT_MASTER_KEY -> SSL2ClientMasterKey of ssl2_client_master_key
@@ -117,10 +114,10 @@ union ssl2_handshake_content (UnparsedSSL2HandshakeContent, [enrich]) =
 
 struct ssl2_handshake = {
   ssl2_handshake_type : ssl2_handshake_type;
-  ssl2_handshake_content : ssl2_handshake_content(_ssl2_handshake_type)
+  ssl2_handshake_content : ssl2_handshake_content(ssl2_handshake_type)
 }
 
-union ssl2_content (SSL2EncryptedMessage, [enrich]) =
+union ssl2_content [enrich] (SSL2EncryptedMessage) =
   | { cleartext = true } -> SSL2Handshake of ssl2_handshake
 
 
@@ -200,8 +197,8 @@ let dump_ssl2_record record =
 let print_ssl2_record ?indent:(indent="") ?name:(name="ssl2_record") record =
   let new_indent = indent ^ "  " in
   let fields_printed =
-    [ print_string ~indent:new_indent ~name:"long" (string_of_bool record.ssl2_long_header);
-      print_string ~indent:new_indent ~name:"escape" (string_of_bool record.ssl2_is_escape);
+    [ print_printablestring ~indent:new_indent ~name:"long" (string_of_bool record.ssl2_long_header);
+      print_printablestring ~indent:new_indent ~name:"escape" (string_of_bool record.ssl2_is_escape);
       print_uint8 ~indent:new_indent ~name:"padding_length" record.ssl2_padding_length;
       print_uint16 ~indent:new_indent ~name:"total length" record.ssl2_total_length;
       print_ssl2_content ~indent:new_indent ~name:"content" record.ssl2_content ]

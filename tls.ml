@@ -17,7 +17,7 @@ struct change_cipher_spec = {
 (* Handshake records and choices *)
 
 (* Explicit ("name_type") *)
-union sni_name (Unparsed_SNIName, [enrich]) =
+union sni_name [enrich] (Unparsed_SNIName) =
   | NT_HostName -> HostName of string[uint16]
 
 struct server_name = {
@@ -25,11 +25,11 @@ struct server_name = {
   sni_name : sni_name(sni_name_type)
 }
 
-union server_name_content (Unparsed_ServerNameContent, [enrich; exhaustive]) =
+union server_name_content [enrich; exhaustive] (Unparsed_ServerNameContent) =
   | ClientToServer -> ClientServerName of (list[uint16] of server_name)
   | ServerToClient -> ServerServerName
 
-union hello_extension_content (Unparsed_HelloExtension, [enrich; param direction]) =
+union hello_extension_content [enrich; param direction] (Unparsed_HelloExtension) =
   | HE_ServerName -> ServerName of server_name_content(direction)
   | HE_MaxFragmentLength -> MaxFragmentLength of uint8
   | HE_ClientCertificateURL -> ClientCertificateURL
@@ -95,7 +95,7 @@ struct ske_dhe_params = {
 }
 
 
-union server_key_exchange (Unparsed_SKEContent, [enrich]) =
+union server_key_exchange [enrich] (Unparsed_SKEContent) =
   | KX_DHE -> SKE_DHE of ske_dhe_params
 
 
@@ -147,7 +147,7 @@ struct certificate_request = {
   certificate_authorities : list[uint16] of binstring[uint16]
 }
 
-union handshake_content (Unparsed_HSContent, [enrich; param context]) =
+union handshake_content [enrich; param context] (Unparsed_HSContent) =
   | HT_HelloRequest -> HelloRequest
   | HT_ClientHello -> ClientHello of client_hello
   | HT_ServerHello -> ServerHello of server_hello
@@ -172,7 +172,7 @@ struct heartbeat_msg = {
 
 (* TLS record *)
 
-union record_content (Unparsed_Record, [param context]) =
+union record_content [param context] (Unparsed_Record) =
   | CT_Alert -> Alert of tls_alert
   | CT_Handshake -> Handshake of handshake_msg(context)
   | CT_ChangeCipherSpec -> ChangeCipherSpec of change_cipher_spec

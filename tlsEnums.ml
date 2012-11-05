@@ -1,4 +1,4 @@
-enum tls_version (16, UnknownVal V_Unknown, [with_lwt]) =
+enum tls_version [with_lwt] (16, UnknownVal V_Unknown) =
   | 0x0002 -> V_SSLv2, "SSLv2"
   | 0x0300 -> V_SSLv3, "SSLv3"
   | 0x0301 -> V_TLSv1, "TLSv1.0"
@@ -8,7 +8,7 @@ enum tls_version (16, UnknownVal V_Unknown, [with_lwt]) =
 
 (* http://www.iana.org/assignments/tls-parameters/tls-parameters.xml *)
 
-enum tls_content_type (8, UnknownVal CT_Unknown, [with_lwt]) =
+enum tls_content_type [with_lwt] (8, UnknownVal CT_Unknown) =
   | 0x14 -> CT_ChangeCipherSpec, "ChangeCipherSpec"
   | 0x15 -> CT_Alert, "Alert"
   | 0x16 -> CT_Handshake, "Handshake"
@@ -16,12 +16,12 @@ enum tls_content_type (8, UnknownVal CT_Unknown, [with_lwt]) =
   | 0x18 -> CT_Heartbeat, "Heartbeat"
 
 
-enum tls_alert_level (8, UnknownVal AL_Unknown, []) =
+enum tls_alert_level (8, UnknownVal AL_Unknown) =
   | 1 -> AL_Warning, "Warning"
   | 2 -> AL_Fatal, "Fatal"
 
 
-enum tls_alert_type (8, UnknownVal AT_Unknown, []) =
+enum tls_alert_type (8, UnknownVal AT_Unknown) =
   | 0 -> AT_CloseNotify, "CloseNotify"
   | 10 -> AT_UnexpectedMessage, "UnexpectedMessage"
   | 20 -> AT_BadRecordMAC, "BadRecordMAC"
@@ -54,11 +54,11 @@ enum tls_alert_type (8, UnknownVal AT_Unknown, []) =
   | 115 -> AT_UnknownPSKIdentity, "UnknownPSKIdentity"
 
 
-enum change_cipher_spec_value (8, UnknownVal CCS_Unknown, []) =
+enum change_cipher_spec_value (8, UnknownVal CCS_Unknown) =
   | 1 -> CCS_ChangeCipherSpec, "ChangeCipherSpec"
 
 
-enum hs_message_type (8, UnknownVal HT_Unknown, []) =
+enum hs_message_type (8, UnknownVal HT_Unknown) =
   | 0 -> HT_HelloRequest, "HelloRequest"
   | 1 -> HT_ClientHello, "ClientHello"
   | 2 -> HT_ServerHello, "ServerHello"
@@ -75,7 +75,7 @@ enum hs_message_type (8, UnknownVal HT_Unknown, []) =
   | 22 -> HT_CertificateStatus, "CertificateStatus"
   | 23 -> HT_SupplementalData, "SupplementalData"
 
-enum ciphersuite (16, UnknownVal TLS_UnknownSuite, []) =
+enum ciphersuite (16, UnknownVal TLS_UnknownSuite) =
   | 0x0000 -> TLS_NULL_WITH_NULL_NULL, "TLS_NULL_WITH_NULL_NULL"
   | 0x0001 -> TLS_RSA_WITH_NULL_MD5, "TLS_RSA_WITH_NULL_MD5"
   | 0x0002 -> TLS_RSA_WITH_NULL_SHA, "TLS_RSA_WITH_NULL_SHA"
@@ -379,14 +379,14 @@ enum ciphersuite (16, UnknownVal TLS_UnknownSuite, []) =
   | 0xffe1 -> SSL_RSA_FIPS_WITH_DES_CBC_SHA_bis, "SSL_RSA_FIPS_WITH_DES_CBC_SHA_bis"
   | 0x00ff -> TLS_EMPTY_RENEGOTIATION_INFO_SCSV, "TLS_EMPTY_RENEGOTIATION_INFO_SCSV"
 
-enum compression_method (8, UnknownVal CM_UnknownVal, []) =
+enum compression_method (8, UnknownVal CM_UnknownVal) =
   | 0 -> CM_Null, "Null"
   | 1 -> CM_Defalte, "Deflate"
 
-enum name_type (8, UnknownVal UnknownNameType, []) =
+enum name_type (8, UnknownVal UnknownNameType) =
   | 0 -> NT_HostName, "HostName"
 
-enum client_certificate_type (8, UnknownVal CCT_Unknown, []) =
+enum client_certificate_type (8, UnknownVal CCT_Unknown) =
   | 1 -> CCT_RSASign, "RSASign"
   | 2 -> CCT_DSSSign, "DSSSign"
   | 3 -> CCT_RSAFixedDH, "RSAFixedDH"
@@ -398,7 +398,7 @@ enum client_certificate_type (8, UnknownVal CCT_Unknown, []) =
   | 65 -> CCT_RSAFixedECDH, "RSAFixedECDH"
   | 66 -> CCT_ECDSAFixedECDH, "ECDSAFixedECDH"
 
-enum ec_named_curve (16, UnknownVal EC_Unknown, []) =
+enum ec_named_curve (16, UnknownVal EC_Unknown) =
   | 1 -> EC_sect163k1, "sect163k1"
   | 2 -> EC_sect163r1, "sect163r1"
   | 3 -> EC_sect163r2, "sect163r2"
@@ -427,30 +427,30 @@ enum ec_named_curve (16, UnknownVal EC_Unknown, []) =
   | 65281 -> EC_ArbitraryExplicitPrimeCurves, "arbitrary_explicit_prime_curves"
   | 65282 -> EC_ArbitraryExplicitChar2Curves, "arbitrary_explicit_char2_curves"
 
-enum ec_point_format (8, UnknownVal ECPF_Unknown, []) =
+enum ec_point_format (8, UnknownVal ECPF_Unknown) =
   | 0 -> ECPF_Uncompressed, "Uncompressed"
   | 1 -> ECPF_AnsiX962CompressedPrime, "AnsiX962CompressedPrime"
   | 2 -> ECPF_AnsiX962CompressedChar2, "AnsiX962CompressedChar2"
 
-enum ec_curve_type (8, UnknownVal ECCT_Unknown, []) =
+enum ec_curve_type (8, UnknownVal ECCT_Unknown) =
   | 1 -> ECCT_ExplicitPrime, "ExplicitPrime"
   | 2 -> ECCT_ExplicitChar2, "ExplicitChar2"
   | 3 -> ECCT_NamedCurve, "NamedCurve"
 
-enum supplemental_data_format (16, UnknownVal UnknownSupplementalDataFormat, []) =
+enum supplemental_data_format (16, UnknownVal UnknownSupplementalDataFormat) =
   | 0 -> SDF_UserMappingData, "UserMappingData"
   | 16386 -> SDF_AuthzData, "AuthzData"
 
-enum user_mapping_type (8, UnknownVal UnknownUserMappingType, []) =
+enum user_mapping_type (8, UnknownVal UnknownUserMappingType) =
   | 64 -> UMT_UPNDomainHint, "IUPNDomainHint"
 
-enum signature_algorithm (8, UnknownVal SA_Unknown, []) =
+enum signature_algorithm (8, UnknownVal SA_Unknown) =
   | 0 -> SA_Anonymous, "Anonymous"
   | 1 -> SA_RSA, "RSA"
   | 2 -> SA_DSA, "DSA"
   | 3 -> SA_ECDSA, "ECDSA"
 
-enum hash_algorithm (8, UnknownVal HA_Unknown, []) =
+enum hash_algorithm (8, UnknownVal HA_Unknown) =
   | 0 -> HA_None, "None"
   | 1 -> HA_MD5, "MD5"
   | 2 -> HA_SHA1, "SHA1"
@@ -459,7 +459,7 @@ enum hash_algorithm (8, UnknownVal HA_Unknown, []) =
   | 5 -> HA_SHA384, "SHA384"
   | 6 -> HA_SHA512, "SHA512"
 
-enum authorization_data_format (8, UnknownVal ADF_Unknown, []) =
+enum authorization_data_format (8, UnknownVal ADF_Unknown) =
   | 0 -> ADF_X509AttrCert, "X509AttrCert"
   | 1 -> ADF_SAMLAssertion, "SAMLAssertion"
   | 2 -> ADF_X509AttrCertURL, "X509AttrCertURL"
@@ -467,18 +467,18 @@ enum authorization_data_format (8, UnknownVal ADF_Unknown, []) =
   | 64 -> ADF_KeynoteAssertionList, "KeynoteAssertionList"
   | 65 -> ADF_KeynoteAssertionListURL, "KeynoteAssertionListURL"
 
-enum heartbeat_message_type (8, UnknownVal HMT_Unknown, []) =
+enum heartbeat_message_type (8, UnknownVal HMT_Unknown) =
   | 1 -> HMT_HeartbeatRequest, "HeartbeatRequest"
   | 2 -> HMT_HeartbeatResponse, "HeartbeatResponse"
 
-enum heartbeat_mode (8, UnknownVal HM_Unknown, []) =
+enum heartbeat_mode (8, UnknownVal HM_Unknown) =
   | 1 -> HM_PeerAllowedToSend, "PeerAllowedToSend"
   | 2 -> HM_PeerNotAllowedToSend, "PeerNotAllowedToSend"
 
 
 (* http://www.iana.org/assignments/tls-extensiontype-values *)
 
-enum extension_type (16, UnknownVal HE_Unknown, []) =
+enum extension_type (16, UnknownVal HE_Unknown) =
   | 0 -> HE_ServerName, "ServerName"
   | 1 -> HE_MaxFragmentLength, "MaxFragmentLength"
   | 2 -> HE_ClientCertificateURL, "ClientCertificateURL"
@@ -498,7 +498,7 @@ enum extension_type (16, UnknownVal HE_Unknown, []) =
   | 35 -> HE_SessionTicket, "SessionTicket"
   | 65281 -> HE_RenegotiationInfo, "RenegotiationInfo"
 
-enum tls_certificate_type (8, UnknownVal TCT_Unknown, []) =
+enum tls_certificate_type (8, UnknownVal TCT_Unknown) =
   | 0 -> TCT_X509, "X.509"
   | 1 -> TCT_OpenPGP, "OpenPGP"
 

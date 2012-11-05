@@ -275,6 +275,7 @@ let lwt_really_read input len =
   in
     try_bind _really_read finalize_ok finalize_nok
 
+(* TODO: Using really_read here has the side effect that the offset in lwt_input is already shifted while parsing the content *)
 let lwt_get_in input name len =
   lwt_really_read input len >>= fun s ->
   return {

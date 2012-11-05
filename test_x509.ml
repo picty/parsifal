@@ -1,7 +1,7 @@
 open Lwt
 open Common
-open LwtParsingEngine
-open ParsingEngine
+open Parsifal
+open Asn1PTypes
 open X509
 open X509Util
 open RSAKey
@@ -39,7 +39,7 @@ let handle_input input =
       print_endline (hexdump certificate.tbsCertificate.serialNumber);
       return ()
     | CheckSelfSigned ->
-      let result = match certificate.tbsCertificate._raw_tbsCertificate,
+      let result = match (* TODO: certificate.tbsCertificate._raw_tbsCertificate*) None,
 	certificate.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey,
 	certificate.signatureValue
 	with
@@ -51,7 +51,7 @@ let handle_input input =
       return ()
     | Subject ->
       let extract_string atv = match atv.attributeValue with
-	| { Asn1Engine.a_content = Asn1Engine.String (s, _)} -> "\"" ^ s ^ "\""
+	| { Asn1PTypes.a_content = String (s, _)} -> "\"" ^ s ^ "\""
 	| _ -> "\"\""
       in
       print_endline ("[" ^ String.concat ", " (List.map extract_string (List.flatten certificate.tbsCertificate.subject)) ^ "]");
@@ -60,7 +60,7 @@ let handle_input input =
 
 let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  return (input_of_fd filename fd)
+  input_of_fd filename fd
 
 let catch_exceptions e =
   if !keep_going
@@ -81,15 +81,15 @@ let rec iter_on_names = function
 let _ =
   let args = parse_args getopt_params Sys.argv in
   let t = match args with
-    | [] -> handle_input (input_of_channel "(stdin)" Lwt_io.stdin)
+    | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= handle_input
     | _ -> iter_on_names args
   in
   try
     Lwt_unix.run t;
     exit 0
   with
-    | ParsingException (e, i) -> emit_parsing_exception false e i; exit 1
-    | LwtParsingException (e, i) -> emit_lwt_parsing_exception false e i; exit 1
+    | ParsingException (e, StringInput i) -> emit_parsing_exception false e i; exit 1
+    | ParsingException (e, LwtInput i) -> Lwt_unix.run (emit_lwt_parsing_exception false e i); exit 1
     | Asn1Engine.Asn1Exception (e, i) -> Asn1Engine.emit false e i; exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1
 

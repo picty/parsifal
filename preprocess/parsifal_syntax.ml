@@ -831,7 +831,7 @@ let split_header _loc = function
   | Universal t, isC ->
     <:expr< Asn1Engine.C_Universal >>, exp_bool _loc isC, <:expr< Asn1Engine.$uid:t$ >>
   | Header (c, t), isC ->
-    <:expr< Asn1Engine.$uid:c$ >>, exp_bool _loc isC, <:expr< $int:string_of_int t$ >>
+    <:expr< Asn1Engine.$uid:c$ >>, exp_bool _loc isC, <:expr< Asn1Engine.T_Unknown $int:string_of_int t$ >>
 
 let mk_asn1_alias_parse_fun _loc alias =
   let c, isC, t = split_header _loc alias.aaheader in
@@ -839,14 +839,22 @@ let mk_asn1_alias_parse_fun _loc alias =
   and parse_content = fun_of_ptype Parse _loc (alias.aaname ^ "_content") alias.aatype in
   let body =
     if alias.aalist
-    then failwith "SequenceOf not implemented yet"
+    then <:expr< Asn1Engine.extract_der_seqof $str:alias.aaname$ $header_constraint$ $parse_content$ >>
     else <:expr< Asn1Engine.extract_asn1_object $str:alias.aaname$ $header_constraint$ $parse_content$ >>
   in
   [ mk_multiple_args_fun _loc ("parse_" ^ alias.aaname) alias.aaparse_params body ]
 
 let mk_asn1_alias_lwt_parse_fun _loc alias =
   if alias.aado_lwt then begin
-    failwith "lwtparse not written yet"
+    let c, isC, t = split_header _loc alias.aaheader in
+    let header_constraint = <:expr< Asn1Engine.AH_Simple ($c$, $isC$, $t$) >>
+    and parse_content = fun_of_ptype Parse _loc (alias.aaname ^ "_content") alias.aatype in
+    let body =
+      if alias.aalist
+      then <:expr< Asn1Engine.lwt_extract_der_seqof $str:alias.aaname$ $header_constraint$ $parse_content$ >>
+      else <:expr< Asn1Engine.lwt_extract_asn1_object $str:alias.aaname$ $header_constraint$ $parse_content$ >>
+    in
+    [ mk_multiple_args_fun _loc ("lwt_parse_" ^ alias.aaname) alias.aaparse_params body ]
   end else []
 
 let mk_asn1_alias_exact_parse_fun _loc alias =
@@ -860,7 +868,7 @@ let mk_asn1_alias_dump_fun _loc alias =
   let dump_content = fun_of_ptype Dump _loc (alias.aaname ^ "_content") alias.aatype in
   let body =
     if alias.aalist
-    then failwith "SequenceOf not implemented yet"
+    then <:expr< Asn1Engine.produce_der_seqof $c$ $isC$ $t$ $dump_content$ >>
     else <:expr< Asn1Engine.produce_asn1_object $c$ $isC$ $t$ $dump_content$ >>
   in
   [ mk_multiple_args_fun _loc ("dump_" ^ alias.aaname) alias.aadump_params body ]
@@ -869,7 +877,7 @@ let mk_asn1_alias_print_fun _loc alias =
   let print_content = fun_of_ptype Print _loc (alias.aaname ^ "_content") alias.aatype in
   let body =
     if alias.aalist
-    then failwith "SequenceOf not implemented yet"
+    then <:expr< Parsifal.print_list $print_content$ ~indent:indent ~name:name >>
     else <:expr< $print_content$ ~indent:indent ~name:name >>
   in
   [ mk_multiple_args_fun _loc ("print_" ^ alias.aaname) [] 

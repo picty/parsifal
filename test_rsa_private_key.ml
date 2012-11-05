@@ -1,7 +1,7 @@
 open Unix
 open Sys
 open Common
-open ParsingEngine
+open Parsifal
 open RSAKey
 
 let get_file_content filename =
@@ -15,7 +15,7 @@ let get_file_content filename =
 
 let _ =
   let s = get_file_content Sys.argv.(1) in
-  let input = input_of_string "TLS Record" s in
+  let input = input_of_string "RSA Private Key" s in
   let rsa_key = parse_rsa_private_key input in
   print_endline (hexdump rsa_key.modulus)
 

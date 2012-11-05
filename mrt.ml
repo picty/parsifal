@@ -1,43 +1,46 @@
+open Parsifal
+open PTypes
+
 (* Generic useful types and functions *)
 
-enum address_family_identifier (16, Exception InvalidAddressFamilyIdentifier, [with_lwt]) =
+enum address_family_identifier [with_lwt] (16, Exception InvalidAddressFamilyIdentifier) =
   | 1 -> AFI_IPv4
   | 2 -> AFI_IPv6
 
-enum subsequent_address_family_identifier (8, Exception InvalidSubsequentAddressFamilyIdentifier, []) =
+enum subsequent_address_family_identifier (8, Exception InvalidSubsequentAddressFamilyIdentifier) =
   | 1 -> SAFI_Unicast
   | 2 -> SAFI_Multicast
 
-union ip_address (UnparsedIPAddress, [exhaustive; enrich]) =
+union ip_address [exhaustive; enrich] (UnparsedIPAddress) =
   | AFI_IPv4 -> IPA_IPv4 of ipv4
   | AFI_IPv6 -> IPA_IPv6 of ipv6
 
-union autonomous_system (UnparsedAS, [enrich]) =
+union autonomous_system [enrich] (UnparsedAS) =
   | 16 -> AS16 of uint16
   | 32 -> AS32 of uint32
 
 type ip_prefix = IPv4Prefix of string * int | IPv6Prefix of string * int
 
 let parse_ip_prefix ipa_type input =
-  let prefix_length = ParsingEngine.parse_uint8 input in
+  let prefix_length = parse_uint8 input in
   let l = (prefix_length + 7) / 8 in
-  let s = ParsingEngine.parse_string l input in
+  let s = parse_string l input in
   match ipa_type with
   | AFI_IPv4 -> IPv4Prefix (s, prefix_length)
   | AFI_IPv6 -> IPv6Prefix (s, prefix_length)
 
 let dump_ip_prefix = function
   | IPv4Prefix (s, l)
-  | IPv6Prefix (s, l) -> (DumpingEngine.dump_uint8 l) ^ s
+  | IPv6Prefix (s, l) -> (dump_uint8 l) ^ s
 
 let string_of_ip_prefix ip_prefix =
   let a, len = match ip_prefix with
     | IPv4Prefix (s, prefix_length) ->
       let l = (prefix_length + 7) / 8 in
-      PrintingEngine.string_of_ipv4 (s ^ (String.make (4 - l) '\x00')), prefix_length
+      string_of_ipv4 (s ^ (String.make (4 - l) '\x00')), prefix_length
     | IPv6Prefix (s, prefix_length) ->
       let l = (prefix_length + 7) / 8 in
-      PrintingEngine.string_of_ipv6 (s ^ (String.make (16 - l) '\x00')), prefix_length
+      string_of_ipv6 (s ^ (String.make (16 - l) '\x00')), prefix_length
   in Printf.sprintf "%s/%d" a len
 
 let print_ip_prefix ?indent:(indent="") ?name:(n="ip_prefix") ip_prefix =
@@ -60,19 +63,19 @@ struct bgp_open_message = {
 type bgp_attribute_len = bool * int
 let parse_bgp_attribute_len attr input =
   if (attr land 0x10) = 0x10
-  then true, ParsingEngine.parse_uint16 input
-  else false, ParsingEngine.parse_uint8 input
+  then true, parse_uint16 input
+  else false, parse_uint8 input
 let dump_bgp_attribute_len (extended, v) =
   if extended
-  then DumpingEngine.dump_uint16 v
-  else DumpingEngine.dump_uint8 v
+  then dump_uint16 v
+  else dump_uint8 v
 let print_bgp_attribute_len ?indent:(indent="") ?name:(name="bgp_attribute_len") (extended, v) =
   if extended
-  then PrintingEngine.print_uint16 ~indent:indent ~name:name v
-  else PrintingEngine.print_uint8 ~indent:indent ~name:name v
+  then print_uint16 ~indent:indent ~name:name v
+  else print_uint8 ~indent:indent ~name:name v
 
 
-enum bgp_attribute_type (8, UnknownVal UnknownBGPAttributeType, []) =
+enum bgp_attribute_type (8, UnknownVal UnknownBGPAttributeType) =
   | 1 -> ORIGIN
   | 2 -> AS_PATH
   | 3 -> NEXT_HOP
@@ -87,12 +90,12 @@ enum bgp_attribute_type (8, UnknownVal UnknownBGPAttributeType, []) =
   | 17 -> AS4_PATH
   | 18 -> AS4_AGGREGATOR
 
-enum bgp_origin (8, UnknownVal UnknownBGPOrigin, []) =
+enum bgp_origin (8, UnknownVal UnknownBGPOrigin) =
   | 0 -> IGP
   | 1 -> EGP
   | 2 -> INCOMPLETE
 
-enum path_segment_type (8, UnknownVal UnknownBGPASPath, []) =
+enum path_segment_type (8, UnknownVal UnknownBGPASPath) =
   | 1 -> AS_SET
   | 2 -> AS_SEQUENCE
 
@@ -120,13 +123,13 @@ struct bgp_reach_nlri_full = {
    it should be taken into account with a try_parse and an optional-like parameter *)
 
 (* TODO: clean that by using a union with [parse_fun_name=] and a custom no_parse function *)
-union bgp_reach_nlri (UnparsedNLRI, [exhaustive]) =
+union bgp_reach_nlri [exhaustive] (UnparsedNLRI) =
   | true -> FullNLRI of bgp_reach_nlri_full
   | false -> AbbreviatedNLRI of container[uint8] of list of (ip_address(AFI_IPv6))
 
 (* The use of masking is ugly... *)
 let parse_bgp_reach_nlri input =
-  let afi = ParsingEngine.peek_uint16 input in
+  let afi = peek_uint16 input in
   parse_bgp_reach_nlri (afi = 1 || afi = 2) input
 
 
@@ -136,7 +139,7 @@ struct bgp_unreach_nlri = {
   un_withdrawn_routes : list of ip_prefix(un_afi)
 }  
 
-union bgp_attribute_content (UnknownBGPAttributeContent, [enrich; param as_size]) =
+union bgp_attribute_content [enrich; param as_size] (UnknownBGPAttributeContent) =
   | ORIGIN -> BAC_Origin of bgp_origin
   | AS_PATH -> BAC_ASPath of (list of bgp_as_path_segment(as_size))
   | NEXT_HOP -> BAC_NextHop of ipv4
@@ -172,29 +175,21 @@ struct bgp_route_refresh = {
 }
 
 
-enum bgp_message_type (8, UnknownVal UnknownBGPMessageType, []) =
+enum bgp_message_type (8, UnknownVal UnknownBGPMessageType) =
   | 1 -> BMT_OPEN
   | 2 -> BMT_UPDATE
   | 3 -> BMT_NOTIFICATION
   | 4 -> BMT_KEEPALIVE
   | 5 -> BMT_ROUTE_REFRESH
 
-union bgp_message_content (UnparsedBGPMessageContent of binstring, [enrich; param ipa_type; param as_size]) =
+union bgp_message_content [enrich; param ipa_type; param as_size] (UnparsedBGPMessageContent of binstring) =
   | BMT_OPEN -> BGP_Open of bgp_open_message
   | BMT_UPDATE -> BGP_Update of bgp_update_message(ipa_type; as_size)
   | BMT_NOTIFICATION -> BGP_Notification of binstring (* TODO *)
   | BMT_KEEPALIVE -> BGP_KeepAlive
   | BMT_ROUTE_REFRESH -> BGP_RouteRefresh of bgp_route_refresh
 
-type bgp_message_marker = unit
-let parse_bgp_message_marker input =
-  let s = ParsingEngine.parse_string 16 input in
-  match s with
-    | "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff" -> ()
-    | _ -> raise (Failure "Marker is not valid !")
-let dump_bgp_message_marker () = String.make 16 '\xff'
-let print_bgp_message_marker ?indent:(indent="") ?name:(name="bgp_marker") () =
-  PrintingEngine.print_binstring ~indent:indent ~name:name ""
+alias bgp_message_marker = magic ["\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"]
 
 struct bgp_message [param ipa_type; param as_size] = {
   bgp_message_marker : bgp_message_marker;
@@ -207,7 +202,7 @@ struct bgp_message [param ipa_type; param as_size] = {
 
 (* MRT Types *)
 
-enum mrt_type (16, UnknownVal MT_Unknown, [with_lwt]) =
+enum mrt_type [with_lwt] (16, UnknownVal MT_Unknown) =
   | 0 -> MT_NULL, "NULL"
   | 1 -> MT_START, "START"
   | 2 -> MT_DIE, "DIE"
@@ -256,7 +251,7 @@ struct table_dump [param ipa_type] = {
 
 (* MT_TABLE_DUMP_V2 *)
 
-enum table_dump_v2_subtype (16, UnknownVal UnknownTableDumpV2SubType, [with_lwt]) =
+enum table_dump_v2_subtype [with_lwt] (16, UnknownVal UnknownTableDumpV2SubType) =
   | 1 -> PEER_INDEX_TABLE
   | 2 -> RIB_IPV4_UNICAST
   | 3 -> RIB_IPV4_MULTICAST
@@ -264,7 +259,7 @@ enum table_dump_v2_subtype (16, UnknownVal UnknownTableDumpV2SubType, [with_lwt]
   | 5 -> RIB_IPV6_MULTICAST
   | 6 -> RIB_GENERIC
 
-enum peer_type (8, Exception InvalidPeerType, []) =
+enum peer_type (8, Exception InvalidPeerType) =
   | 0 -> PT_AS16_IPv4
   | 1 -> PT_AS16_IPv6
   | 2 -> PT_AS32_IPv4
@@ -319,7 +314,7 @@ struct rib_generic = {
 
 (* MT_BGP4MP *)
 
-enum bgp4mp_subtype (16, UnknownVal UnknownBGP4MPSubtype, [with_lwt]) =
+enum bgp4mp_subtype [with_lwt] (16, UnknownVal UnknownBGP4MPSubtype) =
   | 0 -> BGP4MP_STATE_CHANGE
   | 1 -> BGP4MP_MESSAGE
   | 4 -> BGP4MP_MESSAGE_AS4
@@ -338,13 +333,13 @@ struct bgp4mp_message [param is_as4] = {
 }
 
 
-union mrt_subtype (UnparsedSubType of uint16, [enrich; with_lwt]) =
+union mrt_subtype [enrich; with_lwt] (UnparsedSubType of uint16) =
   | MT_TABLE_DUMP -> MST_TABLE_DUMP of address_family_identifier
   | MT_TABLE_DUMP_V2 -> MST_TABLE_DUMP_V2 of table_dump_v2_subtype
   | MT_BGP4MP -> MST_BGP4MP of bgp4mp_subtype
 
 
-union mrt_message_content (UnparsedMRTMessage, [enrich]) =
+union mrt_message_content [enrich] (UnparsedMRTMessage) =
   | (MT_OSPFv2, _) -> OSPFv2Message of ospfv2_message
 
   | (MT_TABLE_DUMP, MST_TABLE_DUMP ipa_type) -> TableDump of table_dump(ipa_type)

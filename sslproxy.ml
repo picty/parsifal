@@ -1,9 +1,7 @@
 open Lwt
 open Unix
 
-open ParsingEngine
-open DumpingEngine
-open LwtParsingEngine
+open Parsifal
 open TlsEnums
 open Tls
 open Getopt
@@ -78,9 +76,9 @@ let rec forward state i o =
 
 
 let catcher = function
-  | ParsingException (e, i) ->
-    Printf.printf "%s in %s\n" (ParsingEngine.print_parsing_exception e)
-      (ParsingEngine.print_string_input i); flush Pervasives.stdout; return ()
+  | ParsingException (e, StringInput i) ->
+    Printf.printf "%s in %s\n" (print_parsing_exception e)
+      (print_string_input i); flush Pervasives.stdout; return ()
   | e -> print_endline (Printexc.to_string e); flush Pervasives.stdout; return ()
 
 
@@ -88,8 +86,10 @@ let catcher = function
 let rec accept sock =
   Lwt_unix.accept sock >>= fun (inp, _) ->
   Util.client_socket !host !port >>= fun out ->
-  let io = forward (empty_state "C->S") (input_of_fd "Client socket" inp) out in
-  let oi = forward (empty_state "S->C") (input_of_fd "Server socket" out) inp in
+  input_of_fd "Client socket" inp >>= fun i ->
+  input_of_fd "Server socket" out >>= fun o ->
+  let io = forward (empty_state "C->S") i out in
+  let oi = forward (empty_state "S->C") o inp in
   catch (fun () -> pick [io; oi]) catcher >>= fun () ->
   ignore (Lwt_unix.close out);
   ignore (Lwt_unix.close inp);

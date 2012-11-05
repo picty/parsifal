@@ -281,7 +281,7 @@ asn1_alias der_bitstring = primitive [T_BitString] der_bitstring_content
 
 (* Octet String *)
 
-(* TODO: From now on! *)
+type der_octetstring_content = string
 
 let no_constraint s _ = s
 
@@ -314,23 +314,24 @@ let parse_der_octetstring_TODO apply_constraints input =
   let res = parse_rem_string input in
   apply_constraints res input
 
-let parse_der_octetstring apply_constraints input =
+let parse_der_octetstring_content apply_constraints input =
   let res = parse_rem_string input in
   ignore (apply_constraints res input);
   res
 
-let dump_der_octetstring s = s
+let dump_der_octetstring_content s = s
 
-let print_der_octetstring ?indent:(indent="") ?name:(name="der_octetstring") s =
+let print_der_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
   Printf.sprintf "%s%s: %s\n" indent name (hexdump s)
 
+asn1_alias der_octetstring = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
 
 
 
 (* Generic ASN.1 Object *)
 
-type asn1_object = {
+type der_object = {
   a_class : asn1_class;
   a_tag : asn1_tag;
   a_content : asn1_content;
@@ -344,7 +345,7 @@ and asn1_content =
   | Null
   | OId of int list
   | String of (string * bool)       (* bool : isBinary *)
-  | Constructed of asn1_object list
+  | Constructed of der_object list
 
 
 let mk_object c t content = {
@@ -358,7 +359,7 @@ let isConstructed o = match o.a_content with
   | _ -> false
 
 
-let rec parse_asn1_object input =
+let rec parse_der_object input =
   let _offset = input.cur_base + input.cur_offset in
   let old_cur_offset = input.cur_offset in
   let c, isC, t = extract_header input in
@@ -366,81 +367,74 @@ let rec parse_asn1_object input =
   let _hlen = input.cur_offset - old_cur_offset in
   let new_input = get_in input (print_header (c, isC, t)) len in
   let content = match c, isC, t with
-    | (C_Universal, false, T_Boolean) -> Boolean (parse_der_boolean new_input)
-    | (C_Universal, false, T_Integer) -> Integer (parse_der_integer new_input)
-    | (C_Universal, false, T_Null) -> parse_der_null new_input; Null
-    | (C_Universal, false, T_OId) -> OId (parse_der_oid new_input)
-    | (C_Universal, false, T_BitString) -> let nBits, s = parse_der_bitstring input in BitString (nBits, s)
-    | (C_Universal, false, T_OctetString) -> String (parse_der_octetstring no_constraint new_input, true)
+    | (C_Universal, false, T_Boolean) -> Boolean (parse_der_boolean_content new_input)
+    | (C_Universal, false, T_Integer) -> Integer (parse_der_integer_content new_input)
+    | (C_Universal, false, T_Null) -> parse_der_null_content new_input; Null
+    | (C_Universal, false, T_OId) -> OId (parse_der_oid_content new_input)
+    | (C_Universal, false, T_BitString) -> let nBits, s = parse_der_bitstring_content input in BitString (nBits, s)
+    | (C_Universal, false, T_OctetString) -> String (parse_der_octetstring_content no_constraint new_input, true)
 
     | (C_Universal, false, T_UTF8String)
     | (C_Universal, false, T_NumericString)
     | (C_Universal, false, T_PrintableString)
     | (C_Universal, false, T_T61String)
     | (C_Universal, false, T_VideoString)
-    | (C_Universal, false, T_IA5String) -> String (parse_der_octetstring no_constraint new_input, false) (* TODO *)
-    | (C_Universal, false, T_UTCTime) -> String (parse_der_octetstring utc_time_constraint new_input, false)
-    | (C_Universal, false, T_GeneralizedTime) -> String (parse_der_octetstring generalized_time_constraint new_input, false)
+    | (C_Universal, false, T_IA5String) -> String (parse_der_octetstring_content no_constraint new_input, false) (* TODO *)
+    | (C_Universal, false, T_UTCTime) -> String (parse_der_octetstring_content utc_time_constraint new_input, false)
+    | (C_Universal, false, T_GeneralizedTime) -> String (parse_der_octetstring_content generalized_time_constraint new_input, false)
     | (C_Universal, false, T_GraphicString)
     | (C_Universal, false, T_VisibleString)
     | (C_Universal, false, T_GeneralString)
     | (C_Universal, false, T_UniversalString)
     | (C_Universal, false, T_UnspecifiedCharacterString)
-    | (C_Universal, false, T_BMPString) -> String (parse_der_octetstring no_constraint input, false) (* TODO *)
+    | (C_Universal, false, T_BMPString) -> String (parse_der_octetstring_content no_constraint input, false) (* TODO *)
 
     | (C_Universal, true, T_Sequence)
-    | (C_Universal, true, T_Set) -> Constructed (parse_der_constructed new_input)
+    | (C_Universal, true, T_Set) -> Constructed (parse_der_constructed_content new_input)
 
     | (C_Universal, false, t) ->
       emit false (UnknownUniversalObject (false, t)) new_input;
-      String (parse_der_octetstring no_constraint new_input, true)
+      String (parse_der_octetstring_content no_constraint new_input, true)
 
     | (C_Universal, true, t) ->
       emit false (UnknownUniversalObject (true, t)) new_input;
-      Constructed (parse_der_constructed new_input)
+      Constructed (parse_der_constructed_content new_input)
 
-    | (_, false, _) -> String (parse_der_octetstring no_constraint new_input, true)
-    | (_, true, _)  -> Constructed (parse_der_constructed new_input)
+    | (_, false, _) -> String (parse_der_octetstring_content no_constraint new_input, true)
+    | (_, true, _)  -> Constructed (parse_der_constructed_content new_input)
   in
   get_out input new_input;
   mk_object c t content
 
-and parse_der_constructed input =
+and parse_der_constructed_content input =
   let rec parse_aux accu =
     if eos input
     then List.rev accu
     else
-      let next = parse_asn1_object input in
+      let next = parse_der_object input in
       parse_aux (next::accu)
   in parse_aux []
 
-let parse_asn1_object_opt input =
-  let tmp_offset = input.cur_offset in
-  try
-    Some (parse_asn1_object input)
-  with (Asn1Exception _) ->
-    input.cur_offset <- tmp_offset;
-    None
 
-let rec dump_asn1_object o =
+let rec dump_der_object o =
   let hdr = dump_header o.a_class (isConstructed o) o.a_tag in
   let content = dump_asn1_content o.a_content in
   let len = dump_length (String.length content) in
   hdr ^ len ^ content
 
 and dump_asn1_content = function
-  | Boolean b -> dump_der_boolean b
-  | Integer i -> dump_der_integer i
-  | BitString (nBits, s) -> dump_der_bitstring (nBits, s)
-  | Null -> dump_der_null ()
-  | OId oid -> dump_der_oid oid
-  | String (s, _) -> dump_der_octetstring s
+  | Boolean b -> dump_der_boolean_content b
+  | Integer i -> dump_der_integer_content i
+  | BitString (nBits, s) -> dump_der_bitstring_content (nBits, s)
+  | Null -> dump_der_null_content ()
+  | OId oid -> dump_der_oid_content oid
+  | String (s, _) -> dump_der_octetstring_content s
   | Constructed l ->
-    String.concat "" (List.map dump_asn1_object l)
+    String.concat "" (List.map dump_der_object l)
 
 (* TODO *)
-let print_asn1_object ?indent:(indent="") ?name:(name="asn1_object") _o =
-  Printf.sprintf "%s%s: ASN1_OBJECT\n" indent name
+let print_der_object ?indent:(indent="") ?name:(name="der_object") _o =
+  Printf.sprintf "%s%s: DER_OBJECT\n" indent name
 
 
 (* (\**************************\) *)

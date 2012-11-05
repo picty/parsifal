@@ -12,7 +12,7 @@ let reseed_urandom () =
 
 let reseed s = state.seed s; ActionDone
 let print_random_int n = print_endline (string_of_int (random_int state n)); ActionDone
-let print_random_string n = print_endline (Common.hexdump (random_string state n)); ActionDone
+let print_random_string n = print_endline (Parsifal.hexdump (random_string state n)); ActionDone
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";

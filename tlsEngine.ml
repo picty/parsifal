@@ -2,7 +2,7 @@ open Lwt
 open TlsEnums
 open TlsDatabase
 open Tls
-open ParsingEngine
+open Parsifal
 
 
 exception TLS_AlertToSend of tls_alert_type * string
@@ -119,37 +119,39 @@ let catch_exceptions = function
 
 let handle_answer handle_hs handle_alert s =
   let ctx = empty_context () in
-  let hs_in = input_of_string "Handshake records" ""
-  and alert_in = input_of_string "Alert records" "" in
 
   let process_input parse_fun handle_fun input =
     match try_parse parse_fun input with
-      | None -> NothingSoFar
+      | None -> NothingSoFar, input
       | Some parsed_msg ->
 	let res = handle_fun parsed_msg in
-	drop_used_string input;
-	res
+	let new_input = drop_used_string input in
+	res, new_input
   in
 
-  let rec read_answers () =
+  let rec read_answers hs_in alert_in =
     lwt_parse_tls_record None s >>= fun record ->
-    let result = match record.content_type with
+    let result, new_hs_in, new_alert_in = match record.content_type with
       | CT_Handshake ->
-	append_to_input hs_in (dump_record_content record.record_content);
-	process_input (parse_handshake_msg (Some ctx)) (handle_hs ctx) hs_in
+	let input = append_to_input hs_in (dump_record_content record.record_content) in
+	let r, h = process_input (parse_handshake_msg (Some ctx)) (handle_hs ctx) input in
+	r, h, alert_in
       | CT_Alert ->
-	append_to_input alert_in (dump_record_content record.record_content);
-	process_input parse_tls_alert handle_alert alert_in
-      | _ -> FatalAlert "Unexpected content type"
+	let input = append_to_input alert_in (dump_record_content record.record_content) in
+	let r, a = process_input parse_tls_alert handle_alert input in
+	r, hs_in, a
+      | _ -> FatalAlert "Unexpected content type", hs_in, alert_in
     in match result with
-      | NothingSoFar -> timed_read_answers ()
+      | NothingSoFar -> timed_read_answers new_hs_in new_alert_in
       | x -> return x
-  and timed_read_answers () =
-    let t = read_answers () in
+  and timed_read_answers hs_in alert_in =
+    let t = read_answers hs_in alert_in in
     pick [t; Lwt_unix.sleep !timeout >>= fun () -> return Timeout]
   in
 
-  catch timed_read_answers catch_exceptions
+  let hs_in = input_of_string "Handshake records" ""
+  and alert_in = input_of_string "Alert records" "" in
+  catch (fun () -> timed_read_answers hs_in alert_in) catch_exceptions
 
 
 (* let rec wrap_expect_fun f ctx recs = *)

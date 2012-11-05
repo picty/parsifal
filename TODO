@@ -1,12 +1,10 @@
 v0.1 (oct. 2012)
- - Rename ParsingException -> ParsifalException?
+ - Merge all exceptions (ParsingException, ASN1Exception) in ParsifalException
  - Camlp4
    * Put preprocess files in a separate directory and produce a real camlp4 syntax package
    * should char/string/uint8, etc. be special in mk_records? Or could they be treated as custom?
    * should dump_* take the argument as parse?
-   * merge preprocess files into parsifal_syntax
-   * Write mk_asn1_struct.ml in parsifal_syntax
-   * Write asn1PTypes
+   * Write the remaining functions in asn1PTypes
  - General
    * have a bugzilla to put all this stuff
    * add Pollux' MakefileV6

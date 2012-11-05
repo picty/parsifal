@@ -1,8 +1,8 @@
 open Common
 open Lwt
-open ParsingEngine
-open LwtParsingEngine
-open PrintingEngine
+open Parsifal
+open PTypes
+open Asn1PTypes
 open AnswerDump
 open TlsEnums
 open Tls
@@ -36,7 +36,7 @@ let getopt_params = {
 
 let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  return (input_of_fd filename fd)
+  input_of_fd filename fd
 
 let parse_all_records answer =
   let rec read_records accu i =
@@ -91,10 +91,12 @@ let parse_all_records answer =
 
 
 let rec handle_one_file input =
-  lwt_parse_answer_dump input >>= fun answer ->
-  let ip = string_of_ipv4 answer.ip in
-  begin
-    match !action with
+  lwt_try_parse lwt_parse_answer_dump input >>= function
+  | None -> return ()
+  | Some answer ->
+    let ip = string_of_ipv4 answer.ip in
+    begin
+      match !action with
       | IP -> print_endline ip; return ()
       | All ->
 	let records, _, error = parse_all_records answer in
@@ -131,39 +133,39 @@ let rec handle_one_file input =
 	end;
 	return ()
       | Subject ->
-	let records, _, _ = parse_all_records answer in
-	let rec extractSubjectOfFirstCert = function
-	  | [] -> None
-	  | { content_type = CT_Handshake;
-	      record_content = Handshake {
-		handshake_type = HT_Certificate;
-		handshake_content = Certificate {certificate_list = cert_string::_} }}::_ ->
-	    begin
-	      try
-		let cert = parse_certificate (input_of_string "" cert_string) in
-		let extract_string atv = match atv.attributeValue with
-		  | { Asn1Engine.a_content = Asn1Engine.String (s, _)} -> "\"" ^ s ^ "\""
-		  | _ -> "\"\""
-		in
-		Some (String.concat ", " (List.map extract_string (List.flatten cert.tbsCertificate.subject)))
-	      with _ -> None
-	    end
-	  | _::r -> extractSubjectOfFirstCert r
-	in
-	begin
-	  match extractSubjectOfFirstCert records with
-	    | None -> ()
-	    | Some subject -> Printf.printf "%s: %s\n" ip subject
-	end;
-	return ()
-  end >>= fun () ->
-  handle_one_file input
+      	let records, _, _ = parse_all_records answer in
+      	let rec extractSubjectOfFirstCert = function
+      	  | [] -> None
+      	  | { content_type = CT_Handshake;
+      	      record_content = Handshake {
+      		handshake_type = HT_Certificate;
+      		handshake_content = Certificate {certificate_list = cert_string::_} }}::_ ->
+      	    begin
+      	      try
+      		let cert = parse_certificate (input_of_string "" cert_string) in
+      		let extract_string atv = match atv.attributeValue with
+      		  | { a_content = String (s, _)} -> "\"" ^ s ^ "\""
+      		  | _ -> "\"\""
+      		in
+      		Some (String.concat ", " (List.map extract_string (List.flatten cert.tbsCertificate.subject)))
+      	      with _ -> None
+      	    end
+      	  | _::r -> extractSubjectOfFirstCert r
+      	in
+      	begin
+      	  match extractSubjectOfFirstCert records with
+      	    | None -> ()
+      	    | Some subject -> Printf.printf "%s: %s\n" ip subject
+      	end;
+      	return ()
+    end >>= fun () ->
+    handle_one_file input
 
 let _ =
   try
     let args = parse_args getopt_params Sys.argv in
     let open_files = function
-      | [] -> return [input_of_channel "(stdin)" Lwt_io.stdin]
+      | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= fun x -> return [x]
       | _ -> Lwt_list.map_s input_of_filename args
     in
     Lwt_unix.run (open_files args >>= Lwt_list.iter_s handle_one_file);

@@ -3,9 +3,7 @@ open Lwt_io
 open Unix
 open Getopt
 
-open ParsingEngine
-open DumpingEngine
-open LwtParsingEngine
+open Parsifal
 open TlsEnums
 open Tls
 open TlsEngine
@@ -120,43 +118,6 @@ let catch_eof = function
   | e -> fail e
 
 
-
-let handle_answer handle_hs handle_alert s =
-  let ctx = empty_context () in
-  let hs_in = input_of_string "Handshake records" ""
-  and alert_in = input_of_string "Alert records" "" in
-
-  let process_input parse_fun handle_fun input =
-    match try_parse parse_fun input with
-      | None -> NothingSoFar
-      | Some parsed_msg ->
-	let res = handle_fun parsed_msg in
-	drop_used_string input;
-	res
-  in
-
-  let rec read_answers () =
-    lwt_parse_tls_record None s >>= fun record ->
-    let result = match record.content_type with
-      | CT_Handshake ->
-	append_to_input hs_in (dump_record_content record.record_content);
-	process_input (parse_handshake_msg (Some ctx)) (handle_hs ctx) hs_in
-      | CT_Alert ->
-	append_to_input alert_in (dump_record_content record.record_content);
-	process_input parse_tls_alert handle_alert alert_in
-      | _ -> FatalAlert "Unexpected content type"
-    in match result with
-      | NothingSoFar -> timed_read_answers ()
-      | x -> return x
-  and timed_read_answers () =
-    let t = read_answers () in
-    pick [t; Lwt_unix.sleep !timeout >>= fun () -> return Timeout]
-  in
-
-  catch timed_read_answers catch_eof
-
-
-
 let print_hs ctx hs =
   print_endline (print_handshake_msg ~name:"Handshake (S->C)" hs);
   match hs.handshake_type, hs.handshake_content with
@@ -202,7 +163,8 @@ let _send_and_receive hs_fun alert_fun =
   let ch = mk_client_hello None in
   if !verbose then prerr_endline (print_tls_record ~name:"Sending Handshake (C->S)" ch);
   send_plain_record s ch >>= fun () ->
-  handle_answer hs_fun alert_fun (input_of_fd "Server" s)
+  input_of_fd "Server" s >>=
+  handle_answer hs_fun alert_fun
 
 let send_and_receive hs_fun alert_fun =
   catch (fun () -> _send_and_receive hs_fun alert_fun) catch_exceptions
