@@ -52,6 +52,10 @@ let exp_qname _loc m n = match m with
   | None -> <:expr< $lid:n$ >>
   | Some module_name -> <:expr< $uid:module_name$.$lid:n$ >>
 
+let qname_ident = function
+  | <:ident< $lid:n$ >> -> None, n
+  | <:ident< $uid:module_name$.$lid:n$ >> -> Some module_name, n
+  | i -> Loc.raise (loc_of_ident i) (Failure "invalid identifier")
 
 let mk_pm_fun _loc fname cases =
   let mk_case (p, e) = <:match_case< $p$ -> $e$ >> in
@@ -153,7 +157,7 @@ type ptype =
   | PT_Array of expr * ptype
   | PT_List of field_len * ptype
   | PT_Container of field_len * ptype  (* the string corresponds to the integer type for the field length *)
-  | PT_Custom of (string option) * string * expr list  (* the expr list is the list of args to apply to parse funs *)
+  | PT_Custom of (string option) * string * expr list * expr list (* the expr lists are the args to give to parse / dump *)
   | PT_CheckFunction of (string option) * string * expr list * bool  (* the last boolean is set if the function is in fact a reference *)
 
 
@@ -164,7 +168,8 @@ type struct_description = {
   fields : (Loc.t * string * ptype * bool) list;
   rdo_lwt : bool;
   rdo_exact : bool;
-  rparams : string list;
+  rparse_params : string list;
+  rdump_params : string list;
 }
 
 
@@ -179,7 +184,8 @@ type union_description = {
   udo_exact : bool;
   uenrich : bool;
   uexhaustive : bool;
-  uparams : string list;
+  uparse_params : string list;
+  udump_params : string list;
 }
 
 
@@ -190,7 +196,8 @@ type alias_description = {
   atype : ptype;
   ado_lwt : bool;
   ado_exact : bool;
-  aparams : string list;
+  aparse_params : string list;
+  adump_params : string list;
 }
 
 
@@ -233,59 +240,61 @@ let rec choices_of_match_cases = function
 
 (* PTypes *)
 
-type decorator_type = NoDec | ExprDec of expr | VarLenDec of expr
+type decorator_type = (expr option) * (expr option)
+
+let expr_list_of_decorator = function
+  | None -> []
+  | Some e -> list_of_sem_expr e
 
 let ptype_of_ident name decorator subtype =
   match name, decorator, subtype with
-    | <:ident< $lid:"char"$ >>,   NoDec, None -> PT_Char
-    | <:ident< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, NoDec, None -> PT_Int int_t
+    | <:ident< $lid:"char"$ >>, (None, None), None -> PT_Char
+    | <:ident< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, (None, None), None -> PT_Int int_t
 
-    | <:ident< $lid:"list"$ >>,   NoDec, Some t ->
+    | <:ident< $lid:"list"$ >>, (None, None), Some t ->
       PT_List (Remaining, t)
-    | <:ident< $lid:"list"$ >>,   ExprDec e, Some t ->
+    | <:ident< $lid:"list"$ >>, (None, Some e), Some t ->
       PT_List (ExprLen e, t)
-    | <:ident< $lid:"list"$ >>,   VarLenDec <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, Some t ->
+    | <:ident< $lid:"list"$ >>, (Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None), Some t ->
       PT_List (VarLen int_t, t)
     | <:ident< $lid:"list"$ >> as i,   _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid list type")
 
-    | <:ident< $lid:"array"$ >>, ExprDec e, Some t ->
+    | <:ident< $lid:"array"$ >>, (None, Some e), Some t ->
       PT_Array (e, t)
-    | <:ident< $lid:"container"$ >>, ExprDec e, Some t ->
+
+    | <:ident< $lid:"container"$ >>, (None, Some e), Some t ->
       PT_Container (ExprLen e, t)
-    | <:ident< $lid:"container"$ >>, VarLenDec <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, Some t ->
+    | <:ident< $lid:"container"$ >>, (Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None), Some t ->
       PT_Container (VarLen int_t, t)
     | <:ident< $lid:"container"$ >> as i, _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid container type")
 
-    | <:ident< $lid:"string"$ >>,    NoDec, None-> PT_String (Remaining, false)
-    | <:ident< $lid:"binstring"$ >>, NoDec, None -> PT_String (Remaining, true)
-    | <:ident< $lid:"string"$ >>,    ExprDec e, None ->
+    | <:ident< $lid:"string"$ >>,    (None, None), None-> PT_String (Remaining, false)
+    | <:ident< $lid:"binstring"$ >>, (None, None), None -> PT_String (Remaining, true)
+    | <:ident< $lid:"string"$ >>,    (None, Some e), None ->
       PT_String (ExprLen e, false)
-    | <:ident< $lid:"binstring"$ >>, ExprDec e, None ->
+    | <:ident< $lid:"binstring"$ >>, (None, Some e), None ->
       PT_String (ExprLen e, true)
-    | <:ident< $lid:"string"$ >>,    VarLenDec <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None ->
+    | <:ident< $lid:"string"$ >>,    (Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None), None ->
       PT_String (VarLen int_t, false)
-    | <:ident< $lid:"binstring"$ >>, VarLenDec <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None ->
+    | <:ident< $lid:"binstring"$ >>, (Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None), None ->
       PT_String (VarLen int_t, true)
     | <:ident< $lid:("string" | "binstring")$ >> as i, _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid string type")
 
-    | <:ident< $lid:"check"$ >>,      NoDec, Some (PT_Custom (m, n, args)) ->
+    | <:ident< $lid:"check"$ >>,    (None, None), Some (PT_Custom (m, n, args, [])) ->
       PT_CheckFunction (m, n, args, false)
-    | <:ident< $lid:"checkref"$ >>,   NoDec, Some (PT_Custom (m, n, args)) ->
+    | <:ident< $lid:"checkref"$ >>, (None, None), Some (PT_Custom (m, n, args, [])) ->
       PT_CheckFunction (m, n, args, true)
     | <:ident< $lid:("check"|"checkref")$ >> as i, _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid check declaration")
 
-    | <:ident< $lid:custom_t$ >>, NoDec, None ->
-      PT_Custom (None, custom_t, [])
-    | <:ident< $lid:custom_t$ >>, ExprDec e, None ->
-      PT_Custom (None, custom_t, list_of_sem_expr e)
-    | <:ident< $uid:module_name$.$lid:custom_t$ >>, NoDec, None ->
-      PT_Custom (Some module_name, custom_t, [])
-    | <:ident< $uid:module_name$.$lid:custom_t$ >>, ExprDec e, None ->
-      PT_Custom (Some module_name, custom_t, list_of_sem_expr e)
+    | custom_identifier, (dec1, dec2), None ->
+      let module_name, name = qname_ident (custom_identifier)
+      and e1 = expr_list_of_decorator dec1
+      and e2 = expr_list_of_decorator dec2 in
+      PT_Custom (module_name, name, e1@e2, e1)
 
     | i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid identifier for a type")
 
@@ -378,8 +387,8 @@ let rec ocaml_type_of_ptype _loc = function
   | PT_List (_, subtype) -> <:ctyp< list $ocaml_type_of_ptype _loc subtype$ >>
   | PT_Array (_, subtype) -> <:ctyp< array $ocaml_type_of_ptype _loc subtype$ >>
   | PT_Container (_, subtype) -> ocaml_type_of_ptype _loc subtype
-  | PT_Custom (None, n, _) -> <:ctyp< $lid:n$ >>
-  | PT_Custom (Some m, n, _) -> <:ctyp< $uid:m$.$lid:n$ >>
+  | PT_Custom (None, n, _, _) -> <:ctyp< $lid:n$ >>
+  | PT_Custom (Some m, n, _, _) -> <:ctyp< $uid:m$.$lid:n$ >>
 
 
 (* Struct type *)
@@ -516,11 +525,11 @@ let rec fun_of_ptype ftype _loc name t =
       fun_of_ptype ftype _loc name subtype
 
   (* Custom *)
-    | PT_Custom (m, n, e), (Parse|LwtParse) ->
+    | PT_Custom (m, n, e, _), (Parse|LwtParse) ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
-    | PT_Custom (m, n, _), Dump ->
-      apply_exprs _loc (exp_qname _loc m (prefix ^ n)) []
-    | PT_Custom (m, n, _), Print -> exp_qname _loc m (prefix ^ n)
+    | PT_Custom (m, n, _, e), Dump ->
+      apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
+    | PT_Custom (m, n, _, _), Print -> exp_qname _loc m (prefix ^ n)
 
   (* Check functions *)
     | PT_CheckFunction (m, n, e, false), (Parse|LwtParse) ->
@@ -597,7 +606,7 @@ let mk_struct_parse_fun _loc record =
       else <:expr< let $lid:n$ = $f$ input in $tmp$ >>
   in
   let body = mk_body record.fields in
-  let params = record.rparams@["input"] in
+  let params = record.rparse_params@["input"] in
   [ mk_multiple_args_fun _loc ("parse_" ^ record.rname) params body ]
 
 let mk_struct_lwt_parse_fun _loc record =
@@ -615,13 +624,13 @@ let mk_struct_lwt_parse_fun _loc record =
   in
   if record.rdo_lwt then begin
     let body = mk_body record.fields in
-    let params = record.rparams@["input"] in
+    let params = record.rparse_params@["input"] in
     [ mk_multiple_args_fun _loc ("lwt_parse_" ^ record.rname) params body ]
   end else []
 
 let mk_struct_exact_parse _loc record =
   if record.rdo_exact
-  then mk_exact_parse_fun _loc record.rname record.rparams
+  then mk_exact_parse_fun _loc record.rname record.rparse_params
   else []
 
 
@@ -637,7 +646,8 @@ let mk_struct_dump_fun _loc record =
     <:expr< let $lid:"fields_dumped"$ = $fields_dumped_expr$ in
 	    String.concat "" fields_dumped >>
   in
-  [ mk_multiple_args_fun _loc ("dump_" ^ record.rname) [record.rname] body ]
+  let params = record.rdump_params@[record.rname] in
+  [ mk_multiple_args_fun _loc ("dump_" ^ record.rname) params body ]
 
 let mk_struct_print_fun _loc record =
   let print_one_field (_loc, n, t, optional) =
@@ -679,7 +689,7 @@ let mk_union_parse_fun _loc union =
       then match discriminator with [ $list:cases$ ]
       else $mk_unparsed$ >>
   in
-  let params = union.uparams@["discriminator"; "input"] in
+  let params = union.uparse_params@["discriminator"; "input"] in
   [ mk_multiple_args_fun _loc ("parse_" ^ union.uname)
       ~optargs:["enrich", exp_false _loc] params body ]
 
@@ -703,14 +713,14 @@ let mk_union_lwt_parse_fun _loc union =
 	then match discriminator with [ $list:cases$ ]
 	else $mk_unparsed$ >>
     in
-    let params = union.uparams@["discriminator"; "input"] in
+    let params = union.uparse_params@["discriminator"; "input"] in
     [ mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname)
 	~optargs:["enrich", exp_false _loc] params body ]
   end else []
 
 let mk_union_exact_parse _loc union =
   if union.udo_exact
-  then mk_exact_parse_fun _loc union.uname union.uparams
+  then mk_exact_parse_fun _loc union.uname (union.uparse_params@["discriminator"])
   else []
 
 
@@ -728,7 +738,7 @@ let mk_union_dump_fun _loc union =
   in
   let cases = (List.map mk_case (keep_unique_cons union))@[last_case] in
   let body = <:expr< fun [ $list:cases$ ] >> in
-  [ mk_multiple_args_fun _loc ("dump_" ^ union.uname) [] body ]
+  [ mk_multiple_args_fun _loc ("dump_" ^ union.uname) union.udump_params body ]
 
 let mk_union_print_fun _loc union =
   let mk_case = function
@@ -746,7 +756,7 @@ let mk_union_print_fun _loc union =
   in
   let cases = (List.map mk_case (keep_unique_cons union))@[last_case] in
   let body = <:expr< fun [ $list:cases$ ] >> in
-  [ mk_multiple_args_fun _loc  ("print_" ^ union.uname) [] 
+  [ mk_multiple_args_fun _loc ("print_" ^ union.uname) [] 
       ~optargs:(["indent", <:expr< $str:""$ >>; "name", <:expr< $str:union.uname$ >> ]) body ]
 
 
@@ -754,22 +764,22 @@ let mk_union_print_fun _loc union =
 
 let mk_alias_parse_fun _loc alias =
   let body = <:expr< $fun_of_ptype Parse _loc alias.aname alias.atype$ >> in
-  [ mk_multiple_args_fun _loc ("parse_" ^ alias.aname) alias.aparams body ]
+  [ mk_multiple_args_fun _loc ("parse_" ^ alias.aname) alias.aparse_params body ]
 
 let mk_alias_lwt_parse_fun _loc alias =
   if alias.ado_lwt then begin
     let body = <:expr< $fun_of_ptype LwtParse _loc alias.aname alias.atype$ >> in
-    [ mk_multiple_args_fun _loc ("lwt_parse_" ^ alias.aname) alias.aparams body ]
+    [ mk_multiple_args_fun _loc ("lwt_parse_" ^ alias.aname) alias.aparse_params body ]
   end else []
 
 let mk_alias_exact_parse_fun _loc alias =
   if alias.ado_exact
-  then mk_exact_parse_fun _loc alias.aname alias.aparams
+  then mk_exact_parse_fun _loc alias.aname alias.aparse_params
   else []
 
 let mk_alias_dump_fun _loc alias =
   let body = <:expr< $fun_of_ptype Dump _loc alias.aname alias.atype$ >> in
-  [ mk_multiple_args_fun _loc ("dump_" ^ alias.aname) [] body ]
+  [ mk_multiple_args_fun _loc ("dump_" ^ alias.aname) alias.adump_params body ]
   
 let mk_alias_print_fun _loc alias =
   let body = <:expr< $fun_of_ptype Print _loc alias.aname alias.atype$ >> in
@@ -808,9 +818,10 @@ EXTEND Gram
 
 
   ptype_decorator: [[
-    "("; e = expr; ")" -> ExprDec e
-  | "["; e = expr; "]" -> VarLenDec e
-  | -> NoDec
+    "("; e = expr; ")" -> (None, Some e)
+  | "["; e = expr; "]" -> (Some e, None)
+  | "["; e1 = expr; "]"; "("; e2 = expr; ")" -> (Some e1, Some e2)
+  | -> (None, None)
   ]];
 
   ptype: [[
@@ -866,7 +877,8 @@ EXTEND Gram
       fields = fields;
       rdo_lwt = List.mem DoLwt options;
       rdo_exact = List.mem ExactParser options;
-      rparams = mk_params options
+      rparse_params = mk_params options;
+      rdump_params = [] (* TODO: For now? *)
     } in
     let fns = [mk_struct_type; mk_struct_parse_fun;
 	       mk_struct_lwt_parse_fun; mk_struct_exact_parse;
@@ -886,7 +898,8 @@ EXTEND Gram
       udo_exact = List.mem ExactParser options;
       uenrich = List.mem EnrichByDefault options;
       uexhaustive = List.mem ExhaustiveChoices options;
-      uparams = mk_params options;
+      uparse_params = mk_params options;
+      udump_params = [] (* TODO: For now? *)
     } in
     let fns = [mk_union_enrich_bool; mk_union_type;
 	       mk_union_parse_fun; mk_union_lwt_parse_fun;
@@ -902,7 +915,8 @@ EXTEND Gram
       atype = type_aliased;
       ado_lwt = List.mem DoLwt options;
       ado_exact = List.mem ExactParser options;
-      aparams = mk_params options;
+      aparse_params = mk_params options;
+      adump_params = [] (* TODO: For now? *)
     } in
     let fns = [mk_alias_type; mk_alias_parse_fun;
                mk_alias_lwt_parse_fun; mk_alias_exact_parse_fun;
