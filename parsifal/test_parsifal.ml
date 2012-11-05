@@ -28,12 +28,12 @@ struct st2 [top] = {
 
 alias l1 [top] = list of st
 
-(* struct rsa_public_key_content = { *)
-(*   p_modulus : asn1_integer; *)
-(*   p_publicExponent : asn1_integer; *)
-(* } *)
+struct rsa_public_key_content = {
+  p_modulus : Asn1Engine.der_integer;
+  p_publicExponent : Asn1Engine.der_integer
+}
 
-(* asn1_alias rsa_public_key [top] *)
+asn1_alias rsa_public_key [top]
 
 
 

@@ -211,7 +211,7 @@ let extract_asn1_object_opt name header_constraint parse_content input =
 
 let dump_header c isC t =
   let t_int = int_of_asn1_tag t in
-  if t_int >= 0x1f then raise (Common.NotImplemented "long type");
+  if t_int >= 0x1f then raise (ParsingException (NotImplemented "long type", NoInput));
   let h = ((int_of_asn1_class c) lsl 6) lor
     (if isC then 0x20 else 0) lor t_int in
   String.make 1 (char_of_int h)
@@ -314,6 +314,8 @@ let lwt_extract_asn1_object name header_constraint parse_content input =
 
 (* Boolean *)
 
+type der_boolean = bool
+
 let parse_der_boolean input =
   let value = parse_rem_list parse_uint8 input in
   match value with
@@ -330,14 +332,16 @@ let dump_der_boolean = function
   | true -> String.make 1 '\xff'
   | false -> String.make 1 '\x00'
 
-let print_der_boolean indent name v =
+let print_der_boolean ?indent:(indent="") ?name:(name="der_boolean") v =
   Printf.sprintf "%s%s: %s\n" indent name (string_of_bool v)
 
 
 
 (* Integer *)
 
-let parse_der_int input =
+type der_integer = string
+
+let parse_der_integer input =
   let l = parse_rem_string input in
   let two_first_chars =
     let n = String.length l in
@@ -355,14 +359,16 @@ let parse_der_int input =
   end;
   l
 
-let dump_der_int s = s
+let dump_der_integer s = s
 
-let print_der_int indent name v =
+let print_der_integer ?indent:(indent="") ?name:(name="der_integer") v =
   Printf.sprintf "%s%s: %s\n" indent name (hexdump v)
 
 
+type der_smallint = int
+
 let parse_der_smallint input =
-  let integer_s = parse_der_int input in
+  let integer_s = parse_der_integer input in
   let len = String.length integer_s in
   if (len > 0 && (int_of_char (integer_s.[0]) land 0x80) = 0x80) || (len > 4)
   then raise (Asn1Exception (IntegerOverflow, input))
@@ -392,12 +398,14 @@ let dump_der_smallint i =
   mk_content (sz-1) i;
   res
 
-let print_der_smallint indent name v =
+let print_der_smallint ?indent:(indent="") ?name:(name="der_smallint") v =
   Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
 
 
 
 (* Null *)
+
+type der_null = unit
 
 let parse_der_null input =
   if not (eos input)
@@ -414,6 +422,8 @@ let print_der_null indent name () =
 
 
 (* OId *)
+
+type der_oid = int list
 
 let parse_subid input : int =
   let rec aux accu =
@@ -486,15 +496,19 @@ let register_oid oid s =
   Hashtbl.add rev_oid_directory s oid;
   Hashtbl.add rev_oid_directory (raw_string_of_oid oid) oid
 
-let print_der_oid oid =
-  if !resolve_oids then
-    try Hashtbl.find oid_directory oid
-    with Not_found -> raw_string_of_oid oid
-  else raw_string_of_oid oid
+let print_der_oid ?indent:(indent="") ?name:(name="der_oid") oid =
+  let value = if !resolve_oids then
+      try (Hashtbl.find oid_directory oid) ^ " (" ^ raw_string_of_oid oid ^ ")"
+      with Not_found -> raw_string_of_oid oid
+    else raw_string_of_oid oid
+  in
+  Printf.sprintf "%s%s: %s\n" indent name (value)
 
 
 
 (* Bit String *)
+
+type der_bitstring = int * string
 
 let parse_der_bitstring input =
   let nBits =
@@ -510,10 +524,12 @@ let parse_der_bitstring input =
   (* TODO: Check the trailing bits are zeroed. *)
   (nBits, content)
 
-let dump_der_bitstring nBits s =
+let dump_der_bitstring (nBits, s) =
   let prefix = String.make 1 (char_of_int nBits) in
   prefix ^ s
 
+let print_der_bitstring ?indent:(indent="") ?name:(name="der_bitstring") (nBits, s) =
+  Printf.sprintf "%s%s: [%d] %s\n" indent name nBits s
 
 (* TODO: Enumerated Bit Strings *)
 
@@ -591,17 +607,21 @@ let time_constraint re s input =
 let utc_time_constraint = time_constraint utc_time_re
 let generalized_time_constraint = time_constraint generalized_time_re
 
-let parse_der_octetstring apply_constraints input =
+(* TODO: Cleanup this *)
+
+let parse_der_octetstring_TODO apply_constraints input =
   let res = parse_rem_string input in
   apply_constraints res input
 
-let parse_der_octetstring_s apply_constraints input =
+let parse_der_octetstring apply_constraints input =
   let res = parse_rem_string input in
   ignore (apply_constraints res input);
   res
 
 let dump_der_octetstring s = s
 
+let print_der_octetstring ?indent:(indent="") ?name:(name="der_octetstring") s =
+  Printf.sprintf "%s%s: %s\n" indent name (hexdump s)
 
 
 (* Sequence/Set of *)
@@ -675,7 +695,7 @@ let rec parse_asn1_object input =
   let new_input = get_in input (print_header (c, isC, t)) len in
   let content = match c, isC, t with
     | (C_Universal, false, T_Boolean) -> Boolean (parse_der_boolean new_input)
-    | (C_Universal, false, T_Integer) -> Integer (parse_der_int new_input)
+    | (C_Universal, false, T_Integer) -> Integer (parse_der_integer new_input)
     | (C_Universal, false, T_Null) -> parse_der_null new_input; Null
     | (C_Universal, false, T_OId) -> OId (parse_der_oid new_input)
     | (C_Universal, false, T_BitString) -> let nBits, s = parse_der_bitstring input in BitString (nBits, s)
@@ -687,8 +707,8 @@ let rec parse_asn1_object input =
     | (C_Universal, false, T_T61String)
     | (C_Universal, false, T_VideoString)
     | (C_Universal, false, T_IA5String) -> String (parse_der_octetstring no_constraint new_input, false) (* TODO *)
-    | (C_Universal, false, T_UTCTime) -> String (parse_der_octetstring_s utc_time_constraint new_input, false)
-    | (C_Universal, false, T_GeneralizedTime) -> String (parse_der_octetstring_s generalized_time_constraint new_input, false)
+    | (C_Universal, false, T_UTCTime) -> String (parse_der_octetstring utc_time_constraint new_input, false)
+    | (C_Universal, false, T_GeneralizedTime) -> String (parse_der_octetstring generalized_time_constraint new_input, false)
     | (C_Universal, false, T_GraphicString)
     | (C_Universal, false, T_VisibleString)
     | (C_Universal, false, T_GeneralString)
@@ -738,14 +758,17 @@ let rec dump_asn1_object o =
 
 and dump_asn1_content = function
   | Boolean b -> dump_der_boolean b
-  | Integer i -> dump_der_int i
-  | BitString (nBits, s) -> dump_der_bitstring nBits s
+  | Integer i -> dump_der_integer i
+  | BitString (nBits, s) -> dump_der_bitstring (nBits, s)
   | Null -> dump_der_null ()
   | OId oid -> dump_der_oid oid
   | String (s, _) -> dump_der_octetstring s
   | Constructed l ->
     String.concat "" (List.map dump_asn1_object l)
 
+(* TODO *)
+let print_asn1_object ?indent:(indent="") ?name:(name="asn1_object") _o =
+  Printf.sprintf "%s%s: ASN1_OBJECT\n" indent name
 
 
 
@@ -755,14 +778,6 @@ and dump_asn1_content = function
 (* (\**************************\) *)
 
 (* (\* Useful func *\) *)
-
-
-
-(* let string_of_bitstring raw nBits s = *)
-(*   if raw || nBits <> 0 *)
-(*   then "[" ^ (string_of_int nBits) ^ "]:" ^ (hexdump s) *)
-(*   else hexdump s *)
-
 
 (* let rec string_of_content = function *)
 (*   | Constructed l -> *)

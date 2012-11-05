@@ -118,10 +118,12 @@ let print_lwt_input i =
 type fuzzy_input =
   | StringInput of string_input
   | LwtInput of lwt_input
+  | NoInput
 
 let print_fuzzy_input = function
   | StringInput s -> print_string_input s
   | LwtInput l -> print_lwt_input l
+  | NoInput -> ""
 
 
 type parsing_exception =

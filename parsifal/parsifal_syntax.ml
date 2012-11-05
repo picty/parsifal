@@ -201,6 +201,24 @@ type alias_description = {
 }
 
 
+(* ASN1 Aliases *)
+(* TODO: Add options [keep header/keep raw string] *)
+
+type asn1_alias_type =
+  | Primitive of ptype
+  | Sequence of ptype
+  | SequenceOf of ptype
+
+type asn1_alias_description = {
+  aaname : string;
+  aaheader : string * string;
+  aatype : asn1_alias_type;
+  aado_lwt : bool;
+  aado_exact : bool;
+  aaparse_params : string list;
+  aadump_params : string list;
+}
+
 
 (***************************)
 (* Input AST interpreter   *)
@@ -443,6 +461,16 @@ let mk_union_type _loc union =
 
 let mk_alias_type _loc alias =
   [ <:str_item< type $lid:alias.aname$ = $ocaml_type_of_ptype _loc alias.atype$ >> ]
+
+
+(* ASN1 Alias type *)
+let mk_asn1_alias_type _loc alias =
+  match alias.aatype with
+  | Primitive subtype
+  | Sequence subtype ->
+    [ <:str_item< type $lid:alias.aaname$ = $ocaml_type_of_ptype _loc subtype$ >> ]
+  | SequenceOf subtype -> 
+    [ <:str_item< type $lid:alias.aaname$ = list $ocaml_type_of_ptype _loc subtype$ >> ]
 
 
 (*****************************)
@@ -922,6 +950,25 @@ EXTEND Gram
                mk_alias_lwt_parse_fun; mk_alias_exact_parse_fun;
 	       mk_alias_dump_fun; mk_alias_print_fun ] in
     mk_str_items fns _loc alias_descr
+
+  | "asn1_alias"; asn1_alias_name = ident; opts = option_list ->
+    let options = check_options ASN1Alias opts in
+    let n = lid_of_ident asn1_alias_name in
+    let asn1_alias_descr = {
+      aaname = n;
+      aaheader = ("C_Universal", "T_Sequence") ;
+      aatype = Sequence (PT_Custom (None, n ^ "_content", [], []));
+      aado_lwt = List.mem DoLwt options;
+      aado_exact = List.mem ExactParser options;
+      aaparse_params = mk_params options;
+      aadump_params = [] (* TODO: For now? *)
+    } in
+    let fns = [mk_asn1_alias_type;
+	       (* mk_asn1_alias_parse_fun; *)
+               (* mk_asn1_alias_lwt_parse_fun; mk_asn1_alias_exact_parse_fun; *)
+  	       (* mk_asn1_alias_dump_fun; mk_asn1_alias_print_fun *)
+	      ] in
+    mk_str_items fns _loc asn1_alias_descr
   ]];
 END
 ;;
