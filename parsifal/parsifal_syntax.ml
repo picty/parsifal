@@ -183,6 +183,17 @@ type union_description = {
 }
 
 
+(* Aliases *)
+
+type alias_description = {
+  aname : string;
+  atype : ptype;
+  ado_lwt : bool;
+  ado_exact : bool;
+  aparams : string list;
+}
+
+
 
 (***************************)
 (* Input AST interpreter   *)
@@ -418,6 +429,11 @@ let mk_union_type _loc union =
   let ctyp_ctors = mk_ctors (keep_unique_cons union) in
   [ <:str_item< type $lid:union.uname$ = [ $list:ctyp_ctors$ ] >> ]
 
+
+(* Alias type *)
+
+let mk_alias_type _loc alias =
+  [ <:str_item< type $lid:alias.aname$ = $ocaml_type_of_ptype _loc alias.atype$ >> ]
 
 
 (*****************************)
@@ -732,7 +748,33 @@ let mk_union_print_fun _loc union =
   let body = <:expr< fun [ $list:cases$ ] >> in
   [ mk_multiple_args_fun _loc  ("print_" ^ union.uname) [] 
       ~optargs:(["indent", <:expr< $str:""$ >>; "name", <:expr< $str:union.uname$ >> ]) body ]
- 
+
+
+(* Alias *)
+
+let mk_alias_parse_fun _loc alias =
+  let body = <:expr< $fun_of_ptype Parse _loc alias.aname alias.atype$ >> in
+  [ mk_multiple_args_fun _loc ("parse_" ^ alias.aname) alias.aparams body ]
+
+let mk_alias_lwt_parse_fun _loc alias =
+  if alias.ado_lwt then begin
+    let body = <:expr< $fun_of_ptype LwtParse _loc alias.aname alias.atype$ >> in
+    [ mk_multiple_args_fun _loc ("lwt_parse_" ^ alias.aname) alias.aparams body ]
+  end else []
+
+let mk_alias_exact_parse_fun _loc alias =
+  if alias.ado_exact
+  then mk_exact_parse_fun _loc alias.aname alias.aparams
+  else []
+
+let mk_alias_dump_fun _loc alias =
+  let body = <:expr< $fun_of_ptype Dump _loc alias.aname alias.atype$ >> in
+  [ mk_multiple_args_fun _loc ("dump_" ^ alias.aname) [] body ]
+  
+let mk_alias_print_fun _loc alias =
+  let body = <:expr< $fun_of_ptype Print _loc alias.aname alias.atype$ >> in
+  [ mk_multiple_args_fun _loc ("print_" ^ alias.aname) [] 
+      ~optargs:(["indent", <:expr< $str:""$ >>; "name", <:expr< $str:alias.aname$ >> ]) body ]
 
 
 (************************)
@@ -851,6 +893,21 @@ EXTEND Gram
 	       mk_union_exact_parse;
 	       mk_union_dump_fun; mk_union_print_fun ] in
     mk_str_items fns _loc union_descr
+
+  | "alias"; alias_name = ident; opts = option_list;
+    "="; type_aliased = ptype ->
+    let options = check_options Alias opts in
+    let alias_descr = {
+      aname = lid_of_ident alias_name;
+      atype = type_aliased;
+      ado_lwt = List.mem DoLwt options;
+      ado_exact = List.mem ExactParser options;
+      aparams = mk_params options;
+    } in
+    let fns = [mk_alias_type; mk_alias_parse_fun;
+               mk_alias_lwt_parse_fun; mk_alias_exact_parse_fun;
+	       mk_alias_dump_fun; mk_alias_print_fun ] in
+    mk_str_items fns _loc alias_descr
   ]];
 END
 ;;

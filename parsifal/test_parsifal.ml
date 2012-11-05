@@ -26,15 +26,23 @@ struct st2 [top] = {
   a : array(l) of uint16
 }
 
-let test_st s =
-  try
-    print_endline (print_st (exact_parse_st (input_of_string "" s)))
-  with ParsingException (e, StringInput i) -> emit_parsing_exception false e i
+alias l1 [top] = list of st
 
-let test_st2 s2 =
+
+let test parse dump print name s =
   try
-    print_endline (print_st2 (exact_parse_st2 (input_of_string "" s2)))
-  with ParsingException (e, StringInput i) -> emit_parsing_exception false e i
+    let x = parse (input_of_string "" s) in
+    print_endline (print x);
+    if (dump x = s)
+    then Printf.printf "Parse/Dump is idempotent for %s\n" name
+    else Printf.printf "Parse/Dump is NOT idempotent for %s\n" name
+  with ParsingException (e, StringInput i) ->
+    Printf.printf "test failed for %s: %s in %s\n" name
+      (print_parsing_exception e) (print_string_input i)
+
+let test_st = test exact_parse_st dump_st print_st "st"
+let test_st2 = test exact_parse_st2 dump_st2 print_st2 "st2"
+let test_l1 = test exact_parse_l1 dump_l1 print_l1 "l1"
 
 let _ =
   print_endline (string_of_tls_version (tls_version_of_int 768));
@@ -44,4 +52,5 @@ let _ =
   test_st "\x04toto\x02AABBCC";
   test_st2 "\x02AABB";
   test_st2 "\x03AABBCC";
-  test_st2 "\x02"
+  test_st2 "\x02";
+  test_l1 "\x04toto\x02AABB\x02yo\x00"
