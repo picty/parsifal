@@ -1,0 +1,479 @@
+open Parsifal
+open Asn1Engine
+
+(* Boolean *)
+
+type der_boolean_content = bool
+
+let parse_der_boolean_content input =
+  let value = parse_rem_list parse_uint8 input in
+  match value with
+    | [] ->
+      emit false BooleanNotInNormalForm input;
+      false
+    | [0] -> false
+    | [255] -> true
+    | v::_ ->
+      emit false BooleanNotInNormalForm input;
+      (v <> 0)
+
+let dump_der_boolean_content = function
+  | true -> String.make 1 '\xff'
+  | false -> String.make 1 '\x00'
+
+let print_der_boolean_content ?indent:(indent="") ?name:(name="der_boolean") v =
+  Printf.sprintf "%s%s: %s\n" indent name (string_of_bool v)
+
+asn1_alias der_boolean = primitive [T_Boolean] der_boolean_content
+
+
+(* Integer *)
+
+type der_integer_content = string
+
+let parse_der_integer_content input =
+  let l = parse_rem_string input in
+  let two_first_chars =
+    let n = String.length l in
+    if n = 0 then []
+    else if n = 1 then [int_of_char l.[0]]
+    else [int_of_char l.[0] ; int_of_char l.[1]]
+  in
+  begin
+    match two_first_chars with
+      | [] -> emit false IntegerNotInNormalForm input
+      | x::y::_ ->
+	if (x = 0xff) || ((x = 0) && (y land 0x80) = 0)
+	then emit false IntegerNotInNormalForm input
+      | _ -> ()
+  end;
+  l
+
+let dump_der_integer_content s = s
+
+let print_der_integer_content ?indent:(indent="") ?name:(name="der_integer") v =
+  Printf.sprintf "%s%s: %s\n" indent name (hexdump v)
+
+asn1_alias der_integer = primitive [T_Integer] der_integer_content
+
+
+type der_smallint_content = int
+
+let parse_der_smallint_content input =
+  let integer_s = parse_der_integer_content input in
+  let len = String.length integer_s in
+  if (len > 0 && (int_of_char (integer_s.[0]) land 0x80) = 0x80) || (len > 4)
+  then raise (Asn1Exception (IntegerOverflow, input))
+  else begin
+    let rec int_of_binstr accu i =
+      if i >= len
+      then accu
+      else int_of_binstr ((accu lsl 8) + (int_of_char integer_s.[i])) (i+1)
+    in int_of_binstr 0 0
+  end
+
+let dump_der_smallint_content i =
+  let rec compute_size rem =
+    if rem < 0x80 then 1
+    else if rem < 0x100 then 2
+    else 1 + (compute_size (rem lsr 8))
+  in
+  let sz = compute_size i in
+  let res = String.make sz '\x00' in
+  let rec mk_content where rem =
+    if rem = 0 then ()
+    else begin
+      res.[where] <- char_of_int (rem land 0xff);
+      mk_content (where - 1) (rem lsr 8)
+    end
+  in
+  mk_content (sz-1) i;
+  res
+
+let print_der_smallint_content ?indent:(indent="") ?name:(name="der_smallint") v =
+  Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
+
+asn1_alias der_smallint = primitive [T_Integer] der_smallint_content
+
+
+(* Null *)
+
+type der_null_content = unit
+
+let parse_der_null_content input =
+  if not (eos input)
+  then begin
+    emit false NullNotInNormalForm input;
+    drop_rem_bytes input;
+  end
+
+let dump_der_null_content () = ""
+
+let print_der_null_content ?indent:(indent="") ?name:(name="der_null_content") () =
+  Printf.sprintf "%s%s\n" indent name
+
+asn1_alias der_null = primitive [T_Null] der_null_content
+
+
+(* OId *)
+
+type der_oid_content = int list
+
+let parse_subid input : int =
+  let rec aux accu =
+    let c = parse_uint8 input in
+    let new_accu = (accu lsl 7) lor (c land 0x7f) in
+    if c land 0x80 != 0
+    then aux new_accu
+    else new_accu
+  in aux 0
+
+let parse_der_oid_content input =
+  let rec aux () =
+    if eos input
+    then []
+    else begin
+      try
+	let next = parse_subid input in
+	next::(aux ())
+      with ParsingException (OutOfBounds, StringInput i) ->
+	emit false OIdNotInNormalForm i;
+	[]
+    end
+  in
+  aux ()
+
+let subid_to_charlist id =
+  let rec aux accu x =
+    if x = 0
+    then accu
+    else aux (((x land 0x7f) lor 0x80)::accu) (x lsr 7)
+  in aux [id land 0x7f] (id lsr 7)
+
+let _string_of_int_list l =
+  let len = List.length l in
+  let res = String.make len ' ' in
+  let rec populate_string i = function
+    | [] -> res
+    | c::r ->
+      res.[i] <- char_of_int c;
+      populate_string (i+1) r
+  in populate_string 0 l
+
+let dump_der_oid_content idlist =
+  let cll = List.map subid_to_charlist idlist in
+  _string_of_int_list (List.flatten cll)
+
+
+let oid_expand = function
+  | [] -> []
+  | x::r ->
+    let a, b = if x >= 80
+      then 2, (x - 80)
+      else (x / 40), (x mod 40)
+    in a::b::r
+
+(* (\* TODO: correctly handle the exception? *\) *)
+(* let oid_squash = function *)
+(*   | a::b::r -> *)
+(*     if ((a = 0 || a = 1) && (b < 40)) || (a = 2) *)
+(*     then (a * 40 + b)::r *)
+(*     else raise (Failure ("Invalid OId")) *)
+(*   | _ -> raise (Failure ("Invalid OId")) *)
+
+
+let raw_string_of_oid oid =
+  String.concat "." (List.map string_of_int (oid_expand oid))
+
+let register_oid oid s =
+  Hashtbl.add oid_directory oid s;
+  Hashtbl.add rev_oid_directory s oid;
+  Hashtbl.add rev_oid_directory (raw_string_of_oid oid) oid
+
+let print_der_oid_content ?indent:(indent="") ?name:(name="der_oid_content") oid =
+  let value = if !resolve_oids then
+      try (Hashtbl.find oid_directory oid) ^ " (" ^ raw_string_of_oid oid ^ ")"
+      with Not_found -> raw_string_of_oid oid
+    else raw_string_of_oid oid
+  in
+  Printf.sprintf "%s%s: %s\n" indent name (value)
+
+asn1_alias der_oid = primitive [T_OId] der_oid_content
+
+
+
+(* Bit String *)
+
+type der_bitstring_content = int * string
+
+let parse_der_bitstring_content input =
+  let nBits =
+    if eos input then begin
+      emit false (BitStringNotInNormalForm "empty") input;
+      0
+    end else parse_uint8 input
+  in
+  let content = parse_rem_string input in
+  let len = (String.length content) * 8 - nBits in
+  if len < 0
+  then emit false (BitStringNotInNormalForm "invalid length") input;
+  (* TODO: Check the trailing bits are zeroed. *)
+  (nBits, content)
+
+let dump_der_bitstring_content (nBits, s) =
+  let prefix = String.make 1 (char_of_int nBits) in
+  prefix ^ s
+
+let print_der_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_content") (nBits, s) =
+  Printf.sprintf "%s%s: [%d] %s\n" indent name nBits s
+
+asn1_alias der_bitstring = primitive [T_BitString] der_bitstring_content
+
+
+(* TODO: Enumerated Bit Strings *)
+
+(* let apply_desc desc i = *)
+(*   if i >= 0 && i < Array.length desc *)
+(*   then desc.(i) else raise (OutOfBounds "apply_desc") *)
+
+(* let extract_bit_list s = *)
+(*   let n = String.length s in *)
+(*   let rec extract_from_byte accu i b = *)
+(*     if i = 0 then accu *)
+(*     else extract_from_byte (((b land i) <> 0)::accu) (i lsr 1) b *)
+(*   in *)
+(*   let rec extract_from_str accu offset = *)
+(*     if (offset >= n) then List.rev accu *)
+(*     else extract_from_str (extract_from_byte accu 0x80 (int_of_char s.[offset])) (offset + 1) *)
+(*   in *)
+(*   extract_from_str [] 0 *)
+
+(* let name_bits pstate description l = *)
+(*   let n = Array.length description in *)
+(*   let rec aux i = function *)
+(*     | [] -> [] *)
+(*     | true::r when i >= n -> *)
+(*       asn1_emit NotInNormalForm None (Some "Trailing bits in an enumerated bit string should be null") pstate; *)
+(*       [] *)
+(*     | true::r -> (i)::(aux (i+1) r) *)
+(*     | false::r when i = n -> *)
+(*       asn1_emit NotInNormalForm None (Some "Only significant bit should be put inside an enumerated bit string") pstate; *)
+(*       aux (i+1) r *)
+(*     | false::r -> aux (i+1) r *)
+(*   in aux 0 l *)
+
+(* let enumerated_from_raw_bit_string pstate desc nBits content = *)
+(*   let len = (String.length content) * 8 - nBits in *)
+(*   if len > Array.length desc *)
+(*   then asn1_emit NotInNormalForm None (Some "Bit string is too long") pstate; *)
+(*   let bits = extract_bit_list content in *)
+(*   name_bits pstate desc bits *)
+
+(* let der_to_bitstring description pstate = *)
+(*   let nBits, content = raw_der_to_bitstring pstate in *)
+(*   match description with *)
+(*     | None -> BitString (nBits, content) *)
+(*     | Some desc -> *)
+(*       if !parse_enumerated *)
+(*       then EnumeratedBitString (enumerated_from_raw_bit_string pstate desc nBits content, desc) *)
+(*       else BitString (nBits, content) *)
+
+
+(* Octet String *)
+
+(* TODO: From now on! *)
+
+let no_constraint s _ = s
+
+let utc_time_re =
+  Str.regexp "^\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
+let generalized_time_re =
+  Str.regexp "^\\([0-9][0-9][0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
+
+let time_constraint re s input =
+  try
+    if Str.string_match re s 0 then begin
+      let y = int_of_string (Str.matched_group 1 s)
+      and m = int_of_string (Str.matched_group 2 s)
+      and d = int_of_string (Str.matched_group 3 s)
+      and hh = int_of_string (Str.matched_group 4 s)
+      and mm = int_of_string (Str.matched_group 5 s)
+      and ss = int_of_string (Str.matched_group 6 s) in
+      if m = 0 || m > 12 || d = 0 || d > 31 || hh >= 24 || mm > 59 || ss > 59
+      then emit false InvalidUTCTime input;
+      (y, m, d, hh, mm, ss)
+    end else raise (Asn1Exception (InvalidUTCTime, input))
+  with _ -> raise (Asn1Exception (InvalidUTCTime, input))
+
+let utc_time_constraint = time_constraint utc_time_re
+let generalized_time_constraint = time_constraint generalized_time_re
+
+(* TODO: Cleanup this *)
+
+let parse_der_octetstring_TODO apply_constraints input =
+  let res = parse_rem_string input in
+  apply_constraints res input
+
+let parse_der_octetstring apply_constraints input =
+  let res = parse_rem_string input in
+  ignore (apply_constraints res input);
+  res
+
+let dump_der_octetstring s = s
+
+let print_der_octetstring ?indent:(indent="") ?name:(name="der_octetstring") s =
+  Printf.sprintf "%s%s: %s\n" indent name (hexdump s)
+
+
+
+
+
+(* Generic ASN.1 Object *)
+
+type asn1_object = {
+  a_class : asn1_class;
+  a_tag : asn1_tag;
+  a_content : asn1_content;
+}
+
+and asn1_content =
+  | Boolean of bool
+  | Integer of string
+  | BitString of int * string
+(*  | EnumeratedBitString of (int list) * bitstring_description *)
+  | Null
+  | OId of int list
+  | String of (string * bool)       (* bool : isBinary *)
+  | Constructed of asn1_object list
+
+
+let mk_object c t content = {
+  a_class = c;
+  a_tag = t;
+  a_content = content;
+}
+
+let isConstructed o = match o.a_content with
+  | Constructed _ -> true
+  | _ -> false
+
+
+let rec parse_asn1_object input =
+  let _offset = input.cur_base + input.cur_offset in
+  let old_cur_offset = input.cur_offset in
+  let c, isC, t = extract_header input in
+  let len = extract_length input in
+  let _hlen = input.cur_offset - old_cur_offset in
+  let new_input = get_in input (print_header (c, isC, t)) len in
+  let content = match c, isC, t with
+    | (C_Universal, false, T_Boolean) -> Boolean (parse_der_boolean new_input)
+    | (C_Universal, false, T_Integer) -> Integer (parse_der_integer new_input)
+    | (C_Universal, false, T_Null) -> parse_der_null new_input; Null
+    | (C_Universal, false, T_OId) -> OId (parse_der_oid new_input)
+    | (C_Universal, false, T_BitString) -> let nBits, s = parse_der_bitstring input in BitString (nBits, s)
+    | (C_Universal, false, T_OctetString) -> String (parse_der_octetstring no_constraint new_input, true)
+
+    | (C_Universal, false, T_UTF8String)
+    | (C_Universal, false, T_NumericString)
+    | (C_Universal, false, T_PrintableString)
+    | (C_Universal, false, T_T61String)
+    | (C_Universal, false, T_VideoString)
+    | (C_Universal, false, T_IA5String) -> String (parse_der_octetstring no_constraint new_input, false) (* TODO *)
+    | (C_Universal, false, T_UTCTime) -> String (parse_der_octetstring utc_time_constraint new_input, false)
+    | (C_Universal, false, T_GeneralizedTime) -> String (parse_der_octetstring generalized_time_constraint new_input, false)
+    | (C_Universal, false, T_GraphicString)
+    | (C_Universal, false, T_VisibleString)
+    | (C_Universal, false, T_GeneralString)
+    | (C_Universal, false, T_UniversalString)
+    | (C_Universal, false, T_UnspecifiedCharacterString)
+    | (C_Universal, false, T_BMPString) -> String (parse_der_octetstring no_constraint input, false) (* TODO *)
+
+    | (C_Universal, true, T_Sequence)
+    | (C_Universal, true, T_Set) -> Constructed (parse_der_constructed new_input)
+
+    | (C_Universal, false, t) ->
+      emit false (UnknownUniversalObject (false, t)) new_input;
+      String (parse_der_octetstring no_constraint new_input, true)
+
+    | (C_Universal, true, t) ->
+      emit false (UnknownUniversalObject (true, t)) new_input;
+      Constructed (parse_der_constructed new_input)
+
+    | (_, false, _) -> String (parse_der_octetstring no_constraint new_input, true)
+    | (_, true, _)  -> Constructed (parse_der_constructed new_input)
+  in
+  get_out input new_input;
+  mk_object c t content
+
+and parse_der_constructed input =
+  let rec parse_aux accu =
+    if eos input
+    then List.rev accu
+    else
+      let next = parse_asn1_object input in
+      parse_aux (next::accu)
+  in parse_aux []
+
+let parse_asn1_object_opt input =
+  let tmp_offset = input.cur_offset in
+  try
+    Some (parse_asn1_object input)
+  with (Asn1Exception _) ->
+    input.cur_offset <- tmp_offset;
+    None
+
+let rec dump_asn1_object o =
+  let hdr = dump_header o.a_class (isConstructed o) o.a_tag in
+  let content = dump_asn1_content o.a_content in
+  let len = dump_length (String.length content) in
+  hdr ^ len ^ content
+
+and dump_asn1_content = function
+  | Boolean b -> dump_der_boolean b
+  | Integer i -> dump_der_integer i
+  | BitString (nBits, s) -> dump_der_bitstring (nBits, s)
+  | Null -> dump_der_null ()
+  | OId oid -> dump_der_oid oid
+  | String (s, _) -> dump_der_octetstring s
+  | Constructed l ->
+    String.concat "" (List.map dump_asn1_object l)
+
+(* TODO *)
+let print_asn1_object ?indent:(indent="") ?name:(name="asn1_object") _o =
+  Printf.sprintf "%s%s: ASN1_OBJECT\n" indent name
+
+
+(* (\**************************\) *)
+(* (\* Content pretty printer *\) *)
+(* (\**************************\) *)
+
+(* (\* Useful func *\) *)
+
+(* let rec string_of_content = function *)
+(*   | Constructed l -> *)
+(*     let objects = List.map string_of_object l in *)
+(*     PrinterLib._flatten_strlist [] true objects *)
+(*   | Null -> [], false *)
+(*   | Boolean true -> ["true"], false *)
+(*   | Boolean false -> ["false"], false *)
+(*   | Integer i -> ["0x" ^ (hexdump i)], false *)
+(*   | BitString (nBits, s) -> [string_of_bitstring !PrinterLib.raw_display nBits s], false *)
+(*   | EnumeratedBitString (l, desc) -> ["[" ^ (String.concat ", " (List.map (apply_desc desc) l)) ^ "]"], false *)
+(*   | OId oid -> [string_of_oid oid], false *)
+(*   | String (s, true) -> ["[HEX:]" ^ (hexdump s)], false *)
+(*   | String (s, false) -> [if !PrinterLib.raw_display then hexdump s else s], false *)
+
+(* and string_of_object o = *)
+(*   let type_string = *)
+(*     if !PrinterLib.raw_display *)
+(*     then string_of_header_raw o.a_class (isConstructed o) o.a_tag *)
+(*     else begin *)
+(*       if !PrinterLib.resolve_names *)
+(*       then o.a_name *)
+(*       else string_of_header_pretty o.a_class (isConstructed o) o.a_tag *)
+(*     end *)
+(*   in *)
+(*   let content_string, multiline = string_of_content o.a_content in *)
+(*   if multiline *)
+(*   then PrinterLib._string_of_strlist (Some type_string) (hash_options "" true) content_string *)
+(*   else PrinterLib._string_of_strlist (Some type_string) (only_ml false) content_string *)

@@ -204,15 +204,15 @@ type alias_description = {
 (* ASN1 Aliases *)
 (* TODO: Add options [keep header/keep raw string] *)
 
-type asn1_alias_type =
-  | Primitive of ptype
-  | Sequence of ptype
-  | SequenceOf of ptype
+type asn1_alias_header =
+  | Universal of string
+  | Header of string * int
 
 type asn1_alias_description = {
   aaname : string;
-  aaheader : string * string;
-  aatype : asn1_alias_type;
+  aaheader : asn1_alias_header * bool;
+  aalist : bool;
+  aatype : ptype;
   aado_lwt : bool;
   aado_exact : bool;
   aaparse_params : string list;
@@ -316,6 +316,19 @@ let ptype_of_ident name decorator subtype =
 
     | i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid identifier for a type")
 
+
+(* ASN1 Aliases *)
+
+let asn1_alias_of_ident name hdr =
+  match lid_of_ident name, hdr with
+  | "primitive", Some h -> (h, false), false
+  | "constructed", Some h -> (h, true), false
+  | "constructed_of", Some h -> (h, true), true
+  | ("sequence_of"|"seq_of"), None -> (Universal "T_Sequence", true), true
+  | "set_of", None -> (Universal "T_Set", true), true
+  | "sequence", None -> (Universal "T_Sequence", true), false
+  | "set", None -> (Universal "T_Set", true), false
+  | _ -> Loc.raise (loc_of_ident name) (Failure "invalid identifier for an ASN.1 alias")
 
 
 (*****************************)
@@ -465,12 +478,9 @@ let mk_alias_type _loc alias =
 
 (* ASN1 Alias type *)
 let mk_asn1_alias_type _loc alias =
-  match alias.aatype with
-  | Primitive subtype
-  | Sequence subtype ->
-    [ <:str_item< type $lid:alias.aaname$ = $ocaml_type_of_ptype _loc subtype$ >> ]
-  | SequenceOf subtype -> 
-    [ <:str_item< type $lid:alias.aaname$ = list $ocaml_type_of_ptype _loc subtype$ >> ]
+  if alias.aalist
+  then [ <:str_item< type $lid:alias.aaname$ = list $ocaml_type_of_ptype _loc alias.aatype$ >> ]
+  else [ <:str_item< type $lid:alias.aaname$ = $ocaml_type_of_ptype _loc alias.aatype$ >> ]
 
 
 (*****************************)
@@ -810,9 +820,60 @@ let mk_alias_dump_fun _loc alias =
   [ mk_multiple_args_fun _loc ("dump_" ^ alias.aname) alias.adump_params body ]
   
 let mk_alias_print_fun _loc alias =
-  let body = <:expr< $fun_of_ptype Print _loc alias.aname alias.atype$ >> in
+  let body = <:expr< $fun_of_ptype Print _loc alias.aname alias.atype$ ~indent:indent ~name:name >> in
   [ mk_multiple_args_fun _loc ("print_" ^ alias.aname) [] 
       ~optargs:(["indent", <:expr< $str:""$ >>; "name", <:expr< $str:alias.aname$ >> ]) body ]
+
+
+(* ASN1 Alias *)
+
+let split_header _loc = function
+  | Universal t, isC ->
+    <:expr< Asn1Engine.C_Universal >>, exp_bool _loc isC, <:expr< Asn1Engine.$uid:t$ >>
+  | Header (c, t), isC ->
+    <:expr< Asn1Engine.$uid:c$ >>, exp_bool _loc isC, <:expr< $int:string_of_int t$ >>
+
+let mk_asn1_alias_parse_fun _loc alias =
+  let c, isC, t = split_header _loc alias.aaheader in
+  let header_constraint = <:expr< Asn1Engine.AH_Simple ($c$, $isC$, $t$) >>
+  and parse_content = fun_of_ptype Parse _loc (alias.aaname ^ "_content") alias.aatype in
+  let body =
+    if alias.aalist
+    then failwith "SequenceOf not implemented yet"
+    else <:expr< Asn1Engine.extract_asn1_object $str:alias.aaname$ $header_constraint$ $parse_content$ >>
+  in
+  [ mk_multiple_args_fun _loc ("parse_" ^ alias.aaname) alias.aaparse_params body ]
+
+let mk_asn1_alias_lwt_parse_fun _loc alias =
+  if alias.aado_lwt then begin
+    failwith "lwtparse not written yet"
+  end else []
+
+let mk_asn1_alias_exact_parse_fun _loc alias =
+  if alias.aado_exact
+  then mk_exact_parse_fun _loc alias.aaname alias.aaparse_params
+  else []
+
+let mk_asn1_alias_dump_fun _loc alias =
+  (* TODO: improve this! *)
+  let c, isC, t = split_header _loc alias.aaheader in
+  let dump_content = fun_of_ptype Dump _loc (alias.aaname ^ "_content") alias.aatype in
+  let body =
+    if alias.aalist
+    then failwith "SequenceOf not implemented yet"
+    else <:expr< Asn1Engine.produce_asn1_object $c$ $isC$ $t$ $dump_content$ >>
+  in
+  [ mk_multiple_args_fun _loc ("dump_" ^ alias.aaname) alias.aadump_params body ]
+  
+let mk_asn1_alias_print_fun _loc alias =
+  let print_content = fun_of_ptype Print _loc (alias.aaname ^ "_content") alias.aatype in
+  let body =
+    if alias.aalist
+    then failwith "SequenceOf not implemented yet"
+    else <:expr< $print_content$ ~indent:indent ~name:name >>
+  in
+  [ mk_multiple_args_fun _loc ("print_" ^ alias.aaname) [] 
+      ~optargs:(["indent", <:expr< $str:""$ >>; "name", <:expr< $str:alias.aaname$ >> ]) body ]
 
 
 (************************)
@@ -827,6 +888,24 @@ let mk_str_items funs _loc x =
     | si::r -> <:str_item< $si$; $mk_sequence r$ >>
   in
   mk_sequence (List.concat (List.map _apply funs))
+
+
+let mk_asn1_alias _loc opts name is_list_of hdr subtype =
+  let options = check_options ASN1Alias opts in
+  let asn1_alias_descr = {
+    aaname = name;
+    aalist = is_list_of;
+    aaheader = hdr;
+    aatype = subtype;
+    aado_lwt = List.mem DoLwt options;
+    aado_exact = List.mem ExactParser options;
+    aaparse_params = mk_params options;
+    aadump_params = [] (* TODO: For now? *)
+  } in
+  let fns = [mk_asn1_alias_type; mk_asn1_alias_parse_fun;
+             mk_asn1_alias_lwt_parse_fun; mk_asn1_alias_exact_parse_fun;
+  	     mk_asn1_alias_dump_fun; mk_asn1_alias_print_fun ] in
+  mk_str_items fns _loc asn1_alias_descr
 
 
 EXTEND Gram
@@ -875,6 +954,13 @@ EXTEND Gram
   union_unparsed_behaviour: [[
     unparsed_const = ident -> (uid_of_ident unparsed_const, PT_String (Remaining, true))
   | unparsed_const = ident; "of"; unparsed_type = ptype -> (uid_of_ident unparsed_const, unparsed_type)
+  ]];
+
+
+  asn1_aliased_type_decorator: [[
+    "["; tag = ident; "]" -> Some (Universal (uid_of_ident tag))
+  | "["; aclass = ident; "," ; tag = INT; "]" -> Some (Header (uid_of_ident aclass, int_of_string tag))
+  | -> None
   ]];
 
 
@@ -951,24 +1037,17 @@ EXTEND Gram
 	       mk_alias_dump_fun; mk_alias_print_fun ] in
     mk_str_items fns _loc alias_descr
 
-  | "asn1_alias"; asn1_alias_name = ident; opts = option_list ->
-    let options = check_options ASN1Alias opts in
+  | "asn1_alias"; asn1_alias_name = ident; opts = option_list;
+    "="; alias_sort = ident; asn1_hdr = asn1_aliased_type_decorator; t = ptype ->
+    let hdr, is_list_of = asn1_alias_of_ident alias_sort asn1_hdr in
     let n = lid_of_ident asn1_alias_name in
-    let asn1_alias_descr = {
-      aaname = n;
-      aaheader = ("C_Universal", "T_Sequence") ;
-      aatype = Sequence (PT_Custom (None, n ^ "_content", [], []));
-      aado_lwt = List.mem DoLwt options;
-      aado_exact = List.mem ExactParser options;
-      aaparse_params = mk_params options;
-      aadump_params = [] (* TODO: For now? *)
-    } in
-    let fns = [mk_asn1_alias_type;
-	       (* mk_asn1_alias_parse_fun; *)
-               (* mk_asn1_alias_lwt_parse_fun; mk_asn1_alias_exact_parse_fun; *)
-  	       (* mk_asn1_alias_dump_fun; mk_asn1_alias_print_fun *)
-	      ] in
-    mk_str_items fns _loc asn1_alias_descr
+    mk_asn1_alias _loc opts n is_list_of hdr t
+
+  | "asn1_alias"; asn1_alias_name = ident; opts = option_list ->
+    let n = lid_of_ident asn1_alias_name in
+    mk_asn1_alias _loc opts n false (Universal "T_Sequence", true)
+      (PT_Custom (None, n ^ "_content", [], []))
+
   ]];
 END
 ;;
