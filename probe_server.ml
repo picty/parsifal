@@ -62,6 +62,10 @@ let update_both_versions s =
   ch_version := tls_version_of_string s;
   ActionDone
 
+let deep_parse () =
+  enrich__certificate := true;
+  enrich__distinguished_name := true
+
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
@@ -83,6 +87,8 @@ let options = [
 
   mkopt None "record-size" (IntVal plaintext_chunk_size) "set the size of the records sent";
   mkopt (Some 't') "timeout" (FloatVal timeout) "set the timeout";
+
+  mkopt None "deep-parse" (TrivialFun deep_parse) "activate deep parsing for certificates/DNs";
 ]
 
 let getopt_params = {

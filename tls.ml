@@ -77,9 +77,12 @@ struct new_session_ticket = {
   ticket : binstring[uint16]
 }
 
+(* TODO: Add another keyword for this kind of unions? *)
+union _certificate [exhaustive] (UnparsedCertificate) =
+  | () -> ParsedCertificate of X509.certificate
+
 struct certificates = {
-  (* TODO: change this since it should be either binstring either cert *)
-  certificate_list : list[uint24] of binstring[uint24]
+  certificate_list : list[uint24] of container[uint24] of _certificate(())
 }
 
 struct server_dh_params = {
@@ -140,11 +143,13 @@ struct signature_and_hash_algorithm = {
   signature_algorithm : signature_algorithm
 }
 
+union _distinguished_name [exhaustive] (UnparsedDN) =
+  | () -> ParsedDN of X509.distinguished_name
+
 struct certificate_request = {
   certificate_types : client_certificate_type;
   supported_signature_algorithms : list[uint16] of signature_and_hash_algorithm;
-  (* TODO: change this since it should be either binstring either dn *)
-  certificate_authorities : list[uint16] of binstring[uint16]
+  certificate_authorities : list[uint16] of container[uint16] of _distinguished_name(())
 }
 
 union handshake_content [enrich; param context] (Unparsed_HSContent) =

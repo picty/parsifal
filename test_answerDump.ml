@@ -138,19 +138,19 @@ let rec handle_one_file input =
       	  | [] -> None
       	  | { content_type = CT_Handshake;
       	      record_content = Handshake {
-      		handshake_type = HT_Certificate;
-      		handshake_content = Certificate {certificate_list = cert_string::_} }}::_ ->
+              handshake_type = HT_Certificate;
+              handshake_content = Certificate {certificate_list = (UnparsedCertificate cert_string)::_} }}::_ ->
       	    begin
       	      try
       		let cert = parse_certificate (input_of_string "" cert_string) in
-      		let extract_string atv = match atv.attributeValue with
-      		  | { a_content = String (s, _)} -> "\"" ^ s ^ "\""
-      		  | _ -> "\"\""
-      		in
+		let extract_string atv = match atv.attributeValue with
+		  | { a_content = String (s, _)} -> "\"" ^ s ^ "\""
+		  | _ -> "\"\""
+		in
       		Some (String.concat ", " (List.map extract_string (List.flatten cert.tbsCertificate.subject)))
       	      with _ -> None
       	    end
-      	  | _::r -> extractSubjectOfFirstCert r
+          | _::r -> extractSubjectOfFirstCert r
       	in
       	begin
       	  match extractSubjectOfFirstCert records with
