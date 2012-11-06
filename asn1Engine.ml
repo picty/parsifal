@@ -264,6 +264,7 @@ let _lwt_extract_der_object name header_constraint parse_content input =
     cur_base = 0;
     cur_offset = offset;
     cur_length = -1;
+    enrich = input.lwt_enrich;
     history = []
   } in
   check_header header_constraint fake_input (c, isC, t);

@@ -7,8 +7,8 @@ let merge_records ?context:(ctx=None) ?enrich:(enrich=true) recs =
     let merged_contents = String.concat "" (List.rev contents) in
     let real_content =
       try
-	let input = input_of_string "Merged records" merged_contents in
-	parse_record_content ctx ~enrich:enrich ct input
+	let input = input_of_string ~enrich:enrich "Merged records" merged_contents in
+	parse_record_content ctx ct input
       with ParsingException _ -> Unparsed_Record merged_contents
     in
     { content_type = ct;

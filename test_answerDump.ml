@@ -57,7 +57,7 @@ let parse_all_records answer =
       if eos i then split_records accu ctx None recs
       else begin
 	try
-	  let next_content = parse_record_content ctx ~enrich:true ct i in
+	  let next_content = parse_record_content ctx ct { i with enrich=true } in
 	  let next_record = {
 	    content_type = ct;
 	    record_version = v;

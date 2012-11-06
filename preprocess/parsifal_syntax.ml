@@ -723,13 +723,12 @@ let mk_union_parse_fun _loc union =
   and last_case = <:match_case< _ -> $mk_unparsed$ >> in
   let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
   let body =
-    <:expr< if Parsifal.should_enrich $lid:"enrich_" ^ union.uname$ enrich
+    <:expr< if Parsifal.should_enrich $lid:"enrich_" ^ union.uname$ input.Parsifal.enrich
       then match discriminator with [ $list:cases$ ]
       else $mk_unparsed$ >>
   in
   let params = union.uparse_params@["discriminator"; "input"] in
-  [ mk_multiple_args_fun _loc ("parse_" ^ union.uname)
-      ~optargs:["enrich", exp_false _loc] params body ]
+  [ mk_multiple_args_fun _loc ("parse_" ^ union.uname) params body ]
 
 let mk_union_lwt_parse_fun _loc union =
   let mk_case = function
@@ -747,13 +746,12 @@ let mk_union_lwt_parse_fun _loc union =
     and last_case = <:match_case< _ -> $mk_unparsed$ >> in
     let cases = if union.uexhaustive then parsed_cases else parsed_cases@[last_case] in
     let body =
-      <:expr< if Parsifal.should_enrich $lid:"enrich_" ^ union.uname$ enrich
+      <:expr< if Parsifal.should_enrich $lid:"enrich_" ^ union.uname$ input.Parsifal.lwt_enrich
 	then match discriminator with [ $list:cases$ ]
 	else $mk_unparsed$ >>
     in
     let params = union.uparse_params@["discriminator"; "input"] in
-    [ mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname)
-	~optargs:["enrich", exp_false _loc] params body ]
+    [ mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname) params body ]
   end else []
 
 let mk_union_exact_parse _loc union =

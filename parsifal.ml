@@ -93,6 +93,7 @@ type string_input = {
   cur_base : int;
   mutable cur_offset : int;
   cur_length : int;
+  mutable enrich : bool;    (* TODO: This should be more than a bool *)
   history : history
 }
 
@@ -101,7 +102,8 @@ type lwt_input = {
   lwt_name : string;
   mutable lwt_offset : int;
   lwt_rewindable : bool;
-  lwt_length : int;
+  mutable lwt_length : int;
+  lwt_enrich : bool         (* TODO: This should be more than a bool *)
 }
 
 let print_history ?prefix:(prefix=" in ") history =
@@ -156,12 +158,13 @@ let lwt_emit_parsing_exception fatal e i =
 
 (* string_input manipulation *)
 
-let input_of_string name s = {
+let input_of_string ?enrich:(enrich=false) name s = {
     str = s;
     cur_name = name;
     cur_base = 0;
     cur_offset = 0;
     cur_length = String.length s;
+    enrich = enrich;
     history = []
   }
 
@@ -174,6 +177,7 @@ let get_in input name len =
     cur_base = input.cur_base + input.cur_offset;
     cur_offset = 0;
     cur_length = len;
+    enrich = input.enrich;
     history = new_history
   } else raise (ParsingException (OutOfBounds, new_history))
 
@@ -241,7 +245,7 @@ let channel_length ch =
   and is_not_null x = return (Some (Int64.to_int x))  (* TODO: Warning, integer overflow is possible! *)
   in try_bind get_length is_not_null handle_unix_error
 
-let input_of_channel name ch =
+let input_of_channel ?enrich:(enrich=false) name ch =
   channel_length ch >>= fun l ->
   let rewindable, length = match l with
     | None -> false, 0
@@ -251,15 +255,16 @@ let input_of_channel name ch =
 	   lwt_offset = Int64.to_int (Lwt_io.position ch);
 	   (* TODO: Possible integer overflow in 32-bit *)
 	   lwt_rewindable = rewindable;
-	   lwt_length = length }
+	   lwt_length = length;
+	   lwt_enrich = enrich }
 
-let input_of_fd name fd =
+let input_of_fd ?enrich:(enrich=false) name fd =
   let ch = Lwt_io.of_fd Lwt_io.input fd in
-  input_of_channel name ch
+  input_of_channel ~enrich:enrich name ch
 
-let input_of_filename filename =
+let input_of_filename ?enrich:(enrich=false) filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  input_of_fd filename fd
+  input_of_fd ~enrich:enrich filename fd
 
 
 let lwt_really_read input len =
@@ -284,6 +289,7 @@ let lwt_get_in input name len =
     cur_base = 0;
     cur_offset = 0;
     cur_length = len;
+    enrich = input.lwt_enrich;
     history = [input.lwt_name, input.lwt_offset, None]
   }
 
