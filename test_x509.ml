@@ -56,7 +56,16 @@ let handle_input input =
       in
       print_endline ("[" ^ String.concat ", " (List.map extract_string (List.flatten certificate.tbsCertificate.subject)) ^ "]");
       return ()
-    | _ -> fail (Common.NotImplemented "")
+    | Issuer ->
+      let extract_string atv = match atv.attributeValue with
+	| { Asn1PTypes.a_content = String (s, _)} -> "\"" ^ s ^ "\""
+	| _ -> "\"\""
+      in
+      print_endline ("[" ^ String.concat ", " (List.map extract_string (List.flatten certificate.tbsCertificate.issuer)) ^ "]");
+      return ()
+    | Text ->
+      print_endline (print_certificate certificate);
+      return ()
 
 let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
