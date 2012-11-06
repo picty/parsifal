@@ -362,7 +362,7 @@ let rec parse_der_object input =
     | (C_Universal, false, T_Integer) -> Integer (parse_der_integer_content new_input)
     | (C_Universal, false, T_Null) -> parse_der_null_content new_input; Null
     | (C_Universal, false, T_OId) -> OId (parse_der_oid_content new_input)
-    | (C_Universal, false, T_BitString) -> let nBits, s = parse_der_bitstring_content input in BitString (nBits, s)
+    | (C_Universal, false, T_BitString) -> let nBits, s = parse_der_bitstring_content new_input in BitString (nBits, s)
     | (C_Universal, false, T_OctetString) -> String (parse_der_octetstring_content no_constraint new_input, true)
 
     | (C_Universal, false, T_UTF8String)
