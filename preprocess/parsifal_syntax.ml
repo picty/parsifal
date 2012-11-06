@@ -827,15 +827,14 @@ let mk_alias_print_fun _loc alias =
 
 (* ASN1 Alias *)
 
-let split_header _loc = function
-  | Universal t, isC ->
-    <:expr< Asn1Engine.C_Universal >>, exp_bool _loc isC, <:expr< Asn1Engine.$uid:t$ >>
-  | Header (c, t), isC ->
-    <:expr< Asn1Engine.$uid:c$ >>, exp_bool _loc isC, <:expr< Asn1Engine.T_Unknown $int:string_of_int t$ >>
+let split_header _loc (hdr, isC) =
+  let _c, _t = match hdr with
+    | Universal t -> <:expr< Asn1Engine.C_Universal >>, <:expr< Asn1Engine.$uid:t$ >>
+    | Header (c, t) -> <:expr< Asn1Engine.$uid:c$ >>, <:expr< Asn1Engine.T_Unknown $int:string_of_int t$ >>
+  in <:expr< ( $_c$, $exp_bool _loc isC$, $_t$ ) >>
 
 let mk_asn1_alias_parse_fun _loc alias =
-  let c, isC, t = split_header _loc alias.aaheader in
-  let header_constraint = <:expr< Asn1Engine.AH_Simple ($c$, $isC$, $t$) >>
+  let header_constraint = split_header _loc alias.aaheader
   and parse_content = fun_of_ptype Parse _loc (alias.aaname ^ "_content") alias.aatype in
   let body =
     if alias.aalist
@@ -846,8 +845,7 @@ let mk_asn1_alias_parse_fun _loc alias =
 
 let mk_asn1_alias_lwt_parse_fun _loc alias =
   if alias.aado_lwt then begin
-    let c, isC, t = split_header _loc alias.aaheader in
-    let header_constraint = <:expr< Asn1Engine.AH_Simple ($c$, $isC$, $t$) >>
+    let header_constraint = split_header _loc alias.aaheader
     and parse_content = fun_of_ptype Parse _loc (alias.aaname ^ "_content") alias.aatype in
     let body =
       if alias.aalist
@@ -864,12 +862,12 @@ let mk_asn1_alias_exact_parse_fun _loc alias =
 
 let mk_asn1_alias_dump_fun _loc alias =
   (* TODO: improve this! *)
-  let c, isC, t = split_header _loc alias.aaheader in
+  let header_constraint = split_header _loc alias.aaheader in
   let dump_content = fun_of_ptype Dump _loc (alias.aaname ^ "_content") alias.aatype in
   let body =
     if alias.aalist
-    then <:expr< Asn1Engine.produce_der_seqof $c$ $isC$ $t$ $dump_content$ >>
-    else <:expr< Asn1Engine.produce_der_object $c$ $isC$ $t$ $dump_content$ >>
+    then <:expr< Asn1Engine.produce_der_seqof $header_constraint$ $dump_content$ >>
+    else <:expr< Asn1Engine.produce_der_object $header_constraint$ $dump_content$ >>
   in
   [ mk_multiple_args_fun _loc ("dump_" ^ alias.aaname) alias.aadump_params body ]
   

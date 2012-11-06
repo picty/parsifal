@@ -417,7 +417,7 @@ and parse_der_constructed_content input =
 
 
 let rec dump_der_object o =
-  let hdr = dump_der_header o.a_class (isConstructed o) o.a_tag in
+  let hdr = dump_der_header (o.a_class, (isConstructed o), o.a_tag) in
   let content = dump_der_content o.a_content in
   let len = dump_der_length (String.length content) in
   hdr ^ len ^ content

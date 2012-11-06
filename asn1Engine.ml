@@ -114,13 +114,6 @@ let emit fatal e i =
   else Printf.fprintf stderr "%s in %s\n" (print_asn1_exception e) (print_string_input i)
 
 
-(* TODO: Is this really necessary? *)
-type expected_header =
-  | AH_Simple of (asn1_class * bool * asn1_tag)
-  | AH_Complex of (asn1_class -> bool -> asn1_tag -> bool)
-
-
-
 (* Header *)
 
 let extract_der_class (x : int) : asn1_class =
@@ -167,20 +160,17 @@ let extract_der_length input =
   end
 
 
-let check_header header_constraint input c isC t =
-  match header_constraint with
-    | AH_Simple (exp_c, exp_isC, exp_t) ->
-      if c <> exp_c || isC <> exp_isC || t <> exp_t
-      then raise (Asn1Exception (UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t)), input))
-    | AH_Complex check_fun ->
-      if not (check_fun c isC t)
-      then raise (Asn1Exception (UnexpectedHeader ((c, isC, t), None), input))
+let check_header ((exp_c, exp_isC, exp_t) as exp_hdr) input ((c, isC, t) as hdr) =
+  if hdr <> exp_hdr
+  (* TODO! *)
+  (* then raise (Asn1Exception (UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t)), input)) *)
+  then raise (ParsingException (CustomException "UnexpectedHeader", StringInput input))
 
 let _extract_der_object name header_constraint parse_content input =
   let offset = input.cur_base + input.cur_offset in
   let old_cur_offset = input.cur_offset in
   let c, isC, t = extract_der_header input in
-  check_header header_constraint input c isC t;
+  check_header header_constraint input (c, isC, t);
   let len = extract_der_length input in
   let hlen = input.cur_offset - old_cur_offset in
   let new_input = get_in input name len in
@@ -202,7 +192,7 @@ let extract_der_object name header_constraint parse_content input =
   res
 
 
-let dump_der_header c isC t =
+let dump_der_header (c, isC, t) =
   let t_int = int_of_asn1_tag t in
   if t_int >= 0x1f then raise (ParsingException (NotImplemented "long type", NoInput));
   let h = ((int_of_asn1_class c) lsl 6) lor
@@ -228,9 +218,9 @@ let dump_der_length l =
     aux res 1 l;
     res
 
-let produce_der_object c isC t dump_content v =
+let produce_der_object hdr dump_content v =
   let content_dumped = dump_content v in
-  (dump_der_header c isC t) ^ (dump_der_length (String.length content_dumped)) ^ content_dumped
+  (dump_der_header hdr) ^ (dump_der_length (String.length content_dumped)) ^ content_dumped
 
 
 
@@ -282,7 +272,7 @@ let _lwt_extract_der_object name header_constraint parse_content input =
     cur_length = -1;
     history = []
   } in
-  check_header header_constraint fake_input c isC t;
+  check_header header_constraint fake_input (c, isC, t);
   let hlen = input.lwt_offset - offset in
   lwt_extract_der_length input >>= fun len ->
   lwt_get_in input name len >>= fun new_input ->
@@ -294,7 +284,7 @@ let _lwt_extract_der_object name header_constraint parse_content input =
     a_isConstructed = isC;
     a_tag = t;
   }
-  and raw_string () = (dump_der_header c isC t) ^ (dump_der_length len) ^ new_input.str in
+  and raw_string () = (dump_der_header (c, isC, t)) ^ (dump_der_length len) ^ new_input.str in
   let res = parse_content new_input in
   lwt_get_out input new_input >>= fun () ->
   return (res, der_info, raw_string)
@@ -325,11 +315,11 @@ let lwt_extract_der_seqof name header_constraint (* min max *) lwt_parse_content
       lwt_parse_aux (next::accu) input
   in lwt_extract_der_object name header_constraint (lwt_parse_aux []) input
 
-let produce_der_seqof c isC t dump_content l =
+let produce_der_seqof header_constraint dump_content l =
   let rec dump_der_list_aux accu = function
     | [] -> String.concat "" (List.rev accu)
     | x::r ->
       let next = dump_content x in
       dump_der_list_aux (next::accu) r
   in
-  produce_der_object c isC t (dump_der_list_aux []) l
+  produce_der_object header_constraint (dump_der_list_aux []) l
