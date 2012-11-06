@@ -441,3 +441,22 @@ and print_der_content ?indent:(indent="") ?name:(name="der_object") = function
   | String (s, true) -> print_binstring ~indent:indent ~name:name s
   | String (s, false) -> print_printablestring ~indent:indent ~name:name s
   | Constructed l -> print_list print_der_object ~indent:indent ~name:name l
+
+
+
+(* ASN.1 Containers *)
+
+let parse_bitstring_container parse_fun input =
+  let (_nbits, content) = parse_der_bitstring input in
+  (* TODO:    if nbits <> 0 then *)
+  let new_input = {
+    (input_of_string "subjectPublicKey_content" content) with
+      history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history;
+      enrich = input.enrich
+  } in
+  parse_fun new_input
+
+let dump_bitstring_container dump_fun o =
+  let content = dump_fun o in
+  dump_der_bitstring (0, content)
+  
