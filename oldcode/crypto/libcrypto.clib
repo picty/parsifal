@@ -1,6 +1,0 @@
-crypto/md5.o
-crypto/sha1.o
-crypto/sha2.o
-crypto/sha4.o
-crypto/stubs.o
-crypto/aes.o

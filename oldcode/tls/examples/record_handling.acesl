@@ -1,9 +1,0 @@
-gather := function (s) { local rec; if ! s then [] else rec := record.parse (s); if ! rec then [] else rec::(gather (s)); fi fi }
-gather_from_answer := function (a) { gather (stream (a.ip, a.content)) }
-
-f := open ("108.dump")
-answer := answer_dump.parse (f)
-recs := gather_from_answer (answer)
-recs
-length (recs)
-record.merge (recs)
