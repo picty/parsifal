@@ -3,102 +3,61 @@ open Asn1Engine
 open Parsifal
 open Asn1PTypes
 
-(* Generic functions for asn1Qualified objects *)
-
-type ('a, 'b, 'c) asn1_directory = {
-  qualified_object_name : string;
-  object_type_parse_fun : string_input -> 'a;
-  get_parser : 'a -> (string_input -> 'b);
-  finalizer : 'a -> 'b -> 'c;
-}
-
-let parse_asn1_qualified_object_content dir input =
-  let _object_type = dir.object_type_parse_fun input in
-  let parse_fun = dir.get_parser _object_type in
-  let _object_value = parse_fun input in
-  dir.finalizer _object_type _object_value
 
 
+(* Rewrite this with a union and an intermediate sum type? *)
 
 (* AlgorithmIdentifier *)
+type algorithmParams =
+  | NoParams
+  | UnparsedParams of der_object
 
-type algorithmIdentifier_content = {
-  algorithmId : int list;
-  algorithmParams : der_object option
+let algoParams_parsers : (int list, (string_input -> algorithmParams)) Hashtbl.t = Hashtbl.create 10
+
+let parse_algorithmParams oid input =
+  let default_parser input = UnparsedParams (parse_der_object input) in
+  let f = hash_get algoParams_parsers oid default_parser in
+  f input
+
+let dump_algorithmParams _ = raise (ParsingException (NotImplemented "dump_algorithmParams", []))
+let print_algorithmParams ?indent:(indent="") ?name:(name="algorithmParams") = function
+  | NoParams -> ""
+  | UnparsedParams o -> print_der_object ~indent:indent ~name:name o
+
+struct algorithmIdentifier_content = {
+  algorithmId : der_oid;
+  optional algorithmParams : algorithmParams(algorithmId)
 }
-
-let finalize_algorithmIdentifier i p = {
-  algorithmId = i;
-  algorithmParams = p;
-}
-
-let algorithmIdentifier_directory = {
-  qualified_object_name = "algorithmIdentifier";
-  object_type_parse_fun = parse_der_oid;
-  get_parser = (fun _ -> try_parse parse_der_object);
-  finalizer = finalize_algorithmIdentifier;
-}
-
-let parse_algorithmIdentifier_content = parse_asn1_qualified_object_content algorithmIdentifier_directory
-let dump_algorithmIdentifier_content (_x : algorithmIdentifier_content) = failwith "NotImplemented: dump_algorithmIdentifier"
-
-(* TODO *)
-let print_algorithmIdentifier_content ?indent:(indent="") ?name:(name="algorithmIdentifier") (_x : algorithmIdentifier_content) =
-  Printf.sprintf "%s%s: algorithmIdentifer (TODO)\n" indent name
-
 asn1_alias algorithmIdentifier
 
 
-
-
-
 (* SubjectPublicKeyInfo *)
-
-type subjectPublicKey_content =
+type subjectPublicKey =
   | RSA of RSAKey.rsa_public_key
   | UnparsedPublicKey of der_object
 
-type subjectPublicKeyInfo_content = {
-  algorithm : algorithmIdentifier;
-  subjectPublicKey : subjectPublicKey_content;
-}
+let pki_parsers : (int list, (algorithmParams option -> string_input -> subjectPublicKey)) Hashtbl.t = Hashtbl.create 10
 
-let finalize_subjectPublicKeyInfo a spk = {
-  algorithm = a;
-  subjectPublicKey = spk;
-}
-
-let pki_parsers : (int list, (der_object option -> string_input -> subjectPublicKey_content)) Hashtbl.t = Hashtbl.create 10
-
-let default_parser _ input = UnparsedPublicKey (parse_der_object input)
-
-let get_pki_parser algo =
+let parse_subjectPublicKey algo input =
+  let default_parser _ input = UnparsedPublicKey (parse_der_object input) in
   let f = hash_get pki_parsers algo.algorithmId default_parser in
-  let pki_parser input =
-    let (_nbits, pki_content) = parse_der_bitstring input in
-    (* TODO:    if nbits <> 0 then *)
-    let new_input = { (input_of_string "subjectPublicKey_content" pki_content)
-		      with history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history }
-    in f algo.algorithmParams new_input
-  in pki_parser
+  let (_nbits, pki_content) = parse_der_bitstring input in
+  (* TODO:    if nbits <> 0 then *)
+  let new_input = { (input_of_string "subjectPublicKey_content" pki_content)
+                    with history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history }
+  in f algo.algorithmParams new_input
 
+let dump_subjectPublicKey _ = raise (ParsingException (NotImplemented "dump_subjectPublicKey", []))
+let print_subjectPublicKey ?indent:(indent="") ?name:(name="subjectPublicKey") = function
+  | RSA k -> RSAKey.print_rsa_public_key ~indent:indent ~name:name k
+  | UnparsedPublicKey o -> print_der_object ~indent:indent ~name:name o
 
-
-let subjectPublicKeyInfo_directory = {
-  qualified_object_name = "subjectPublicKeyInfo";
-  object_type_parse_fun = parse_algorithmIdentifier;
-  get_parser = get_pki_parser;
-  finalizer = finalize_subjectPublicKeyInfo;
+struct subjectPublicKeyInfo_content = {
+  algorithm : algorithmIdentifier;
+  subjectPublicKey : subjectPublicKey(algorithm)
 }
-
-let parse_subjectPublicKeyInfo_content = parse_asn1_qualified_object_content subjectPublicKeyInfo_directory
-let dump_subjectPublicKeyInfo_content (_x : subjectPublicKeyInfo_content) = failwith "NotImplemented: dump_subjectPublicKeyInfo"
-
-(* TODO *)
-let print_subjectPublicKeyInfo_content ?indent:(indent="") ?name:(name="algorithmIdentifier") (_x : subjectPublicKeyInfo_content) =
-  Printf.sprintf "%s%s: subjectPublicKeyInfo (TODO)\n" indent name
-
 asn1_alias subjectPublicKeyInfo
+
 
 
 (* register the OId in a general table *)
