@@ -51,9 +51,9 @@ struct tbsCertificate_content = {
   validity : validity;
   subject : distinguished_name;
   subjectPublicKeyInfo : X509Util.subjectPublicKeyInfo;
-  (* optional issuerUniqueId : issuerUniqueId; *)
-  (* optional subjectUniqueId : subjectUniqueId; *)
-   extensions : extensions
+  optional issuerUniqueId : issuerUniqueId;
+  optional subjectUniqueId : subjectUniqueId;
+  optional extensions : extensions
 }
 asn1_alias tbsCertificate
 

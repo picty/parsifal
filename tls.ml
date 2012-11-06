@@ -29,25 +29,26 @@ union server_name_content [enrich; exhaustive] (Unparsed_ServerNameContent) =
   | ClientToServer -> ClientServerName of (list[uint16] of server_name)
   | ServerToClient -> ServerServerName
 
+(* TODO: Implement the commented extensions *)
 union hello_extension_content [enrich; param direction] (Unparsed_HelloExtension) =
   | HE_ServerName -> ServerName of server_name_content(direction)
   | HE_MaxFragmentLength -> MaxFragmentLength of uint8
   | HE_ClientCertificateURL -> ClientCertificateURL
-  (* TODO | HE_TrustedCAKeys -> TrustedCAKeys of ? *)
+  (* | HE_TrustedCAKeys -> TrustedCAKeys of ? *)
   | HE_TruncatedMAC -> TruncatedMAC
-  (* TODO | HE_StatusRequest -> StatusRequest of ? *)
-  (* TODO | HE_UserMapping -> UserMapping of ? *)
-  (* TODO | HE_ClientAuthz -> ClientAuthz of ? *)
-  (* TODO | HE_ServerAuthz -> ServerAuthz of ? *)
-  (* TODO | HE_CertType -> CertType of ? *)
+  (* | HE_StatusRequest -> StatusRequest of ? *)
+  (* | HE_UserMapping -> UserMapping of ? *)
+  (* | HE_ClientAuthz -> ClientAuthz of ? *)
+  (* | HE_ServerAuthz -> ServerAuthz of ? *)
+  (* | HE_CertType -> CertType of ? *)
   | HE_EllipticCurves -> EllipticCurves of (list[uint16] of ec_named_curve)
   | HE_ECPointFormats -> ECPointFormats of (list[uint8] of ec_point_format)
-  (* TODO | HE_SRP -> SRPExtension of ? *)
-  (* TODO | HE_SignatureAlgorithms -> SignatureAlgorithms of ? *)
-  (* TODO | HE_UseSRTP -> UseSRTP of ? *)
+  (* | HE_SRP -> SRPExtension of ? *)
+  (* | HE_SignatureAlgorithms -> SignatureAlgorithms of ? *)
+  (* | HE_UseSRTP -> UseSRTP of ? *)
   | HE_Heartbeat -> HeartbeatExtension of heartbeat_mode
-  (* TODO | HE_SessionTicket -> SessionTicket of ? *)
-  (* TODO | HE_RenegotiationInfo -> RenegotiationInfo of ? *)
+  (* | HE_SessionTicket -> SessionTicket of ? *)
+  (* | HE_RenegotiationInfo -> RenegotiationInfo of ? *)
 
 struct hello_extension [param direction] = {
   extension_type : extension_type;

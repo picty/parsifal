@@ -9,12 +9,12 @@ let parse_der_boolean_content input =
   let value = parse_rem_list parse_uint8 input in
   match value with
     | [] ->
-      emit false BooleanNotInNormalForm input;
+      warning BooleanNotInNormalForm input;
       false
     | [0] -> false
     | [255] -> true
     | v::_ ->
-      emit false BooleanNotInNormalForm input;
+      warning BooleanNotInNormalForm input;
       (v <> 0)
 
 let dump_der_boolean_content = function
@@ -41,10 +41,10 @@ let parse_der_integer_content input =
   in
   begin
     match two_first_chars with
-      | [] -> emit false IntegerNotInNormalForm input
+      | [] -> warning IntegerNotInNormalForm input
       | x::y::_ ->
 	if (x = 0xff) || ((x = 0) && (y land 0x80) = 0)
-	then emit false IntegerNotInNormalForm input
+	then warning IntegerNotInNormalForm input
       | _ -> ()
   end;
   l
@@ -63,7 +63,7 @@ let parse_der_smallint_content input =
   let integer_s = parse_der_integer_content input in
   let len = String.length integer_s in
   if (len > 0 && (int_of_char (integer_s.[0]) land 0x80) = 0x80) || (len > 4)
-  then raise (Asn1Exception (IntegerOverflow, input))
+  then fatal_error IntegerOverflow input
   else begin
     let rec int_of_binstr accu i =
       if i >= len
@@ -103,7 +103,7 @@ type der_null_content = unit
 let parse_der_null_content input =
   if not (eos input)
   then begin
-    emit false NullNotInNormalForm input;
+    warning NullNotInNormalForm input;
     drop_rem_bytes input;
   end
 
@@ -136,8 +136,8 @@ let parse_der_oid_content input =
       try
 	let next = parse_subid input in
 	next::(aux ())
-      with ParsingException (OutOfBounds, StringInput i) ->
-	emit false OIdNotInNormalForm i;
+      with ParsingException (OutOfBounds, h) ->
+	warning_h OIdNotInNormalForm h;
 	[]
     end
   in
@@ -173,15 +173,6 @@ let oid_expand = function
       else (x / 40), (x mod 40)
     in a::b::r
 
-(* (\* TODO: correctly handle the exception? *\) *)
-(* let oid_squash = function *)
-(*   | a::b::r -> *)
-(*     if ((a = 0 || a = 1) && (b < 40)) || (a = 2) *)
-(*     then (a * 40 + b)::r *)
-(*     else raise (Failure ("Invalid OId")) *)
-(*   | _ -> raise (Failure ("Invalid OId")) *)
-
-
 let raw_string_of_oid oid =
   String.concat "." (List.map string_of_int (oid_expand oid))
 
@@ -209,14 +200,14 @@ type der_bitstring_content = int * string
 let parse_der_bitstring_content input =
   let nBits =
     if eos input then begin
-      emit false (BitStringNotInNormalForm "empty") input;
+      warning (BitStringNotInNormalForm "empty") input;
       0
     end else parse_uint8 input
   in
   let content = parse_rem_string input in
   let len = (String.length content) * 8 - nBits in
   if len < 0
-  then emit false (BitStringNotInNormalForm "invalid length") input;
+  then warning (BitStringNotInNormalForm "invalid length") input;
   (* TODO: Check the trailing bits are zeroed. *)
   (nBits, content)
 
@@ -300,10 +291,10 @@ let time_constraint re s input =
       and mm = int_of_string (Str.matched_group 5 s)
       and ss = int_of_string (Str.matched_group 6 s) in
       if m = 0 || m > 12 || d = 0 || d > 31 || hh >= 24 || mm > 59 || ss > 59
-      then emit false InvalidUTCTime input;
+      then warning InvalidUTCTime input;
       (y, m, d, hh, mm, ss)
-    end else raise (Asn1Exception (InvalidUTCTime, input))
-  with _ -> raise (Asn1Exception (InvalidUTCTime, input))
+    end else fatal_error InvalidUTCTime input
+  with _ -> fatal_error InvalidUTCTime input
 
 let utc_time_constraint = time_constraint utc_time_re
 let generalized_time_constraint = time_constraint generalized_time_re
@@ -393,11 +384,11 @@ let rec parse_der_object input =
     | (C_Universal, true, T_Set) -> Constructed (parse_der_constructed_content new_input)
 
     | (C_Universal, false, t) ->
-      emit false (UnknownUniversalObject (false, t)) new_input;
+      warning (UnknownUniversalObject (false, t)) new_input;
       String (parse_der_octetstring_content no_constraint new_input, true)
 
     | (C_Universal, true, t) ->
-      emit false (UnknownUniversalObject (true, t)) new_input;
+      warning (UnknownUniversalObject (true, t)) new_input;
       Constructed (parse_der_constructed_content new_input)
 
     | (_, false, _) -> String (parse_der_octetstring_content no_constraint new_input, true)

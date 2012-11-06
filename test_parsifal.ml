@@ -43,9 +43,9 @@ let test parse dump print name s =
     if (dump x = s)
     then Printf.printf "Parse/Dump is idempotent for %s\n" name
     else Printf.printf "Parse/Dump is NOT idempotent for %s\n" name
-  with ParsingException (e, StringInput i) ->
-    Printf.printf "test failed for %s: %s in %s\n" name
-      (print_parsing_exception e) (print_string_input i)
+  with ParsingException (e, h) ->
+    Printf.printf "test failed for %s: %s\n" name (string_of_exception e h)
+
 
 let test_st = test exact_parse_st dump_st print_st "st"
 let test_st2 = test exact_parse_st2 dump_st2 print_st2 "st2"

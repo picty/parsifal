@@ -85,9 +85,6 @@ type asn1_exception =
   | TooFewObjects of int * int
   | TooManyObjects of int * int
 
-(* TODO: This should disappear *)
-exception Asn1Exception of (asn1_exception * string_input)
-
 let print_asn1_exception = function
   | UnexpectedHeader (h, None) ->
     Printf.sprintf "UnexpectedHeader (%s)" (print_header h)
@@ -108,10 +105,9 @@ let print_asn1_exception = function
     Printf.sprintf "Too many objects (%d instead of %d)" x exp_x
 
 
-let emit fatal e i =
-  if fatal
-  then raise (Asn1Exception (e, i))
-  else Printf.fprintf stderr "%s in %s\n" (print_asn1_exception e) (print_string_input i)
+let fatal_error e i = raise (ParsingException (CustomException (print_asn1_exception e), _h_of_si i))
+let warning_h e h = prerr_endline (string_of_exception (CustomException (print_asn1_exception e)) h)
+let warning e i = warning_h e (_h_of_si i)
 
 
 (* Header *)
@@ -162,9 +158,7 @@ let extract_der_length input =
 
 let check_header ((exp_c, exp_isC, exp_t) as exp_hdr) input ((c, isC, t) as hdr) =
   if hdr <> exp_hdr
-  (* TODO! *)
-  (* then raise (Asn1Exception (UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t)), input)) *)
-  then raise (ParsingException (CustomException "UnexpectedHeader", StringInput input))
+  then fatal_error (UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t))) input
 
 let _extract_der_object name header_constraint parse_content input =
   let offset = input.cur_base + input.cur_offset in
@@ -194,7 +188,7 @@ let extract_der_object name header_constraint parse_content input =
 
 let dump_der_header (c, isC, t) =
   let t_int = int_of_asn1_tag t in
-  if t_int >= 0x1f then raise (ParsingException (NotImplemented "long type", NoInput));
+  if t_int >= 0x1f then raise (ParsingException (NotImplemented "long type", []));
   let h = ((int_of_asn1_class c) lsl 6) lor
     (if isC then 0x20 else 0) lor t_int in
   String.make 1 (char_of_int h)

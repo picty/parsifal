@@ -85,13 +85,15 @@ let quote_string s =
 
 (* String and Lwt input definitions *)
 
+type history = (string * int * int option) list
+
 type string_input = {
   str : string;
   cur_name : string;
   cur_base : int;
   mutable cur_offset : int;
   cur_length : int;
-  history : (string * int * int option) list
+  history : history
 }
 
 type lwt_input = {
@@ -102,28 +104,15 @@ type lwt_input = {
   lwt_length : int;
 }
 
-let print_string_input i =
-  let rec print_history accu = function
-    | [] -> String.concat ", " (List.rev accu)
-    | (n, o, None)::r ->
-      print_history ((Printf.sprintf "%s (%d/?)" n o)::accu) r
-    | (n, o, Some l)::r ->
-      print_history ((Printf.sprintf "%s (%d/%d)" n o l)::accu) r
+let print_history ?prefix:(prefix=" in ") history =
+  let print_elt = function
+    | (n, o, None)   -> Printf.sprintf "%s (%d/?)" n o
+    | (n, o, Some l) -> Printf.sprintf "%s (%d/%d)" n o l
   in
-  Printf.sprintf "%s (%d/%d) [%s]" i.cur_name i.cur_offset i.cur_length (print_history [] i.history)
-
-let print_lwt_input i =
-  Printf.sprintf "%s (%d/?)" i.lwt_name i.lwt_offset
-
-type fuzzy_input =
-  | StringInput of string_input
-  | LwtInput of lwt_input
-  | NoInput
-
-let print_fuzzy_input = function
-  | StringInput s -> print_string_input s
-  | LwtInput l -> print_lwt_input l
-  | NoInput -> ""
+  let aux h = String.concat ", " (List.map print_elt h) in
+  match history with
+    | [] -> ""
+    | e::h -> Printf.sprintf "%s%s [%s]" prefix (print_elt e) (aux h)
 
 
 type parsing_exception =
@@ -144,20 +133,24 @@ let print_parsing_exception = function
   | CustomException e -> e
   | NotImplemented feat -> "Not implemented (" ^ feat ^ ")"
 
-exception ParsingException of parsing_exception * fuzzy_input
+exception ParsingException of parsing_exception * history
+
+let string_of_exception e h = (print_parsing_exception e) ^ (print_history h)
+
+let _h_of_si i = (i.cur_name, i.cur_offset, Some i.cur_length)::i.history
+let _h_of_li i = [i.lwt_name, i.lwt_offset, None]
 
 let emit_parsing_exception fatal e i =
+  let h = _h_of_si i in
   if fatal
-  then raise (ParsingException (e, StringInput i))
-  else Printf.fprintf stderr "%s in %s\n" (print_parsing_exception e) (print_string_input i)
+  then raise (ParsingException (e, h))
+  else prerr_endline (string_of_exception e h)
 
-let emit_lwt_parsing_exception fatal e i =
+let lwt_emit_parsing_exception fatal e i =
+  let h = _h_of_li i in
   if fatal
-  then fail (ParsingException (e, LwtInput i))
-  else begin
-    Printf.fprintf stderr "%s in %s\n" (print_parsing_exception e) (print_lwt_input i);
-    return ()
-  end
+  then fail (ParsingException (e, h))
+  else Lwt_io.write_line Lwt_io.stderr (string_of_exception e h)
 
 
 
@@ -173,6 +166,7 @@ let input_of_string name s = {
   }
 
 let get_in input name len =
+  let new_history = _h_of_si input in
   if input.cur_offset + len <= input.cur_length
   then {
     str = input.str;
@@ -180,12 +174,12 @@ let get_in input name len =
     cur_base = input.cur_base + input.cur_offset;
     cur_offset = 0;
     cur_length = len;
-    history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history
-  } else raise (ParsingException (OutOfBounds, StringInput input))
+    history = new_history
+  } else raise (ParsingException (OutOfBounds, new_history))
 
 let get_out old_input input =
   if input.cur_offset < input.cur_length
-  then raise (ParsingException (UnexpectedTrailingBytes, StringInput input))
+  then raise (ParsingException (UnexpectedTrailingBytes, _h_of_si input))
   else old_input.cur_offset <- old_input.cur_offset + input.cur_length
 
 
@@ -212,7 +206,7 @@ let drop_used_string input =
       cur_offset = 0;
       cur_length = String.length new_str
     }
-  end else raise (ParsingException (NonEmptyHistory, StringInput input))
+  end else raise (ParsingException (NonEmptyHistory, _h_of_si input))
 
 
 let eos input =
@@ -276,7 +270,7 @@ let lwt_really_read input len =
     input.lwt_offset <- input.lwt_offset + len;
     return buf
   and finalize_nok = function
-    | End_of_file -> fail (ParsingException (OutOfBounds, LwtInput input))
+    | End_of_file -> fail (ParsingException (OutOfBounds, _h_of_li input))
     | e -> fail e
   in
     try_bind _really_read finalize_ok finalize_nok
@@ -295,7 +289,7 @@ let lwt_get_in input name len =
 
 let lwt_get_out old_input input =
   if input.cur_offset < input.cur_length
-  then fail (ParsingException (UnexpectedTrailingBytes, StringInput input))
+  then fail (ParsingException (UnexpectedTrailingBytes, _h_of_si input))
   else begin
     old_input.lwt_offset <- old_input.lwt_offset + input.cur_length;
     return ()
@@ -307,7 +301,7 @@ let lwt_eos input =
 let lwt_check_empty_input fatal input =
   if lwt_eos input
   then return ()
-  else emit_lwt_parsing_exception fatal UnexpectedTrailingBytes input
+  else lwt_emit_parsing_exception fatal UnexpectedTrailingBytes input
 
 
 let lwt_try_parse lwt_parse_fun input =
@@ -321,7 +315,7 @@ let lwt_try_parse lwt_parse_fun input =
 	then begin
 	  Lwt_io.set_position input.lwt_ch (Int64.of_int saved_offset) >>= fun () ->
 	  return None
-	end else fail (ParsingException (UnableToRewind, LwtInput input))
+	end else fail (ParsingException (UnableToRewind, _h_of_li input))
       | e -> fail e
     in try_bind (fun () -> lwt_parse_fun input) finalize_ok finalize_nok
   end
@@ -353,19 +347,19 @@ let parse_uint8 input =
     let res = int_of_char (input.str.[input.cur_base + input.cur_offset]) in
     input.cur_offset <- input.cur_offset + 1;
     res
-  end else raise (ParsingException (OutOfBounds, StringInput input))
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
 let parse_char input =
   if input.cur_offset < input.cur_length then begin
     let res = input.str.[input.cur_base + input.cur_offset] in
     input.cur_offset <- input.cur_offset + 1;
     res
-  end else raise (ParsingException (OutOfBounds, StringInput input))
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
 let peek_uint8 input =
   if input.cur_offset < input.cur_length then begin
     int_of_char (input.str.[input.cur_base + input.cur_offset])
-  end else raise (ParsingException (OutOfBounds, StringInput input))
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
 let lwt_parse_uint8 input =
   lwt_really_read input 1 >>= fun s ->
@@ -394,13 +388,13 @@ let parse_uint16 input =
     in
     input.cur_offset <- input.cur_offset + 2;
     res
-  end else raise (ParsingException (OutOfBounds, StringInput input))
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
 let peek_uint16 input =
   if input.cur_offset + 2 <= input.cur_length then begin
     (int_of_char (input.str.[input.cur_base + input.cur_offset]) lsl 8) lor
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 1]))
-  end else raise (ParsingException (OutOfBounds, StringInput input))
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
 let lwt_parse_uint16 input =
   lwt_really_read input 2 >>= fun s ->
@@ -426,7 +420,7 @@ let parse_uint24 input =
     in
     input.cur_offset <- input.cur_offset + 3;
     res
-  end else raise (ParsingException (OutOfBounds, StringInput input))
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
 let lwt_parse_uint24 input =
   lwt_really_read input 3 >>= fun s ->
@@ -456,7 +450,7 @@ let parse_uint32 input =
     in
     input.cur_offset <- input.cur_offset + 4;
     res
-  end else raise (ParsingException (OutOfBounds, StringInput input))
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
 let lwt_parse_uint32 input =
   lwt_really_read input 4 >>= fun s ->
@@ -500,7 +494,7 @@ let parse_string n input =
     let res = String.sub input.str (input.cur_base + input.cur_offset) n in
     input.cur_offset <- input.cur_offset + n;
     res
-  end else raise (ParsingException (OutOfBounds, StringInput input))
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
 let lwt_parse_string n input = lwt_really_read input n
 
@@ -512,7 +506,7 @@ let parse_rem_string input =
 let lwt_parse_rem_string input =
   if input.lwt_rewindable
   then lwt_really_read input (input.lwt_length - input.lwt_offset)
-  else fail (ParsingException (NotImplemented "lwt_parse_rem_string", LwtInput input))
+  else fail (ParsingException (NotImplemented "lwt_parse_rem_string", _h_of_li input))
 
 
 let parse_varlen_string name len_fun input =
@@ -533,7 +527,7 @@ let lwt_parse_varlen_string name len_fun input =
 let drop_bytes n input =
   if input.cur_offset + n <= input.cur_length
   then input.cur_offset <- input.cur_offset + n
-  else raise (ParsingException (OutOfBounds, StringInput input))
+  else raise (ParsingException (OutOfBounds, _h_of_si input))
 
 let lwt_drop_bytes n input =
   lwt_really_read input n >>= fun _ -> return ()
@@ -545,7 +539,7 @@ let lwt_drop_rem_bytes input =
   if input.lwt_rewindable then begin
     lwt_really_read input (input.lwt_length - input.lwt_offset) >>= fun _ ->
     return ()
-  end else fail (ParsingException (NotImplemented "lwt_drop_rem_bytes", LwtInput input))
+  end else fail (ParsingException (NotImplemented "lwt_drop_rem_bytes", _h_of_li input))
 
 
 let dump_string s = s

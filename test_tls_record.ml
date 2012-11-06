@@ -18,9 +18,7 @@ let do_stg () =
   else fail (Failure "dump (parse (res)) is not idempotent")
 
 let catcher = function
-  | ParsingException (e, StringInput i) ->
-    return (Printf.sprintf "%s in %s" (print_parsing_exception e)
-	      (print_string_input i))
+  | ParsingException (e, h) -> return (string_of_exception e h)
   | e -> return (Printexc.to_string e)
 
 

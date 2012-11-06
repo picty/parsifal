@@ -88,8 +88,5 @@ let _ =
     Lwt_unix.run t;
     exit 0
   with
-    | ParsingException (e, StringInput i) -> emit_parsing_exception false e i; exit 1
-    | ParsingException (e, LwtInput i) -> Lwt_unix.run (emit_lwt_parsing_exception false e i); exit 1
-    | Asn1Engine.Asn1Exception (e, i) -> Asn1Engine.emit false e i; exit 1
+    | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1
-

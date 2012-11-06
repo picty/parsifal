@@ -9,7 +9,7 @@ let merge_records ?context:(ctx=None) ?enrich:(enrich=true) recs =
       try
 	let input = input_of_string "Merged records" merged_contents in
 	parse_record_content ctx ~enrich:enrich ct input
-      with ParsingException _ | Asn1Exception _ -> Unparsed_Record merged_contents
+      with ParsingException _ -> Unparsed_Record merged_contents
     in
     { content_type = ct;
       record_version = v;

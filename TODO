@@ -1,8 +1,6 @@
 v0.1 (oct. 2012)
- - Merge all exceptions (ParsingException, ASN1Exception) in ParsifalException
- - TEST testX509 which does not work anymore (because of the ASN1Exceptions which is incompatible with try_parse)
  - Camlp4
-   * Put preprocess files in a separate directory and produce a real camlp4 syntax package
+   * Produce a real camlp4 syntax package
  - General
    * have a bugzilla to put all this stuff
    * add Pollux' MakefileV6
@@ -84,7 +82,7 @@ v0.2 (feb. 2013)
  - General
    * Sort all the files present in AceSL-hg and co.
    * Make directories (asn1, tls, baseEngines, .generated)
-   * Think about the exception system (fatal or not)
+   * Think about the exception system (fatal or not) => merge all in ParsifalException
  - Software Engineering
    * Write some tests (unit tests, non-regression, etc.)
    * Write .mli files

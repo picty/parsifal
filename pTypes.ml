@@ -51,13 +51,13 @@ let parse_magic magic_expected input =
   let s = parse_string (String.length magic_expected) input in
   if s = magic_expected then ()
   else raise (ParsingException (CustomException ("invalid magic (\"" ^
-				  (hexdump s) ^ "\")"), StringInput input))
+				  (hexdump s) ^ "\")"), _h_of_si input))
 
 let lwt_parse_magic magic_expected input =
   lwt_parse_string (String.length magic_expected) input >>= fun s ->
   if s = magic_expected then return ()
   else fail (ParsingException (CustomException ("invalid magic (\"" ^
-				 (hexdump s) ^ "\")"), LwtInput input))
+				 (hexdump s) ^ "\")"), _h_of_li input))
 
 let dump_magic magic_expected () =
   String.copy magic_expected

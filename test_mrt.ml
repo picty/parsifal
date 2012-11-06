@@ -301,6 +301,5 @@ let _ =
   try Lwt_unix.run t;
   with
     | End_of_file -> ()
-    | ParsingException (e, i) ->
-      Printf.fprintf stderr "%s in %s\n" (print_parsing_exception e) (print_fuzzy_input i)
-    | e -> print_endline (Printexc.to_string e)
+    | ParsingException (e, h) -> prerr_endline (string_of_exception e h)
+    | e -> prerr_endline (Printexc.to_string e)

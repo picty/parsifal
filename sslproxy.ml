@@ -76,10 +76,10 @@ let rec forward state i o =
 
 
 let catcher = function
-  | ParsingException (e, StringInput i) ->
-    Printf.printf "%s in %s\n" (print_parsing_exception e)
-      (print_string_input i); flush Pervasives.stdout; return ()
-  | e -> print_endline (Printexc.to_string e); flush Pervasives.stdout; return ()
+  | ParsingException (e, h) ->
+    Lwt_io.write_line Lwt_io.stderr (string_of_exception e h)
+  | e ->
+    Lwt_io.write_line Lwt_io.stderr (Printexc.to_string e)
 
 
 
