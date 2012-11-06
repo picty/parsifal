@@ -1,8 +1,7 @@
 v0.1 (oct. 2012)
- - Camlp4
-   * Produce a real camlp4 syntax package
  - General
-   * have a bugzilla to put all this stuff
+   * have a redmine to put all this stuff
+   * Produce a real camlp4 syntax package
    * add Pollux' MakefileV6
  - ParsingEngine...
    * be more cautious about int32 types...
@@ -24,7 +23,7 @@ v0.1 (oct. 2012)
    * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
    * put 'a result_type and handle_answer logic from probe_server into TlsEngine
  - ASN.1
-   * handle constraints, choices
+   * handle constraints
    * add UTCTime / ValidityTime handling (choices)
  - X509
    * refine AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
@@ -80,15 +79,13 @@ v0.1 (oct. 2012)
 
 v0.2 (feb. 2013)
  - General
-   * Sort all the files present in AceSL-hg and co.
-   * Make directories (asn1, tls, baseEngines, .generated)
    * Think about the exception system (fatal or not) => merge all in ParsifalException
  - Software Engineering
    * Write some tests (unit tests, non-regression, etc.)
    * Write .mli files
  - Camlp4/Language
-   * Document the preprocessor
-   * Add a way to access to fields with a "language" (from the command line: tls_record.record_content.handshake_type -> string option)
+   * Document the preprocessor (update the JFLA article)
+   * Add a way to access to fields with a "language" (browse) (from the command line: tls_record.record_content.handshake_type -> string option)
    * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
    * Change the meaning of the ?enrich param: it could be: No, Yes, RecursiveYes (all the way, n steps) or Default (i.e. use the reference)
    * Add a "flexible" decorator in structures
@@ -133,11 +130,8 @@ v0.3 (jun. 2013)
    * s_server
    * think about an interpreter (like facesl was in the old version)?
  - PKCS#11 ressource (prospective)
- - ParsingEngine/LwtParsingEngine
-   * Rewrite get_in / get_out in lwtParsingEngine in case the length is too big (with a customizable threshold)?
-     + it should use a pipe and call the lwt_parse function for the subtype.
-     + lwt_parse_*_list/string should take an optional parameter lwt?
-     + asn1 only implements DER so we should not need lwt_parse functions.
+ - Parsifal
+   * Add options to skip dump/print/parse generation with structures
 
 
 v1.0 (oct 2013)

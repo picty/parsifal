@@ -122,12 +122,10 @@ struct bgp_reach_nlri_full = {
 (* The abbreviated business is a hack to support some non-compiant files:
    it should be taken into account with a try_parse and an optional-like parameter *)
 
-(* TODO: clean that by using a union with [parse_fun_name=] and a custom no_parse function *)
-union bgp_reach_nlri [exhaustive] (UnparsedNLRI) =
+union bgp_reach_nlri [exhaustive (* TODO add "no_parse" *) ] (UnparsedNLRI) =
   | true -> FullNLRI of bgp_reach_nlri_full
   | false -> AbbreviatedNLRI of container[uint8] of list of (ip_address(AFI_IPv6))
 
-(* The use of masking is ugly... *)
 let parse_bgp_reach_nlri input =
   let afi = peek_uint16 input in
   parse_bgp_reach_nlri (afi = 1 || afi = 2) input
@@ -339,6 +337,7 @@ union mrt_subtype [enrich; with_lwt] (UnparsedSubType of uint16) =
   | MT_BGP4MP -> MST_BGP4MP of bgp4mp_subtype
 
 
+(* TODO: Some types/subtypes are not parsed deeply for the moment *)
 union mrt_message_content [enrich] (UnparsedMRTMessage) =
   | (MT_OSPFv2, _) -> OSPFv2Message of ospfv2_message
 
@@ -351,8 +350,6 @@ union mrt_message_content [enrich] (UnparsedMRTMessage) =
 
   | (MT_BGP4MP, MST_BGP4MP BGP4MP_MESSAGE) -> BGP4MP_Message of bgp4mp_message(false)
   | (MT_BGP4MP, MST_BGP4MP BGP4MP_MESSAGE_AS4) -> BGP4MP_Message of bgp4mp_message(true)
-
-(* TODO: Some types/subtypes are not parsed deeply for the moment *)
 
 
 struct mrt_message [top] = {
