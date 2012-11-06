@@ -41,8 +41,10 @@ let algorithmIdentifier_directory = {
 
 let parse_algorithmIdentifier_content = parse_asn1_qualified_object_content algorithmIdentifier_directory
 let dump_algorithmIdentifier_content (_x : algorithmIdentifier_content) = failwith "NotImplemented: dump_algorithmIdentifier"
+
+(* TODO *)
 let print_algorithmIdentifier_content ?indent:(indent="") ?name:(name="algorithmIdentifier") (_x : algorithmIdentifier_content) =
-    failwith "NotImplemented: print_algorithmIdentifier"
+  Printf.sprintf "%s%s: algorithmIdentifer (TODO)\n" indent name
 
 asn1_alias algorithmIdentifier
 
@@ -91,8 +93,10 @@ let subjectPublicKeyInfo_directory = {
 
 let parse_subjectPublicKeyInfo_content = parse_asn1_qualified_object_content subjectPublicKeyInfo_directory
 let dump_subjectPublicKeyInfo_content (_x : subjectPublicKeyInfo_content) = failwith "NotImplemented: dump_subjectPublicKeyInfo"
-let print_subjectPublicKeyInfo_content ?indent:(indent="") ?name:(name="subjectPublicKeyInfo") (_x : subjectPublicKeyInfo_content) =
-    failwith "NotImplemented: print_subjectPublicKeyInfo"
+
+(* TODO *)
+let print_subjectPublicKeyInfo_content ?indent:(indent="") ?name:(name="algorithmIdentifier") (_x : subjectPublicKeyInfo_content) =
+  Printf.sprintf "%s%s: subjectPublicKeyInfo (TODO)\n" indent name
 
 asn1_alias subjectPublicKeyInfo
 

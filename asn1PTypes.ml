@@ -225,7 +225,7 @@ let dump_der_bitstring_content (nBits, s) =
   prefix ^ s
 
 let print_der_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_content") (nBits, s) =
-  Printf.sprintf "%s%s: [%d] %s\n" indent name nBits s
+  Printf.sprintf "%s%s: [%d] %s\n" indent name nBits (hexdump s)
 
 asn1_alias der_bitstring = primitive [T_BitString] der_bitstring_content
 

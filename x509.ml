@@ -30,7 +30,7 @@ asn1_alias subjectUniqueId = primitive [C_ContextSpecific, 2] der_bitstring
 
 
 (* TODO: Make extnValue depend on extnID, and have it enrichable *)
-asn1_alias extnValue = primitive [T_OctetString] der_octetstring
+asn1_alias extnValue = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
 struct extension_content = {
   extnID : der_oid;
@@ -51,9 +51,9 @@ struct tbsCertificate_content = {
   validity : validity;
   subject : distinguished_name;
   subjectPublicKeyInfo : X509Util.subjectPublicKeyInfo;
-  optional issuerUniqueId : issuerUniqueId;
-  optional subjectUniqueId : subjectUniqueId;
-  optional extensions : extensions
+  (* optional issuerUniqueId : issuerUniqueId; *)
+  (* optional subjectUniqueId : subjectUniqueId; *)
+   extensions : extensions
 }
 asn1_alias tbsCertificate
 
