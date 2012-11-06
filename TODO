@@ -3,7 +3,6 @@ v0.1 (oct. 2012)
  - TEST testX509 which does not work anymore (because of the ASN1Exceptions which is incompatible with try_parse)
  - Camlp4
    * Put preprocess files in a separate directory and produce a real camlp4 syntax package
-   * Write the remaining functions in asn1PTypes
  - General
    * have a bugzilla to put all this stuff
    * add Pollux' MakefileV6
@@ -27,11 +26,9 @@ v0.1 (oct. 2012)
    * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
    * put 'a result_type and handle_answer logic from probe_server into TlsEngine
  - ASN.1
-   * rewrite the preprocessor using camlp4
-   * handle constraints, optional fields, choices
+   * handle constraints, choices
    * add UTCTime / ValidityTime handling (choices)
  - X509
-   * add stg to have parse_distinguished_name (we need aliases for sequences of and sets of)
    * refine AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
    * add support for RSA/DSA public key and signature
    * support extensions

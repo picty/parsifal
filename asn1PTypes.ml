@@ -432,42 +432,21 @@ and dump_der_content = function
   | Constructed l ->
     String.concat "" (List.map dump_der_object l)
 
-(* TODO *)
-let print_der_object ?indent:(indent="") ?name:(name="der_object") _o =
-  Printf.sprintf "%s%s: DER_OBJECT\n" indent name
 
+let rec print_der_object ?indent:(indent="") ?name:(name="") o =
+  let real_name =
+    if name = ""
+    then print_header (o.a_class, isConstructed o, o.a_tag)
+    else name
+  in
+  print_der_content ~indent:indent ~name:real_name o.a_content
 
-(* (\**************************\) *)
-(* (\* Content pretty printer *\) *)
-(* (\**************************\) *)
-
-(* (\* Useful func *\) *)
-
-(* let rec string_of_content = function *)
-(*   | Constructed l -> *)
-(*     let objects = List.map string_of_object l in *)
-(*     PrinterLib._flatten_strlist [] true objects *)
-(*   | Null -> [], false *)
-(*   | Boolean true -> ["true"], false *)
-(*   | Boolean false -> ["false"], false *)
-(*   | Integer i -> ["0x" ^ (hexdump i)], false *)
-(*   | BitString (nBits, s) -> [string_of_bitstring !PrinterLib.raw_display nBits s], false *)
-(*   | EnumeratedBitString (l, desc) -> ["[" ^ (String.concat ", " (List.map (apply_desc desc) l)) ^ "]"], false *)
-(*   | OId oid -> [string_of_oid oid], false *)
-(*   | String (s, true) -> ["[HEX:]" ^ (hexdump s)], false *)
-(*   | String (s, false) -> [if !PrinterLib.raw_display then hexdump s else s], false *)
-
-(* and string_of_object o = *)
-(*   let type_string = *)
-(*     if !PrinterLib.raw_display *)
-(*     then string_of_header_raw o.a_class (isConstructed o) o.a_tag *)
-(*     else begin *)
-(*       if !PrinterLib.resolve_names *)
-(*       then o.a_name *)
-(*       else string_of_header_pretty o.a_class (isConstructed o) o.a_tag *)
-(*     end *)
-(*   in *)
-(*   let content_string, multiline = string_of_content o.a_content in *)
-(*   if multiline *)
-(*   then PrinterLib._string_of_strlist (Some type_string) (hash_options "" true) content_string *)
-(*   else PrinterLib._string_of_strlist (Some type_string) (only_ml false) content_string *)
+and print_der_content ?indent:(indent="") ?name:(name="der_object") = function
+  | Boolean b -> print_der_boolean_content ~indent:indent ~name:name b
+  | Integer i -> print_der_integer_content ~indent:indent ~name:name i
+  | BitString (nBits, s) -> print_der_bitstring_content ~indent:indent ~name:name (nBits, s)
+  | Null -> print_der_null_content ~indent:indent ~name:name ()
+  | OId oid -> print_der_oid_content ~indent:indent ~name:name oid
+  | String (s, true) -> print_binstring ~indent:indent ~name:name s
+  | String (s, false) -> print_printablestring ~indent:indent ~name:name s
+  | Constructed l -> print_list print_der_object ~indent:indent ~name:name l
