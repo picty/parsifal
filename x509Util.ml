@@ -22,29 +22,23 @@ asn1_alias algorithmIdentifier
 
 
 (* SubjectPublicKeyInfo *)
-type subjectPublicKey =
-  | RSA of RSAKey.rsa_public_key
-  | UnparsedPublicKey of der_object
+type subjectPublicKeyType =
+  | SPK_RSA
+  | SPK_Unknown
 
-let pki_parsers : (int list, (algorithmParams option -> string_input -> subjectPublicKey)) Hashtbl.t = Hashtbl.create 10
+let subjectPublicKeyType_directory : (int list, algorithmParams option -> subjectPublicKeyType) Hashtbl.t = Hashtbl.create 10
+let subjectPublicKeyType_of_algo algo =
+  try
+    let f = Hashtbl.find subjectPublicKeyType_directory algo.algorithmId in
+    f algo.algorithmParams
+  with Not_found -> SPK_Unknown
 
-let parse_subjectPublicKey algo input =
-  let default_parser _ input = UnparsedPublicKey (parse_der_object input) in
-  let f = hash_get pki_parsers algo.algorithmId default_parser in
-  let (_nbits, pki_content) = parse_der_bitstring input in
-  (* TODO:    if nbits <> 0 then *)
-  let new_input = { (input_of_string "subjectPublicKey_content" pki_content)
-                    with history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history }
-  in f algo.algorithmParams new_input
-
-let dump_subjectPublicKey _ = raise (ParsingException (NotImplemented "dump_subjectPublicKey", []))
-let print_subjectPublicKey ?indent:(indent="") ?name:(name="subjectPublicKey") = function
-  | RSA k -> RSAKey.print_rsa_public_key ~indent:indent ~name:name k
-  | UnparsedPublicKey o -> print_der_object ~indent:indent ~name:name o
+union subjectPublicKey [enrich] (UnparsedPublicKey of der_object) =
+  | SPK_RSA -> RSA of RSAKey.rsa_public_key
 
 struct subjectPublicKeyInfo_content = {
   algorithm : algorithmIdentifier;
-  subjectPublicKey : subjectPublicKey(algorithm)
+  subjectPublicKey : bitstring_container of subjectPublicKey(subjectPublicKeyType_of_algo algorithm)
 }
 asn1_alias subjectPublicKeyInfo
 
@@ -57,4 +51,5 @@ let rsaEncryption_oid = [42;840;113549;1;1;1]
 let _ =
   register_oid rsaEncryption_oid "rsaEncryption";
   Hashtbl.replace algorithmParamsType_directory rsaEncryption_oid APT_Null;
-  Hashtbl.replace pki_parsers rsaEncryption_oid (fun _ input -> RSA (RSAKey.parse_rsa_public_key input))
+  Hashtbl.replace subjectPublicKeyType_directory rsaEncryption_oid (fun _ -> SPK_RSA);
+  ()
