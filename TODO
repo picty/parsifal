@@ -84,6 +84,7 @@ v0.2 (feb. 2013)
    * Write some tests (unit tests, non-regression, etc.)
    * Write .mli files
  - Camlp4/Language
+   * add base64_container / gzip_container as custom containers
    * Document the preprocessor (update the JFLA article)
    * Add a way to access to fields with a "language" (browse) (from the command line: tls_record.record_content.handshake_type -> string option)
    * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
