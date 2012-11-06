@@ -454,9 +454,26 @@ let parse_bitstring_container parse_fun input =
       history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history;
       enrich = input.enrich
   } in
-  parse_fun new_input
+  let res = parse_fun new_input in
+  check_empty_input true new_input;
+  res
 
 let dump_bitstring_container dump_fun o =
   let content = dump_fun o in
   dump_der_bitstring (0, content)
   
+
+let parse_octetstring_container parse_fun input =
+  let content = parse_der_octetstring input in
+  let new_input = {
+    (input_of_string "subjectPublicKey_content" content) with
+      history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history;
+      enrich = input.enrich
+  } in
+  let res = parse_fun new_input in
+  check_empty_input true new_input;
+  res
+
+let dump_octetstring_container dump_fun o =
+  let content = dump_fun o in
+  dump_der_octetstring content

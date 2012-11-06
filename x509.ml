@@ -30,12 +30,10 @@ asn1_alias subjectUniqueId = primitive [C_ContextSpecific, 2] der_bitstring
 
 
 (* TODO: Make extnValue depend on extnID, and have it enrichable *)
-asn1_alias extnValue = primitive [T_OctetString] der_octetstring_content(no_constraint)
-
 struct extension_content = {
   extnID : der_oid;
   optional critical : der_boolean;
-  extnValue : extnValue
+  extnValue : octetstring_container of der_object
 }
 asn1_alias extension
 
