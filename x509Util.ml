@@ -4,29 +4,19 @@ open Parsifal
 open Asn1PTypes
 
 
-
-(* Rewrite this with a union and an intermediate sum type? *)
-
 (* AlgorithmIdentifier *)
-type algorithmParams =
-  | NoParams
-  | UnparsedParams of der_object
+type algorithmParamsType =
+  | APT_Null
+  | APT_Unknown
 
-let algoParams_parsers : (int list, (string_input -> algorithmParams)) Hashtbl.t = Hashtbl.create 10
+let algorithmParamsType_directory : (int list, algorithmParamsType) Hashtbl.t = Hashtbl.create 10
 
-let parse_algorithmParams oid input =
-  let default_parser input = UnparsedParams (parse_der_object input) in
-  let f = hash_get algoParams_parsers oid default_parser in
-  f input
-
-let dump_algorithmParams _ = raise (ParsingException (NotImplemented "dump_algorithmParams", []))
-let print_algorithmParams ?indent:(indent="") ?name:(name="algorithmParams") = function
-  | NoParams -> ""
-  | UnparsedParams o -> print_der_object ~indent:indent ~name:name o
+union algorithmParams [enrich] (UnparsedParams of der_object) =
+  | APT_Null -> NoParams of der_null
 
 struct algorithmIdentifier_content = {
   algorithmId : der_oid;
-  optional algorithmParams : algorithmParams(algorithmId)
+  optional algorithmParams : algorithmParams(hash_get algorithmParamsType_directory algorithmId APT_Unknown)
 }
 asn1_alias algorithmIdentifier
 
@@ -60,9 +50,11 @@ asn1_alias subjectPublicKeyInfo
 
 
 
+
 (* register the OId in a general table *)
 let rsaEncryption_oid = [42;840;113549;1;1;1]
 
 let _ =
   register_oid rsaEncryption_oid "rsaEncryption";
+  Hashtbl.replace algorithmParamsType_directory rsaEncryption_oid APT_Null;
   Hashtbl.replace pki_parsers rsaEncryption_oid (fun _ input -> RSA (RSAKey.parse_rsa_public_key input))
