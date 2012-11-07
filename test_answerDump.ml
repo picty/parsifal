@@ -1,4 +1,3 @@
-open Common
 open Lwt
 open Parsifal
 open PTypes
@@ -56,26 +55,26 @@ let parse_all_records answer =
     | Some (ct, v, i), _ ->
       if eos i then split_records accu ctx None recs
       else begin
-	try
-	  let next_content = parse_record_content ctx ct { i with enrich=true } in
-	  let next_record = {
-	    content_type = ct;
-	    record_version = v;
-	    record_content = next_content;
-	  } in
-	  begin
-	    match ctx, next_content with
-	      | None, Handshake {handshake_content = ServerHello sh} ->
-		let real_ctx = empty_context () in
-		TlsEngine.update_with_server_hello real_ctx sh;
-		split_records (next_record::accu) (Some real_ctx) str_input recs
-	      | Some c, Handshake {handshake_content = ServerKeyExchange ske} ->
-		TlsEngine.update_with_server_key_exchange c ske;
-		split_records (next_record::accu) ctx str_input recs
-	      | _ -> split_records (next_record::accu) ctx str_input recs
-	  end;
+        try
+          let next_content = parse_record_content ctx ct { i with enrich=true } in
+          let next_record = {
+            content_type = ct;
+            record_version = v;
+            record_content = next_content;
+          } in
+          begin
+            match ctx, next_content with
+              | None, Handshake {handshake_content = ServerHello sh} ->
+                let real_ctx = empty_context () in
+                TlsEngine.update_with_server_hello real_ctx sh;
+                split_records (next_record::accu) (Some real_ctx) str_input recs
+              | Some c, Handshake {handshake_content = ServerKeyExchange ske} ->
+                TlsEngine.update_with_server_key_exchange c ske;
+                split_records (next_record::accu) ctx str_input recs
+              | _ -> split_records (next_record::accu) ctx str_input recs
+          end;
 
-	with _ -> List.rev accu, ctx, true
+        with _ -> List.rev accu, ctx, true
       end
   in
 
@@ -99,65 +98,61 @@ let rec handle_one_file input =
       match !action with
       | IP -> print_endline ip; return ()
       | All ->
-	let records, _, error = parse_all_records answer in
-	print_endline ip;
-	List.iter (fun r -> print_endline (print_tls_record ~indent:"  " r)) records;
-	if error then print_endline "  ERROR";
-	return ()
+        let records, _, error = parse_all_records answer in
+        print_endline ip;
+        List.iter (fun r -> print_endline (print_tls_record ~indent:"  " r)) records;
+        if error then print_endline "  ERROR";
+        return ()
       | Suite ->
-	let _, ctx, _ = parse_all_records answer in
-	let cs = match ctx with
-	  | None -> if !verbose then (Some "ERROR") else None
-	  | Some ctx -> Some (string_of_ciphersuite ctx.future.s_ciphersuite.suite_name)
-	in
-	begin
-	  match cs with
-	    | None -> ()
-	    | Some s -> Printf.printf "%s: %s\n" ip s;
-	end;
-	return ()
+        let _, ctx, _ = parse_all_records answer in
+        let cs = match ctx with
+          | None -> if !verbose then (Some "ERROR") else None
+          | Some ctx -> Some (string_of_ciphersuite ctx.future.s_ciphersuite.suite_name)
+        in
+        begin
+          match cs with
+            | None -> ()
+            | Some s -> Printf.printf "%s: %s\n" ip s;
+        end;
+        return ()
       | SKE ->
-	let _, ctx, _ = parse_all_records answer in
-	let ske = match ctx with
-	  | None -> if !verbose then (Some "ERROR") else None
-	  | Some { future = { s_server_key_exchange = (SKE_DHE { params = params } ) } } ->
-	    Some (Printf.sprintf "%s,%s,%s" (hexdump params.dh_p) (hexdump params.dh_g) (hexdump params.dh_Ys))
-	  | Some { future = { s_server_key_exchange = (Unparsed_SKEContent "" ) } } ->
-	    if !verbose then (Some "NO_SKE") else None
-	  | Some _ -> if !verbose then (Some "NOT PARSED YET") else None
-	in
-	begin
-	  match ske with
-	    | None -> ()
-	    | Some s -> Printf.printf "%s: %s\n" ip s;
-	end;
-	return ()
+        let _, ctx, _ = parse_all_records answer in
+        let ske = match ctx with
+          | None -> if !verbose then (Some "ERROR") else None
+          | Some { future = { s_server_key_exchange = (SKE_DHE { params = params } ) } } ->
+            Some (Printf.sprintf "%s,%s,%s" (hexdump params.dh_p) (hexdump params.dh_g) (hexdump params.dh_Ys))
+          | Some { future = { s_server_key_exchange = (Unparsed_SKEContent "" ) } } ->
+            if !verbose then (Some "NO_SKE") else None
+          | Some _ -> if !verbose then (Some "NOT PARSED YET") else None
+        in
+        begin
+          match ske with
+            | None -> ()
+            | Some s -> Printf.printf "%s: %s\n" ip s;
+        end;
+        return ()
       | Subject ->
-      	let records, _, _ = parse_all_records answer in
-      	let rec extractSubjectOfFirstCert = function
-      	  | [] -> None
-      	  | { content_type = CT_Handshake;
-      	      record_content = Handshake {
+        let records, _, _ = parse_all_records answer in
+        let rec extractSubjectOfFirstCert = function
+          | [] -> None
+          | { content_type = CT_Handshake;
+             record_content = Handshake {
               handshake_type = HT_Certificate;
               handshake_content = Certificate {certificate_list = (UnparsedCertificate cert_string)::_} }}::_ ->
-      	    begin
-      	      try
-      		let cert = parse_certificate (input_of_string "" cert_string) in
-		let extract_string atv = match atv.attributeValue with
-		  | { a_content = String (s, _)} -> "\"" ^ s ^ "\""
-		  | _ -> "\"\""
-		in
-      		Some (String.concat ", " (List.map extract_string (List.flatten cert.tbsCertificate.subject)))
-      	      with _ -> None
-      	    end
+           begin
+             try
+                let cert = parse_certificate (input_of_string "" cert_string) in
+               Some (String.concat ", " (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
+             with _ -> None
+           end
           | _::r -> extractSubjectOfFirstCert r
-      	in
-      	begin
-      	  match extractSubjectOfFirstCert records with
-      	    | None -> ()
-      	    | Some subject -> Printf.printf "%s: %s\n" ip subject
-      	end;
-      	return ()
+       in
+       begin
+         match extractSubjectOfFirstCert records with
+           | None -> ()
+           | Some subject -> Printf.printf "%s: %s\n" ip subject
+       end;
+       return ()
     end >>= fun () ->
     handle_one_file input
 

@@ -477,3 +477,11 @@ let parse_octetstring_container parse_fun input =
 let dump_octetstring_container dump_fun o =
   let content = dump_fun o in
   dump_der_octetstring content
+
+
+
+
+
+(* Useful aliases *)
+(* TODO: Constraints! *)
+asn1_alias der_ia5string = primitive [T_IA5String] der_octetstring_content(no_constraint)

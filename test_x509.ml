@@ -1,9 +1,7 @@
 open Lwt
-open Common
 open Parsifal
 open Asn1PTypes
 open X509
-open X509Util
 open RSAKey
 open Getopt
 
@@ -50,18 +48,10 @@ let handle_input input =
       print_endline (string_of_bool (result));
       return ()
     | Subject ->
-      let extract_string atv = match atv.attributeValue with
-	| { Asn1PTypes.a_content = String (s, _)} -> "\"" ^ s ^ "\""
-	| _ -> "\"\""
-      in
-      print_endline ("[" ^ String.concat ", " (List.map extract_string (List.flatten certificate.tbsCertificate.subject)) ^ "]");
+      print_endline ("[" ^ String.concat ", " (List.map string_of_atv (List.flatten certificate.tbsCertificate.subject)) ^ "]");
       return ()
     | Issuer ->
-      let extract_string atv = match atv.attributeValue with
-	| { Asn1PTypes.a_content = String (s, _)} -> "\"" ^ s ^ "\""
-	| _ -> "\"\""
-      in
-      print_endline ("[" ^ String.concat ", " (List.map extract_string (List.flatten certificate.tbsCertificate.issuer)) ^ "]");
+      print_endline ("[" ^ String.concat ", " (List.map string_of_atv (List.flatten certificate.tbsCertificate.issuer)) ^ "]");
       return ()
     | Text ->
       print_endline (print_certificate certificate);

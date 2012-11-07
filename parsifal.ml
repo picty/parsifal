@@ -10,6 +10,10 @@ let pop_opt default = function
   | None -> default
   | Some x -> x
 
+let hash_get ht k default =
+  try Hashtbl.find ht k
+  with Not_found -> default
+
 
 let hexa_char = "0123456789abcdef"
 

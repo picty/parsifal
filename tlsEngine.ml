@@ -85,7 +85,7 @@ let send_plain_record out record =
 
 (* TODO: compress/mac/encrypt the records *)
 let send_record ctx out record =
-  fail (Common.NotImplemented "send_record")
+  fail (ParsingException (NotImplemented "send_record", []))
 
 
 

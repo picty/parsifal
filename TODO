@@ -3,8 +3,6 @@ v0.1 (oct. 2012)
    * have a redmine to put all this stuff
    * Produce a real camlp4 syntax package
    * add Pollux' MakefileV6
- - ParsingEngine...
-   * be more cautious about int32 types...
  - Tls
    * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
    * Add SSLv2 support in probe_server and other programs
@@ -26,7 +24,6 @@ v0.1 (oct. 2012)
    * handle constraints
    * add UTCTime / ValidityTime handling (choices)
  - X509
-   * refine AlgorithmIdentifier / HashAlgorithm / PKAlgorithm / RDN support
    * add support for RSA/DSA public key and signature
    * support extensions
    * parse certificates with all the previous features: RSA handling, DN.short, extensions
@@ -84,6 +81,7 @@ v0.2 (feb. 2013)
    * Write some tests (unit tests, non-regression, etc.)
    * Write .mli files
  - Camlp4/Language
+   * be more cautious about int32 types...
    * add base64_container / gzip_container as custom containers
    * Document the preprocessor (update the JFLA article)
    * Add a way to access to fields with a "language" (browse) (from the command line: tls_record.record_content.handshake_type -> string option)
