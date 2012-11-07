@@ -301,7 +301,7 @@ let generalized_time_constraint = time_constraint generalized_time_re
 
 (* TODO: Cleanup this *)
 
-let parse_der_octetstring_TODO apply_constraints input =
+let parse_der_processed_string_content apply_constraints input =
   let res = parse_rem_string input in
   apply_constraints res input
 
