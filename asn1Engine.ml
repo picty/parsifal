@@ -202,14 +202,14 @@ let dump_der_length l =
     | 0 -> ()
     | lg ->
       res.[i] <- char_of_int (lg land 0xff);
-      aux res (i+1) (lg lsr 8)
+      aux res (i-1) (lg lsr 8)
   in
   if l < 0x80
   then String.make 1 (char_of_int l)
   else
     let len_len = compute_len 0 l in
-    let res = String.make (len_len + 1) (char_of_int len_len) in
-    aux res 1 l;
+    let res = String.make (len_len + 1) (char_of_int (len_len lor 0x80)) in
+    aux res len_len l;
     res
 
 let produce_der_object hdr dump_content v =
