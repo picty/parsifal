@@ -41,7 +41,7 @@ let handle_input input =
 	certificate.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey,
 	certificate.signatureValue
 	with
-	| Some m, RSA {p_modulus = n; p_publicExponent = e}, (0, s) ->
+	| Some m, RSA {p_modulus = n; p_publicExponent = e}, RSASignature (0, s) ->
 	  Pkcs1.raw_verify 1 m s n e
 	| _ -> false
       in

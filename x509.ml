@@ -79,6 +79,25 @@ struct subjectPublicKeyInfo_content = {
 asn1_alias subjectPublicKeyInfo
 
 
+(*************)
+(* Signature *)
+(*************)
+
+type signatureType =
+  | ST_RSA
+  | ST_Unknown
+
+let signatureType_directory : (int list, algorithmParams option -> signatureType) Hashtbl.t = Hashtbl.create 10
+let signatureType_of_algo algo =
+  try
+    let f = Hashtbl.find signatureType_directory algo.algorithmId in
+    f algo.algorithmParams
+  with Not_found -> ST_Unknown
+
+union signature [enrich] (UnparsedSignature of der_object) =
+  | ST_RSA -> RSASignature of der_bitstring
+
+
 (**************)
 (* Extensions *)
 (**************)
@@ -155,7 +174,7 @@ asn1_alias tbsCertificate
 struct certificate_content = {
   tbsCertificate : tbsCertificate;
   signatureAlgorithm : algorithmIdentifier;
-  signatureValue : der_bitstring
+  signatureValue : signature(signatureType_of_algo signatureAlgorithm)
 }
 asn1_alias certificate [top]
 
@@ -166,22 +185,39 @@ asn1_alias certificate [top]
 (* Populating directories *)
 (**************************)
 
-let emailAddress_oid = [42;840;113549;1;9;1]
+let attribute_value_types = [
+  [42;840;113549;1;9;1], "emailAddress", AVT_IA5String
+]
 
-let rsaEncryption_oid = [42;840;113549;1;1;1]
+let public_key_types = [
+  [42;840;113549;1;1;1], "rsaEncryption", APT_Null, (fun _ -> SPK_RSA);
+]
 
-let basicConstraints_oid = [85;29;19]
+let signature_types = [
+  [42;840;113549;1;1;11], "sha256WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
+]
+
+let extension_types = [
+  [85;29;19], "basicConstraints", ET_BasicConstraints;
+]
+
+
+
+let populate_simple_directory dir (id, name, value) =
+  register_oid id name;
+  Hashtbl.replace dir id value
+
+let populate_alg_directory dir (id, name, algParam, value) =
+  register_oid id name;
+  Hashtbl.replace algorithmParamsType_directory id algParam;
+  Hashtbl.replace dir id value
+
 
 let _ =
-  register_oid rsaEncryption_oid "rsaEncryption";
-  Hashtbl.replace algorithmParamsType_directory rsaEncryption_oid APT_Null;
-  Hashtbl.replace subjectPublicKeyType_directory rsaEncryption_oid (fun _ -> SPK_RSA);
-
-  register_oid emailAddress_oid "emailAddress";
-  Hashtbl.replace attributeValueType_directory emailAddress_oid AVT_IA5String;
-
-  register_oid basicConstraints_oid "basicConstraints";
-  Hashtbl.replace extensionType_directory basicConstraints_oid ET_BasicConstraints;
+  List.iter (populate_simple_directory attributeValueType_directory) attribute_value_types;
+  List.iter (populate_simple_directory extensionType_directory) extension_types;
+  List.iter (populate_alg_directory subjectPublicKeyType_directory) public_key_types;
+  List.iter (populate_alg_directory signatureType_directory) signature_types;  
   ()
 
 
