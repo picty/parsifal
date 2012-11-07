@@ -153,7 +153,7 @@ let print_time ?indent:(indent="") ?name:(name="time") time =
     | UTCTime t -> aux false t
     | GeneralizedTime t -> aux true t
   in
-  print_printablestring ~indent:indent ~name:name s
+  Printf.sprintf "%s%s: %s\n" indent name s
 
 let parse_time input =
   let c, isC, t = Asn1Engine.extract_der_header input in
@@ -167,7 +167,6 @@ let parse_time input =
     | _ -> Asn1Engine.fatal_error Asn1Engine.InvalidUTCTime input
   in
   get_out input new_input;
-  print_endline (print_time res);
   res
 
 let dump_time time =

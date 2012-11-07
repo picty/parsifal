@@ -5,7 +5,7 @@ open X509
 open RSAKey
 open Getopt
 
-type action = Text | Subject | Issuer | Serial | CheckSelfSigned
+type action = Text | Dump | Subject | Issuer | Serial | CheckSelfSigned
 
 let verbose = ref false
 let keep_going = ref false
@@ -17,6 +17,7 @@ let options = [
   mkopt (Some 'k') "keep-going" (Set keep_going) "keep working even when errors arise";
 
   mkopt (Some 't') "text" (TrivialFun (fun () -> action := Text)) "prints the certificates given";
+  mkopt (Some 'D') "dump" (TrivialFun (fun () -> action := Dump)) "prints the certificates given";
   mkopt (Some 'S') "serial" (TrivialFun (fun () -> action := Serial)) "prints the certificates serial number";
   mkopt (Some 's') "subject" (TrivialFun (fun () -> action := Subject)) "prints the certificates subject";
   mkopt (Some 'i') "issuer" (TrivialFun (fun () -> action := Issuer)) "prints the certificates issuer";
@@ -52,6 +53,9 @@ let handle_input input =
       return ()
     | Issuer ->
       print_endline ("[" ^ String.concat ", " (List.map string_of_atv (List.flatten certificate.tbsCertificate.issuer)) ^ "]");
+      return ()
+    | Dump ->
+      print_endline (hexdump (dump_certificate certificate));
       return ()
     | Text ->
       print_endline (print_certificate certificate);
