@@ -341,18 +341,25 @@ let asn1_alias_of_ident name hdr =
 (*   ParsifalSyntax -> OCaml *)
 (*****************************)
 
-(* Enum exception *)
+let keep_unique_cons constructors =
+  let rec _keep_unique_cons names accu = function
+  | [] -> List.rev accu
+  | ((_, _, n, x) as c)::r  ->
+    if List.mem (n, x) names
+    then _keep_unique_cons names accu r
+    else _keep_unique_cons ((n, x)::names) (c::accu) r
+  in _keep_unique_cons [] [] constructors
+
+
+(* Enum *)
 
 let mk_enum_exception _loc enum = match enum with
   | {unknown_behaviour = Exception e} ->
     [ <:str_item< exception  $typ:<:ctyp< $uid:e$ >>$  >> ]
   | _ -> []
 
-
-(* Enum type *)
-
 let mk_enum_type _loc enum =
-  let ctors = List.map (fun (_loc, _, n, _) -> <:ctyp< $uid:n$ >>) enum.echoices in
+  let ctors = List.map (fun (_loc, _, n, _) -> <:ctyp< $uid:n$ >>) (keep_unique_cons enum.echoices) in
   let suffix_choice = match enum.unknown_behaviour with
     | UnknownVal v -> [ <:ctyp< $ <:ctyp< $uid:v$ >> $ of int >> ]
     | _ -> []
@@ -360,12 +367,9 @@ let mk_enum_type _loc enum =
   let ctyp_ctors = ctors@suffix_choice in
   [ <:str_item< type $lid:enum.ename$ = [ $list:ctyp_ctors$ ] >> ]
 
-
-(* Enum primitive functions *)
-
 let mk_string_of_enum _loc enum =
   let mk_case (_loc, _, n, d) = <:patt< $uid:n$ >>, <:expr< $str:d$ >> in
-  let _cases = List.map mk_case enum.echoices in
+  let _cases = List.map mk_case (keep_unique_cons enum.echoices) in
   let cases = match enum.unknown_behaviour with
     | UnknownVal v ->
       let p = <:patt< $ <:patt< $uid:v$ >> $ $ <:patt< $lid:"i"$ >> $ >>
@@ -377,7 +381,7 @@ let mk_string_of_enum _loc enum =
 
 let mk_int_of_enum _loc enum =
   let mk_case (_loc, v, n, _) = <:patt< $uid:n$ >>, <:expr< $int:v$ >> in
-  let _cases = List.map mk_case enum.echoices in
+  let _cases = List.map mk_case (keep_unique_cons enum.echoices) in
   let cases = match enum.unknown_behaviour with
     | UnknownVal v ->
       let p = <:patt< $ <:patt< $uid:v$ >> $ $ <:patt< $lid:"i"$ >> $ >>
@@ -403,7 +407,7 @@ let mk_enum_of_int _loc enum =
 
 let mk_enum_of_string _loc enum =
   let mk_case (_loc, _, n, d) = <:patt< $str:d$ >>, <:expr< $uid:n$ >> in
-  let _cases = List.map mk_case enum.echoices in
+  let _cases = List.map mk_case (keep_unique_cons enum.echoices) in
   let last_p = <:patt< $lid:"s"$ >>
   and eoi = <:expr< $lid:enum.ename ^ "_of_int"$ >> in
   let last_e = <:expr< $eoi$  (int_of_string s) >> in
@@ -447,15 +451,6 @@ let mk_struct_type _loc record =
 
 (* Union type *)
 
-let keep_unique_cons union =
-  let rec _keep_unique_cons names accu = function
-  | [] -> List.rev accu
-  | ((_, _, n, _) as c)::r  ->
-    if List.mem n names
-    then _keep_unique_cons names accu r
-    else _keep_unique_cons (n::names) (c::accu) r
-  in _keep_unique_cons [] [] union.uchoices
-
 let mk_union_enrich_bool _loc union =
   let bool_name = <:patt< $lid:"enrich_" ^ union.uname$ >>
   and bool_val = <:expr< ref $exp_bool _loc union.uenrich$ >> in
@@ -472,7 +467,7 @@ let mk_union_type _loc union =
       ( <:ctyp< $ <:ctyp< $uid:n$ >> $ of
           $ocaml_type_of_ptype _loc t$ >> )::(mk_ctors r)
   in
-  let ctyp_ctors = mk_ctors (keep_unique_cons union) in
+  let ctyp_ctors = mk_ctors (keep_unique_cons union.uchoices) in
   [ <:str_item< type $lid:union.uname$ = [ $list:ctyp_ctors$ ] >> ]
 
 
@@ -789,7 +784,7 @@ let mk_union_dump_fun _loc union =
     <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  $ <:patt< $lid:"x"$ >> $ ) ->
                   $ <:expr< $fun_of_ptype Dump _loc union.uname union.unparsed_type$ x >> $ >>
   in
-  let cases = (List.map mk_case (keep_unique_cons union))@[last_case] in
+  let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
   let body = <:expr< fun [ $list:cases$ ] >> in
   [ mk_multiple_args_fun _loc ("dump_" ^ union.uname) union.udump_params body ]
 
@@ -807,7 +802,7 @@ let mk_union_print_fun _loc union =
                   $ <:expr< $fun_of_ptype Print _loc union.uname union.unparsed_type$
                                   ~indent:indent ~name:(name ^ "[Unparsed]") x >> $ >>
   in
-  let cases = (List.map mk_case (keep_unique_cons union))@[last_case] in
+  let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
   let body = <:expr< fun [ $list:cases$ ] >> in
   [ mk_multiple_args_fun _loc ("print_" ^ union.uname) [] 
       ~optargs:(["indent", <:expr< $str:""$ >>; "name", <:expr< $str:union.uname$ >> ]) body ]
