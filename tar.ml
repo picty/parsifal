@@ -19,7 +19,8 @@ type tar_numstring = int
 let parse_tar_numstring len input =
   let octal_value = parse_string (len - 1) input in
   drop_bytes 1 input;
-  int_of_string ("0o" ^ octal_value)
+  try int_of_string ("0o" ^ octal_value)
+  with _ -> raise (ParsingException (CustomException "int_of_string", _h_of_si input))
 
 let dump_tar_numstring len v =
   Printf.sprintf "%*.*o\x00" len len v
