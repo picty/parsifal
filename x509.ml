@@ -5,15 +5,38 @@ open Asn1PTypes
 (* ATV, RD and DN *)
 (******************)
 
+type directory_string = asn1_tag * string
+
+let parse_directory_string input =
+  let aux h new_input = match h with
+    | (C_Universal, false,
+       (T_T61String|T_PrintableString|T_UniversalString|
+        T_UTF8String|T_BMPString as t)) ->
+      t, parse_der_octetstring_content no_constraint new_input
+    | h -> fatal_error (UnexpectedHeader (h, None)) input
+  in advanced_der_parse aux input
+
+let dump_directory_string (t, s) =
+  produce_der_object (C_Universal, false, t) (fun x -> x) s
+
+let print_directory_string ?indent:(indent="") ?name:(name="directory_string") (_, s) =
+  Printf.sprintf "%s%s: %s\n" indent name s
+
+
+
 type attributeValueType =
-  | AVT_IA5String
+  | AVT_IA5String of int option
+  | AVT_PrintableString of int option
+  | AVT_DirectoryString of int option
   | AVT_Anything
 
 let attributeValueType_directory : (int list, attributeValueType) Hashtbl.t = Hashtbl.create 10
 
-(* TODO: Handle DirectoryString / Constraints on strings *)
+(* TODO: Handle length constraints on strings *)
 union attributeValue [enrich] (UnparsedAV of der_object) =
-  | AVT_IA5String -> AV_IA5String of der_ia5string
+  | AVT_IA5String _ -> AV_IA5String of der_ia5string
+  | AVT_PrintableString _ -> AV_PrintableString of der_printablestring
+  | AVT_DirectoryString _ -> AV_DirectoryString of directory_string
 
 struct atv_content = {
   attributeType : der_oid;
@@ -138,11 +161,30 @@ asn1_alias extensions = constructed [C_ContextSpecific, 3] extension_list
 (* Validity *)
 (****************)
 
-(* TODO: Think of a way to factor this? *)
-
 type time =
   | UTCTime of (int * int * int * int * int * int)
   | GeneralizedTime of (int * int * int * int * int * int)
+
+let parse_time input =
+  let aux h new_input = match h with
+    | (C_Universal, false, T_UTCTime) ->
+      UTCTime (parse_der_processed_string_content utc_time_constraint new_input)
+    | (C_Universal, false, T_GeneralizedTime) ->
+      GeneralizedTime (parse_der_processed_string_content generalized_time_constraint new_input)
+    | _ -> fatal_error InvalidUTCTime input
+  in
+  advanced_der_parse aux input
+
+let dump_time time =
+  let aux isGen (y, m, d, yy, mm, ss) =
+    let l = if isGen then 4 else 2 in
+    Printf.sprintf "%*.*d%2.2d%2.2d%2.2d%2.2d%2.2dZ" l l y m d yy mm ss
+  in
+  match time with
+  | UTCTime t ->
+    produce_der_object (C_Universal, false, T_UTCTime) (fun x -> x) (aux false t)
+  | GeneralizedTime t ->
+    produce_der_object (C_Universal, false, T_UTCTime) (fun x -> x) (aux true t)
 
 let print_time ?indent:(indent="") ?name:(name="time") time =
   let aux isGen (y, m, d, yy, mm, ss) =
@@ -154,31 +196,6 @@ let print_time ?indent:(indent="") ?name:(name="time") time =
     | GeneralizedTime t -> aux true t
   in
   Printf.sprintf "%s%s: %s\n" indent name s
-
-let parse_time input =
-  let c, isC, t = Asn1Engine.extract_der_header input in
-  let len = Asn1Engine.extract_der_length input in
-  let new_input = get_in input (Asn1Engine.print_header (c, isC, t)) len in
-  let res = match c, isC, t with
-    | (Asn1Engine.C_Universal, false, Asn1Engine.T_UTCTime) ->
-      UTCTime (parse_der_processed_string_content utc_time_constraint new_input)
-    | (Asn1Engine.C_Universal, false, Asn1Engine.T_GeneralizedTime) ->
-      GeneralizedTime (parse_der_processed_string_content generalized_time_constraint new_input)
-    | _ -> Asn1Engine.fatal_error Asn1Engine.InvalidUTCTime input
-  in
-  get_out input new_input;
-  res
-
-let dump_time time =
-  let aux isGen (y, m, d, yy, mm, ss) =
-    let l = if isGen then 4 else 2 in
-    Printf.sprintf "%*.*d%2.2d%2.2d%2.2d%2.2d%2.2dZ" l l y m d yy mm ss
-  in
-  match time with
-  | UTCTime t ->
-    Asn1Engine.produce_der_object (Asn1Engine.C_Universal, false, Asn1Engine.T_UTCTime) (fun x -> x) (aux false t)
-  | GeneralizedTime t ->
-    Asn1Engine.produce_der_object (Asn1Engine.C_Universal, false, Asn1Engine.T_UTCTime) (fun x -> x) (aux true t)
 
 struct validity_content = {
   notBefore : time;
@@ -226,22 +243,46 @@ asn1_alias certificate [top]
 (**************************)
 
 let attribute_value_types = [
-  [42;840;113549;1;9;1], "emailAddress", AVT_IA5String
+  [85; 4; 41], "name", AVT_DirectoryString(Some 32768);
+  [85; 4; 4], "surname", AVT_DirectoryString(Some 32768);
+  [85; 4; 42], "givenName", AVT_DirectoryString(Some 32768);
+  [85; 4; 43], "initials", AVT_DirectoryString(Some 32768);
+  [85; 4; 44], "generationQualifier", AVT_DirectoryString(Some 32768);
+
+  [85; 4; 3], "commonName", AVT_DirectoryString(Some 64);
+  [85; 4; 7], "localityName", AVT_DirectoryString(Some 128);
+  [85; 4; 8], "stateOrProvinceName", AVT_DirectoryString(Some 128);
+  [85; 4; 10], "organizationName", AVT_DirectoryString(Some 64);
+  [85; 4; 11], "organizationalUnitName", AVT_DirectoryString(Some 64);
+  [85; 4; 12], "title", AVT_DirectoryString(Some 64);
+  [85; 4; 46], "dnQualifier", AVT_PrintableString(None);
+  [85; 4; 6], "countryName", AVT_PrintableString(Some 2);
+  [85; 4; 5], "serialNumber", AVT_PrintableString(Some 64);
+  [85; 4; 65], "pseudonym", AVT_DirectoryString(Some 128);
+
+  [9; 2342; 19200300; 100; 1; 25], "domainComponent", AVT_IA5String(None);
+  [42;840;113549;1;9;1], "emailAddress", AVT_IA5String(Some 255)
 ]
+
 
 let public_key_types = [
   [42;840;113549;1;1;1], "rsaEncryption", APT_Null, (fun _ -> SPK_RSA);
 ]
 
 let signature_types = [
+  [42;840;113549;1;1;2], "md2WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
+  [42;840;113549;1;1;3], "md4WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
+  [42;840;113549;1;1;4], "md5WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
+  [42;840;113549;1;1;5], "sha1-with-rsa-signature", APT_Null, (fun _ -> ST_RSA);
   [42;840;113549;1;1;11], "sha256WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
+  [42;840;113549;1;1;12], "sha384WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
+  [42;840;113549;1;1;13], "sha512WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
+  [42;840;113549;1;1;14], "sha224WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
 ]
 
 let extension_types = [
   [85;29;19], "basicConstraints", ET_BasicConstraints;
 ]
-
-
 
 let populate_simple_directory dir (id, name, value) =
   register_oid id name;

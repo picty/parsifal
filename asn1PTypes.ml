@@ -479,9 +479,19 @@ let dump_octetstring_container dump_fun o =
   dump_der_octetstring content
 
 
+(* DER advanced object *)
+let advanced_der_parse (parse_fun : (asn1_class * bool * asn1_tag) -> string_input -> 'a) (input : string_input) : 'a =
+  let hdr = extract_der_header input in
+  let len = extract_der_length input in
+  let new_input = get_in input (print_header hdr) len in
+  let res = parse_fun hdr new_input in
+  get_out input new_input;
+  res
+
 
 
 
 (* Useful aliases *)
 (* TODO: Constraints! *)
 asn1_alias der_ia5string = primitive [T_IA5String] der_octetstring_content(no_constraint)
+asn1_alias der_printablestring = primitive [T_PrintableString] der_octetstring_content(no_constraint)
