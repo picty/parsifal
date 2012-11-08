@@ -341,13 +341,17 @@ let asn1_alias_of_ident name hdr =
 (*   ParsifalSyntax -> OCaml *)
 (*****************************)
 
+(* TODO: if two lines are inconsistent, there is no warning...      *)
+(*       for enums, we only need to check the 4th field is the same *)
+(*       for unions it is more complicated                          *)
+
 let keep_unique_cons constructors =
   let rec _keep_unique_cons names accu = function
   | [] -> List.rev accu
-  | ((_, _, n, x) as c)::r  ->
-    if List.mem (n, x) names
+  | ((_, _, n, _) as c)::r  ->
+    if List.mem n names
     then _keep_unique_cons names accu r
-    else _keep_unique_cons ((n, x)::names) (c::accu) r
+    else _keep_unique_cons (n::names) (c::accu) r
   in _keep_unique_cons [] [] constructors
 
 
