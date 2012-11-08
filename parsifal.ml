@@ -140,6 +140,7 @@ let print_parsing_exception = function
   | NotImplemented feat -> "Not implemented (" ^ feat ^ ")"
 
 exception ParsingException of parsing_exception * history
+exception ParsingStop
 
 let string_of_exception e h = (print_parsing_exception e) ^ (print_history h)
 
@@ -606,6 +607,7 @@ let lwt_parse_rem_list lwt_parse_fun input =
       let saved_offset = input.lwt_offset in
       let finalize_ok x = aux (x::accu)
       and finalize_nok = function
+	| ParsingStop -> return (List.rev accu)
 	| (ParsingException _) as e ->
 	    if input.lwt_offset = saved_offset
 	    then return (List.rev accu)

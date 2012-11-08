@@ -38,8 +38,13 @@ struct ustar_header = {
   filename_prefix : string(155)
 }
 
+let parse_last_entry name input =
+  if name.[0] = '\x00'
+  then raise ParsingStop
+
 struct tar_header = {
   file_name : string(100);
+  is_last_entry : check of last_entry (file_name);
   file_mode : tar_numstring[8];
   owner_uid : tar_numstring[8];
   owner_gid : tar_numstring[8];
