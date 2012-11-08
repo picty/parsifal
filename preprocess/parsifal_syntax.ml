@@ -158,7 +158,7 @@ type ptype =
   | PT_List of field_len * ptype
   | PT_Container of field_len * ptype  (* the string corresponds to the integer type for the field length *)
   | PT_Custom of (string option) * string * expr list * expr list (* the expr lists are the args to give to parse / dump *)
-  | PT_CustomContainer of (string option) * string * ptype
+  | PT_CustomContainer of (string option) * string * expr list * expr list * ptype
   | PT_CheckFunction of (string option) * string * expr list * bool  (* the last boolean is set if the function is in fact a reference *)
 
 
@@ -315,11 +315,11 @@ let ptype_of_ident name decorator subtype =
       and e2 = expr_list_of_decorator dec2 in
       PT_Custom (module_name, name, e1@e2, e1)
 
-    | custom_identifier, (None, None), Some t ->
-      let module_name, name = qname_ident (custom_identifier) in
-      PT_CustomContainer (module_name, name, t)
-
-    | i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid identifier for a type")
+    | custom_identifier, (dec1, dec2), Some t ->
+      let module_name, name = qname_ident (custom_identifier)
+      and e1 = expr_list_of_decorator dec1
+      and e2 = expr_list_of_decorator dec2 in
+      PT_CustomContainer (module_name, name, e1@e2, e1, t)
 
 
 (* ASN1 Aliases *)
@@ -423,7 +423,7 @@ let rec ocaml_type_of_ptype _loc = function
   | PT_List (_, subtype) -> <:ctyp< list $ocaml_type_of_ptype _loc subtype$ >>
   | PT_Array (_, subtype) -> <:ctyp< array $ocaml_type_of_ptype _loc subtype$ >>
   | PT_Container (_, subtype)
-  | PT_CustomContainer (_, _, subtype) -> ocaml_type_of_ptype _loc subtype
+  | PT_CustomContainer (_, _, _, _, subtype) -> ocaml_type_of_ptype _loc subtype
   | PT_Custom (None, n, _, _) -> <:ctyp< $lid:n$ >>
   | PT_Custom (Some m, n, _, _) -> <:ctyp< $uid:m$.$lid:n$ >>
 
@@ -577,13 +577,13 @@ let rec fun_of_ptype ftype _loc name t =
       
   (* Custom Container *)
   (* For containers, the subtype is always parsed with strings *)
-    | PT_CustomContainer (m, n, subtype), (Parse|LwtParse) ->
+    | PT_CustomContainer (m, n, e, _, subtype), (Parse|LwtParse) ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n))
-	[(fun_of_ptype Parse _loc name subtype)]
-    | PT_CustomContainer (m, n, subtype), Dump ->
+	(e@[fun_of_ptype Parse _loc name subtype])
+    | PT_CustomContainer (m, n, _, e, subtype), Dump ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n))
-	[(fun_of_ptype Dump _loc name subtype)]
-    | PT_CustomContainer (_, _, subtype), Print ->
+	(e@[fun_of_ptype Dump _loc name subtype])
+    | PT_CustomContainer (_, _, _, _, subtype), Print ->
       fun_of_ptype ftype _loc name subtype
 
   (* Check functions *)

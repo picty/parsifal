@@ -446,6 +446,10 @@ and print_der_content ?indent:(indent="") ?name:(name="der_object") = function
 
 (* ASN.1 Containers *)
 
+let parse_asn1 h = extract_der_object (print_header h) h
+let dump_asn1 = produce_der_object
+
+
 let parse_bitstring_container parse_fun input =
   let (_nbits, content) = parse_der_bitstring input in
   (* TODO:    if nbits <> 0 then *)
@@ -461,7 +465,7 @@ let parse_bitstring_container parse_fun input =
 let dump_bitstring_container dump_fun o =
   let content = dump_fun o in
   dump_der_bitstring (0, content)
-  
+
 
 let parse_octetstring_container parse_fun input =
   let content = parse_der_octetstring input in

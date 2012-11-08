@@ -20,12 +20,8 @@ v0.1 (oct. 2012)
    * [?] add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
    * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
    * put 'a result_type and handle_answer logic from probe_server into TlsEngine
- - ASN.1
-   * handle constraints
-   * add UTCTime / ValidityTime handling (choices)
  - X509
    * add support for RSA/DSA public key and signature
-   * support extensions
    * parse certificates with all the previous features: RSA handling, DN.short, extensions
    * Add a cert store object
      + hashtable of certs
@@ -81,6 +77,7 @@ v0.2 (feb. 2013)
    * Write some tests (unit tests, non-regression, etc.)
    * Write .mli files
  - Camlp4/Language
+   * merge list/array into the CustomContainer feature?
    * be more cautious about int32 types...
    * add base64_container / gzip_container as custom containers
    * Document the preprocessor (update the JFLA article)

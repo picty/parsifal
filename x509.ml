@@ -1,4 +1,5 @@
 open Parsifal
+open Asn1Engine
 open Asn1PTypes
 
 (******************)
@@ -125,11 +126,14 @@ union signature [enrich] (UnparsedSignature of der_object) =
 (* Extensions *)
 (**************)
 
-type extensionType =
-  | ET_BasicConstraints
-  | ET_Unknown
-
-let extensionType_directory : (int list, extensionType) Hashtbl.t = Hashtbl.create 10
+(* Authority Key Identifier *)
+(* TODO: add constraint on [1] and [2] that MUST both be present or absent *)
+struct authority_key_identifier_content = {
+  optional keyIdentifier : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of binstring;
+  optional authorityCertIssuerUNPARSED : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of (list of der_object); (* TODO: GeneralName *)
+  optional authorityCertSerialNumber : asn1 [(C_ContextSpecific, false, T_Unknown 2)] of der_integer_content
+}
+asn1_alias authority_key_identifier
 
 (* Basic Constraints *)
 struct basic_constraints_content = {
@@ -138,16 +142,15 @@ struct basic_constraints_content = {
 }
 asn1_alias basic_constraints
 
-union extnValue [enrich] (UnparsedExtension of der_object) =
-  | ET_BasicConstraints -> BasicConstraints of basic_constraints
+union extnValue [enrich] (UnparsedExtension of binstring) =
+  | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authority_key_identifier
+  | "subjectKeyIdentifier" -> SubjectKeyIdentifier of der_octetstring
+  | "basicConstraints" -> BasicConstraints of basic_constraints
 
-
-
-(* TODO: Make extnValue depend on extnID, and have it enrichable *)
 struct extension_content = {
   extnID : der_oid;
   optional critical : der_boolean;
-  extnValue : octetstring_container of extnValue(hash_get extensionType_directory extnID ET_Unknown)
+  extnValue : octetstring_container of extnValue(hash_get oid_directory extnID "")
 }
 asn1_alias extension
 
@@ -281,7 +284,9 @@ let signature_types = [
 ]
 
 let extension_types = [
-  [85;29;19], "basicConstraints", ET_BasicConstraints;
+  [85;29;35], "authorityKeyIdentifier";
+  [85;29;14], "subjectKeyIdentifier";
+  [85;29;19], "basicConstraints";
 ]
 
 let populate_simple_directory dir (id, name, value) =
@@ -296,7 +301,7 @@ let populate_alg_directory dir (id, name, algParam, value) =
 
 let _ =
   List.iter (populate_simple_directory attributeValueType_directory) attribute_value_types;
-  List.iter (populate_simple_directory extensionType_directory) extension_types;
+  List.iter (fun (id, name) -> register_oid id name) extension_types;
   List.iter (populate_alg_directory subjectPublicKeyType_directory) public_key_types;
   List.iter (populate_alg_directory signatureType_directory) signature_types;  
   ()
