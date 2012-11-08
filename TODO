@@ -88,6 +88,9 @@ v0.2 (feb. 2013)
        -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
+ - ASN.1
+   * add a printer version of asn1parse for der_object
+   * add a event-driven der_object version to have a cool asn1parse
  - Tls
    * Implement missing extensions in Tls (TODO in tls.ml)
  - X509
