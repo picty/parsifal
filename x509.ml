@@ -153,9 +153,7 @@ struct extension_content = {
   extnValue : octetstring_container of extnValue(hash_get oid_directory extnID "")
 }
 asn1_alias extension
-
 asn1_alias extension_list = seq_of extension (* TODO: min = 1 *)
-asn1_alias extensions = constructed [C_ContextSpecific, 3] extension_list
 
 
 
@@ -213,21 +211,20 @@ asn1_alias validity
 (* tbs and Certificate *)
 (***********************)
 
-asn1_alias x509_version = constructed [C_ContextSpecific, 0] der_integer
 asn1_alias issuerUniqueId = primitive [C_ContextSpecific, 1] der_bitstring
 asn1_alias subjectUniqueId = primitive [C_ContextSpecific, 2] der_bitstring
 
 struct tbsCertificate_content = {
-  optional version : x509_version;
+  optional version : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_smallint;
   serialNumber : der_integer;
   signature : algorithmIdentifier;
   issuer : distinguished_name;
   validity : validity;
   subject : distinguished_name;
   subjectPublicKeyInfo : subjectPublicKeyInfo;
-  optional issuerUniqueId : issuerUniqueId;
-  optional subjectUniqueId : subjectUniqueId;
-  optional extensions : extensions
+  optional issuerUniqueId : asn1 [(C_ContextSpecific, false, T_Unknown 1)] of der_bitstring_content;
+  optional subjectUniqueId : asn1 [(C_ContextSpecific, false, T_Unknown 2)] of der_bitstring_content;
+  optional extensions : asn1 [(C_ContextSpecific, true, T_Unknown 3)] of extension_list
 }
 asn1_alias tbsCertificate
 

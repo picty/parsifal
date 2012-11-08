@@ -78,7 +78,6 @@ v0.2 (feb. 2013)
    * Write .mli files
  - Camlp4/Language
    * add control commands in struct (check / seek / stop)
-   * merge list/array into the CustomContainer feature?
    * be more cautious about int32 types...
    * add base64_container / gzip_container as custom containers
    * Document the preprocessor (update the JFLA article)
