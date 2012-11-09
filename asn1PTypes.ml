@@ -221,53 +221,49 @@ let print_der_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_c
 asn1_alias der_bitstring = primitive [T_BitString] der_bitstring_content
 
 
-(* TODO: Enumerated Bit Strings *)
 
-(* let apply_desc desc i = *)
-(*   if i >= 0 && i < Array.length desc *)
-(*   then desc.(i) else raise (OutOfBounds "apply_desc") *)
+(* TODO: Should this really be a string list? *)
+type der_enumerated_bitstring_content = string list
 
-(* let extract_bit_list s = *)
-(*   let n = String.length s in *)
-(*   let rec extract_from_byte accu i b = *)
-(*     if i = 0 then accu *)
-(*     else extract_from_byte (((b land i) <> 0)::accu) (i lsr 1) b *)
-(*   in *)
-(*   let rec extract_from_str accu offset = *)
-(*     if (offset >= n) then List.rev accu *)
-(*     else extract_from_str (extract_from_byte accu 0x80 (int_of_char s.[offset])) (offset + 1) *)
-(*   in *)
-(*   extract_from_str [] 0 *)
+let extract_bit_list s =
+  let n = String.length s in
+  let rec extract_from_byte accu i b =
+    if i = 0 then accu
+    else extract_from_byte (((b land i) <> 0)::accu) (i lsr 1) b
+  in
+  let rec extract_from_str accu offset =
+    if (offset >= n) then List.rev accu
+    else extract_from_str (extract_from_byte accu 0x80 (int_of_char s.[offset])) (offset + 1)
+  in
+  extract_from_str [] 0
 
-(* let name_bits pstate description l = *)
-(*   let n = Array.length description in *)
-(*   let rec aux i = function *)
-(*     | [] -> [] *)
-(*     | true::r when i >= n -> *)
-(*       asn1_emit NotInNormalForm None (Some "Trailing bits in an enumerated bit string should be null") pstate; *)
-(*       [] *)
-(*     | true::r -> (i)::(aux (i+1) r) *)
-(*     | false::r when i = n -> *)
-(*       asn1_emit NotInNormalForm None (Some "Only significant bit should be put inside an enumerated bit string") pstate; *)
-(*       aux (i+1) r *)
-(*     | false::r -> aux (i+1) r *)
-(*   in aux 0 l *)
+let parse_der_enumerated_bitstring_content description input =
+  let (nBits, content) = parse_der_bitstring_content input in
+  let values = extract_bit_list content in
+  let n = Array.length description in
+  let rec aux i = function
+    | [] -> []
+    | true::r when i >= n ->
+      warning (BitStringNotInNormalForm "Trailing bits in an enumerated bit string should be null") input;
+      []
+    | true::r -> (i)::(aux (i+1) r)
+    | false::r when i = n ->
+      warning (BitStringNotInNormalForm "Only significant bit should be put inside an enumerated bit string") input;
+      aux (i+1) r
+    | false::r -> aux (i+1) r
+  in
+  let res = aux 0 values in
+  List.map (fun v -> description.(v)) res
 
-(* let enumerated_from_raw_bit_string pstate desc nBits content = *)
-(*   let len = (String.length content) * 8 - nBits in *)
-(*   if len > Array.length desc *)
-(*   then asn1_emit NotInNormalForm None (Some "Bit string is too long") pstate; *)
-(*   let bits = extract_bit_list content in *)
-(*   name_bits pstate desc bits *)
+(* TODO! *)
+let dump_der_enumerated_bitstring_content _description _v =
+  raise (ParsingException (NotImplemented "dump_der_enumerated_bistring_content", []))
 
-(* let der_to_bitstring description pstate = *)
-(*   let nBits, content = raw_der_to_bitstring pstate in *)
-(*   match description with *)
-(*     | None -> BitString (nBits, content) *)
-(*     | Some desc -> *)
-(*       if !parse_enumerated *)
-(*       then EnumeratedBitString (enumerated_from_raw_bit_string pstate desc nBits content, desc) *)
-(*       else BitString (nBits, content) *)
+let print_der_enumerated_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_content") l =
+  Printf.sprintf "%s%s: %s\n" indent name (String.concat ", " l)
+
+asn1_alias der_enumerated_bitstring [both_param description] = primitive [T_BitString] der_enumerated_bitstring_content[description]
+
 
 
 (* Octet String *)

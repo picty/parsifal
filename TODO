@@ -3,8 +3,6 @@ v0.1 (oct. 2012 -> nov. 2012)
    * have a redmine to put all this stuff
    * Produce a real camlp4 syntax package
    * add Pollux' MakefileV6
- - ASN.1
-   * support for enumerated bit strings
  - Tls
    * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
    * Add SSLv2 support in probe_server and other programs

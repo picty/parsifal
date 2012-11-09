@@ -142,9 +142,24 @@ struct basic_constraints_content = {
 }
 asn1_alias basic_constraints
 
+(* Key Usage *)
+let keyUsage_values = [|
+  "digitalSignature";
+  "nonRepudiation";
+  "keyEncipherment";
+  "dataEncipherment";
+  "keyAgreement";
+  "keyCertSign";
+  "cRLSign";
+  "encipherOnly";
+  "decipherOnly"
+|]
+
+
 union extnValue [enrich] (UnparsedExtension of binstring) =
   | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authority_key_identifier
   | "subjectKeyIdentifier" -> SubjectKeyIdentifier of der_octetstring
+  | "keyUsage" -> KeyUsage of der_enumerated_bitstring[keyUsage_values]
   | "basicConstraints" -> BasicConstraints of basic_constraints
 
 struct extension_content = {
@@ -158,9 +173,9 @@ asn1_alias extension_list = seq_of extension (* TODO: min = 1 *)
 
 
 
-(****************)
+(************)
 (* Validity *)
-(****************)
+(************)
 
 type time =
   | UTCTime of (int * int * int * int * int * int)
@@ -283,6 +298,7 @@ let signature_types = [
 let extension_types = [
   [85;29;35], "authorityKeyIdentifier";
   [85;29;14], "subjectKeyIdentifier";
+  [85;29;15], "keyUsage";
   [85;29;19], "basicConstraints";
 ]
 
