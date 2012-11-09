@@ -12,6 +12,7 @@ type action = IP | All | Suite | SKE | Subject
 let action = ref IP
 let verbose = ref false
 let raw_records = ref false
+let filter_ip = ref ""
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
@@ -24,6 +25,8 @@ let options = [
   mkopt (Some 's') "ciphersuite" (TrivialFun (fun () -> action := Suite)) "only show the ciphersuite chosen";
   mkopt (Some 'S') "ske" (TrivialFun (fun () -> action := SKE)) "only show information relative to ServerKeyExchange";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject)) "show the subect";
+
+  mkopt None "filter-ip" (StringVal filter_ip) "only print info regarding this ip"
 ]
 
 let getopt_params = {
@@ -94,7 +97,7 @@ let rec handle_one_file input =
   | None -> return ()
   | Some answer ->
     let ip = string_of_ipv4 answer.ip in
-    begin
+    if (!filter_ip = ip) || (!filter_ip = "") then begin
       match !action with
       | IP -> print_endline ip; return ()
       | All ->
@@ -153,7 +156,7 @@ let rec handle_one_file input =
            | Some subject -> Printf.printf "%s: %s\n" ip subject
        end;
        return ()
-    end >>= fun () ->
+    end else return () >>= fun () ->
     handle_one_file input
 
 let _ =
