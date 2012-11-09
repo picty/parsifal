@@ -155,11 +155,15 @@ struct basicConstraints_content = {
 }
 asn1_alias basicConstraints
 
+(* Extended Key Usage *)
+asn1_alias extendedKeyUsage = seq_of der_oid
+
 union extnValue [enrich] (UnparsedExtension of binstring) =
   | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authorityKeyIdentifier
   | "subjectKeyIdentifier" -> SubjectKeyIdentifier of der_octetstring
   | "keyUsage" -> KeyUsage of der_enumerated_bitstring[keyUsage_values]
   | "basicConstraints" -> BasicConstraints of basicConstraints
+  | "extendedKeyUsage" -> ExtendedKeyUsage of extendedKeyUsage
 
 struct extension_content = {
   extnID : der_oid;
@@ -299,6 +303,17 @@ let extension_types = [
   [85;29;14], "subjectKeyIdentifier";
   [85;29;15], "keyUsage";
   [85;29;19], "basicConstraints";
+  [85;29;37], "extendedKeyUsage";
+]
+
+let other_oids = [
+  [85;29;37;0], "anyExtendedKeyUsage";
+  [43;6;1;5;5;7;3;1], "serverAuth";
+  [43;6;1;5;5;7;3;2], "clientAuth";
+  [43;6;1;5;5;7;3;3], "codeSigning";
+  [43;6;1;5;5;7;3;4], "emailProtection";
+  [43;6;1;5;5;7;3;8], "timeStamping";
+  [43;6;1;5;5;7;3;9], "OCSPSigning";
 ]
 
 let populate_simple_directory dir (id, name, value) =
@@ -314,6 +329,7 @@ let populate_alg_directory dir (id, name, algParam, value) =
 let _ =
   List.iter (populate_simple_directory attributeValueType_directory) attribute_value_types;
   List.iter (fun (id, name) -> register_oid id name) extension_types;
+  List.iter (fun (id, name) -> register_oid id name) other_oids;
   List.iter (populate_alg_directory subjectPublicKeyType_directory) public_key_types;
   List.iter (populate_alg_directory signatureType_directory) signature_types;  
   ()

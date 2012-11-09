@@ -21,8 +21,8 @@ v0.1 (oct. 2012 -> nov. 2012)
    * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
    * put 'a result_type and handle_answer logic from probe_server into TlsEngine
  - X509
-   * write GeneralName
-   * add KU, EKU, CertificatePolicies, NameContstraints SAN, AIA and CRLDP extensions
+   * write GeneralName and rewrite directoryString and 
+   * add CertificatePolicies, NameContstraints SAN, AIA and CRLDP extensions
    * add support for RSA/DSA public key and signature
    * add a cert store object
      + hashtable of certs
