@@ -6,9 +6,9 @@ open Asn1PTypes
 (* ATV, RD and DN *)
 (******************)
 
-type directory_string = asn1_tag * string
+type directoryString = asn1_tag * string
 
-let parse_directory_string input =
+let parse_directoryString input =
   let aux h new_input = match h with
     | (C_Universal, false,
        (T_T61String|T_PrintableString|T_UniversalString|
@@ -17,10 +17,10 @@ let parse_directory_string input =
     | h -> fatal_error (UnexpectedHeader (h, None)) input
   in advanced_der_parse aux input
 
-let dump_directory_string (t, s) =
+let dump_directoryString (t, s) =
   produce_der_object (C_Universal, false, t) (fun x -> x) s
 
-let print_directory_string ?indent:(indent="") ?name:(name="directory_string") (_, s) =
+let print_directoryString ?indent:(indent="") ?name:(name="directoryString") (_, s) =
   Printf.sprintf "%s%s: %s\n" indent name s
 
 
@@ -37,7 +37,7 @@ let attributeValueType_directory : (int list, attributeValueType) Hashtbl.t = Ha
 union attributeValue [enrich] (UnparsedAV of der_object) =
   | AVT_IA5String _ -> AV_IA5String of der_ia5string
   | AVT_PrintableString _ -> AV_PrintableString of der_printablestring
-  | AVT_DirectoryString _ -> AV_DirectoryString of directory_string
+  | AVT_DirectoryString _ -> AV_DirectoryString of directoryString
 
 struct atv_content = {
   attributeType : der_oid;
@@ -53,7 +53,7 @@ let string_of_atv atv = match atv.attributeValue with
 
 (* TODO: Add constraints on set of [min, max] *)
 asn1_alias rdn = set_of atv  (* min = 1 *)
-asn1_alias distinguished_name = seq_of rdn
+asn1_alias distinguishedName = seq_of rdn
 
 
 
@@ -128,19 +128,12 @@ union signature [enrich] (UnparsedSignature of der_object) =
 
 (* Authority Key Identifier *)
 (* TODO: add constraint on [1] and [2] that MUST both be present or absent *)
-struct authority_key_identifier_content = {
+struct authorityKeyIdentifier_content = {
   optional keyIdentifier : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of binstring;
   optional authorityCertIssuerUNPARSED : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of (list of der_object); (* TODO: GeneralName *)
   optional authorityCertSerialNumber : asn1 [(C_ContextSpecific, false, T_Unknown 2)] of der_integer_content
 }
-asn1_alias authority_key_identifier
-
-(* Basic Constraints *)
-struct basic_constraints_content = {
-  optional cA : der_boolean;
-  optional pathLenConstraint : der_smallint
-}
-asn1_alias basic_constraints
+asn1_alias authorityKeyIdentifier
 
 (* Key Usage *)
 let keyUsage_values = [|
@@ -155,12 +148,18 @@ let keyUsage_values = [|
   "decipherOnly"
 |]
 
+(* Basic Constraints *)
+struct basicConstraints_content = {
+  optional cA : der_boolean;
+  optional pathLenConstraint : der_smallint
+}
+asn1_alias basicConstraints
 
 union extnValue [enrich] (UnparsedExtension of binstring) =
-  | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authority_key_identifier
+  | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authorityKeyIdentifier
   | "subjectKeyIdentifier" -> SubjectKeyIdentifier of der_octetstring
   | "keyUsage" -> KeyUsage of der_enumerated_bitstring[keyUsage_values]
-  | "basicConstraints" -> BasicConstraints of basic_constraints
+  | "basicConstraints" -> BasicConstraints of basicConstraints
 
 struct extension_content = {
   extnID : der_oid;
@@ -233,9 +232,9 @@ struct tbsCertificate_content = {
   optional version : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_smallint;
   serialNumber : der_integer;
   signature : algorithmIdentifier;
-  issuer : distinguished_name;
+  issuer : distinguishedName;
   validity : validity;
-  subject : distinguished_name;
+  subject : distinguishedName;
   subjectPublicKeyInfo : subjectPublicKeyInfo;
   optional issuerUniqueId : asn1 [(C_ContextSpecific, false, T_Unknown 1)] of der_bitstring_content;
   optional subjectUniqueId : asn1 [(C_ContextSpecific, false, T_Unknown 2)] of der_bitstring_content;

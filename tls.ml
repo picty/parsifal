@@ -144,13 +144,13 @@ struct signature_and_hash_algorithm = {
   signature_algorithm : signature_algorithm
 }
 
-union _distinguished_name [exhaustive] (UnparsedDN) =
-  | () -> ParsedDN of X509.distinguished_name
+union _distinguishedName [exhaustive] (UnparsedDN) =
+  | () -> ParsedDN of X509.distinguishedName
 
 struct certificate_request = {
   certificate_types : client_certificate_type;
   supported_signature_algorithms : list[uint16] of signature_and_hash_algorithm;
-  certificate_authorities : list[uint16] of container[uint16] of _distinguished_name(())
+  certificate_authorities : list[uint16] of container[uint16] of _distinguishedName(())
 }
 
 union handshake_content [enrich; param context] (Unparsed_HSContent) =

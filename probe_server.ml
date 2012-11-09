@@ -64,7 +64,7 @@ let update_both_versions s =
 
 let deep_parse () =
   enrich__certificate := true;
-  enrich__distinguished_name := true
+  enrich__distinguishedName := true
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
