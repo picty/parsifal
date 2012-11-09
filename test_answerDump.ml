@@ -49,14 +49,14 @@ let parse_all_records answer =
   let rec split_records accu ctx str_input recs = match str_input, recs with
     | None, [] -> List.rev accu, ctx, false
     | None, record::r ->
-      let record_input = input_of_string (string_of_ipv4 answer.ip) (dump_record_content record.record_content) in
+      let record_input = input_of_string ~enrich:true (string_of_ipv4 answer.ip) (dump_record_content record.record_content) in
       let cursor = record.content_type, record.record_version, record_input in
       split_records accu ctx (Some cursor) r
     | Some (ct, v, i), _ ->
       if eos i then split_records accu ctx None recs
       else begin
         try
-          let next_content = parse_record_content ctx ct { i with enrich=true } in
+          let next_content = parse_record_content ctx ct i in
           let next_record = {
             content_type = ct;
             record_version = v;
