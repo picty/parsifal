@@ -8,7 +8,7 @@ open Tls
 open Getopt
 open X509
 
-type action = IP | All | Suite | SKE | Subject
+type action = IP | Dump | All | Suite | SKE | Subject
 let action = ref IP
 let verbose = ref false
 let raw_records = ref false
@@ -22,6 +22,7 @@ let options = [
 
   mkopt (Some 'a') "all" (TrivialFun (fun () -> action := All)) "show all the information and records of an answer";
   mkopt (Some 'I') "ip" (TrivialFun (fun () -> action := IP)) "only show the IP of the answers";
+  mkopt (Some 'D') "dump" (TrivialFun (fun () -> action := Dump)) "dumps the answers";
   mkopt (Some 's') "ciphersuite" (TrivialFun (fun () -> action := Suite)) "only show the ciphersuite chosen";
   mkopt (Some 'S') "ske" (TrivialFun (fun () -> action := SKE)) "only show information relative to ServerKeyExchange";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject)) "show the subect";
@@ -91,21 +92,24 @@ let parse_all_records answer =
   
 
 
-
-let rec handle_one_file input =
-  lwt_try_parse lwt_parse_answer_dump input >>= function
-  | None -> return ()
-  | Some answer ->
-    let ip = string_of_ipv4 answer.ip in
-    if (!filter_ip = ip) || (!filter_ip = "") then begin
-      match !action with
-      | IP -> print_endline ip; return ()
+let rec handle_answer answer =
+  let ip = string_of_ipv4 answer.ip in
+  let this_one, again =
+    if !filter_ip = ""
+    then true, true
+    else if !filter_ip = ip
+    then true, false
+    else false, true
+  in
+  if this_one then begin
+    match !action with
+      | IP -> print_endline ip
+      | Dump -> print_string (dump_answer_dump answer)
       | All ->
         let records, _, error = parse_all_records answer in
         print_endline ip;
         List.iter (fun r -> print_endline (print_tls_record ~indent:"  " r)) records;
-        if error then print_endline "  ERROR";
-        return ()
+        if error then print_endline "  ERROR"
       | Suite ->
         let _, ctx, _ = parse_all_records answer in
         let cs = match ctx with
@@ -115,9 +119,8 @@ let rec handle_one_file input =
         begin
           match cs with
             | None -> ()
-            | Some s -> Printf.printf "%s: %s\n" ip s;
-        end;
-        return ()
+            | Some s -> Printf.printf "%s: %s\n" ip s
+        end
       | SKE ->
         let _, ctx, _ = parse_all_records answer in
         let ske = match ctx with
@@ -131,33 +134,38 @@ let rec handle_one_file input =
         begin
           match ske with
             | None -> ()
-            | Some s -> Printf.printf "%s: %s\n" ip s;
-        end;
-        return ()
+            | Some s -> Printf.printf "%s: %s\n" ip s
+        end
       | Subject ->
         let records, _, _ = parse_all_records answer in
         let rec extractSubjectOfFirstCert = function
           | [] -> None
           | { content_type = CT_Handshake;
-             record_content = Handshake {
-              handshake_type = HT_Certificate;
-              handshake_content = Certificate {certificate_list = (UnparsedCertificate cert_string)::_} }}::_ ->
-           begin
-             try
+              record_content = Handshake {
+                handshake_type = HT_Certificate;
+                handshake_content = Certificate {certificate_list = (UnparsedCertificate cert_string)::_} }}::_ ->
+            begin
+              try
                 let cert = parse_certificate (input_of_string "" cert_string) in
-               Some (String.concat ", " (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
-             with _ -> None
-           end
+                Some (String.concat ", " (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
+              with _ -> None
+                  end
           | _::r -> extractSubjectOfFirstCert r
-       in
-       begin
-         match extractSubjectOfFirstCert records with
-           | None -> ()
-           | Some subject -> Printf.printf "%s: %s\n" ip subject
-       end;
-       return ()
-    end else return () >>= fun () ->
-    handle_one_file input
+        in
+        begin
+          match extractSubjectOfFirstCert records with
+            | None -> ()
+            | Some subject -> Printf.printf "%s: %s\n" ip subject
+        end;
+  end;
+  return again
+
+let rec handle_one_file input =
+  lwt_try_parse lwt_parse_answer_dump input >>= function
+    | None -> return ()
+    | Some answer ->
+      handle_answer answer >>= fun again ->
+      if again then handle_one_file input else return ()
 
 let _ =
   try
