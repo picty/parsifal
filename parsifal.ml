@@ -302,7 +302,7 @@ let lwt_get_out old_input input =
   if input.cur_offset < input.cur_length
   then fail (ParsingException (UnexpectedTrailingBytes, _h_of_si input))
   else begin
-    old_input.lwt_offset <- old_input.lwt_offset + input.cur_length;
+    old_input.lwt_offset <- old_input.lwt_offset;
     return ()
   end
 
