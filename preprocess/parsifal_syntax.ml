@@ -96,7 +96,8 @@ type parsifal_option =
   | ExactParser
   | EnrichByDefault
   | ExhaustiveChoices
-  | Param of string list
+  | ParseParam of string list
+  | DumpParam of string list
 
 type parsifal_construction =
   | Enum
@@ -109,7 +110,8 @@ let check_options construction options =
   let rec aux opts = match construction, opts with
     | Enum, (_loc, ExactParser)::_ ->
       Loc.raise _loc (Failure "with_exact/top is not allowed for an enum.")
-    | Enum, (_loc, Param _)::_ ->
+    | Enum, (_loc, ParseParam _)::_
+    | Enum, (_loc, DumpParam _)::_ ->
       Loc.raise _loc (Failure "params are not allowed for an enum.")
     | (Enum|Struct|Alias|ASN1Alias), (_loc, EnrichByDefault)::_ ->
       Loc.raise _loc (Failure "enrich is only allowed for unions.")
@@ -119,10 +121,17 @@ let check_options construction options =
     | _, [] -> []
   in aux options
 
-let mk_params opts =
+let mk_parse_params opts =
   let rec _mk_params = function
     | [] -> []
-    | (Param l)::r -> l::(_mk_params r)
+    | (ParseParam l)::r -> l::(_mk_params r)
+    | _::r -> _mk_params r
+  in List.concat (_mk_params opts)
+
+let mk_dump_params opts =
+  let rec _mk_params = function
+    | [] -> []
+    | (DumpParam l)::r -> l::(_mk_params r)
     | _::r -> _mk_params r
   in List.concat (_mk_params opts)
 
@@ -237,7 +246,12 @@ let opts_of_seq_expr expr =
     | <:expr< $lid:"top"$ >>        -> [_loc, DoLwt; _loc, ExactParser]
     | <:expr< $lid:"enrich"$ >>     -> [_loc, EnrichByDefault]
     | <:expr< $lid:"exhaustive"$ >> -> [_loc, ExhaustiveChoices]
-    | <:expr< $lid:"param"$ $e$ >>  -> [_loc, Param (List.map lid_of_expr (list_of_com_expr e))]
+    | <:expr< $lid:"parse_param"$ $e$ >>
+    | <:expr< $lid:"param"$ $e$ >>  -> [_loc, ParseParam (List.map lid_of_expr (list_of_com_expr e))]
+    | <:expr< $lid:"dump_param"$ $e$ >>  -> [_loc, DumpParam (List.map lid_of_expr (list_of_com_expr e))]
+    | <:expr< $lid:"both_param"$ $e$ >>  ->
+      [_loc, ParseParam (List.map lid_of_expr (list_of_com_expr e));
+       _loc, DumpParam (List.map lid_of_expr (list_of_com_expr e))]
     | _ -> Loc.raise (loc_of_expr e) (Failure "unknown option")
   in
   List.concat (List.map opt_of_exp (list_of_sem_expr expr))
@@ -919,8 +933,8 @@ let mk_asn1_alias _loc opts name is_list_of hdr subtype =
     aatype = subtype;
     aado_lwt = List.mem DoLwt options;
     aado_exact = List.mem ExactParser options;
-    aaparse_params = mk_params options;
-    aadump_params = [] (* TODO: For now? *)
+    aaparse_params = mk_parse_params options;
+    aadump_params = mk_dump_params options
   } in
   let fns = [mk_asn1_alias_type; mk_asn1_alias_parse_fun;
              mk_asn1_alias_lwt_parse_fun; mk_asn1_alias_exact_parse_fun;
@@ -1011,8 +1025,8 @@ EXTEND Gram
       fields = fields;
       rdo_lwt = List.mem DoLwt options;
       rdo_exact = List.mem ExactParser options;
-      rparse_params = mk_params options;
-      rdump_params = [] (* TODO: For now? *)
+      rparse_params = mk_parse_params options;
+      rdump_params = mk_dump_params options
     } in
     let fns = [mk_struct_type; mk_struct_parse_fun;
 	       mk_struct_lwt_parse_fun; mk_struct_exact_parse;
@@ -1032,8 +1046,8 @@ EXTEND Gram
       udo_exact = List.mem ExactParser options;
       uenrich = List.mem EnrichByDefault options;
       uexhaustive = List.mem ExhaustiveChoices options;
-      uparse_params = mk_params options;
-      udump_params = [] (* TODO: For now? *)
+      uparse_params = mk_parse_params options;
+      udump_params = mk_dump_params options
     } in
     let fns = [mk_union_enrich_bool; mk_union_type;
 	       mk_union_parse_fun; mk_union_lwt_parse_fun;
@@ -1049,8 +1063,8 @@ EXTEND Gram
       atype = type_aliased;
       ado_lwt = List.mem DoLwt options;
       ado_exact = List.mem ExactParser options;
-      aparse_params = mk_params options;
-      adump_params = [] (* TODO: For now? *)
+      aparse_params = mk_parse_params options;
+      adump_params = mk_dump_params options
     } in
     let fns = [mk_alias_type; mk_alias_parse_fun;
                mk_alias_lwt_parse_fun; mk_alias_exact_parse_fun;
