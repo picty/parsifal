@@ -168,14 +168,15 @@ type ptype =
   | PT_Container of field_len * ptype  (* the string corresponds to the integer type for the field length *)
   | PT_Custom of (string option) * string * expr list * expr list (* the expr lists are the args to give to parse / dump *)
   | PT_CustomContainer of (string option) * string * expr list * expr list * ptype
-  | PT_CheckFunction of (string option) * string * expr list * bool  (* the last boolean is set if the function is in fact a reference *)
 
 
 (* Records *)
 
+type field_attribute = Optional | ParseCheckpoint | ParseField
+
 type struct_description = {
   rname : string;
-  fields : (Loc.t * string * ptype * bool) list;
+  fields : (Loc.t * string * ptype * field_attribute option) list;
   rdo_lwt : bool;
   rdo_exact : bool;
   rparse_params : string list;
@@ -316,13 +317,6 @@ let ptype_of_ident name decorator subtype =
     | <:ident< $lid:("string" | "binstring")$ >> as i, _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid string type")
 
-    | <:ident< $lid:"check"$ >>,    (None, None), Some (PT_Custom (m, n, args, [])) ->
-      PT_CheckFunction (m, n, args, false)
-    | <:ident< $lid:"checkref"$ >>, (None, None), Some (PT_Custom (m, n, args, [])) ->
-      PT_CheckFunction (m, n, args, true)
-    | <:ident< $lid:("check"|"checkref")$ >> as i, _, _ ->
-      Loc.raise (loc_of_ident i) (Failure "invalid check declaration")
-
     | custom_identifier, (dec1, dec2), None ->
       let module_name, name = qname_ident (custom_identifier)
       and e1 = expr_list_of_decorator dec1
@@ -438,7 +432,6 @@ let mk_enum_of_string _loc enum =
 
 let rec ocaml_type_of_ptype _loc = function
   | PT_Empty
-  | PT_CheckFunction _ -> <:ctyp< $lid:"unit"$ >>
   | PT_Char -> <:ctyp< $lid:"char"$ >>
   | PT_Int _ -> <:ctyp< $lid:"int"$ >>
   | PT_String _ -> <:ctyp< $lid:"string"$ >>
@@ -454,16 +447,15 @@ let rec ocaml_type_of_ptype _loc = function
 
 let ocaml_type_of_field_type _loc t opt =
   let real_t = ocaml_type_of_ptype _loc t in
-  if opt then <:ctyp< option $real_t$ >> else real_t
+  if opt = Some Optional then <:ctyp< option $real_t$ >> else real_t
 
-let rec remove_dummy_fields = function
-  | [] -> []
-  | (_, _, PT_Empty, _)::r | (_, _, PT_CheckFunction _, _)::r -> remove_dummy_fields r
-  | f::r -> f::(remove_dummy_fields r)
+let keep_built_fields (_, _, _, o) = o <> (Some ParseCheckpoint)
+let keep_real_fields (_, _, _, o) =
+  (o <> (Some ParseCheckpoint)) && (o <> (Some ParseField))
 
 let mk_struct_type _loc record =
   let mk_line (_loc, n, t, opt) = <:ctyp< $lid:n$ : $ocaml_type_of_field_type _loc t opt$ >> in
-  let ctyp_fields = List.map mk_line (remove_dummy_fields record.fields) in
+  let ctyp_fields = List.map mk_line (List.filter keep_built_fields record.fields) in
   [ <:str_item< type $lid:record.rname$ = { $list:ctyp_fields$ } >> ]
 
 
@@ -599,16 +591,6 @@ let rec fun_of_ptype ftype _loc name t =
     | PT_CustomContainer (_, _, _, _, subtype), Print ->
       fun_of_ptype ftype _loc name subtype
 
-  (* Check functions *)
-    | PT_CheckFunction (m, n, e, false), (Parse|LwtParse) ->
-      if ftype = Dump then <:expr< $str:""$ >>
-      else apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
-    | PT_CheckFunction (m, n, e, true), (Parse|LwtParse) ->
-      if ftype = Dump then <:expr< $str:""$ >>
-      else apply_exprs _loc ( <:expr< ! $exp_qname _loc m (prefix ^ n)$ >> ) e
-
-    | PT_CheckFunction _, (Dump|Print) -> mkf "empty"
-
 
 let mk_exact_parse_fun _loc name parse_params =
   let partial_params = List.map (fun p -> <:expr< $lid:p$ >>) parse_params
@@ -664,12 +646,12 @@ let mk_struct_parse_fun _loc record =
   let rec mk_body = function
     | [] ->
       let single_assign (_loc, n, _, _) = <:rec_binding< $lid:n$ = $exp: <:expr< $lid:n$ >> $ >> in
-      let assignments = List.map single_assign (remove_dummy_fields record.fields) in
+      let assignments = List.map single_assign (List.filter keep_built_fields record.fields) in
       <:expr< { $list:assignments$ } >>
-    | (_loc, n, t, optional)::r ->
+    | (_loc, n, t, attribute)::r ->
       let tmp = mk_body r
       and f = fun_of_ptype Parse _loc n t in
-      if optional
+      if attribute = Some Optional
       then <:expr< let $lid:n$ = Parsifal.try_parse $f$ input in $tmp$ >>
       else <:expr< let $lid:n$ = $f$ input in $tmp$ >>
   in
@@ -681,12 +663,12 @@ let mk_struct_lwt_parse_fun _loc record =
   let rec mk_body = function
     | [] ->
       let single_assign (_loc, n, _, _) = <:rec_binding< $lid:n$ = $exp: <:expr< $lid:n$ >> $ >> in
-      let assignments = List.map single_assign (remove_dummy_fields record.fields) in
+      let assignments = List.map single_assign (List.filter keep_built_fields record.fields) in
       <:expr< Lwt.return { $list:assignments$ } >>
-    | (_loc, n, t, optional)::r ->
+    | (_loc, n, t, attribute)::r ->
       let tmp = mk_body r
       and f = fun_of_ptype LwtParse _loc n t in
-      if optional
+      if attribute = Some Optional
       then <:expr< Lwt.bind (LwtParsingEngine.try_lwt_parse $f$ input) (fun $lid:n$ -> $tmp$ ) >>
       else <:expr< Lwt.bind ($f$ input) (fun $lid:n$ -> $tmp$ ) >>
   in
@@ -703,13 +685,13 @@ let mk_struct_exact_parse _loc record =
 
 
 let mk_struct_dump_fun _loc record =
-  let dump_one_field (_loc, n, t, optional) =
+  let dump_one_field (_loc, n, t, attribute) =
     let f = fun_of_ptype Dump _loc n t in
-    if optional
+    if attribute = Some Optional
     then <:expr< Parsifal.try_dump $f$ $lid:record.rname$.$lid:n$ >>
     else <:expr< $f$ $lid:record.rname$.$lid:n$ >>
   in
-  let fields_dumped_expr = exp_of_list _loc (List.map dump_one_field (remove_dummy_fields record.fields)) in
+  let fields_dumped_expr = exp_of_list _loc (List.map dump_one_field (List.filter keep_real_fields record.fields)) in
   let body =
     <:expr< let $lid:"fields_dumped"$ = $fields_dumped_expr$ in
 	    String.concat "" fields_dumped >>
@@ -718,13 +700,13 @@ let mk_struct_dump_fun _loc record =
   [ mk_multiple_args_fun _loc ("dump_" ^ record.rname) params body ]
 
 let mk_struct_print_fun _loc record =
-  let print_one_field (_loc, n, t, optional) =
+  let print_one_field (_loc, n, t, attribute) =
     let f = fun_of_ptype Print _loc n t in
-    if optional
+    if attribute = Some Optional
     then <:expr< Parsifal.try_print $f$ ~indent:new_indent ~name:$str:n$ $lid:record.rname$.$lid:n$ >>
     else <:expr< $f$ ~indent:new_indent ~name:$str:n$ $lid:record.rname$.$lid:n$ >>
   in
-  let fields_printed_expr = exp_of_list _loc (List.map print_one_field (remove_dummy_fields record.fields)) in
+  let fields_printed_expr = exp_of_list _loc (List.map print_one_field (List.filter keep_real_fields record.fields)) in
   let body =
     <:expr< let new_indent = indent ^ "  " in
 	    let $lid:"fields_printed"$ = $fields_printed_expr$ in
@@ -973,8 +955,12 @@ EXTEND Gram
 
 
   struct_field: [[
-    optional = OPT [ "optional" -> () ]; name = ident; ":"; field = ptype  ->
-    (_loc, lid_of_ident name, field, optional != None)
+    attribute = OPT [
+      "optional" -> Optional;
+    | "parse_checkpoint" -> ParseCheckpoint;
+    | "parse_field" -> ParseField
+    ]; name = ident; ":"; field = ptype  ->
+    (_loc, lid_of_ident name, field, attribute)
   ]];
 
 
