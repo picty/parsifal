@@ -45,17 +45,26 @@ struct atv_content = {
 }
 asn1_alias atv
 
-(* TODO: This should be improved *)
-let string_of_atv atv = match atv.attributeValue with
+let string_of_atv_value = function
   | UnparsedAV { Asn1PTypes.a_content = String (s, _)}
-  | AV_IA5String s -> "\"" ^ s ^ "\""
-  | _ -> "\"\""
+  | AV_PrintableString s
+  | AV_DirectoryString (_, s)
+  | AV_IA5String s -> quote_string s
+  | _ -> "NON-STRING-VALUE"
+
+let string_of_atv atv =
+  "/" ^ (Asn1PTypes.short_string_of_oid atv.attributeType) ^ "=" ^ (string_of_atv_value atv.attributeValue)
 
 (* TODO: Add constraints on set of [min, max] *)
 asn1_alias rdn = set_of atv  (* min = 1 *)
 asn1_alias distinguishedName = seq_of rdn
 
+let string_of_distinguishedName dn =
+  String.concat "" (List.map string_of_atv (List.flatten dn))
 
+let print_distinguishedName ?indent:(indent="") ?name:(name="distinguishedName") dn =
+  Printf.sprintf "%s%s: %s\n" indent name (string_of_distinguishedName dn)
+  
 
 (***********************)
 (* AlgorithmIdentifier *)
@@ -263,25 +272,25 @@ asn1_alias certificate [top]
 (**************************)
 
 let attribute_value_types = [
-  [85; 4; 41], "name", AVT_DirectoryString(Some 32768);
-  [85; 4; 4], "surname", AVT_DirectoryString(Some 32768);
-  [85; 4; 42], "givenName", AVT_DirectoryString(Some 32768);
-  [85; 4; 43], "initials", AVT_DirectoryString(Some 32768);
-  [85; 4; 44], "generationQualifier", AVT_DirectoryString(Some 32768);
+  [85; 4; 41], "name", None, AVT_DirectoryString(Some 32768);
+  [85; 4; 4], "surname", None, AVT_DirectoryString(Some 32768);
+  [85; 4; 42], "givenName", None, AVT_DirectoryString(Some 32768);
+  [85; 4; 43], "initials", None, AVT_DirectoryString(Some 32768);
+  [85; 4; 44], "generationQualifier", None, AVT_DirectoryString(Some 32768);
 
-  [85; 4; 3], "commonName", AVT_DirectoryString(Some 64);
-  [85; 4; 7], "localityName", AVT_DirectoryString(Some 128);
-  [85; 4; 8], "stateOrProvinceName", AVT_DirectoryString(Some 128);
-  [85; 4; 10], "organizationName", AVT_DirectoryString(Some 64);
-  [85; 4; 11], "organizationalUnitName", AVT_DirectoryString(Some 64);
-  [85; 4; 12], "title", AVT_DirectoryString(Some 64);
-  [85; 4; 46], "dnQualifier", AVT_PrintableString(None);
-  [85; 4; 6], "countryName", AVT_PrintableString(Some 2);
-  [85; 4; 5], "serialNumber", AVT_PrintableString(Some 64);
-  [85; 4; 65], "pseudonym", AVT_DirectoryString(Some 128);
+  [85; 4; 3], "commonName", Some "CN", AVT_DirectoryString(Some 64);
+  [85; 4; 7], "localityName", Some "L", AVT_DirectoryString(Some 128);
+  [85; 4; 8], "stateOrProvinceName", Some "S", AVT_DirectoryString(Some 128);
+  [85; 4; 10], "organizationName", Some "O", AVT_DirectoryString(Some 64);
+  [85; 4; 11], "organizationalUnitName", Some "OU", AVT_DirectoryString(Some 64);
+  [85; 4; 12], "title", None, AVT_DirectoryString(Some 64);
+  [85; 4; 46], "dnQualifier", None, AVT_PrintableString(None);
+  [85; 4; 6], "countryName", Some "C", AVT_PrintableString(Some 2);
+  [85; 4; 5], "serialNumber", Some "SN", AVT_PrintableString(Some 64);
+  [85; 4; 65], "pseudonym", None, AVT_DirectoryString(Some 128);
 
-  [9; 2342; 19200300; 100; 1; 25], "domainComponent", AVT_IA5String(None);
-  [42;840;113549;1;9;1], "emailAddress", AVT_IA5String(Some 255)
+  [9; 2342; 19200300; 100; 1; 25], "domainComponent", Some "dc", AVT_IA5String(None);
+  [42;840;113549;1;9;1], "emailAddress", None, AVT_IA5String(Some 255)
 ]
 
 
@@ -318,9 +327,9 @@ let other_oids = [
   [43;6;1;5;5;7;3;9], "OCSPSigning";
 ]
 
-let populate_simple_directory dir (id, name, value) =
-  register_oid id name;
-  Hashtbl.replace dir id value
+let populate_atv_directory (id, name, short, value) =
+  register_oid ~short:short id name;
+  Hashtbl.replace attributeValueType_directory id value
 
 let populate_alg_directory dir (id, name, algParam, value) =
   register_oid id name;
@@ -329,7 +338,7 @@ let populate_alg_directory dir (id, name, algParam, value) =
 
 
 let _ =
-  List.iter (populate_simple_directory attributeValueType_directory) attribute_value_types;
+  List.iter (populate_atv_directory) attribute_value_types;
   List.iter (fun (id, name) -> register_oid id name) extension_types;
   List.iter (fun (id, name) -> register_oid id name) other_oids;
   List.iter (populate_alg_directory subjectPublicKeyType_directory) public_key_types;
