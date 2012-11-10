@@ -247,7 +247,9 @@ struct tbsCertificate_content = {
 asn1_alias tbsCertificate
 
 struct certificate_content = {
+  parse_checkpoint position_before_tbs : save_offset;
   tbsCertificate : tbsCertificate;
+  parse_field tbsCertificateHash : raw_value(position_before_tbs);
   signatureAlgorithm : algorithmIdentifier;
   signatureValue : signature(signatureType_of_algo signatureAlgorithm)
 }

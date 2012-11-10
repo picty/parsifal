@@ -707,3 +707,17 @@ let try_print (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?inde
   | _, None -> ""
   | None, Some x -> print_fun ~indent:indent x
   | Some n, Some x -> print_fun ~indent:indent ~name:n x
+
+
+
+
+(* Parse checkpoints and raw values *)
+
+let parse_save_offset input = input.cur_offset
+let lwt_parse_save_offset input = input.lwt_offset
+
+type raw_value = string
+let parse_raw_value offset input =
+  String.sub input.str (input.cur_base + offset) (input.cur_offset - offset)
+let lwt_parse_raw_value _offset input =
+  raise (ParsingException (NotImplemented "lwt_parse_raw_value", _h_of_li input))
