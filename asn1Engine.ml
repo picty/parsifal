@@ -40,12 +40,6 @@ enum asn1_tag (5, UnknownVal T_Unknown) =
 
 
 
-let (oid_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
-let (rev_oid_directory : (string, int list) Hashtbl.t) = Hashtbl.create 200
-
-let resolve_oids = ref true
-
-
 let prim_or_cons = function false -> "prim" | true -> "cons"
 let print_header = function
   | (C_Universal, false, (T_EndOfContents | T_Boolean | T_Integer | T_BitString | T_OctetString | 

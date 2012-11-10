@@ -119,6 +119,13 @@ asn1_alias der_null = primitive [T_Null] der_null_content
 
 type der_oid_content = int list
 
+let (oid_directory : (int list, string) Hashtbl.t) = Hashtbl.create 100
+let (rev_oid_directory : (string, int list) Hashtbl.t) = Hashtbl.create 200
+let (oid_short_directory : (int list, string) Hashtbl.t) = Hashtbl.create 20
+
+let resolve_oids = ref true
+
+
 let parse_subid input : int =
   let rec aux accu =
     let c = parse_uint8 input in
@@ -176,10 +183,27 @@ let oid_expand = function
 let raw_string_of_oid oid =
   String.concat "." (List.map string_of_int (oid_expand oid))
 
-let register_oid oid s =
+let register_oid ?short:(short=None) oid s =
   Hashtbl.add oid_directory oid s;
+  begin
+    match short with
+    | None -> ()
+    | Some sh -> Hashtbl.add oid_short_directory oid sh
+  end;
   Hashtbl.add rev_oid_directory s oid;
   Hashtbl.add rev_oid_directory (raw_string_of_oid oid) oid
+
+let string_of_oid oid =
+  if !resolve_oids then
+    try Hashtbl.find oid_directory oid
+    with Not_found -> raw_string_of_oid oid
+  else raw_string_of_oid oid
+    
+let short_string_of_oid oid =
+  if !resolve_oids then
+    try Hashtbl.find oid_short_directory oid
+    with Not_found -> string_of_oid oid
+  else raw_string_of_oid oid
 
 let print_der_oid_content ?indent:(indent="") ?name:(name="der_oid_content") oid =
   let value = if !resolve_oids then
