@@ -38,12 +38,12 @@ let handle_input input =
       print_endline (hexdump certificate.tbsCertificate.serialNumber);
       return ()
     | CheckSelfSigned ->
-      let result = match (* TODO: certificate.tbsCertificate._raw_tbsCertificate*) None,
+      let result = match certificate.tbsCertificateHash,
 	certificate.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey,
 	certificate.signatureValue
 	with
-	| Some m, RSA {p_modulus = n; p_publicExponent = e}, RSASignature (0, s) ->
-	  Pkcs1.raw_verify 1 m s n e
+	| m, RSA {p_modulus = n; p_publicExponent = e}, RSASignature (0, s) ->
+	  (try Pkcs1.raw_verify 1 m s n e with Pkcs1.PaddingError -> false)
 	| _ -> false
       in
       print_endline (string_of_bool (result));
@@ -60,10 +60,6 @@ let handle_input input =
     | Text ->
       print_endline (print_certificate certificate);
       return ()
-
-let input_of_filename filename =
-  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  input_of_fd filename fd
 
 let catch_exceptions e =
   if !keep_going
