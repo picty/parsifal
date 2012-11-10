@@ -179,6 +179,17 @@ struct extension_content = {
   optional critical : der_boolean;
   extnValue : octetstring_container of extnValue(hash_get oid_directory extnID "")
 }
+
+(* let print_extension_content ?indent:(indent="") ?name:(name="") ext = *)
+(*   let real_name = *)
+(*     if name = "" *)
+(*     then Asn1PTypes.string_of_oid ext.extnID *)
+(*     else name *)
+(*   in *)
+(*   let critical_str = if pop_opt false ext.critical then " (critical)" else "" in *)
+(*   let value_str = print_extnValue ext.extnValue in *)
+(*   Printf.sprintf "%s%s%s: %s\n" indent real_name critical_str value_str *)
+
 asn1_alias extension
 asn1_alias extension_list = seq_of extension (* TODO: min = 1 *)
 

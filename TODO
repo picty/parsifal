@@ -71,6 +71,7 @@ v0.1 (oct. 2012 -> nov. 2012)
 v0.2 (feb. 2013 -> mar. 2013)
  - General
    * Think about the exception system (fatal or not) => merge all in ParsifalException
+   * Improve the printing systems (do we need a separate string_of function, a way to ask for a one liner?)
  - Software Engineering
    * Write some tests (unit tests, non-regression, etc.)
    * Write .mli files
