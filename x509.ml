@@ -245,9 +245,13 @@ struct tbsCertificate_content = {
   optional version : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_smallint;
   serialNumber : der_integer;
   signature : algorithmIdentifier;
+  parse_checkpoint position_before_issuer : save_offset;
   issuer : distinguishedName;
+  parse_field issuer_raw : raw_value(position_before_issuer);
   validity : validity;
+  parse_checkpoint position_before_subject : save_offset;
   subject : distinguishedName;
+  parse_field subject_raw : raw_value(position_before_subject);
   subjectPublicKeyInfo : subjectPublicKeyInfo;
   optional issuerUniqueId : asn1 [(C_ContextSpecific, false, T_Unknown 1)] of der_bitstring_content;
   optional subjectUniqueId : asn1 [(C_ContextSpecific, false, T_Unknown 2)] of der_bitstring_content;
@@ -258,7 +262,7 @@ asn1_alias tbsCertificate
 struct certificate_content = {
   parse_checkpoint position_before_tbs : save_offset;
   tbsCertificate : tbsCertificate;
-  parse_field tbsCertificateHash : raw_value(position_before_tbs);
+  parse_field tbsCertificate_raw : raw_value(position_before_tbs);
   signatureAlgorithm : algorithmIdentifier;
   signatureValue : signature(signatureType_of_algo signatureAlgorithm)
 }

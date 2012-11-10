@@ -38,7 +38,7 @@ let handle_input input =
       print_endline (hexdump certificate.tbsCertificate.serialNumber);
       return ()
     | CheckSelfSigned ->
-      let result = match certificate.tbsCertificateHash,
+      let result = match certificate.tbsCertificate_raw,
 	certificate.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey,
 	certificate.signatureValue
 	with
