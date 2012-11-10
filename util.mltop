@@ -4,6 +4,7 @@ asn1Engine
 asn1PTypes
 rSAKey
 x509
+x509CertificateStore
 tlsEnums
 tls
 tlsUtil

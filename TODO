@@ -24,9 +24,6 @@ v0.1 (oct. 2012 -> nov. 2012)
    * write GeneralName and rewrite directoryString and 
    * add GN in AKI, CertificatePolicies, NameContstraints SAN, AIA and CRLDP extensions
    * add support for RSA/DSA public key and signature
-   * add a cert store object
-     + hashtable of certs
-     + a name and a trust flag
    * Code construct_chains/check_chains in caml
      + add decoration directly to the certificate object (origin[s], trust)?
      + x509_chain should be an object module
