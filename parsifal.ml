@@ -715,6 +715,18 @@ let try_print (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?inde
 
 let parse_save_offset input = input.cur_offset
 let lwt_parse_save_offset input = input.lwt_offset
+let parse_seek_offset offset input = input.cur_offset <- offset
+let lwt_parse_seek_offset offset input =
+  let handle_unix_error = function
+    | Unix.Unix_error (Unix.ESPIPE, "lseek", "") -> return ()
+    | e -> fail e
+  and set_offset () =
+    Lwt_io.set_position input.lwt_ch (Int64.of_int offset) >>= fun _ ->
+    (* TODO: Warning, integer overflow is possible! *)
+      input.lwt_offset <- offset;
+      return ()
+  in try_bind (set_offset) (fun () -> return ()) handle_unix_error
+
 
 type raw_value = string
 let parse_raw_value offset input =
