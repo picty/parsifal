@@ -421,6 +421,32 @@ let dump_uint16 v =
 let print_uint16 ?indent:(indent="") ?name:(name="uint16") v =
   Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
 
+type uint16le = int
+
+let parse_uint16le input =
+  if input.cur_offset + 2 <= input.cur_length then begin
+    let res =
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 1]) lsl 8) lor
+	(int_of_char (input.str.[input.cur_base + input.cur_offset]))
+    in
+    input.cur_offset <- input.cur_offset + 2;
+    res
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
+
+let lwt_parse_uint16le input =
+  lwt_really_read input 2 >>= fun s ->
+  return (((int_of_char s.[1]) lsl 8) lor (int_of_char s.[0]))
+
+let dump_uint16le v =
+  let c1 = char_of_int ((v lsr 8) land 0xff)
+  and c0 = char_of_int (v land 0xff) in
+  let res = String.make 2 c0 in
+  res.[1] <- c1;
+  res
+
+let print_uint16le ?indent:(indent="") ?name:(name="uint16le") v =
+  Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
+
 
 let parse_uint24 input =
   if input.cur_offset + 3 <= input.cur_length then begin
@@ -481,6 +507,86 @@ let dump_uint32 v =
 
 let print_uint32 ?indent:(indent="") ?name:(name="uint32") v =
   Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
+
+
+type uint32le = int
+
+let parse_uint32le input =
+  if input.cur_offset + 2 <= input.cur_length then begin
+    let res =
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 3]) lsl 24) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 2]) lsl 16) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 1]) lsl 8) lor
+	(int_of_char (input.str.[input.cur_base + input.cur_offset]))
+    in
+    input.cur_offset <- input.cur_offset + 4;
+    res
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
+
+let lwt_parse_uint32le input =
+  lwt_really_read input 4 >>= fun s ->
+  return (((int_of_char s.[3]) lsl 24) lor ((int_of_char s.[2]) lsl 16)
+    lor ((int_of_char s.[1]) lsl 8) lor (int_of_char s.[0]))
+
+let dump_uint32le v =
+  let c3 = char_of_int ((v lsr 24) land 0xff)
+  and c2 = char_of_int ((v lsr 16) land 0xff)
+  and c1 = char_of_int ((v lsr 8) land 0xff)
+  and c0 = char_of_int (v land 0xff) in
+  let res = String.make 4 c0 in
+  res.[1] <- c1;
+  res.[2] <- c2;
+  res.[3] <- c3;
+  res
+
+let print_uint32le ?indent:(indent="") ?name:(name="uint32le") v =
+  Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
+
+
+type uint64le = Int64.t
+
+let parse_uint64le input =
+  if input.cur_offset + 2 <= input.cur_length then begin
+    let res1 =
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 3]) lsl 24) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 2]) lsl 16) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 1]) lsl 8) lor
+	(int_of_char (input.str.[input.cur_base + input.cur_offset]))
+    in
+    let res2 =
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 7]) lsl 24) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 6]) lsl 16) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 5]) lsl 8) lor
+	(int_of_char (input.str.[input.cur_base + input.cur_offset + 4]))
+    in
+    input.cur_offset <- input.cur_offset + 8;
+    Int64.logor (Int64.shift_left (Int64.of_int res2) 32) (Int64.of_int res1)
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
+
+let lwt_parse_uint64le input =
+  lwt_really_read input 8 >>= fun s ->
+    let r1 = (((int_of_char s.[3]) lsl 24) lor ((int_of_char s.[2]) lsl 16)
+      lor ((int_of_char s.[1]) lsl 8) lor (int_of_char s.[0])) in
+    let r2 = (((int_of_char s.[7]) lsl 24) lor ((int_of_char s.[6]) lsl 16)
+      lor ((int_of_char s.[5]) lsl 8) lor (int_of_char s.[4])) in
+    let r = Int64.logor (Int64.shift_left (Int64.of_int r2) 32) (Int64.of_int r1) in
+    return r
+
+let dump_uint64le v =
+  (*
+  let c3 = char_of_int ((v lsr 24) land 0xff)
+  and c2 = char_of_int ((v lsr 16) land 0xff)
+  and c1 = char_of_int ((v lsr 8) land 0xff)
+  and c0 = char_of_int (v land 0xff) in
+  let res = String.make 4 c0 in
+  res.[1] <- c1;
+  res.[2] <- c2;
+  res.[3] <- c3;
+  res*)
+  (Int64.to_string v)
+
+let print_uint64le ?indent:(indent="") ?name:(name="uint64le") v =
+  Printf.sprintf "%s%s: %Ld (%16.16Lx)\n" indent name v v
 
 
 
