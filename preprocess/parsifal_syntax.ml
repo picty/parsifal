@@ -93,6 +93,7 @@ let mk_multiple_args_fun _loc fname argnames ?optargs:(optargnames=[]) body =
 
 type parsifal_option =
   | DoLwt
+  | LittleEndian
   | ExactParser
   | EnrichByDefault
   | ExhaustiveChoices
@@ -148,6 +149,7 @@ type enum_description = {
   echoices : (Loc.t * string * string * string) list;
   unknown_behaviour : enum_unknown_behaviour;
   edo_lwt : bool;
+  le : bool;
 }
 
 
@@ -253,6 +255,7 @@ let opts_of_seq_expr expr =
     | <:expr< $lid:"both_param"$ $e$ >>  ->
       [_loc, ParseParam (List.map lid_of_expr (list_of_com_expr e));
        _loc, DumpParam (List.map lid_of_expr (list_of_com_expr e))]
+    | <:expr< $lid:"little_endian"$ >>   -> [_loc, LittleEndian]
     | _ -> Loc.raise (loc_of_expr e) (Failure "unknown option")
   in
   List.concat (List.map opt_of_exp (list_of_sem_expr expr))
@@ -604,8 +607,9 @@ let mk_exact_parse_fun _loc name parse_params =
 
 let mk_enum_parse_fun _loc enum = 
   if enum.size mod 8 = 0 then begin
+    let le = (if enum.le then "le" else "") in
     let fname = "parse_" ^ enum.ename
-    and parse_int_fun = exp_qname _loc (Some "Parsifal") ("parse_uint" ^ (string_of_int enum.size))
+    and parse_int_fun = exp_qname _loc (Some "Parsifal") ("parse_uint" ^ (string_of_int enum.size) ^ le)
     and eoi = <:expr< $lid:enum.ename ^ "_of_int"$ >> in
     let body = <:expr< $eoi$ ($parse_int_fun$ input) >> in
     [ mk_multiple_args_fun _loc fname ["input"] body ]
@@ -613,8 +617,9 @@ let mk_enum_parse_fun _loc enum =
 
 let mk_enum_lwt_parse_fun _loc enum =
   if enum.edo_lwt && enum.size mod 8 = 0 then begin
+    let le = (if enum.le then "le" else "") in
     let fname = "lwt_parse_" ^ enum.ename
-    and lwt_parse_int_fun = exp_qname _loc (Some "Parsifal") ("lwt_parse_uint" ^ (string_of_int enum.size))
+    and lwt_parse_int_fun = exp_qname _loc (Some "Parsifal") ("lwt_parse_uint" ^ (string_of_int enum.size) ^ le)
     and eoi = <:expr< $lid:enum.ename ^ "_of_int"$ >> in
     let body = <:expr< Lwt.bind ($lwt_parse_int_fun$ input) (Lwt.wrap1 $eoi$) >> in
     [ mk_multiple_args_fun _loc fname ["input"] body ]
@@ -622,8 +627,9 @@ let mk_enum_lwt_parse_fun _loc enum =
 
 let mk_enum_dump_fun _loc enum =
   if enum.size mod 8 = 0 then begin
+    let le = (if enum.le then "le" else "") in
     let fname = "dump_" ^ enum.ename
-    and dump_int_fun = exp_qname _loc (Some "Parsifal") ("dump_uint" ^ (string_of_int enum.size))
+    and dump_int_fun = exp_qname _loc (Some "Parsifal") ("dump_uint" ^ (string_of_int enum.size) ^ le)
     and ioe = <:expr< $lid:"int_of_" ^ enum.ename$ >> in
     let body = <:expr< $dump_int_fun$ ($ioe$ $lid:enum.ename$) >> in
     [ mk_multiple_args_fun _loc fname [enum.ename] body ]
@@ -995,7 +1001,8 @@ EXTEND Gram
       size = int_of_string sz;
       echoices = choices;
       unknown_behaviour = u_b;
-      edo_lwt = List.mem DoLwt options
+      edo_lwt = List.mem DoLwt options;
+      le = List.mem LittleEndian options
     } in
     let fns = [mk_enum_exception; mk_enum_type; mk_string_of_enum;
 	       mk_int_of_enum; mk_enum_of_int; mk_enum_of_string;
