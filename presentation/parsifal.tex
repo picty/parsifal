@@ -1,0 +1,100 @@
+\documentclass{beamer}
+\usetheme{anssi}
+\usepackage[french]{babel}
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{colortbl}
+\usepackage{eso-pic}
+\usepackage{longtable}
+\usepackage{hhline}
+\usepackage{fancyhdr}
+\usepackage{pstricks}
+\usepackage{pst-node}
+\usepackage{pst-text}
+\usepackage{etex}
+\usepackage{tikz}
+\usepackage{listings}
+
+\usetikzlibrary{arrows,shapes}
+
+\begin{document}
+
+\begin{frame}
+  \mytitlepage{Parsifal: écriture rapide de \emph{parsers}}{}
+  {Olivier Levillain}{ANSSI}{20 novembre 2012}{fr}
+\end{frame}
+
+\usenavigation{yes}{4}{1}
+\usepagenumbering{yes}
+\setbeamertemplate{headline}[body]
+\setbeamertemplate{footline}[body]
+\title{Parsifal: écriture rapide de \textit{parsers}}
+
+
+\begin{frame}{Historique (1/2)}
+  \vspace{12mm}
+
+  \begin{itemize}
+  \item<1-> Au départ, de nombreuses données TLS: 10~campagnes de mesure
+    sur les réponses HTTPS du monde IPv4:
+    \begin{itemize}
+    \item 1~campagne menée par Arnaud Ebalard en juillet 2010
+    \item 2~campagnes menées par l'EFF en août et décembre 2010
+    \item 7~campagnes simultanées (différents stimuli) menées par le
+      LRP (Arnaud pour la partie mesures) depuis TSP en juillet 2011
+    \item Total: 143~Go de données à traiter\\[.5cm]
+    \end{itemize}
+
+  \item<2-> L'objectif était d'en extraire
+    \begin{itemize}
+    \item des données pertinentes (messages TLS reçus, certificats
+      présentés)
+    \item rapidement
+    \item de manière robuste
+    \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Historique (2/2)}
+  \vspace{12mm}
+
+  Pour traiter ce volume de données, plusieurs implantations
+  \begin{itemize}
+  \item<2-> premier prototype en Python: rapide à écrire, mais lent
+  \item<3-> seconde version en C++ (avec \textit{templates} et des objets):
+    \begin{itemize}
+    \item plus rapide, mais
+    \item pénible à mettre au point (fuites mémoire, \emph{segfaults})
+    \item nécessite trop de code pour ajouter des fonctionnalités
+    \end{itemize}
+  \item<4-> troisième version en OCaml (avec un DSL, \textit{Domain Specific Language}):
+    \begin{itemize}
+    \item rapide et flexible
+    \item plus robuste que le précédent
+    \item mais encore beaucoup trop de code à écrire
+    \end{itemize}
+  \item<5-> quatrième version en OCaml, en utilisant un pré-processeur (camlp4):
+    \begin{itemize}
+    \item tous les indicateurs sont au vert!
+    \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Questions ?}
+  \vspace{30mm}
+
+  \begin{center}
+    Merci de votre attention.
+  \end{center}
+
+\end{frame}
+
+
+
+
+\end{document}
