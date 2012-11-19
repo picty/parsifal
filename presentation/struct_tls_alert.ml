@@ -35,7 +35,8 @@ enum tls_alert_type (8, UnknownVal AT_Unknown) =
   | 114 -> AT_BadCertificateHashValue, "BadCertificateHashValue"
   | 115 -> AT_UnknownPSKIdentity, "UnknownPSKIdentity"
 
-struct {
-    AlertLevel level;
-    AlertDescription description;
-} Alert;
+struct tls_alert =
+{
+  alert_level : tls_alert_level;
+  alert_type : tls_alert_type
+}

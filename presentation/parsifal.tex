@@ -42,7 +42,7 @@
 
   \begin{itemize}
   \item<1-> Au départ, de nombreuses données TLS: 10~campagnes de mesure
-    sur les réponses HTTPS du monde IPv4:
+    sur les réponses HTTPS du monde IPv4
     \begin{itemize}
     \item 1~campagne menée par Arnaud Ebalard en juillet 2010
     \item 2~campagnes menées par l'EFF en août et décembre 2010
@@ -110,14 +110,16 @@
   Objectif: bénéficier d'un type somme sans avoir à écrire les
   fonctions de conversions vers les entiers
 
+{\footnotesize
 \begin{lstlisting}
-enum tls_version (16, UnknownVal V_Unknown, [with_lwt]) =
+enum tls_version [with_lwt] (16, UnknownVal V_Unknown) =
   | 0x0002 -> V_SSLv2, "SSLv2"
   | 0x0300 -> V_SSLv3, "SSLv3"
   | 0x0301 -> V_TLSv1, "TLSv1.0"
   | 0x0302 -> V_TLSv1_1, "TLSv1.1"
   | 0x0303 -> V_TLSv1_2, "TLSv1.2"
 \end{lstlisting}
+}
 
   Éléments supplémentaires produits:
   \begin{itemize}
@@ -136,6 +138,7 @@ enum tls_version (16, UnknownVal V_Unknown, [with_lwt]) =
   Objectif: structure enchaînant des champs\\[.5cm]
 
   Extrait de la RFC 5246:
+{\footnotesize
 \begin{lstlisting}
 enum { warning(1), fatal(2), (255) } AlertLevel;
 
@@ -152,6 +155,7 @@ struct {
     AlertDescription description;
 } Alert;
 \end{lstlisting}
+}
 
 \end{frame}
 
@@ -159,6 +163,7 @@ struct {
 \begin{frame}[fragile]{Structures (2/2)}
   \vspace{12mm}
 
+{\footnotesize
 \begin{lstlisting}
 enum tls_alert_level (8, UnknownVal AL_Unknown, []) =
   | 1 -> AL_Warning, "Warning"
@@ -176,6 +181,7 @@ struct tls_alert =
   alert_type : tls_alert_type
 }
 \end{lstlisting}
+}
 
 \end{frame}
 
@@ -185,8 +191,9 @@ struct tls_alert =
 
   Objectif: en fonction d'un discriminant, produire un sous-type
 
+{\footnotesize
 \begin{lstlisting}
-union autonomous_system (UnparsedAS, [enrich]) =
+union autonomous_system [enrich] (UnparsedAS) =
   | 16 -> AS16 of uint16
   | 32 -> AS32 of uint32
 
@@ -194,9 +201,11 @@ struct bgp_as_path_segment [param as_size] =
 {
   path_segment_type : uint8;
   path_segment_length : uint8;
-  path_segment_value : list(path_segment_length) of autonomous_system(as_size)
+  path_segment_value : list(path_segment_length) of
+                       autonomous_system(as_size)
 }
 \end{lstlisting}
+}
 
 \end{frame}
 
@@ -204,6 +213,7 @@ struct bgp_as_path_segment [param as_size] =
 \begin{frame}[fragile]{Alias}
   \vspace{12mm}
 
+{\footnotesize
 \begin{lstlisting}
 alias ustar_magic = magic["ustar"]
 alias tar_file [with_lwt] = list of tar_entry;
@@ -216,6 +226,7 @@ asn1_alias atv
 asn1_alias rdn = set_of atv  (* min = 1 *)
 asn1_alias distinguishedName = seq_of rdn
 \end{lstlisting}
+}
 
 \end{frame}
 

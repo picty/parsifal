@@ -1,4 +1,4 @@
-union autonomous_system (UnparsedAS, [enrich]) =
+union autonomous_system [enrich] (UnparsedAS) =
   | 16 -> AS16 of uint16
   | 32 -> AS32 of uint32
 
