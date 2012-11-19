@@ -15,8 +15,13 @@
 \usepackage{etex}
 \usepackage{tikz}
 \usepackage{listings}
+\lstset{language=Caml, basicstyle=\footnotesize,
+  morekeywords={enum, alias, struct, union,
+                asn1_alias,
+                UnknownVal, with_lwt, Exception}}
 
 \usetikzlibrary{arrows,shapes}
+
 
 \begin{document}
 
@@ -80,6 +85,184 @@
     \begin{itemize}
     \item tous les indicateurs sont au vert!
     \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Principe}
+  \vspace{12mm}
+
+  À partir de descriptions courtes des types, génération automatique
+  des éléments suivants:
+  \begin{itemize}
+  \item type OCaml \texttt{t}
+  \item fonction \texttt{parse\_t}
+  \item fonction \texttt{dump\_t}
+  \item fonction \texttt{print\_t}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]{Énumérations}
+  \vspace{12mm}
+
+  Objectif: bénéficier d'un type somme sans avoir à écrire les
+  fonctions de conversions vers les entiers
+
+\begin{lstlisting}
+enum tls_version (16, UnknownVal V_Unknown, [with_lwt]) =
+  | 0x0002 -> V_SSLv2, "SSLv2"
+  | 0x0300 -> V_SSLv3, "SSLv3"
+  | 0x0301 -> V_TLSv1, "TLSv1.0"
+  | 0x0302 -> V_TLSv1_1, "TLSv1.1"
+  | 0x0303 -> V_TLSv1_2, "TLSv1.2"
+\end{lstlisting}
+
+  Éléments supplémentaires produits:
+  \begin{itemize}
+  \item \texttt{int\_of\_tls\_version}
+  \item \texttt{string\_of\_tls\_version}
+  \item \texttt{tls\_version\_of\_int}
+  \item \texttt{tls\_version\_of\_string}
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Structures (1/2)}
+  \vspace{12mm}
+
+  Objectif: structure enchaînant des champs\\[.5cm]
+
+  Extrait de la RFC 5246:
+\begin{lstlisting}
+enum { warning(1), fatal(2), (255) } AlertLevel;
+
+enum {
+    close_notify(0),
+    unexpected_message(10),
+     ...
+    unsupported_extension(110),
+    (255)
+} AlertDescription;
+
+struct {
+    AlertLevel level;
+    AlertDescription description;
+} Alert;
+\end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Structures (2/2)}
+  \vspace{12mm}
+
+\begin{lstlisting}
+enum tls_alert_level (8, UnknownVal AL_Unknown, []) =
+  | 1 -> AL_Warning, "Warning"
+  | 2 -> AL_Fatal, "Fatal"
+
+enum tls_alert_type (8, UnknownVal AT_Unknown, []) =
+  | 0 -> AT_CloseNotify, "CloseNotify"
+  | 10 -> AT_UnexpectedMessage, "UnexpectedMessage"
+    ...
+  | 110 -> AT_UnsupportedExtension, "UnsupportedExtension"
+
+struct tls_alert =
+{
+  alert_level : tls_alert_level;
+  alert_type : tls_alert_type
+}
+\end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Unions}
+  \vspace{12mm}
+
+  Objectif: en fonction d'un discriminant, produire un sous-type
+
+\begin{lstlisting}
+union autonomous_system (UnparsedAS, [enrich]) =
+  | 16 -> AS16 of uint16
+  | 32 -> AS32 of uint32
+
+struct bgp_as_path_segment [param as_size] =
+{
+  path_segment_type : uint8;
+  path_segment_length : uint8;
+  path_segment_value : list(path_segment_length) of autonomous_system(as_size)
+}
+\end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Alias}
+  \vspace{12mm}
+
+\begin{lstlisting}
+alias ustar_magic = magic["ustar"]
+alias tar_file [with_lwt] = list of tar_entry;
+
+struct atv_content = {
+  attributeType : der_oid;
+  attributeValue : der_object
+}
+asn1_alias atv
+asn1_alias rdn = set_of atv  (* min = 1 *)
+asn1_alias distinguishedName = seq_of rdn
+\end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}{Démo}
+  \vspace{12mm}
+
+  Démo des exemples précédents.
+
+\end{frame}
+
+
+\begin{frame}{Exemple complet: TAR}
+  \vspace{12mm}
+
+  Démo.
+
+\end{frame}
+
+
+\begin{frame}{Formats et protocoles décrits à ce jour}
+  \vspace{12mm}
+
+  \begin{itemize}
+  \item X.509 (360~lignes)
+  \item TLS (800~lignes)
+  \item MRT (360~lignes)
+  \item TAR (90~lignes)
+  \item PE (travail en cours par Pierre)
+  \item ExpROM (travail en cours par Pierre)
+  \item OCSP (travail en cours par Olivier)
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Formats et protocoles à venir}
+  \vspace{12mm}
+
+  \begin{itemize}
+  \item CRL
+  \item DNS
+  \item PCAP ?
+  \item Acid ?
+  \item AML ?
+  \item DEX ?
+  \item ELF ?
   \end{itemize}
 
 \end{frame}
