@@ -30,12 +30,32 @@ let print_tar_numstring ?indent:(indent="")
   Printf.sprintf "%s%s: %d (%o)\n" indent name v v
 
 
+type optional_tar_numstring = int option
+
+let parse_optional_tar_numstring len input =
+  match try_parse (parse_tar_numstring len) input with
+  | None ->
+    drop_bytes len input;
+    None
+  | x -> x
+
+let dump_optional_tar_numstring len = function
+  | None -> String.make len '\x00'
+  | Some v -> dump_tar_numstring len v
+
+let print_optional_tar_numstring ?indent:(indent="")
+                                 ?name:(name="numstring") = function
+  | None -> Printf.sprintf "%s%s" indent name
+  | Some v -> print_tar_numstring ~indent:indent ~name:name v
+
+
 struct ustar_header = {
-  ustar_magic : magic["ustar\x0000"];
+  ustar_magic : magic["ustar"];
+  _ustar_magic_padding : binstring(3);
   owner_user : string(32);
   owner_group : string(32);
-  device_major : tar_numstring[8];
-  device_minor : tar_numstring[8];
+  device_major : optional_tar_numstring[8];
+  device_minor : optional_tar_numstring[8];
   filename_prefix : string(155)
 }
 
