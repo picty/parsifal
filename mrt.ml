@@ -119,17 +119,9 @@ struct bgp_reach_nlri_full = {
   rn_nlri : list of ip_prefix(rn_afi)
 }  
 
-(* The abbreviated business is a hack to support some non-compiant files:
-   it should be taken into account with a try_parse and an optional-like parameter *)
-
-union bgp_reach_nlri [exhaustive (* TODO add "no_parse" *) ] (UnparsedNLRI) =
-  | true -> FullNLRI of bgp_reach_nlri_full
-  | false -> AbbreviatedNLRI of container[uint8] of list of (ip_address(AFI_IPv6))
-
-let parse_bgp_reach_nlri input =
-  let afi = peek_uint16 input in
-  parse_bgp_reach_nlri (afi = 1 || afi = 2) input
-
+union bgp_reach_nlri (AbbreviatedNLRI of container[uint8] of list of (ip_address(AFI_IPv6))) =
+  | 1 -> FullNLRI of bgp_reach_nlri_full
+  | 2 -> FullNLRI of bgp_reach_nlri_full
 
 struct bgp_unreach_nlri = {
   un_afi : address_family_identifier;
@@ -145,7 +137,7 @@ union bgp_attribute_content [enrich; param as_size] (UnknownBGPAttributeContent)
   | ATOMIC_AGGREGATE -> BAC_AtomicAggregate
   | AGGREGATOR -> BAC_Aggregator of bgp_aggregator(as_size)
   | COMMUNITY -> BAC_Community of (list of uint32)
-  | MP_REACH_NLRI -> BAC_MPReachNLRI of bgp_reach_nlri
+  | MP_REACH_NLRI -> BAC_MPReachNLRI of bgp_reach_nlri(peek_uint16 input)
   | MP_UNREACH_NLRI -> BAC_MPUnreachNLRI of bgp_unreach_nlri
   | EXTENDED_COMMUNITIES -> BAC_ExtendedCommunities of (list of binstring(8)) (* TODO rfc4360 *)
   | AS4_PATH -> BAC_ASPath of (list of bgp_as_path_segment(32))
