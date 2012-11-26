@@ -1,0 +1,51 @@
+(* Declaration des types der_*time_content *)
+
+asn1_union der_time [enrich; exhaustive] (UnparsedTime) =
+  | (C_Universal, false, T_UTCTime) -> UTCTime of der_utctime_content
+  | (C_Universal, false, T_GeneralizedTime) -> GeneralizedTime of
+  der_generalizedtime_content
+
+
+
+type cons_string = string
+let parse_cons_string cons input = match cons with
+  | None -> parse_rem_string input
+  | Some s -> parse_string s input
+let dump_cons_string s = s
+let print_cons_string = print_printablestring
+
+asn1_union der_directorystring [enrich; exhaustive; param size] (UnparsedDirectoryString)=
+  | (C_Univeral, false, T_T61String) -> T61String of cons_string(size)
+  | (C_Univeral, false, T_PrintableString) -> PrintableString of cons_string(size)
+  | (C_Univeral, false, T_UniversalString) -> UniversalString of cons_string(size)
+  | (C_Univeral, false, T_UTF8String) -> UTF8String of cons_string(size)
+  | (C_Univeral, false, T_BMPString) -> BMPString of cons_string(size)
+
+
+
+type der_directorystring =
+  | T61String of cons_string
+  | PrintableString of cons_string
+  ...
+
+let parse_der_directory size input =
+  let discriminator = extract_der_header input in
+  let length = extract_der_length input in
+  let new_input = get_in input length in
+  let res = match discriminator with
+  | (C_Universal, false, T_T61String) -> T61String (parse_cons_string size new_input)
+  | (C_Universal, false, T_PrintableString) -> PrintableString (parse_cons_string size new_input)
+  ...
+  in
+  get_out input new_input;
+  res
+
+let dump_der_directory der_directory =
+  let hdr, content = match
+  | T61String s -> (C_Universal, false, T_T61String), dump_cons_string s
+  | PrintableString s -> (C_Universal, false, T_PrintableString), dump_cons_string s
+  ...
+  in
+  (dump_der_header hdr) ^ (dump_der_length (String.length content)) ^ content
+
+let print_der_directory ?indent:
