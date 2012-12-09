@@ -143,7 +143,7 @@ let rec handle_answer answer =
           | { content_type = CT_Handshake;
               record_content = Handshake {
                 handshake_type = HT_Certificate;
-                handshake_content = Certificate {certificate_list = (UnparsedCertificate cert_string)::_} }}::_ ->
+                handshake_content = Certificate ((UnparsedCertificate cert_string)::_) }}::_ ->
             begin
               try
                 let cert = parse_certificate (input_of_string "" cert_string) in

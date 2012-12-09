@@ -66,11 +66,15 @@ let update_with_server_hello ctx sh =
   | _ -> failwith "Extensions not supported for now"
 
 
-let update_with_certificate _ctx _cert = ()
+let update_with_certificate ctx cert =
+  ctx.future.s_certificates <- cert
 
 
 let update_with_server_key_exchange ctx ske =
   ctx.future.s_server_key_exchange <- ske
+
+
+
 
 
 (* Useful functions *)

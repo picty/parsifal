@@ -82,9 +82,7 @@ struct new_session_ticket = {
 union _certificate [exhaustive] (UnparsedCertificate) =
   | () -> ParsedCertificate of X509.certificate
 
-struct certificates = {
-  certificate_list : list[uint24] of container[uint24] of _certificate(())
-}
+alias certificates = list[uint24] of container[uint24] of _certificate(())
 
 struct server_dh_params = {
   dh_p : binstring[uint16];
@@ -125,6 +123,8 @@ type crypto_context = {
   mutable s_ciphersuite : ciphersuite_description;
   mutable s_compression_method : TlsEnums.compression_method;
 
+  mutable s_certificates : _certificate list;
+
   mutable s_server_key_exchange : server_key_exchange;
 
   mutable s_client_random : string;
@@ -133,6 +133,8 @@ type crypto_context = {
 }
 
 type tls_context = {
+  mutable expected_client_hs_msgs : hs_message_type list;
+  mutable expected_server_hs_msgs : hs_message_type list;
   mutable present : crypto_context;
   mutable future : crypto_context;
 }
@@ -215,6 +217,8 @@ let empty_crypto_context () = {
   s_ciphersuite = find_csdescr TlsEnums.TLS_NULL_WITH_NULL_NULL;
   s_compression_method = TlsEnums.CM_Null;
 
+  s_certificates = [];
+
   s_server_key_exchange = Unparsed_SKEContent "";
 
   s_client_random = "";
@@ -223,10 +227,11 @@ let empty_crypto_context () = {
 }
 
 let empty_context () = {
+  expected_client_hs_msgs = [HT_ClientHello];
+  expected_server_hs_msgs = [];
   present = empty_crypto_context ();
   future = empty_crypto_context ();
 }
-
 
 let check_record_version ctx record_version =
   ctx.present.s_version = (TlsEnums.V_Unknown 0) ||
