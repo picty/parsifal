@@ -1,8 +1,5 @@
-Stuff to do
- - Protobuf
- - PNG
 
-v0.1 (oct. 2012 -> nov. 2012)
+v0.1 (oct. 2012 -> dec. 2012)
  - General
    * have a redmine to put all this stuff
    * Produce a real camlp4 syntax package
@@ -19,6 +16,7 @@ v0.1 (oct. 2012 -> nov. 2012)
      + check the consistency if necessary
      + update the state
      + return what to do next?
+   * add another generic function with hooks for after each message / alert / appdata / ccs / heartbeat
    * Move test_answerDump.split_record in TlsUtil?
    * Clean up code in Tls and TlsEngine
    * [?] add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
@@ -121,6 +119,12 @@ v0.2 (feb. 2013 -> mar. 2013)
 
 
 v0.3 (jun. 2013)
+ - Formats
+   * Protobuf
+   * PNG
+ - Camlp4/language
+   * Auto-generate parsers in C/python/? with an option (c_parser, python_parser)?
+   * Generate dump2protobuf for structs?
  - X509
    * add popular extensions (1.2.840.113549.1.9.15 : sMIMECapabilities; 1.3.6.1.5.5.7.1.12 : logoType)
    * Add a test to really check if the idempotence was broken!

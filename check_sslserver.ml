@@ -1,5 +1,7 @@
 (* check_sslserver: TODO
 
+Probe should take as an input a CH and return a result after trying to establish a complete connexion.
+
 Protocol Versions:
  - check the accepted SSL version
  - determine the preferred version (with different stimuli (SSLv2 CH, other TLS CH)
