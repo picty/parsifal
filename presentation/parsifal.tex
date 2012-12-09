@@ -40,6 +40,8 @@
 \begin{frame}{Historique (1/2)}
   \vspace{12mm}
 
+  \TODO{Eventuellement mieux expliquer les mesures}
+
   \begin{itemize}
   \item<1-> Au départ, de nombreuses données TLS: 10~campagnes de mesure
     sur les réponses HTTPS du monde IPv4
@@ -75,7 +77,7 @@
     \item pénible à mettre au point (fuites mémoire, \emph{segfaults})
     \item nécessite trop de code pour ajouter des fonctionnalités
     \end{itemize}
-  \item<4-> troisième version en OCaml (avec un DSL, \textit{Domain Specific Language}):
+  \item<4-> troisième version en OCaml (avec un DSL, \textit{Domain Specific Language} ressemblant à Python):
     \begin{itemize}
     \item rapide et flexible
     \item plus robuste que le précédent
@@ -83,6 +85,8 @@
     \end{itemize}
   \item<5-> quatrième version en OCaml, en utilisant un pré-processeur (camlp4):
     \begin{itemize}
+    \item \textit{camlp4 est un ensemble d'outils (\emph{parsers},
+        pré-processeurs, \emph{pretty printers}) pour OCaml
     \item tous les indicateurs sont au vert!
     \end{itemize}
   \end{itemize}
@@ -137,7 +141,7 @@ enum tls_version [with_lwt] (16, UnknownVal V_Unknown) =
 
   Objectif: structure enchaînant des champs\\[.5cm]
 
-  Extrait de la RFC 5246:
+  Extrait de la RFC 5246 (TLSv1.2):
 {\footnotesize
 \begin{lstlisting}
 enum { warning(1), fatal(2), (255) } AlertLevel;
@@ -238,6 +242,7 @@ asn1_alias distinguishedName = seq_of rdn
 
 \end{frame}
 
+\TODO{Ajouter du binaire et un schéma joli, éventuellement auto-généré?}
 
 \begin{frame}{Exemple complet: TAR}
   \vspace{12mm}
@@ -247,13 +252,20 @@ asn1_alias distinguishedName = seq_of rdn
 \end{frame}
 
 
+\begin{frame}{Outils connexes}
+  \vspace{8mm}
+
+  \TODO{Scapy, Hachoir, Caml bitstring, autre truc cité par le mec des
+    JFLA}
+\end{frame}
+
 \begin{frame}{Formats et protocoles décrits à ce jour}
   \vspace{12mm}
 
   \begin{itemize}
   \item X.509 (360~lignes)
   \item TLS (800~lignes)
-  \item MRT (360~lignes)
+  \item MRT+BGPg (360~lignes)
   \item TAR (90~lignes)
   \item PE (travail en cours par Pierre)
   \item ExpROM (travail en cours par Pierre)
