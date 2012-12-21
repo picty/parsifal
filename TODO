@@ -1,12 +1,6 @@
-
 v0.1 (oct. 2012 -> dec. 2012)
- - General
-   * have a redmine to put all this stuff
-   * Produce a real camlp4 syntax package
-   * add Pollux' MakefileV6
- - Tls
-   * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
-   * Add SSLv2 support in probe_server and other programs
+ - camlp4
+   * write asn1_unions
  - TlsEngine
    * work on TlsEngine.update* functions
    * write the automata (client, server, transparent proxy, normalizing proxy)
@@ -23,7 +17,7 @@ v0.1 (oct. 2012 -> dec. 2012)
    * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
    * put 'a result_type and handle_answer logic from probe_server into TlsEngine
  - X509
-   * write GeneralName and rewrite directoryString and 
+   * write GeneralName and rewrite directoryString using asn1_unions
    * add GN in AKI, CertificatePolicies, NameContstraints SAN, AIA and CRLDP extensions
    * add support for RSA/DSA public key and signature
    * Code construct_chains/check_chains in caml
@@ -51,8 +45,6 @@ v0.1 (oct. 2012 -> dec. 2012)
      + TLS chain analysis -> nCerts, nDupes, nUnused, nChains [+ characterisation]
      + Graph construction (From a big pool of certs, try to create all the links...)
    * Add a way to create a certificate object
- - Crypto
-   * Write test_pkcs1 to check RSA implementation
  - Tools
    * probe_server: Add a retry option
    * probe_server: Add a way to handle extensions
@@ -69,8 +61,13 @@ v0.1 (oct. 2012 -> dec. 2012)
 
 v0.2 (feb. 2013 -> mar. 2013)
  - General
+   * have a redmine to put all this stuff
+   * Produce a real camlp4 syntax package
+   * add Pollux' MakefileV6
    * Think about the exception system (fatal or not) => merge all in ParsifalException
-   * Improve the printing systems (do we need a separate string_of function, a way to ask for a one liner?)
+   * Improve the printing systems
+     + do we need a separate string_of function, a way to ask for a one liner?
+     + do we need a hookable string_of function?
  - Software Engineering
    * Write some tests (unit tests, non-regression, etc.)
    * Write .mli files
@@ -90,11 +87,14 @@ v0.2 (feb. 2013 -> mar. 2013)
    * add a printer version of asn1parse for der_object
    * add a event-driven der_object version to have a cool asn1parse
  - Tls
+   * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
+   * Add SSLv2 support in probe_server and other programs
    * Implement every extension/PK present in ssl-data
  - X509
    * Add support for CSR
    * OCSP and CRL parsers
  - Crypto
+   * Write test_pkcs1 to check RSA implementation
    * Look at the code of cryptokit which seems groovy
    * Simplify the RSA code (to avoid the useless creation of a key object)
    * Add support for DSA
