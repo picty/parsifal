@@ -38,6 +38,11 @@ let options = [
 
   mkopt None "print-names" (set_print_names PrintName) "always prefix the answer with the filename";
   mkopt None "dont-print-names" (set_print_names DoNotPrintName) "never prefix the answer with the filename";
+
+  mkopt None "dont-parse-extensions" (Clear enrich_extnValue) "do not try and enrich extensions";
+  mkopt None "dont-parse-public-keys" (Clear enrich_subjectPublicKey) "do not try and enrich subject public keys";
+  mkopt None "dont-parse-signatures" (Clear enrich_signature) "do not try and enrich signature fields";
+  mkopt None "dont-parse-algo-params" (Clear enrich_algorithmParams) "do not try and enrich algorithm params";
 ]
 
 let getopt_params = {
