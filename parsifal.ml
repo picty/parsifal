@@ -80,6 +80,16 @@ let quote_string s =
   res
 
 
+let string_split c s =
+  let rec aux offset =
+    try
+      let next_index = String.index_from s offset c in
+      (String.sub s offset (next_index - offset))::(aux (next_index + 1))
+    with Not_found ->
+      let len = String.length s in
+      if offset < len then [String.sub s offset (len - offset)] else []
+  in aux 0
+
 
 
 (**********************)
@@ -141,6 +151,9 @@ let print_parsing_exception = function
 
 exception ParsingException of parsing_exception * history
 exception ParsingStop
+
+let not_implemented s = raise (ParsingException (NotImplemented s, []))
+let lwt_not_implemented s = fail (ParsingException (NotImplemented s, []))
 
 let string_of_exception e h = (print_parsing_exception e) ^ (print_history h)
 
