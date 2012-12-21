@@ -1,8 +1,8 @@
 TEST_PROGRAMS = test_answerDump.native test_tls_record.native test_random.native \
-                test_pkcs1.native test_rsa_private_key.native test_x509.native \
+                test_pkcs1.native test_rsa_private_key.native \
                 test_parsifal.native test_mrt.native test_ssl2.native test_tar.native \
                 test_ocsp.native test_pe.native
-PROGRAMS = probe_server.native sslproxy.native serveranswer.native
+PROGRAMS = probe_server.native sslproxy.native serveranswer.native x509show.native
 
 PREPROCESSORS = preprocess/parsifal_syntax.cmo
 
