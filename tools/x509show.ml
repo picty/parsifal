@@ -67,7 +67,11 @@ let handle_input input =
       in [string_of_bool (result)]
     | Subject -> ["[" ^ String.concat ", " (List.map string_of_atv (List.flatten certificate.tbsCertificate.subject)) ^ "]"]
     | Issuer -> ["[" ^ String.concat ", " (List.map string_of_atv (List.flatten certificate.tbsCertificate.issuer)) ^ "]"]
-    | Modulus -> ["TODO"]
+    | Modulus ->
+      let result = match certificate.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey with
+	| RSA {p_modulus = n} -> hexdump n
+	| _ -> "No RSA modulus found or parsed"
+      in [result]
     | BinDump -> [dump_certificate certificate]
     | Dump -> [hexdump (dump_certificate certificate)]
     | Text -> string_split '\n' (print_certificate certificate)
