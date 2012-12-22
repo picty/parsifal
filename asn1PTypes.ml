@@ -279,9 +279,33 @@ let parse_der_enumerated_bitstring_content description input =
   let res = aux 0 values in
   List.map (fun v -> description.(v)) res
 
-(* TODO! *)
-let dump_der_enumerated_bitstring_content _description _v =
-  raise (ParsingException (NotImplemented "dump_der_enumerated_bistring_content", []))
+let dump_der_enumerated_bitstring_content description l =
+  let rec next_val v = ((v lsr 1) lor (v lsl 7)) land 0xff in
+  let n = Array.length description in
+  let rec enumerate_bits bitval accu i = function
+    | [] -> List.rev accu
+    | (v_v::r_v as l_v) ->
+      if i < n then begin
+	let next_bv = next_val bitval in
+	if description.(i) = v_v
+	then enumerate_bits next_bv (bitval::accu) (i+1) r_v
+	else enumerate_bits next_bv (0::accu) (i+1) l_v
+      end else begin
+	warning_h (BitStringNotInNormalForm "Ignoring unknown strings in the given list") [];
+	List.rev accu
+      end
+  in
+  let rec encode accu = function
+    | [] -> 0, (List.rev accu)
+    | a::b::c::d::e::f::g::h::r -> encode ((a+b+c+d+e+f+g+h)::accu) r
+    | l ->
+      let nBits = 8 - (List.length l)
+      and last_int = (List.fold_left (+) 0 l) in
+      nBits, (List.rev (last_int::accu))
+  in
+  let bits = enumerate_bits 0x80 [] 0 l in
+  let nBits, intlist = encode [] bits in
+  dump_der_bitstring_content (nBits, _string_of_int_list intlist)
 
 let print_der_enumerated_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_content") l =
   Printf.sprintf "%s%s: %s\n" indent name (String.concat ", " l)

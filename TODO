@@ -49,7 +49,6 @@ v0.1 (oct. 2012 -> dec. 2012)
    * probe_server: Add a retry option
    * probe_server: Add a way to handle extensions
    * bgpdump and/or obsdump
-   * x509show: bug 'Not implemented (dump_der_enumerated_bistring_content)'
    * x509compare
    * x509check (enrich the x509 object before analysing!)
    * chaincheck
