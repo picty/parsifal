@@ -225,16 +225,17 @@ let dump_time time =
   | GeneralizedTime t ->
     produce_der_object (C_Universal, false, T_UTCTime) (fun x -> x) (aux true t)
 
-let print_time ?indent:(indent="") ?name:(name="time") time =
+let string_of_time time =
   let aux isGen (y, m, d, yy, mm, ss) =
     let l = if isGen then 4 else 2 in
     Printf.sprintf "%*.*d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d UTC" l l y m d yy mm ss
   in
-  let s = match time with
+  match time with
     | UTCTime t -> aux false t
     | GeneralizedTime t -> aux true t
-  in
-  Printf.sprintf "%s%s: %s\n" indent name s
+
+let print_time ?indent:(indent="") ?name:(name="time") time =
+  Printf.sprintf "%s%s: %s\n" indent name (string_of_time time)
 
 struct validity_content = {
   notBefore : time;

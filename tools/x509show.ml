@@ -1,12 +1,12 @@
 open Lwt
 open Parsifal
 open Asn1PTypes
-open X509
 open RSAKey
+open X509
 open Getopt
 
 type action =
-  | Text | Dump | BinDump
+  | Text | PrettyPrint | Dump | BinDump
   | Subject | Issuer | Serial | Modulus
   | CheckSelfSigned
 let action = ref Text
@@ -25,6 +25,7 @@ let options = [
   mkopt (Some 'k') "keep-going" (Set keep_going) "keep working even when errors arise";
 
   mkopt (Some 't') "text" (set_action Text) "prints the certificates given";
+  mkopt (Some 'p') "pretty-print" (set_action PrettyPrint) "prints the certificates given";
   mkopt (Some 'D') "dump" (set_action Dump) "dumps the certificates given (in hexa)";
   mkopt None "binary-dump" (set_action BinDump) "dumps the certificates given";
   mkopt (Some 'S') "serial" (set_action Serial) "prints the certificates serial number";
@@ -52,6 +53,27 @@ let getopt_params = {
 }
 
 
+let pretty_print_certificate cert =
+  let tbs = cert.tbsCertificate in
+  if tbs.signature <> cert.signatureAlgorithm
+  then ();  (* TODO *)
+  [
+    (match tbs.version with
+    | None -> "Version: no version given"
+    | Some v -> Printf.sprintf "Version: %d" v);
+
+    Printf.sprintf "Signature: %s " (string_of_oid tbs.signature.algorithmId); (* TODO: Params *)
+    Printf.sprintf "Issuer: %s " (string_of_distinguishedName tbs.issuer);
+    "Validity";
+    Printf.sprintf "    Not before: %s" (string_of_time tbs.validity.notBefore);
+    Printf.sprintf "    Not after: %s" (string_of_time tbs.validity.notAfter);
+    Printf.sprintf "Subject: %s" (string_of_distinguishedName tbs.subject);
+  ]@
+    (string_split '\n' (print_subjectPublicKeyInfo
+			  tbs.subjectPublicKeyInfo))
+  @[
+  ]
+
 let handle_input input =
   lwt_parse_certificate input >>= fun certificate ->
   let display = match !action with
@@ -75,6 +97,7 @@ let handle_input input =
     | BinDump -> [dump_certificate certificate]
     | Dump -> [hexdump (dump_certificate certificate)]
     | Text -> string_split '\n' (print_certificate certificate)
+    | PrettyPrint -> pretty_print_certificate certificate
   in
   match !print_names with
     | Default -> lwt_not_implemented "handle_input can not determine wether filenames should be printed"
