@@ -80,18 +80,6 @@ let quote_string s =
   res
 
 
-let string_split c s =
-  let rec aux offset =
-    try
-      let next_index = String.index_from s offset c in
-      (String.sub s offset (next_index - offset))::(aux (next_index + 1))
-    with Not_found ->
-      let len = String.length s in
-      if offset < len then [String.sub s offset (len - offset)] else []
-  in aux 0
-
-
-
 (**********************)
 (* Parsing structures *)
 (**********************)
