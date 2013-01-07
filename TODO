@@ -91,7 +91,6 @@ v0.2 (feb. 2013 -> mar. 2013)
    * Add SSLv2 support in probe_server and other programs
    * Implement every extension/PK present in ssl-data
  - X509
-   * Improve support for CertificatePolicies
    * Add support for CSR
    * OCSP and CRL parsers
  - Crypto

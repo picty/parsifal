@@ -144,6 +144,7 @@ struct authorityKeyIdentifier_content = {
 }
 asn1_alias authorityKeyIdentifier
 
+
 (* Key Usage *)
 let keyUsage_values = [|
   "digitalSignature";
@@ -157,6 +158,7 @@ let keyUsage_values = [|
   "decipherOnly"
 |]
 
+
 (* Basic Constraints *)
 struct basicConstraints_content = {
   optional cA : der_boolean;
@@ -164,46 +166,50 @@ struct basicConstraints_content = {
 }
 asn1_alias basicConstraints
 
+
 (* Extended Key Usage *)
 asn1_alias extendedKeyUsage = seq_of der_oid
 
+
 (* Certificate Policies *)
 
-   (* -- policyQualifierIds for Internet policy qualifiers *)
+(* TODO: Rewrite this with asn1_union *)
+type displayText = asn1_tag * string
 
-   (* id-qt          OBJECT IDENTIFIER ::=  { id-pkix 2 } *)
-   (* id-qt-cps      OBJECT IDENTIFIER ::=  { id-qt 1 } *)
-   (* id-qt-unotice  OBJECT IDENTIFIER ::=  { id-qt 2 } *)
+let parse_displayText input =
+  let aux h new_input = match h with
+    | (C_Universal, false,
+       (T_IA5String|T_VisibleString|
+        T_UTF8String|T_BMPString as t)) ->
+      t, parse_der_octetstring_content no_constraint new_input
+    | h -> fatal_error (UnexpectedHeader (h, None)) input
+  in advanced_der_parse aux input
 
-   (* PolicyQualifierId ::= OBJECT IDENTIFIER ( id-qt-cps | id-qt-unotice ) *)
+let dump_displayText (t, s) =
+  produce_der_object (C_Universal, false, t) (fun x -> x) s
 
-   (* Qualifier ::= CHOICE { *)
-   (*      cPSuri           CPSuri, *)
-   (*      userNotice       UserNotice } *)
+let print_displayText ?indent:(indent="") ?name:(name="displayText") (_, s) =
+  Printf.sprintf "%s%s: %s\n" indent name s
 
-   (* CPSuri ::= IA5String *)
+struct noticeReference_content = {
+  organization : displayText;
+  noticeNumbers : asn1 [(C_Universal, true, T_Sequence)] of der_integer
+}
+asn1_alias noticeReference
 
-   (* UserNotice ::= SEQUENCE { *)
-   (*      noticeRef        NoticeReference OPTIONAL, *)
-   (*      explicitText     DisplayText OPTIONAL } *)
+struct userNotice_content = {
+  optional noticeRef : noticeReference;
+  optional explicitText : displayText
+}
+asn1_alias userNotice
 
-   (* NoticeReference ::= SEQUENCE { *)
-   (*      organization     DisplayText, *)
-   (*      noticeNumbers    SEQUENCE OF INTEGER } *)
-
-   (* DisplayText ::= CHOICE { *)
-   (*      ia5String        IA5String      (SIZE (1..200)), *)
-   (*      visibleString    VisibleString  (SIZE (1..200)), *)
-   (*      bmpString        BMPString      (SIZE (1..200)), *)
-   (*      utf8String       UTF8String     (SIZE (1..200)) } *)
-
-   (* PolicyQualifierInfo ::= SEQUENCE { *)
-   (*      policyQualifierId  PolicyQualifierId, *)
-   (*      qualifier          ANY DEFINED BY policyQualifierId } *)
+union policyQualifier [enrich] (UnparsedQualifier of der_object) =
+  | "id-qt-cps" -> CPSuri of der_ia5string  (* TODO: Should be readable ! *)
+  | "id-qt-unotice" -> UserNotice of userNotice
 
 struct policyQualifierInfo_content = {
   policyQualifierId : der_oid;
-  qualifier : der_object
+  qualifier : policyQualifier(hash_get oid_directory policyQualifierId "")
 }
 asn1_alias policyQualifierInfo
 asn1_alias policyQualifiers = seq_of policyQualifierInfo (* 1..MAX *)
@@ -387,7 +393,19 @@ let extension_types = [
   [85;29;32], "certificatePolicies";
 ]
 
+let policyQualifier_ids = [
+  [43;6;1;5;5;7;2;1], "id-qt-cps";
+  [43;6;1;5;5;7;2;2], "id-qt-unotice";
+]
+
 let other_oids = [
+  (* Prefixes *)
+  [43;6;1;5;5;7], "id-pkix";
+  [43;6;1;5;5;7;1], "id-pe";
+  [43;6;1;5;5;7;2], "id-qt";
+  [43;6;1;5;5;7;3], "id-kp";
+  [43;6;1;5;5;7;48], "id-ad";
+
   [85;29;37;0], "anyExtendedKeyUsage";
   [43;6;1;5;5;7;3;1], "serverAuth";
   [43;6;1;5;5;7;3;2], "clientAuth";
@@ -397,6 +415,7 @@ let other_oids = [
   [43;6;1;5;5;7;3;9], "OCSPSigning";
   [85;29;32;0], "anyPolicy";
 ]
+
 
 let populate_atv_directory (id, name, short, value) =
   register_oid ~short:short id name;
@@ -411,6 +430,7 @@ let populate_alg_directory dir (id, name, algParam, value) =
 let _ =
   List.iter (populate_atv_directory) attribute_value_types;
   List.iter (fun (id, name) -> register_oid id name) extension_types;
+  List.iter (fun (id, name) -> register_oid id name) policyQualifier_ids;
   List.iter (fun (id, name) -> register_oid id name) other_oids;
   List.iter (populate_alg_directory subjectPublicKeyType_directory) public_key_types;
   List.iter (populate_alg_directory signatureType_directory) signature_types;  
