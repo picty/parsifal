@@ -498,7 +498,7 @@ let parse_bitstring_container parse_fun input =
   let (_nbits, content) = parse_der_bitstring input in
   (* TODO:    if nbits <> 0 then *)
   let new_input = {
-    (input_of_string "subjectPublicKey_content" content) with
+    (input_of_string "bitstring_container" content) with
       history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history;
       enrich = input.enrich
   } in
