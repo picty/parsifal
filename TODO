@@ -2,9 +2,13 @@ v0.1 (oct. 2012 -> dec. 2012)
  - camlp4
    * write asn1_unions
  - X509
-   * write GeneralName and rewrite directoryString using asn1_unions
-   * add GN in AKI, NameContstraints SAN, AIA and CRLDP extensions
+   * write GeneralName using asn1_unions
+   * rewrite directoryString/explicitText using asn1_unions
+   * write CRLDP distributionPointName using asn1_unions
+   * add SAN
+   * add AIA extensions
    * add support for RSA/DSA public key and signature
+   * split x509.ml in multiple files (x509Basics, x509Extensions, x509 with aliases to x509Basics like DNs)
  - Tools
    * probe_server: Add a way to handle extensions
  - TlsEngine

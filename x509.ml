@@ -135,11 +135,16 @@ union signature [enrich] (UnparsedSignature of der_object) =
 (* Extensions *)
 (**************)
 
+(* Useful *)
+(* TODO: GeneralName *)
+alias generalName = der_object
+
+
 (* Authority Key Identifier *)
 (* TODO: add constraint on [1] and [2] that MUST both be present or absent *)
 struct authorityKeyIdentifier_content = {
   optional keyIdentifier : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of binstring;
-  optional authorityCertIssuerUNPARSED : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of (list of der_object); (* TODO: GeneralName *)
+  optional authorityCertIssuer : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of (list of generalName);
   optional authorityCertSerialNumber : asn1 [(C_ContextSpecific, false, T_Unknown 2)] of der_integer_content
 }
 asn1_alias authorityKeyIdentifier
@@ -244,13 +249,31 @@ let reasonFlags_values = [|
 
 (* TODO: Add structural check: at least 0 or 2 should be present *)
 struct distributionPoint_content = {
-  optional distributionPointUNPARSED : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of distributionPointName;
+  optional distributionPoint : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of distributionPointName;
   optional reasons : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_enumerated_bitstring_content[reasonFlags_values];
-  optional crlIssuerUNPARSED : asn1 [(C_ContextSpecific, true, T_Unknown 2)] of (list of der_object) (* TODO: GeneralName *)
+  optional crlIssuer : asn1 [(C_ContextSpecific, true, T_Unknown 2)] of (list of generalName)
 }
 
 asn1_alias distributionPoint
-asn1_alias crlDistributionPoints = seq_of distributionPoint (* TODO: 1.. MAX *)
+asn1_alias crlDistributionPoints = seq_of distributionPoint (* TODO: 1 .. MAX *)
+
+
+(* NameConstraints *)
+
+struct generalSubtree_content = {
+  gst_base : generalName;
+  optional gst_minimum : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_integer_content;
+  optional gst_maximum : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_integer_content
+}
+asn1_alias generalSubtree
+asn1_alias generalSubtrees = seq_of generalSubtree (* TODO: 1 .. MAX *)
+
+(* TODO: Add structural constraint (0 or 1 must be present) *)
+struct nameConstraints_content = {
+  optional permittedSubtrees : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of generalSubtrees;
+  optional excludedSubtrees : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of generalSubtrees
+}
+asn1_alias nameConstraints
 
 
 
@@ -417,13 +440,14 @@ let signature_types = [
 ]
 
 let extension_types = [
-  [85;29;35], "authorityKeyIdentifier";
   [85;29;14], "subjectKeyIdentifier";
   [85;29;15], "keyUsage";
   [85;29;19], "basicConstraints";
-  [85;29;37], "extendedKeyUsage";
-  [85;29;32], "certificatePolicies";
+  [85;29;30], "nameContraints";
   [85;29;31], "crlDistributionPoints";
+  [85;29;32], "certificatePolicies";
+  [85;29;35], "authorityKeyIdentifier";
+  [85;29;37], "extendedKeyUsage";
 ]
 
 let policyQualifier_ids = [
