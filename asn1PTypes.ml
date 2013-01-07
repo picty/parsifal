@@ -422,7 +422,7 @@ let rec parse_der_object input =
     | (C_Universal, false, T_GeneralString)
     | (C_Universal, false, T_UniversalString)
     | (C_Universal, false, T_UnspecifiedCharacterString)
-    | (C_Universal, false, T_BMPString) -> String (parse_der_octetstring_content no_constraint input, false) (* TODO *)
+    | (C_Universal, false, T_BMPString) -> String (parse_der_octetstring_content no_constraint new_input, false) (* TODO *)
 
     | (C_Universal, true, T_Sequence)
     | (C_Universal, true, T_Set) -> Constructed (parse_der_constructed_content new_input)
