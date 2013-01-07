@@ -6,7 +6,6 @@ v0.1 (oct. 2012 -> dec. 2012)
    * add GN in AKI, NameContstraints SAN, AIA and CRLDP extensions
    * add support for RSA/DSA public key and signature
  - Tools
-   * probe_server: Add a retry option
    * probe_server: Add a way to handle extensions
  - TlsEngine
    * work on TlsEngine.update* functions

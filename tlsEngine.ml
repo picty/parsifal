@@ -115,8 +115,12 @@ type 'a result_type =
   | FatalAlert of string
   | EndOfFile
   | Timeout
+  | Retry
 
-let catch_exceptions = function
+let catch_exceptions retry e =
+  if retry > 1
+  then return Retry
+  else match e with
   | Util.Timeout -> return Timeout
   | End_of_file -> return EndOfFile
   | e -> fail e
@@ -155,7 +159,7 @@ let handle_answer handle_hs handle_alert s =
 
   let hs_in = input_of_string "Handshake records" ""
   and alert_in = input_of_string "Alert records" "" in
-  catch (fun () -> timed_read_answers hs_in alert_in) catch_exceptions
+  catch (fun () -> timed_read_answers hs_in alert_in) (catch_exceptions 0)
 
 
 (* let rec wrap_expect_fun f ctx recs = *)

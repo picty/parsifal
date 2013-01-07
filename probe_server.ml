@@ -19,6 +19,7 @@ let rec_version = ref V_TLSv1
 let ch_version = ref V_TLSv1
 let suites = ref [TLS_RSA_WITH_RC4_128_SHA]
 let compressions = ref [CM_Null]
+let retry = ref 3
 
 let clear_suites () = suites := []
 let add_suite s =
@@ -87,6 +88,7 @@ let options = [
 
   mkopt None "record-size" (IntVal plaintext_chunk_size) "set the size of the records sent";
   mkopt (Some 't') "timeout" (FloatVal timeout) "set the timeout";
+  mkopt None "retry" (IntVal retry) "set the number of tentatives";
 
   mkopt None "deep-parse" (TrivialFun deep_parse) "activate deep parsing for certificates/DNs";
 ]
@@ -172,8 +174,12 @@ let _send_and_receive hs_fun alert_fun =
   input_of_fd "Server" s >>=
   handle_answer hs_fun alert_fun
 
-let send_and_receive hs_fun alert_fun =
-  catch (fun () -> _send_and_receive hs_fun alert_fun) catch_exceptions
+let rec send_and_receive retry hs_fun alert_fun =
+  catch (fun () -> _send_and_receive hs_fun alert_fun) (catch_exceptions retry) >>= function
+  | Retry ->
+    if !verbose then prerr_endline "Connection failed... retrying";
+    send_and_receive (retry - 1) hs_fun alert_fun
+  | res -> return res
 
 
 let remove_from_list list elt =
@@ -182,7 +188,7 @@ let remove_from_list list elt =
 
 let ssl_scan get to_string update =
   let rec next_step () =
-    send_and_receive get stop_on_fatal_alert >>= fun res ->
+    send_and_receive !retry get stop_on_fatal_alert >>= fun res ->
     match res with
       | Result r ->
 	if update r then begin
@@ -191,7 +197,7 @@ let ssl_scan get to_string update =
 	    | Result others -> return (Result ((to_string r)::others))
 	    | _ -> return (Result [to_string r])
 	end else return (Result [to_string r])
-      | NothingSoFar -> return (Result [])
+      | Retry | NothingSoFar -> return (Result [])
       | Timeout -> return (Result ["Timeout"])
       | EndOfFile -> return (Result ["EndOfFile"])
       | FatalAlert s -> return (Result ["FatalAlert \"" ^ s ^ "\""])
@@ -211,10 +217,10 @@ let ssl_scan_versions () =
     | (e, i)::r ->
       rec_version := e;
       ch_version := i;
-      send_and_receive get_sh_version stop_on_fatal_alert >>= fun res ->
+      send_and_receive !retry get_sh_version stop_on_fatal_alert >>= fun res ->
       let str_res = match res with
 	| Result r -> string_of_tls_version r;
-	| NothingSoFar -> "???"
+	| Retry | NothingSoFar -> "???"
 	| Timeout -> "Timeout"
 	| EndOfFile -> "EndOfFile"
 	| FatalAlert s -> "FatalAlert \"" ^ s ^ "\""
@@ -227,6 +233,7 @@ let print_list = List.iter print_endline
 
 let print_result print_fun = function
   | Result r -> print_fun r
+  | Retry -> prerr_endline "Retry ?!"
   | NothingSoFar -> prerr_endline "NothingSoFar"
   | Timeout -> prerr_endline "Timeout"
   | EndOfFile -> prerr_endline "EndOfFile"
@@ -239,5 +246,5 @@ let _ =
     | ["scan-suites"] -> print_result print_list (Lwt_unix.run (ssl_scan get_cs string_of_ciphersuite (remove_from_list suites)))
     | ["scan-compressions"] -> print_result print_list (Lwt_unix.run (ssl_scan get_cm string_of_compression_method (remove_from_list compressions)))
     | ["scan-versions"] -> print_result ignore (Lwt_unix.run (ssl_scan_versions ()))
-    | ["probe"] | [] -> print_result ignore (Lwt_unix.run (send_and_receive print_hs print_alert))
+    | ["probe"] | [] -> print_result ignore (Lwt_unix.run (send_and_receive !retry print_hs print_alert))
     | _ -> failwith "Invalid command"
