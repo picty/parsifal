@@ -53,7 +53,6 @@ v0.1 (oct. 2012 -> dec. 2012)
    * x509check (enrich the x509 object before analysing!)
    * chaincheck
    * check_sslserver (see check_sslserver.ml for a complete TODO)
-   * Finalize asn1parse / x509 programs with more checks
    * Create simple PKI tools to create a RSA key, sign, verify, encrypt, decrypt, handle a simple PKI (rsa tool)
    * Write acu (AceSL Cert Util) to read certs / pubkeys / privkeys and manipulate them
    * Passive TLS_Proxy
