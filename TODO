@@ -18,7 +18,7 @@ v0.1 (oct. 2012 -> dec. 2012)
    * put 'a result_type and handle_answer logic from probe_server into TlsEngine
  - X509
    * write GeneralName and rewrite directoryString using asn1_unions
-   * add GN in AKI, CertificatePolicies, NameContstraints SAN, AIA and CRLDP extensions
+   * add GN in AKI, NameContstraints SAN, AIA and CRLDP extensions
    * add support for RSA/DSA public key and signature
    * Code construct_chains/check_chains in caml
      + add decoration directly to the certificate object (origin[s], trust)?
@@ -91,6 +91,7 @@ v0.2 (feb. 2013 -> mar. 2013)
    * Add SSLv2 support in probe_server and other programs
    * Implement every extension/PK present in ssl-data
  - X509
+   * Improve support for CertificatePolicies
    * Add support for CSR
    * OCSP and CRL parsers
  - Crypto

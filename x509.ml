@@ -167,18 +167,71 @@ asn1_alias basicConstraints
 (* Extended Key Usage *)
 asn1_alias extendedKeyUsage = seq_of der_oid
 
+(* Certificate Policies *)
+
+   (* -- policyQualifierIds for Internet policy qualifiers *)
+
+   (* id-qt          OBJECT IDENTIFIER ::=  { id-pkix 2 } *)
+   (* id-qt-cps      OBJECT IDENTIFIER ::=  { id-qt 1 } *)
+   (* id-qt-unotice  OBJECT IDENTIFIER ::=  { id-qt 2 } *)
+
+   (* PolicyQualifierId ::= OBJECT IDENTIFIER ( id-qt-cps | id-qt-unotice ) *)
+
+   (* Qualifier ::= CHOICE { *)
+   (*      cPSuri           CPSuri, *)
+   (*      userNotice       UserNotice } *)
+
+   (* CPSuri ::= IA5String *)
+
+   (* UserNotice ::= SEQUENCE { *)
+   (*      noticeRef        NoticeReference OPTIONAL, *)
+   (*      explicitText     DisplayText OPTIONAL } *)
+
+   (* NoticeReference ::= SEQUENCE { *)
+   (*      organization     DisplayText, *)
+   (*      noticeNumbers    SEQUENCE OF INTEGER } *)
+
+   (* DisplayText ::= CHOICE { *)
+   (*      ia5String        IA5String      (SIZE (1..200)), *)
+   (*      visibleString    VisibleString  (SIZE (1..200)), *)
+   (*      bmpString        BMPString      (SIZE (1..200)), *)
+   (*      utf8String       UTF8String     (SIZE (1..200)) } *)
+
+   (* PolicyQualifierInfo ::= SEQUENCE { *)
+   (*      policyQualifierId  PolicyQualifierId, *)
+   (*      qualifier          ANY DEFINED BY policyQualifierId } *)
+
+struct policyQualifierInfo_content = {
+  policyQualifierId : der_oid;
+  qualifier : der_object
+}
+asn1_alias policyQualifierInfo
+asn1_alias policyQualifiers = seq_of policyQualifierInfo (* 1..MAX *)
+
+struct policyInformation_content = {
+  policyIdentifer : der_oid;
+  optional policyQualifiers : policyQualifiers
+}
+asn1_alias policyInformation
+asn1_alias certificatePolicies = seq_of policyInformation (* 1..MAX *)
+
+
+
 union extnValue [enrich] (UnparsedExtension of binstring) =
   | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authorityKeyIdentifier
   | "subjectKeyIdentifier" -> SubjectKeyIdentifier of der_octetstring
   | "keyUsage" -> KeyUsage of der_enumerated_bitstring[keyUsage_values]
   | "basicConstraints" -> BasicConstraints of basicConstraints
   | "extendedKeyUsage" -> ExtendedKeyUsage of extendedKeyUsage
+  | "certificatePolicies" -> CertificatePolicies of certificatePolicies
 
 struct extension_content = {
   extnID : der_oid;
   optional critical : der_boolean;
   extnValue : octetstring_container of extnValue(hash_get oid_directory extnID "")
 }
+
+
 
 (* let print_extension_content ?indent:(indent="") ?name:(name="") ext = *)
 (*   let real_name = *)
@@ -331,6 +384,7 @@ let extension_types = [
   [85;29;15], "keyUsage";
   [85;29;19], "basicConstraints";
   [85;29;37], "extendedKeyUsage";
+  [85;29;32], "certificatePolicies";
 ]
 
 let other_oids = [
@@ -341,6 +395,7 @@ let other_oids = [
   [43;6;1;5;5;7;3;4], "emailProtection";
   [43;6;1;5;5;7;3;8], "timeStamping";
   [43;6;1;5;5;7;3;9], "OCSPSigning";
+  [85;29;32;0], "anyPolicy";
 ]
 
 let populate_atv_directory (id, name, short, value) =
