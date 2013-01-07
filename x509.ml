@@ -204,7 +204,7 @@ struct userNotice_content = {
 asn1_alias userNotice
 
 union policyQualifier [enrich] (UnparsedQualifier of der_object) =
-  | "id-qt-cps" -> CPSuri of der_ia5string  (* TODO: Should be readable ! *)
+  | "id-qt-cps" -> CPSuri of der_ia5string
   | "id-qt-unotice" -> UserNotice of userNotice
 
 struct policyQualifierInfo_content = {
@@ -212,7 +212,7 @@ struct policyQualifierInfo_content = {
   qualifier : policyQualifier(hash_get oid_directory policyQualifierId "")
 }
 asn1_alias policyQualifierInfo
-asn1_alias policyQualifiers = seq_of policyQualifierInfo (* 1..MAX *)
+asn1_alias policyQualifiers = seq_of policyQualifierInfo (* TODO: 1..MAX *)
 
 struct policyInformation_content = {
   policyIdentifer : der_oid;

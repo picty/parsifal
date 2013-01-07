@@ -362,6 +362,10 @@ let print_der_octetstring_content ?indent:(indent="") ?name:(name="der_octetstri
 asn1_alias der_octetstring = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
 
+alias der_printable_octetstring_content = der_octetstring_content
+let print_der_printable_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
+  Printf.sprintf "%s%s: %s\n" indent name s
+
 
 
 (* Generic ASN.1 Object *)
@@ -541,5 +545,5 @@ let advanced_der_parse (parse_fun : (asn1_class * bool * asn1_tag) -> string_inp
 
 (* Useful aliases *)
 (* TODO: Constraints! *)
-asn1_alias der_ia5string = primitive [T_IA5String] der_octetstring_content(no_constraint)
-asn1_alias der_printablestring = primitive [T_PrintableString] der_octetstring_content(no_constraint)
+asn1_alias der_ia5string = primitive [T_IA5String] der_printable_octetstring_content(no_constraint)
+asn1_alias der_printablestring = primitive [T_PrintableString] der_printable_octetstring_content(no_constraint)
