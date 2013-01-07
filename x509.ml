@@ -276,6 +276,15 @@ struct nameConstraints_content = {
 asn1_alias nameConstraints
 
 
+(* Authority Information Access *)
+
+struct accessDescription_content = {
+  accessMethod : der_oid;
+  accessLocation : generalName
+}
+asn1_alias accessDescription
+asn1_alias authorityInfoAccess = seq_of accessDescription (* TODO: 1 .. MAX *)
+
 
 union extnValue [enrich] (UnparsedExtension of binstring) =
   | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authorityKeyIdentifier
@@ -287,6 +296,7 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "crlDistributionPoints" -> CRLDistributionPoints of crlDistributionPoints
   | "nameConstraints" -> NameConstraints of nameConstraints
   | "subjectAlternativeName" -> SubjectAlternativeName of generalNames
+  | "authorityInfoAccess" -> AuthorityInfoAccess of authorityInfoAccess
 
 struct extension_content = {
   extnID : der_oid;
@@ -442,6 +452,7 @@ let signature_types = [
 ]
 
 let extension_types = [
+  [85;29;1], "authorityInfoAccess";
   [85;29;14], "subjectKeyIdentifier";
   [85;29;15], "keyUsage";
   [85;29;17], "subjectAlternativeName";
@@ -453,10 +464,6 @@ let extension_types = [
   [85;29;37], "extendedKeyUsage";
 ]
 
-let policyQualifier_ids = [
-  [43;6;1;5;5;7;2;1], "id-qt-cps";
-  [43;6;1;5;5;7;2;2], "id-qt-unotice";
-]
 
 let other_oids = [
   (* Prefixes *)
@@ -474,7 +481,13 @@ let other_oids = [
   [43;6;1;5;5;7;3;4], "emailProtection";
   [43;6;1;5;5;7;3;8], "timeStamping";
   [43;6;1;5;5;7;3;9], "OCSPSigning";
+
   [85;29;32;0], "anyPolicy";
+  [43;6;1;5;5;7;2;1], "id-qt-cps";
+  [43;6;1;5;5;7;2;2], "id-qt-unotice";
+
+  [43;6;1;5;5;7;48;1], "id-ad-ocsp";
+  [43;6;1;5;5;7;48;2], "id-ad-caIssuers";
 ]
 
 
@@ -491,7 +504,6 @@ let populate_alg_directory dir (id, name, algParam, value) =
 let _ =
   List.iter (populate_atv_directory) attribute_value_types;
   List.iter (fun (id, name) -> register_oid id name) extension_types;
-  List.iter (fun (id, name) -> register_oid id name) policyQualifier_ids;
   List.iter (fun (id, name) -> register_oid id name) other_oids;
   List.iter (populate_alg_directory subjectPublicKeyType_directory) public_key_types;
   List.iter (populate_alg_directory signatureType_directory) signature_types;  
