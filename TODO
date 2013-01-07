@@ -7,6 +7,7 @@ v0.1 (oct. 2012 -> dec. 2012)
    * write CRLDP distributionPointName using asn1_unions
    * add support for RSA/DSA public key and signature
    * split x509.ml in multiple files (x509Basics, x509Extensions, x509 with aliases to x509Basics like DNs)
+   * other extensions (2.16.840.1.113730.1.1, 1.3.6.1.5.5.7.1.1)
  - Tools
    * probe_server: Add a way to handle extensions
  - TlsEngine
