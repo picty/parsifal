@@ -1,6 +1,13 @@
 v0.1 (oct. 2012 -> dec. 2012)
  - camlp4
    * write asn1_unions
+ - X509
+   * write GeneralName and rewrite directoryString using asn1_unions
+   * add GN in AKI, NameContstraints SAN, AIA and CRLDP extensions
+   * add support for RSA/DSA public key and signature
+ - Tools
+   * probe_server: Add a retry option
+   * probe_server: Add a way to handle extensions
  - TlsEngine
    * work on TlsEngine.update* functions
    * write the automata (client, server, transparent proxy, normalizing proxy)
@@ -17,9 +24,6 @@ v0.1 (oct. 2012 -> dec. 2012)
    * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
    * put 'a result_type and handle_answer logic from probe_server into TlsEngine
  - X509
-   * write GeneralName and rewrite directoryString using asn1_unions
-   * add GN in AKI, NameContstraints SAN, AIA and CRLDP extensions
-   * add support for RSA/DSA public key and signature
    * Code construct_chains/check_chains in caml
      + add decoration directly to the certificate object (origin[s], trust)?
      + x509_chain should be an object module
@@ -46,8 +50,6 @@ v0.1 (oct. 2012 -> dec. 2012)
      + Graph construction (From a big pool of certs, try to create all the links...)
    * Add a way to create a certificate object
  - Tools
-   * probe_server: Add a retry option
-   * probe_server: Add a way to handle extensions
    * bgpdump and/or obsdump
    * x509compare
    * x509check (enrich the x509 object before analysing!)
