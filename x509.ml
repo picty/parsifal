@@ -222,6 +222,37 @@ asn1_alias policyInformation
 asn1_alias certificatePolicies = seq_of policyInformation (* 1..MAX *)
 
 
+(* CRL Distribution Points *)
+
+(* TODO *)
+(* DistributionPointName ::= CHOICE { *)
+(*      fullName                [0]     GeneralNames, *)
+(*      nameRelativeToCRLIssuer [1]     RelativeDistinguishedName } *)
+alias distributionPointName = der_object
+
+let reasonFlags_values = [|
+  "unused";
+  "keyCompromise";
+  "caCompromise";
+  "affiliationChanged";
+  "superseded";
+  "cessationOfOperation";
+  "certificateHold";
+  "privilegeWithdrawn";
+  "aaCompromise"
+|]
+
+(* TODO: Add structural check: at least 0 or 2 should be present *)
+struct distributionPoint_content = {
+  optional distributionPointUNPARSED : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of distributionPointName;
+  optional reasons : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_enumerated_bitstring_content[reasonFlags_values];
+  optional crlIssuerUNPARSED : asn1 [(C_ContextSpecific, true, T_Unknown 2)] of (list of der_object) (* TODO: GeneralName *)
+}
+
+asn1_alias distributionPoint
+asn1_alias crlDistributionPoints = seq_of distributionPoint (* TODO: 1.. MAX *)
+
+
 
 union extnValue [enrich] (UnparsedExtension of binstring) =
   | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authorityKeyIdentifier
@@ -230,6 +261,7 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "basicConstraints" -> BasicConstraints of basicConstraints
   | "extendedKeyUsage" -> ExtendedKeyUsage of extendedKeyUsage
   | "certificatePolicies" -> CertificatePolicies of certificatePolicies
+  | "crlDistributionPoints" -> CRLDistributionPoints of crlDistributionPoints
 
 struct extension_content = {
   extnID : der_oid;
@@ -391,6 +423,7 @@ let extension_types = [
   [85;29;19], "basicConstraints";
   [85;29;37], "extendedKeyUsage";
   [85;29;32], "certificatePolicies";
+  [85;29;31], "crlDistributionPoints";
 ]
 
 let policyQualifier_ids = [
@@ -405,6 +438,7 @@ let other_oids = [
   [43;6;1;5;5;7;2], "id-qt";
   [43;6;1;5;5;7;3], "id-kp";
   [43;6;1;5;5;7;48], "id-ad";
+  [85;29], "id-ce";
 
   [85;29;37;0], "anyExtendedKeyUsage";
   [43;6;1;5;5;7;3;1], "serverAuth";
