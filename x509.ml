@@ -138,7 +138,7 @@ union signature [enrich] (UnparsedSignature of der_object) =
 (* Useful *)
 (* TODO: GeneralName *)
 alias generalName = der_object
-
+asn1_alias generalNames = seq_of generalName
 
 (* Authority Key Identifier *)
 (* TODO: add constraint on [1] and [2] that MUST both be present or absent *)
@@ -285,6 +285,8 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "extendedKeyUsage" -> ExtendedKeyUsage of extendedKeyUsage
   | "certificatePolicies" -> CertificatePolicies of certificatePolicies
   | "crlDistributionPoints" -> CRLDistributionPoints of crlDistributionPoints
+  | "nameConstraints" -> NameConstraints of nameConstraints
+  | "subjectAlternativeName" -> SubjectAlternativeName of generalNames
 
 struct extension_content = {
   extnID : der_oid;
@@ -442,8 +444,9 @@ let signature_types = [
 let extension_types = [
   [85;29;14], "subjectKeyIdentifier";
   [85;29;15], "keyUsage";
+  [85;29;17], "subjectAlternativeName";
   [85;29;19], "basicConstraints";
-  [85;29;30], "nameContraints";
+  [85;29;30], "nameConstraints";
   [85;29;31], "crlDistributionPoints";
   [85;29;32], "certificatePolicies";
   [85;29;35], "authorityKeyIdentifier";
