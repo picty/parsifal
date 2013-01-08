@@ -327,41 +327,32 @@ asn1_alias extension_list = seq_of extension (* TODO: min = 1 *)
 (************)
 
 type time =
-  | UTCTime of (int * int * int * int * int * int)
-  | GeneralizedTime of (int * int * int * int * int * int)
+  | UTCTime of der_utc_time_content
+  | GeneralizedTime of der_generalized_time_content
 
 let parse_time input =
   let aux h new_input = match h with
     | (C_Universal, false, T_UTCTime) ->
-      UTCTime (parse_der_processed_string_content utc_time_constraint new_input)
+      UTCTime (parse_der_utc_time_content new_input)
     | (C_Universal, false, T_GeneralizedTime) ->
-      GeneralizedTime (parse_der_processed_string_content generalized_time_constraint new_input)
+      GeneralizedTime (parse_der_generalized_time_content new_input)
     | _ -> fatal_error InvalidUTCTime input
   in
   advanced_der_parse aux input
 
-let dump_time time =
-  let aux isGen (y, m, d, yy, mm, ss) =
-    let l = if isGen then 4 else 2 in
-    Printf.sprintf "%*.*d%2.2d%2.2d%2.2d%2.2d%2.2dZ" l l y m d yy mm ss
-  in
-  match time with
+let dump_time = function
   | UTCTime t ->
-    produce_der_object (C_Universal, false, T_UTCTime) (fun x -> x) (aux false t)
+    produce_der_object (C_Universal, false, T_UTCTime) (fun x -> x) (dump_der_utc_time_content t)
   | GeneralizedTime t ->
-    produce_der_object (C_Universal, false, T_UTCTime) (fun x -> x) (aux true t)
+    produce_der_object (C_Universal, false, T_UTCTime) (fun x -> x) (dump_der_generalized_time_content t)
 
-let string_of_time time =
-  let aux isGen (y, m, d, yy, mm, ss) =
-    let l = if isGen then 4 else 2 in
-    Printf.sprintf "%*.*d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d UTC" l l y m d yy mm ss
-  in
-  match time with
-    | UTCTime t -> aux false t
-    | GeneralizedTime t -> aux true t
+let string_of_time = function
+  | UTCTime t | GeneralizedTime t -> string_of_time_content t
 
-let print_time ?indent:(indent="") ?name:(name="time") time =
-  Printf.sprintf "%s%s: %s\n" indent name (string_of_time time)
+let print_time ?indent:(indent="") ?name:(name="time") = function
+  | UTCTime t -> print_time_content ~indent:indent ~name:name t
+  | GeneralizedTime t -> print_time_content ~indent:indent ~name:name t
+
 
 struct validity_content = {
   notBefore : time;

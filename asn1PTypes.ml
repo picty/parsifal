@@ -320,34 +320,7 @@ type der_octetstring_content = string
 
 let no_constraint s _ = s
 
-let utc_time_re =
-  Str.regexp "^\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
-let generalized_time_re =
-  Str.regexp "^\\([0-9][0-9][0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
-
-let time_constraint re s input =
-  try
-    if Str.string_match re s 0 then begin
-      let y = int_of_string (Str.matched_group 1 s)
-      and m = int_of_string (Str.matched_group 2 s)
-      and d = int_of_string (Str.matched_group 3 s)
-      and hh = int_of_string (Str.matched_group 4 s)
-      and mm = int_of_string (Str.matched_group 5 s)
-      and ss = int_of_string (Str.matched_group 6 s) in
-      if m = 0 || m > 12 || d = 0 || d > 31 || hh >= 24 || mm > 59 || ss > 59
-      then warning InvalidUTCTime input;
-      (y, m, d, hh, mm, ss)
-    end else fatal_error InvalidUTCTime input
-  with _ -> fatal_error InvalidUTCTime input
-
-let utc_time_constraint = time_constraint utc_time_re
-let generalized_time_constraint = time_constraint generalized_time_re
-
 (* TODO: Cleanup this *)
-
-let parse_der_processed_string_content apply_constraints input =
-  let res = parse_rem_string input in
-  apply_constraints res input
 
 let parse_der_octetstring_content apply_constraints input =
   let res = parse_rem_string input in
@@ -366,6 +339,66 @@ alias der_printable_octetstring_content = der_octetstring_content
 let print_der_printable_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
   Printf.sprintf "%s%s: %s\n" indent name s
 
+
+(* Time types *)
+
+type time_content = {
+  year : int; month : int; day : int;
+  hour : int; minute : int; second : int;
+}
+
+let utc_time_re =
+  Str.regexp "^\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
+let generalized_time_re =
+  Str.regexp "^\\([0-9][0-9][0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
+
+let time_constraint re s input =
+  try
+    if Str.string_match re s 0 then begin
+      let y = int_of_string (Str.matched_group 1 s)
+      and m = int_of_string (Str.matched_group 2 s)
+      and d = int_of_string (Str.matched_group 3 s)
+      and hh = int_of_string (Str.matched_group 4 s)
+      and mm = int_of_string (Str.matched_group 5 s)
+      and ss = int_of_string (Str.matched_group 6 s) in
+      if m = 0 || m > 12 || d = 0 || d > 31 || hh >= 24 || mm > 59 || ss > 59
+      then warning InvalidUTCTime input;
+      { year = y; month = m; day = d;
+	hour = hh; minute = mm; second = ss }
+    end else fatal_error InvalidUTCTime input
+  with _ -> fatal_error InvalidUTCTime input
+
+let utc_time_constraint = time_constraint utc_time_re
+let generalized_time_constraint = time_constraint generalized_time_re
+
+let utc_year_of_int i = i mod 100
+(* TODO: check if it is > or >= *)
+let int_of_utc_year y = if y >= 50 then y + 1900 else y + 2000
+
+let string_of_time_content t =
+  Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d UTC"
+    t.year t.month t.day t.hour t.minute t.second
+let print_time_content ?indent:(indent="") ?name:(name="time") t =
+  Printf.sprintf "%s%s: %s\n" indent name (string_of_time_content t)
+
+type der_utc_time_content = time_content
+let parse_der_utc_time_content input =
+  let res = parse_rem_string input in
+  let tmp = utc_time_constraint res input in
+  { tmp with year = int_of_utc_year tmp.year }
+let dump_der_utc_time_content t =
+  Printf.sprintf "%2.2d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
+    (utc_year_of_int t.year) t.month t.day t.hour t.minute t.second
+let print_der_utc_time_content = print_time_content
+
+type der_generalized_time_content = time_content
+let parse_der_generalized_time_content input =
+  let res = parse_rem_string input in
+  generalized_time_constraint res input
+let dump_der_generalized_time_content t =
+  Printf.sprintf "%4.4d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
+    t.year t.month t.day t.hour t.minute t.second
+let print_der_generalized_time_content = print_time_content
 
 
 (* Generic ASN.1 Object *)

@@ -35,6 +35,10 @@ struct rsa_public_key_content = {
 
 asn1_alias rsa_public_key [with_exact]
 
+asn1_union der_time [enrich; exhaustive] (UnparsedTime) =
+  | (C_Universal, false, T_UTCTime) -> UTCTime of Asn1PTypes.der_utc_time_content
+  | (C_Universal, false, T_GeneralizedTime) -> GeneralizedTime of Asn1PTypes.der_generalized_time_content
+
 
 let test parse dump print name s =
   try
