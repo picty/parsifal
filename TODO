@@ -3,7 +3,7 @@ v0.1 (oct. 2012 -> dec. 2012)
    * write asn1_unions
    * rethink the exhaustive/enrich options for unions/asn1_unions
      + *dont_enrich* (enrich_ var) / enrich (enrich_ var) / force_enrich
-     + <standard> / force_exhaustive (exhaustive + fail_hard) -> force_enrrich / exhaustive / fail_soft (fail_on_enrich_ var) 
+     + <standard> / force_exhaustive (exhaustive + fail_hard) -> force_enrich / exhaustive / fail_soft (fail_on_enrich var + emit warning) 
  - X509
    * write GeneralName using asn1_unions
    * rewrite directoryString/explicitText using asn1_unions

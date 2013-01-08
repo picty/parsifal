@@ -326,37 +326,41 @@ asn1_alias extension_list = seq_of extension (* TODO: min = 1 *)
 (* Validity *)
 (************)
 
-type time =
-  | UTCTime of der_utc_time_content
-  | GeneralizedTime of der_generalized_time_content
+asn1_union der_time [enrich; exhaustive] (UnparsedTime) =
+  | (C_Universal, false, T_UTCTime) -> UTCTime of der_utc_time_content
+  | (C_Universal, false, T_GeneralizedTime) -> GeneralizedTime of der_generalized_time_content
 
-let parse_time input =
+let parse_der_time input =
   let aux h new_input = match h with
     | (C_Universal, false, T_UTCTime) ->
       UTCTime (parse_der_utc_time_content new_input)
     | (C_Universal, false, T_GeneralizedTime) ->
       GeneralizedTime (parse_der_generalized_time_content new_input)
-    | _ -> fatal_error InvalidUTCTime input
+    | (c, _, t) as h ->
+      (* TODO: Warning? *)
+      UnparsedTime (mk_object c t (parse_der_object_content h new_input))
   in
   advanced_der_parse aux input
 
-let dump_time = function
+let dump_der_time = function
   | UTCTime t ->
     produce_der_object (C_Universal, false, T_UTCTime) (fun x -> x) (dump_der_utc_time_content t)
   | GeneralizedTime t ->
     produce_der_object (C_Universal, false, T_UTCTime) (fun x -> x) (dump_der_generalized_time_content t)
+  | UnparsedTime o -> dump_der_object o
 
-let string_of_time = function
+let string_of_der_time = function
   | UTCTime t | GeneralizedTime t -> string_of_time_content t
+  | UnparsedTime o -> raise (ParsingException (CustomException "UnparsedTime", []))
 
-let print_time ?indent:(indent="") ?name:(name="time") = function
-  | UTCTime t -> print_time_content ~indent:indent ~name:name t
-  | GeneralizedTime t -> print_time_content ~indent:indent ~name:name t
+let print_der_time ?indent:(indent="") ?name:(name="time") = function
+  | UTCTime t | GeneralizedTime t -> print_time_content ~indent:indent ~name:name t
+  | UnparsedTime o -> print_der_object ~indent:indent ~name:name o
 
 
 struct validity_content = {
-  notBefore : time;
-  notAfter : time
+  notBefore : der_time;
+  notAfter : der_time
 }
 asn1_alias validity
 
