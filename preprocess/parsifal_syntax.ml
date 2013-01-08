@@ -3,6 +3,14 @@ open Camlp4.PreCast
 open Camlp4.PreCast.Ast
 open Syntax
 
+(****************************)
+(* Common trivial functions *)
+(****************************)
+
+let pop_option def = function
+  | None -> def
+  | Some x -> x
+
 
 (***************************)
 (* Common camlp4 functions *)
@@ -106,6 +114,7 @@ type parsifal_construction =
   | Union
   | Alias
   | ASN1Alias
+  | ASN1Union
 
 let check_options construction options =
   let rec aux opts = match construction, opts with
@@ -187,6 +196,7 @@ type struct_description = {
 
 
 (* Unions *)
+(* ASN1 Unions *)
 
 type union_description = {
   uname : string;
@@ -463,6 +473,8 @@ let mk_struct_type _loc record =
 
 
 (* Union type *)
+(* ASN1 Union type *)
+(* Note: ASN1 Unions reuse the mk_union_enrich_bool and mk_asn1_union_type functions *)
 
 let mk_union_enrich_bool _loc union =
   let bool_name = <:patt< $lid:"enrich_" ^ union.uname$ >>
@@ -491,6 +503,7 @@ let mk_alias_type _loc alias =
 
 
 (* ASN1 Alias type *)
+
 let mk_asn1_alias_type _loc alias =
   if alias.aalist
   then [ <:str_item< type $lid:alias.aaname$ = list $ocaml_type_of_ptype _loc alias.aatype$ >> ]
@@ -978,8 +991,8 @@ EXTEND Gram
   ]];
 
   union_unparsed_behaviour: [[
-    unparsed_const = ident -> (uid_of_ident unparsed_const, PT_String (Remaining, true))
-  | unparsed_const = ident; "of"; unparsed_type = ptype -> (uid_of_ident unparsed_const, unparsed_type)
+    unparsed_const = ident -> (uid_of_ident unparsed_const, None)
+  | unparsed_const = ident; "of"; unparsed_type = ptype -> (uid_of_ident unparsed_const, Some unparsed_type)
   ]];
 
 
@@ -1034,7 +1047,7 @@ EXTEND Gram
       uname = lid_of_ident union_name;
       uchoices = choices;
       unparsed_constr = fst u_b;
-      unparsed_type = snd u_b;
+      unparsed_type = pop_option (PT_String (Remaining, true)) (snd u_b);
       udo_lwt = List.mem DoLwt options;
       udo_exact = List.mem ExactParser options;
       uenrich = List.mem EnrichByDefault options;
@@ -1074,6 +1087,30 @@ EXTEND Gram
     let n = lid_of_ident asn1_alias_name in
     mk_asn1_alias _loc opts n false (Universal "T_Sequence", true)
       (PT_Custom (None, n ^ "_content", [], []))
+
+  | "asn1_union"; asn1_union_name = ident; opts = option_list;
+    "("; u_b = union_unparsed_behaviour; ")";
+    "="; choices = LIST1 union_choice ->
+    let options = check_options ASN1Union opts in
+    let asn1_union_descr = {
+      uname = lid_of_ident asn1_union_name;
+      uchoices = choices;
+      unparsed_constr = fst u_b;
+      unparsed_type = pop_option (PT_Custom (Some "Asn1PTypes", "der_object", [], [])) (snd u_b);
+      udo_lwt = List.mem DoLwt options;
+      udo_exact = List.mem ExactParser options;
+      uenrich = List.mem EnrichByDefault options;
+      uexhaustive = List.mem ExhaustiveChoices options;
+      uparse_params = mk_parse_params options;
+      udump_params = mk_dump_params options
+    } in
+    let fns = [mk_union_enrich_bool; mk_union_type;
+(*	       mk_asn1_union_parse_fun; mk_asn1_union_lwt_parse_fun;
+	       mk_asn1_union_exact_parse;
+	       mk_asn1_union_dump_fun; mk_asn1_union_print_fun *) ] in
+    mk_str_items fns _loc asn1_union_descr
+
+
 
   ]];
 END
