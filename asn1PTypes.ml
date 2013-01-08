@@ -373,10 +373,10 @@ let print_der_printable_octetstring_content ?indent:(indent="") ?name:(name="der
 type der_object = {
   a_class : asn1_class;
   a_tag : asn1_tag;
-  a_content : asn1_content;
+  a_content : der_object_content;
 }
 
-and asn1_content =
+and der_object_content =
   | Boolean of bool
   | Integer of string
   | BitString of int * string
@@ -399,51 +399,52 @@ let isConstructed o = match o.a_content with
 
 
 let rec parse_der_object input =
-  let _offset = input.cur_base + input.cur_offset in
-  let old_cur_offset = input.cur_offset in
-  let c, isC, t = extract_der_header input in
+(*   let _offset = input.cur_base + input.cur_offset in *)
+(*  let old_cur_offset = input.cur_offset in *)
+  let (c, isC, t) = extract_der_header input in
   let len = extract_der_length input in
-  let _hlen = input.cur_offset - old_cur_offset in
+(*   let _hlen = input.cur_offset - old_cur_offset in *)
   let new_input = get_in input (print_header (c, isC, t)) len in
-  let content = match c, isC, t with
-    | (C_Universal, false, T_Boolean) -> Boolean (parse_der_boolean_content new_input)
-    | (C_Universal, false, T_Integer) -> Integer (parse_der_integer_content new_input)
-    | (C_Universal, false, T_Null) -> parse_der_null_content new_input; Null
-    | (C_Universal, false, T_OId) -> OId (parse_der_oid_content new_input)
-    | (C_Universal, false, T_BitString) -> let nBits, s = parse_der_bitstring_content new_input in BitString (nBits, s)
-    | (C_Universal, false, T_OctetString) -> String (parse_der_octetstring_content no_constraint new_input, true)
-
-    | (C_Universal, false, T_UTF8String)
-    | (C_Universal, false, T_NumericString)
-    | (C_Universal, false, T_PrintableString)
-    | (C_Universal, false, T_T61String)
-    | (C_Universal, false, T_VideoString)
-    | (C_Universal, false, T_IA5String) -> String (parse_der_octetstring_content no_constraint new_input, false) (* TODO *)
-    | (C_Universal, false, T_UTCTime) -> String (parse_der_octetstring_content utc_time_constraint new_input, false)
-    | (C_Universal, false, T_GeneralizedTime) -> String (parse_der_octetstring_content generalized_time_constraint new_input, false)
-    | (C_Universal, false, T_GraphicString)
-    | (C_Universal, false, T_VisibleString)
-    | (C_Universal, false, T_GeneralString)
-    | (C_Universal, false, T_UniversalString)
-    | (C_Universal, false, T_UnspecifiedCharacterString)
-    | (C_Universal, false, T_BMPString) -> String (parse_der_octetstring_content no_constraint new_input, false) (* TODO *)
-
-    | (C_Universal, true, T_Sequence)
-    | (C_Universal, true, T_Set) -> Constructed (parse_der_constructed_content new_input)
-
-    | (C_Universal, false, t) ->
-      warning (UnknownUniversalObject (false, t)) new_input;
-      String (parse_der_octetstring_content no_constraint new_input, true)
-
-    | (C_Universal, true, t) ->
-      warning (UnknownUniversalObject (true, t)) new_input;
-      Constructed (parse_der_constructed_content new_input)
-
-    | (_, false, _) -> String (parse_der_octetstring_content no_constraint new_input, true)
-    | (_, true, _)  -> Constructed (parse_der_constructed_content new_input)
-  in
+  let content = parse_der_object_content (c, isC, t) new_input in
   get_out input new_input;
   mk_object c t content
+
+and parse_der_object_content h input = match h with
+  | (C_Universal, false, T_Boolean) -> Boolean (parse_der_boolean_content input)
+  | (C_Universal, false, T_Integer) -> Integer (parse_der_integer_content input)
+  | (C_Universal, false, T_Null) -> parse_der_null_content input; Null
+  | (C_Universal, false, T_OId) -> OId (parse_der_oid_content input)
+  | (C_Universal, false, T_BitString) -> let nBits, s = parse_der_bitstring_content input in BitString (nBits, s)
+  | (C_Universal, false, T_OctetString) -> String (parse_der_octetstring_content no_constraint input, true)
+
+  | (C_Universal, false, T_UTF8String)
+  | (C_Universal, false, T_NumericString)
+  | (C_Universal, false, T_PrintableString)
+  | (C_Universal, false, T_T61String)
+  | (C_Universal, false, T_VideoString)
+  | (C_Universal, false, T_IA5String) -> String (parse_der_octetstring_content no_constraint input, false) (* TODO *)
+  | (C_Universal, false, T_UTCTime) -> String (parse_der_octetstring_content utc_time_constraint input, false)
+  | (C_Universal, false, T_GeneralizedTime) -> String (parse_der_octetstring_content generalized_time_constraint input, false)
+  | (C_Universal, false, T_GraphicString)
+  | (C_Universal, false, T_VisibleString)
+  | (C_Universal, false, T_GeneralString)
+  | (C_Universal, false, T_UniversalString)
+  | (C_Universal, false, T_UnspecifiedCharacterString)
+  | (C_Universal, false, T_BMPString) -> String (parse_der_octetstring_content no_constraint input, false) (* TODO *)
+
+  | (C_Universal, true, T_Sequence)
+  | (C_Universal, true, T_Set) -> Constructed (parse_der_constructed_content input)
+
+  | (C_Universal, false, t) ->
+    warning (UnknownUniversalObject (false, t)) input;
+    String (parse_der_octetstring_content no_constraint input, true)
+
+  | (C_Universal, true, t) ->
+    warning (UnknownUniversalObject (true, t)) input;
+    Constructed (parse_der_constructed_content input)
+
+  | (_, false, _) -> String (parse_der_octetstring_content no_constraint input, true)
+  | (_, true, _)  -> Constructed (parse_der_constructed_content input)
 
 and parse_der_constructed_content input =
   let rec parse_aux accu =
@@ -457,11 +458,11 @@ and parse_der_constructed_content input =
 
 let rec dump_der_object o =
   let hdr = dump_der_header (o.a_class, (isConstructed o), o.a_tag) in
-  let content = dump_der_content o.a_content in
+  let content = dump_der_object_content o.a_content in
   let len = dump_der_length (String.length content) in
   hdr ^ len ^ content
 
-and dump_der_content = function
+and dump_der_object_content = function
   | Boolean b -> dump_der_boolean_content b
   | Integer i -> dump_der_integer_content i
   | BitString (nBits, s) -> dump_der_bitstring_content (nBits, s)
@@ -478,9 +479,9 @@ let rec print_der_object ?indent:(indent="") ?name:(name="") o =
     then print_header (o.a_class, isConstructed o, o.a_tag)
     else name
   in
-  print_der_content ~indent:indent ~name:real_name o.a_content
+  print_der_object_content ~indent:indent ~name:real_name o.a_content
 
-and print_der_content ?indent:(indent="") ?name:(name="der_object") = function
+and print_der_object_content ?indent:(indent="") ?name:(name="der_object") = function
   | Boolean b -> print_der_boolean_content ~indent:indent ~name:name b
   | Integer i -> print_der_integer_content ~indent:indent ~name:name i
   | BitString (nBits, s) -> print_der_bitstring_content ~indent:indent ~name:name (nBits, s)
@@ -531,7 +532,7 @@ let dump_octetstring_container dump_fun o =
   dump_der_octetstring content
 
 
-(* DER advanced object *)
+(* This should be useless once asn1_unions work? *)
 let advanced_der_parse (parse_fun : (asn1_class * bool * asn1_tag) -> string_input -> 'a) (input : string_input) : 'a =
   let hdr = extract_der_header input in
   let len = extract_der_length input in
@@ -539,7 +540,6 @@ let advanced_der_parse (parse_fun : (asn1_class * bool * asn1_tag) -> string_inp
   let res = parse_fun hdr new_input in
   get_out input new_input;
   res
-
 
 
 
