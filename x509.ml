@@ -330,18 +330,6 @@ asn1_union der_time [enrich; exhaustive] (UnparsedTime) =
   | (C_Universal, false, T_UTCTime) -> UTCTime of der_utc_time_content
   | (C_Universal, false, T_GeneralizedTime) -> GeneralizedTime of der_generalized_time_content
 
-let parse_der_time input =
-  let aux h new_input = match h with
-    | (C_Universal, false, T_UTCTime) ->
-      UTCTime (parse_der_utc_time_content new_input)
-    | (C_Universal, false, T_GeneralizedTime) ->
-      GeneralizedTime (parse_der_generalized_time_content new_input)
-    | (c, _, t) as h ->
-      (* TODO: Warning? *)
-      UnparsedTime (mk_object c t (parse_der_object_content h new_input))
-  in
-  advanced_der_parse aux input
-
 let dump_der_time = function
   | UTCTime t ->
     produce_der_object (C_Universal, false, T_UTCTime) (fun x -> x) (dump_der_utc_time_content t)

@@ -565,7 +565,6 @@ let dump_octetstring_container dump_fun o =
   dump_der_octetstring content
 
 
-(* This should be useless once asn1_unions work? *)
 let advanced_der_parse (parse_fun : (asn1_class * bool * asn1_tag) -> string_input -> 'a) (input : string_input) : 'a =
   let hdr = extract_der_header input in
   let len = extract_der_length input in

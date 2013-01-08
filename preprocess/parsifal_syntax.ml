@@ -910,6 +910,32 @@ let mk_asn1_alias_print_fun _loc alias =
   [ mk_multiple_args_fun _loc ("print_" ^ alias.aaname) [] 
       ~optargs:(["indent", <:expr< $str:""$ >>; "name", <:expr< $str:alias.aaname$ >> ]) body ]
 
+(* ASN1 Union *)
+
+let mk_asn1_union_parse_fun _loc union =
+  let mk_case = function
+    | (_loc, p, c, PT_Empty) ->
+      <:match_case< $p$ -> $ <:expr< $uid:c$ >> $ >>
+    | (_loc, p, c, t) ->
+      let parse_fun = fun_of_ptype Parse _loc union.uname t in
+      <:match_case< $p$ -> $ <:expr< $uid:c$ >> $ ($parse_fun$ input) >>
+  in
+  let parsed_cases = List.map mk_case union.uchoices
+  and last_case = <:match_case< (c, _, t) as h ->
+    $ <:expr< $uid:union.unparsed_constr$ (mk_object c t (parse_der_object_content h input)) >> $
+  >> in
+  let body = <:expr<
+    let aux h new_input = match h with
+      [ $list:(parsed_cases@[last_case])$ ]
+    in
+    if Parsifal.should_enrich $lid:"enrich_" ^ union.uname$ input.Parsifal.enrich
+    then advanced_der_parse aux input
+    else parse_der_object input
+  >>
+  in
+  let params = union.uparse_params@["input"] in
+  [ mk_multiple_args_fun _loc ("parse_" ^ union.uname) params body ]
+
 
 (************************)
 (* Camlp4 grammar rules *)
@@ -1096,16 +1122,18 @@ EXTEND Gram
       uname = lid_of_ident asn1_union_name;
       uchoices = choices;
       unparsed_constr = fst u_b;
-      unparsed_type = pop_option (PT_Custom (Some "Asn1PTypes", "der_object", [], [])) (snd u_b);
+      (* TODO: Check that snd u_b == None *)
+      unparsed_type = PT_Custom (Some "Asn1PTypes", "der_object", [], []);
       udo_lwt = List.mem DoLwt options;
       udo_exact = List.mem ExactParser options;
       uenrich = List.mem EnrichByDefault options;
+      (* TODO: Check Exhaustive is not set (at least until we rewrite the union options *)
       uexhaustive = List.mem ExhaustiveChoices options;
       uparse_params = mk_parse_params options;
       udump_params = mk_dump_params options
     } in
     let fns = [mk_union_enrich_bool; mk_union_type;
-(*	       mk_asn1_union_parse_fun; mk_asn1_union_lwt_parse_fun;
+	       mk_asn1_union_parse_fun; (* mk_asn1_union_lwt_parse_fun;
 	       mk_asn1_union_exact_parse;
 	       mk_asn1_union_dump_fun; mk_asn1_union_print_fun *) ] in
     mk_str_items fns _loc asn1_union_descr
