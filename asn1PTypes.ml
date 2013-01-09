@@ -1,5 +1,6 @@
 open Parsifal
 open Asn1Engine
+open Lwt
 
 (* Boolean *)
 
@@ -442,6 +443,14 @@ let rec parse_der_object input =
   get_out input new_input;
   mk_object c t content
 
+and lwt_parse_der_object input =
+  lwt_extract_der_header input >>= fun (c, isC, t) ->
+  lwt_extract_der_length input >>= fun len ->
+  lwt_get_in input (print_header (c, isC, t)) len >>= fun new_input ->
+  let content = parse_der_object_content (c, isC, t) new_input in
+  lwt_get_out input new_input >>= fun () ->
+  return (mk_object c t content)
+
 and parse_der_object_content h input = match h with
   | (C_Universal, false, T_Boolean) -> Boolean (parse_der_boolean_content input)
   | (C_Universal, false, T_Integer) -> Integer (parse_der_integer_content input)
@@ -572,6 +581,14 @@ let advanced_der_parse (parse_fun : (asn1_class * bool * asn1_tag) -> string_inp
   let res = parse_fun hdr new_input in
   get_out input new_input;
   res
+
+let lwt_advanced_der_parse (parse_fun : (asn1_class * bool * asn1_tag) -> string_input -> 'a) (input : lwt_input) : 'a Lwt.t =
+  lwt_extract_der_header input >>= fun hdr ->
+  lwt_extract_der_length input >>= fun len ->
+  lwt_get_in input (print_header hdr) len >>= fun new_input ->
+  let res = parse_fun hdr new_input in
+  lwt_get_out input new_input >>= fun () ->
+  return res
 
 
 
