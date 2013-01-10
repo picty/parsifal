@@ -127,6 +127,8 @@ type parsing_exception =
   | UnableToRewind
   | CustomException of string
   | NotImplemented of string
+  | TooFewObjects of int * int
+  | TooManyObjects of int * int
 
 let print_parsing_exception = function
   | OutOfBounds -> "OutOfBounds"
@@ -136,6 +138,10 @@ let print_parsing_exception = function
   | UnableToRewind -> "UnableToRewind"
   | CustomException e -> e
   | NotImplemented feat -> "Not implemented (" ^ feat ^ ")"
+  | TooFewObjects (x, exp_x) ->
+    Printf.sprintf "Too few objects (%d instead of %d)" x exp_x
+  | TooManyObjects (x, exp_x) ->
+    Printf.sprintf "Too many objects (%d instead of %d)" x exp_x
 
 exception ParsingException of parsing_exception * history
 exception ParsingStop

@@ -1,4 +1,5 @@
 open Parsifal
+open PTypes
 open Asn1Engine
 open Lwt
 
@@ -594,5 +595,7 @@ let lwt_advanced_der_parse (parse_fun : (asn1_class * bool * asn1_tag) -> string
 
 (* Useful aliases *)
 (* TODO: Constraints! *)
-asn1_alias der_ia5string = primitive [T_IA5String] der_printable_octetstring_content(no_constraint)
-asn1_alias der_printablestring = primitive [T_PrintableString] der_printable_octetstring_content(no_constraint)
+asn1_alias der_ia5string [param len_cons] = primitive [T_IA5String]
+      length_constrained_container (len_cons) of der_printable_octetstring_content(no_constraint)
+asn1_alias der_printablestring [param len_cons] = primitive [T_PrintableString]
+      length_constrained_container (len_cons) of  der_printable_octetstring_content(no_constraint)

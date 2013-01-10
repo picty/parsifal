@@ -76,8 +76,6 @@ type asn1_exception =
   | BitStringNotInNormalForm of string
   | InvalidUTCTime
   | UnknownUniversalObject of bool * asn1_tag
-  | TooFewObjects of int * int
-  | TooManyObjects of int * int
 
 let print_asn1_exception = function
   | UnexpectedHeader (h, None) ->
@@ -93,10 +91,6 @@ let print_asn1_exception = function
   | InvalidUTCTime -> "InvalidUTCTime"
   | UnknownUniversalObject (isC, t) ->
     Printf.sprintf "UnknownUniversalObject (%s)" (print_header (C_Universal, isC, t))
-  | TooFewObjects (x, exp_x) ->
-    Printf.sprintf "Too few objects (%d instead of %d)" x exp_x
-  | TooManyObjects (x, exp_x) ->
-    Printf.sprintf "Too many objects (%d instead of %d)" x exp_x
 
 
 let fatal_error e i = raise (ParsingException (CustomException (print_asn1_exception e), _h_of_si i))

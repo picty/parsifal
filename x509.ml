@@ -1,4 +1,5 @@
 open Parsifal
+open PTypes
 open Asn1Engine
 open Asn1PTypes
 
@@ -7,27 +8,31 @@ open Asn1PTypes
 (******************)
 
 (* TODO: Make the exhaustive meaningful *)
-asn1_union directoryString [enrich; exhaustive] (UnparsedDirectoryString) =
-  | C_Universal, false, T_T61String -> DS_T61String of der_octetstring_content (no_constraint)
-  | C_Universal, false, T_PrintableString -> DS_PrintableString of der_octetstring_content (no_constraint)
-  | C_Universal, false, T_UniversalString -> DS_UniversalString of der_octetstring_content (no_constraint)
-  | C_Universal, false, T_UTF8String -> DS_UTF8String of der_octetstring_content (no_constraint)
-  | C_Universal, false, T_BMPString -> DS_BMPString of der_octetstring_content (no_constraint)
+asn1_union directoryString [enrich; exhaustive; param len_cons] (UnparsedDirectoryString) =
+  | C_Universal, false, T_T61String -> DS_T61String of
+      length_constrained_container (len_cons) of der_octetstring_content (no_constraint)
+  | C_Universal, false, T_PrintableString -> DS_PrintableString of
+      length_constrained_container (len_cons) of der_octetstring_content (no_constraint)
+  | C_Universal, false, T_UniversalString -> DS_UniversalString of
+      length_constrained_container (len_cons) of der_octetstring_content (no_constraint)
+  | C_Universal, false, T_UTF8String -> DS_UTF8String of
+      length_constrained_container (len_cons) of der_octetstring_content (no_constraint)
+  | C_Universal, false, T_BMPString -> DS_BMPString of
+      length_constrained_container (len_cons) of der_octetstring_content (no_constraint)
 
 
 type attributeValueType =
-  | AVT_IA5String of int option
-  | AVT_PrintableString of int option
-  | AVT_DirectoryString of int option
+  | AVT_IA5String of length_constraint
+  | AVT_PrintableString of length_constraint
+  | AVT_DirectoryString of length_constraint
   | AVT_Anything
 
 let attributeValueType_directory : (int list, attributeValueType) Hashtbl.t = Hashtbl.create 10
 
-(* TODO: Handle length constraints on strings *)
 union attributeValue [enrich] (UnparsedAV of der_object) =
-  | AVT_IA5String _ -> AV_IA5String of der_ia5string
-  | AVT_PrintableString _ -> AV_PrintableString of der_printablestring
-  | AVT_DirectoryString _ -> AV_DirectoryString of directoryString
+  | AVT_IA5String len_cons -> AV_IA5String of der_ia5string (len_cons)
+  | AVT_PrintableString len_cons -> AV_PrintableString of der_printablestring (len_cons)
+  | AVT_DirectoryString len_cons -> AV_DirectoryString of directoryString (len_cons)
 
 struct atv_content = {
   attributeType : der_oid;
@@ -190,7 +195,7 @@ struct userNotice_content = {
 asn1_alias userNotice
 
 union policyQualifier [enrich] (UnparsedQualifier of der_object) =
-  | "id-qt-cps" -> CPSuri of der_ia5string
+  | "id-qt-cps" -> CPSuri of der_ia5string(NoConstraint)
   | "id-qt-unotice" -> UserNotice of userNotice
 
 struct policyQualifierInfo_content = {
@@ -367,25 +372,25 @@ asn1_alias certificate [top]
 (**************************)
 
 let attribute_value_types = [
-  [85; 4; 41], "name", None, AVT_DirectoryString(Some 32768);
-  [85; 4; 4], "surname", None, AVT_DirectoryString(Some 32768);
-  [85; 4; 42], "givenName", None, AVT_DirectoryString(Some 32768);
-  [85; 4; 43], "initials", None, AVT_DirectoryString(Some 32768);
-  [85; 4; 44], "generationQualifier", None, AVT_DirectoryString(Some 32768);
+  [85; 4; 41], "name", None, AVT_DirectoryString(AtMost 32768);
+  [85; 4; 4], "surname", None, AVT_DirectoryString(AtMost 32768);
+  [85; 4; 42], "givenName", None, AVT_DirectoryString(AtMost 32768);
+  [85; 4; 43], "initials", None, AVT_DirectoryString(AtMost 32768);
+  [85; 4; 44], "generationQualifier", None, AVT_DirectoryString(AtMost 32768);
 
-  [85; 4; 3], "commonName", Some "CN", AVT_DirectoryString(Some 64);
-  [85; 4; 7], "localityName", Some "L", AVT_DirectoryString(Some 128);
-  [85; 4; 8], "stateOrProvinceName", Some "S", AVT_DirectoryString(Some 128);
-  [85; 4; 10], "organizationName", Some "O", AVT_DirectoryString(Some 64);
-  [85; 4; 11], "organizationalUnitName", Some "OU", AVT_DirectoryString(Some 64);
-  [85; 4; 12], "title", None, AVT_DirectoryString(Some 64);
-  [85; 4; 46], "dnQualifier", None, AVT_PrintableString(None);
-  [85; 4; 6], "countryName", Some "C", AVT_PrintableString(Some 2);
-  [85; 4; 5], "serialNumber", Some "SN", AVT_PrintableString(Some 64);
-  [85; 4; 65], "pseudonym", None, AVT_DirectoryString(Some 128);
+  [85; 4; 3], "commonName", Some "CN", AVT_DirectoryString(AtMost 64);
+  [85; 4; 7], "localityName", Some "L", AVT_DirectoryString(AtMost 128);
+  [85; 4; 8], "stateOrProvinceName", Some "S", AVT_DirectoryString(AtMost 128);
+  [85; 4; 10], "organizationName", Some "O", AVT_DirectoryString(AtMost 64);
+  [85; 4; 11], "organizationalUnitName", Some "OU", AVT_DirectoryString(AtMost 64);
+  [85; 4; 12], "title", None, AVT_DirectoryString(AtMost 64);
+  [85; 4; 46], "dnQualifier", None, AVT_PrintableString(NoConstraint);
+  [85; 4; 6], "countryName", Some "C", AVT_PrintableString(AtMost 2);
+  [85; 4; 5], "serialNumber", Some "SN", AVT_PrintableString(AtMost 64);
+  [85; 4; 65], "pseudonym", None, AVT_DirectoryString(AtMost 128);
 
-  [9; 2342; 19200300; 100; 1; 25], "domainComponent", Some "dc", AVT_IA5String(None);
-  [42;840;113549;1;9;1], "emailAddress", None, AVT_IA5String(Some 255)
+  [9; 2342; 19200300; 100; 1; 25], "domainComponent", Some "dc", AVT_IA5String(NoConstraint);
+  [42;840;113549;1;9;1], "emailAddress", None, AVT_IA5String(AtMost 255)
 ]
 
 

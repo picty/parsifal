@@ -64,3 +64,39 @@ let dump_magic magic_expected () =
 
 let print_magic ?indent:(indent="") ?name:(name="magic") () =
   print_binstring ~indent:indent ~name:name ""
+
+
+
+(* Container *)
+
+type length_constraint =
+  | NoConstraint
+  | AtLeast of int
+  | AtMost of int
+  | Exactly of int
+  | Between of int * int
+
+let handle_length_constraint input len = function
+  | NoConstraint -> ()
+  | AtLeast n ->
+    if len < n then raise (ParsingException (TooFewObjects (len, n), _h_of_si input))
+  | AtMost n ->
+    if len > n then raise (ParsingException (TooManyObjects (len, n), _h_of_si input))
+  | Exactly n ->
+    if len < n then raise (ParsingException (TooFewObjects (len, n), _h_of_si input));
+    if len > n then raise (ParsingException (TooManyObjects (len, n), _h_of_si input))
+  | Between (n1, n2) ->
+    if len < n1 then raise (ParsingException (TooFewObjects (len, n1), _h_of_si input));
+    if len > n2 then raise (ParsingException (TooManyObjects (len, n2), _h_of_si input))
+
+
+let parse_length_constrained_container len_cons parse_fun input =
+  let old_offset = input.cur_offset in
+  let content = parse_fun input in
+  let len = input.cur_offset - old_offset in
+  handle_length_constraint input len len_cons;
+  content
+
+let dump_length_constrained_container (* len_cons *) dump_fun o =
+  (* Warning if length constraint not validated? *)
+  dump_fun o
