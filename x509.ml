@@ -6,23 +6,13 @@ open Asn1PTypes
 (* ATV, RD and DN *)
 (******************)
 
-type directoryString = asn1_tag * string
-
-let parse_directoryString input =
-  let aux h new_input = match h with
-    | (C_Universal, false,
-       (T_T61String|T_PrintableString|T_UniversalString|
-        T_UTF8String|T_BMPString as t)) ->
-      t, parse_der_octetstring_content no_constraint new_input
-    | h -> fatal_error (UnexpectedHeader (h, None)) input
-  in advanced_der_parse aux input
-
-let dump_directoryString (t, s) =
-  produce_der_object (C_Universal, false, t) (fun x -> x) s
-
-let print_directoryString ?indent:(indent="") ?name:(name="directoryString") (_, s) =
-  Printf.sprintf "%s%s: %s\n" indent name s
-
+(* TODO: Make the exhaustive meaningful *)
+asn1_union directoryString [enrich; exhaustive] (UnparsedDirectoryString) =
+  | C_Universal, false, T_T61String -> DS_T61String of der_octetstring_content (no_constraint)
+  | C_Universal, false, T_PrintableString -> DS_PrintableString of der_octetstring_content (no_constraint)
+  | C_Universal, false, T_UniversalString -> DS_UniversalString of der_octetstring_content (no_constraint)
+  | C_Universal, false, T_UTF8String -> DS_UTF8String of der_octetstring_content (no_constraint)
+  | C_Universal, false, T_BMPString -> DS_BMPString of der_octetstring_content (no_constraint)
 
 
 type attributeValueType =
@@ -45,10 +35,12 @@ struct atv_content = {
 }
 asn1_alias atv
 
+(* TODO: Rewrite this once to_string is generated automatically, at least for scalar types? *)
 let string_of_atv_value = function
   | UnparsedAV { Asn1PTypes.a_content = String (s, _)}
   | AV_PrintableString s
-  | AV_DirectoryString (_, s)
+  | AV_DirectoryString (DS_T61String s|DS_PrintableString s|
+      DS_UniversalString s|DS_UTF8String s|DS_BMPString s)
   | AV_IA5String s -> quote_string s
   | _ -> "NON-STRING-VALUE"
 
@@ -178,23 +170,12 @@ asn1_alias extendedKeyUsage = seq_of der_oid
 
 (* Certificate Policies *)
 
-(* TODO: Rewrite this with asn1_union *)
-type displayText = asn1_tag * string
-
-let parse_displayText input =
-  let aux h new_input = match h with
-    | (C_Universal, false,
-       (T_IA5String|T_VisibleString|
-        T_UTF8String|T_BMPString as t)) ->
-      t, parse_der_octetstring_content no_constraint new_input
-    | h -> fatal_error (UnexpectedHeader (h, None)) input
-  in advanced_der_parse aux input
-
-let dump_displayText (t, s) =
-  produce_der_object (C_Universal, false, t) (fun x -> x) s
-
-let print_displayText ?indent:(indent="") ?name:(name="displayText") (_, s) =
-  Printf.sprintf "%s%s: %s\n" indent name s
+(* TODO: Make the exhaustive meaningful *)
+asn1_union displayText [enrich; exhaustive] (UnparsedDisplayText) =
+  | C_Universal, false, T_IA5String -> DT_IA5String of der_octetstring_content (no_constraint)
+  | C_Universal, false, T_VisibleString -> DT_VisibleString of der_octetstring_content (no_constraint)
+  | C_Universal, false, T_UTF8String -> DT_UTF8String of der_octetstring_content (no_constraint)
+  | C_Universal, false, T_BMPString -> DT_BMPString of der_octetstring_content (no_constraint)
 
 struct noticeReference_content = {
   organization : displayText;
@@ -326,6 +307,7 @@ asn1_alias extension_list = seq_of extension (* TODO: min = 1 *)
 (* Validity *)
 (************)
 
+(* TODO: this "exhaustive" should produce a warningé *)
 asn1_union der_time [enrich; exhaustive] (UnparsedTime) =
   | (C_Universal, false, T_UTCTime) -> UTCTime of der_utc_time_content
   | (C_Universal, false, T_GeneralizedTime) -> GeneralizedTime of der_generalized_time_content

@@ -1,7 +1,6 @@
 v0.1 (oct. 2012 -> dec. 2012)
  - X509
    * write GeneralName using asn1_unions
-   * rewrite directoryString/explicitText using asn1_unions
    * write CRLDP distributionPointName using asn1_unions
    * add support for RSA/DSA public key and signature
    * split x509.ml in multiple files (x509Basics, x509Extensions, x509 with aliases to x509Basics like DNs)
