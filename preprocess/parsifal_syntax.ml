@@ -953,6 +953,26 @@ let mk_asn1_union_exact_parse _loc union =
   then mk_exact_parse_fun _loc union.uname union.uparse_params
   else []
 
+let rec expr_of_pat = function
+  | PaCom (_loc, p1, p2) -> ExCom (_loc, expr_of_pat p1, expr_of_pat p2)
+  | PaTup (_loc, p) -> ExTup (_loc, expr_of_pat p)
+  | PaAli (_, p, _) -> expr_of_pat p
+  | PaId (_loc, i) -> ExId (_loc, i)
+  | PaInt (_loc, i) -> ExInt (_loc, i)
+  | p -> Loc.raise (loc_of_patt p) (Failure "pattern not supported for asn1_unions")
+
+let mk_asn1_union_dump_fun _loc union =
+  let mk_case (_loc, p, c, t) =
+    <:match_case< ( $ <:patt< $uid:c$ >> $  $ <:patt< $lid:"x"$ >> $ ) ->
+    $ <:expr< produce_der_object $expr_of_pat p$ $fun_of_ptype Dump _loc union.uname t$ x >> $ >>
+  in
+  let last_case =
+    <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  $ <:patt< $lid:"o"$ >> $ ) -> dump_der_object o >>
+  in
+  let cases = (List.map mk_case union.uchoices)@[last_case] in
+  let body = <:expr< fun [ $list:cases$ ] >> in
+  [ mk_multiple_args_fun _loc ("dump_" ^ union.uname) union.udump_params body ]
+
 
 (************************)
 (* Camlp4 grammar rules *)
@@ -1152,7 +1172,7 @@ EXTEND Gram
     let fns = [mk_union_enrich_bool; mk_union_type;
 	       mk_asn1_union_parse_fun;
 	       mk_asn1_union_exact_parse;
-(*	       mk_asn1_union_dump_fun; mk_asn1_union_print_fun *) ] in
+	       mk_asn1_union_dump_fun; mk_union_print_fun ] in
     mk_str_items fns _loc asn1_union_descr
 
 

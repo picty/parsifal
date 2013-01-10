@@ -1,9 +1,4 @@
 v0.1 (oct. 2012 -> dec. 2012)
- - camlp4
-   * write asn1_unions (lwt_parse, dump and print + checks)
-   * rethink the exhaustive/enrich options for unions/asn1_unions
-     + *dont_enrich* (enrich_ var) / enrich (enrich_ var) / force_enrich
-     + <standard> / force_exhaustive (exhaustive + fail_hard) -> force_enrich / exhaustive / fail_soft (fail_on_enrich var + emit warning) 
  - X509
    * write GeneralName using asn1_unions
    * rewrite directoryString/explicitText using asn1_unions
@@ -78,6 +73,10 @@ v0.2 (feb. 2013 -> mar. 2013)
    * Write some tests (unit tests, non-regression, etc.)
    * Write .mli files
  - Camlp4/Language
+   * rethink the exhaustive/enrich options for unions/asn1_unions
+     + *dont_enrich* (enrich_ var) / enrich (enrich_ var) / force_enrich
+     + <standard> / force_exhaustive (exhaustive + fail_hard) -> force_enrich / exhaustive / fail_soft (fail_on_enrich var + emit warning) 
+   * try and merge unions and asn1_unions (by using parse/dump params to pass header argument for cases?)
    * add control commands in struct (check / seek / stop)
    * be more cautious about int32 types...
    * add base64_container / gzip_container as custom containers
