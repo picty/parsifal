@@ -123,10 +123,16 @@ let check_options construction options =
     | Enum, (_loc, ParseParam _)::_
     | Enum, (_loc, DumpParam _)::_ ->
       Loc.raise _loc (Failure "params are not allowed for an enum.")
+
     | (Enum|Struct|Alias|ASN1Alias), (_loc, EnrichByDefault)::_ ->
       Loc.raise _loc (Failure "enrich is only allowed for unions.")
     | (Enum|Struct|Alias|ASN1Alias), (_loc, ExhaustiveChoices)::_ ->      
       Loc.raise _loc (Failure "exhaustive is only allowed for unions.")
+
+    | Enum, (_, LittleEndian)::r -> LittleEndian::(aux r)
+    | _, (_loc, LittleEndian)::_ ->
+      Loc.raise _loc (Failure "little_endian is only allowed for enums.")
+
     | _, (_, o)::r -> o::(aux r)
     | _, [] -> []
   in aux options
