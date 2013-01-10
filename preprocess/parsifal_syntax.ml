@@ -964,10 +964,10 @@ let rec expr_of_pat = function
 let mk_asn1_union_dump_fun _loc union =
   let mk_case (_loc, p, c, t) =
     <:match_case< ( $ <:patt< $uid:c$ >> $  $ <:patt< $lid:"x"$ >> $ ) ->
-    $ <:expr< produce_der_object $expr_of_pat p$ $fun_of_ptype Dump _loc union.uname t$ x >> $ >>
+    $ <:expr< Asn1Engine.produce_der_object $expr_of_pat p$ $fun_of_ptype Dump _loc union.uname t$ x >> $ >>
   in
   let last_case =
-    <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  $ <:patt< $lid:"o"$ >> $ ) -> dump_der_object o >>
+    <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  $ <:patt< $lid:"o"$ >> $ ) -> Asn1PTypes.dump_der_object o >>
   in
   let cases = (List.map mk_case union.uchoices)@[last_case] in
   let body = <:expr< fun [ $list:cases$ ] >> in
