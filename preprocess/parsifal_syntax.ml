@@ -820,7 +820,7 @@ let mk_union_print_fun _loc union =
       Parsifal.print_binstring ~indent:indent ~name:name "" >>
     | _loc, n, c, t ->
       <:match_case< ( $ <:patt< $uid:c$ >> $  $ <:patt< $lid:"x"$ >> $ ) ->
-                    $ <:expr< $fun_of_ptype Print _loc union.uname t$ ~indent:indent ~name:name x >> $ >>
+                    $ <:expr< $fun_of_ptype Print _loc union.uname t$ ~indent:indent ~name: $ <:expr< $str:c$ >> $ x >> $ >>
   in
   let last_case =
     <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  $ <:patt< $lid:"x"$ >> $ ) ->
@@ -954,6 +954,7 @@ let mk_asn1_union_exact_parse _loc union =
   else []
 
 let rec expr_of_pat = function
+  | PaApp (_loc, p1, p2) -> ExApp (_loc, expr_of_pat p1, expr_of_pat p2)
   | PaCom (_loc, p1, p2) -> ExCom (_loc, expr_of_pat p1, expr_of_pat p2)
   | PaTup (_loc, p) -> ExTup (_loc, expr_of_pat p)
   | PaAli (_, p, _) -> expr_of_pat p

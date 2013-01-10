@@ -132,9 +132,34 @@ union signature [enrich] (UnparsedSignature of der_object) =
 (* Extensions *)
 (**************)
 
-(* Useful *)
-(* TODO: GeneralName *)
-alias generalName = der_object
+(* TODO? *)
+
+(* OtherName ::= SEQUENCE { *)
+(*      type-id    OBJECT IDENTIFIER, *)
+(*      value      [0] EXPLICIT ANY DEFINED BY type-id } *)
+
+(* ORAddress ::= SEQUENCE { *)
+(*    built-in-standard-attributes BuiltInStandardAttributes, *)
+(*    built-in-domain-defined-attributes *)
+(*                    BuiltInDomainDefinedAttributes OPTIONAL, *)
+(*    -- see also teletex-domain-defined-attributes *)
+(*    extension-attributes ExtensionAttributes OPTIONAL } *)
+
+(* EDIPartyName ::= SEQUENCE { *)
+(*      nameAssigner            [0]     DirectoryString OPTIONAL, *)
+(*      partyName               [1]     DirectoryString } *)
+
+(* TODO: Make the exhaustive meaningful *)
+asn1_union generalName [enrich; exhaustive] (UnparsedGeneralName) =
+  | (C_ContextSpecific, true, T_Unknown 0) as h -> OtherName of der_object_content (h)
+  | C_ContextSpecific, false, T_Unknown 1 -> Rfc822Name of der_printable_octetstring_content (no_constraint) (* IA5 *)
+  | C_ContextSpecific, false, T_Unknown 2 -> DNSName of der_printable_octetstring_content (no_constraint) (* IA5 *)
+  | (C_ContextSpecific, true, T_Unknown 3) as h -> X400Address of der_object_content (h)
+  | C_ContextSpecific, true, T_Unknown 4 -> DirectoryName of distinguishedName
+  | (C_ContextSpecific, true, T_Unknown 5) as h -> EDIPartyName of der_object_content (h)
+  | C_ContextSpecific, false, T_Unknown 6 -> UniformResourceIdentifier of der_printable_octetstring_content (no_constraint) (* IA5 *)
+  | C_ContextSpecific, false, T_Unknown 7 -> IPAddress of der_octetstring_content (no_constraint)
+  | C_ContextSpecific, false, T_Unknown 8 -> RegisteredID of der_oid_content
 asn1_alias generalNames = seq_of generalName
 
 (* Authority Key Identifier *)
