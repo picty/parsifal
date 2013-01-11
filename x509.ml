@@ -434,7 +434,7 @@ let signature_types = [
 ]
 
 let extension_types = [
-  [85;29;1], "authorityInfoAccess";
+  [85;29;1], "authorityKeyIdentifier";
   [85;29;14], "subjectKeyIdentifier";
   [85;29;15], "keyUsage";
   [85;29;17], "subjectAlternativeName";
@@ -444,6 +444,7 @@ let extension_types = [
   [85;29;32], "certificatePolicies";
   [85;29;35], "authorityKeyIdentifier";
   [85;29;37], "extendedKeyUsage";
+  [43.6.1.5.5.7.1.1], "authorityInfoAccess";
 ]
 
 
