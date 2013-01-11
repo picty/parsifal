@@ -1,7 +1,6 @@
 v0.1 (oct. 2012 -> jan. 2013)
  - X509
    * split x509.ml in multiple files (x509Basics, x509Extensions, x509 with aliases to x509Basics like DNs)
-   * add support for DSA public key and signature
  - TlsEngine
    * work on TlsEngine.update* functions
    * write the automata (client, server, transparent proxy, normalizing proxy)
@@ -104,6 +103,7 @@ v0.2 (feb. 2013 -> mar. 2013)
    * Look at the code of cryptokit which seems groovy
    * Simplify the RSA code (to avoid the useless creation of a key object)
    * Add support for DSA
+   * Merge PKCS#1 and RSAKey?
    * Think about the bigint (Big_int, Cryptokit, or stg else?)
  - Tools
    * probe_server: Add an option to extract the certificates presented

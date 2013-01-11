@@ -69,12 +69,14 @@ let print_distinguishedName ?indent:(indent="") ?name:(name="distinguishedName")
 
 type algorithmParamsType =
   | APT_Null
+  | APT_DSAParams
   | APT_Unknown
 
 let algorithmParamsType_directory : (int list, algorithmParamsType) Hashtbl.t = Hashtbl.create 10
 
 union algorithmParams [enrich] (UnparsedParams of der_object) =
   | APT_Null -> NoParams of der_null
+  | APT_DSAParams -> DSAParams of DSAKey.dsa_params
 
 struct algorithmIdentifier_content = {
   algorithmId : der_oid;
@@ -89,6 +91,7 @@ asn1_alias algorithmIdentifier
 (************************)
 
 type subjectPublicKeyType =
+  | SPK_DSA of DSAKey.dsa_params
   | SPK_RSA
   | SPK_Unknown
 
@@ -100,6 +103,7 @@ let subjectPublicKeyType_of_algo algo =
   with Not_found -> SPK_Unknown
 
 union subjectPublicKey [enrich] (UnparsedPublicKey of der_object) =
+  | SPK_DSA _params -> DSA of DSAKey.dsa_public_key
   | SPK_RSA -> RSA of RSAKey.rsa_public_key
 
 struct subjectPublicKeyInfo_content = {
@@ -114,6 +118,7 @@ asn1_alias subjectPublicKeyInfo
 (*************)
 
 type signatureType =
+  | ST_DSA
   | ST_RSA
   | ST_Unknown
 
@@ -125,7 +130,8 @@ let signatureType_of_algo algo =
   with Not_found -> ST_Unknown
 
 union signature [enrich] (UnparsedSignature of der_object) =
-  | ST_RSA -> RSASignature of der_bitstring
+  | ST_DSA -> DSASignature of DSAKey.dsa_signature
+  | ST_RSA -> RSASignature of RSAKey.rsa_signature
 
 
 (**************)
@@ -384,7 +390,7 @@ struct certificate_content = {
   tbsCertificate : tbsCertificate;
   parse_field tbsCertificate_raw : raw_value(position_before_tbs);
   signatureAlgorithm : algorithmIdentifier;
-  signatureValue : signature(signatureType_of_algo signatureAlgorithm)
+  signatureValue : bitstring_container of signature(signatureType_of_algo signatureAlgorithm)
 }
 asn1_alias certificate [top]
 
@@ -418,8 +424,13 @@ let attribute_value_types = [
 ]
 
 
+let dsa_spk_of_param = function
+  | Some (DSAParams dp) -> SPK_DSA dp
+  | _ -> SPK_Unknown
+
 let public_key_types = [
   [42;840;113549;1;1;1], "rsaEncryption", APT_Null, (fun _ -> SPK_RSA);
+  [42;840;10040;4;1], "dsa", APT_DSAParams, dsa_spk_of_param
 ]
 
 let signature_types = [
@@ -431,6 +442,9 @@ let signature_types = [
   [42;840;113549;1;1;12], "sha384WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
   [42;840;113549;1;1;13], "sha512WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
   [42;840;113549;1;1;14], "sha224WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
+  [42;840;10040;4;3], "dsaWithSha1", APT_Null, (fun _ -> ST_DSA);
+  [96;840;1;101;3;4;3;1], "dsaWithSha224", APT_Null, (fun _ -> ST_DSA);
+  [96;840;1;101;3;4;3;2], "dsaWithSha256", APT_Null, (fun _ -> ST_DSA);
 ]
 
 let extension_types = [
@@ -444,7 +458,7 @@ let extension_types = [
   [85;29;32], "certificatePolicies";
   [85;29;35], "authorityKeyIdentifier";
   [85;29;37], "extendedKeyUsage";
-  [43.6.1.5.5.7.1.1], "authorityInfoAccess";
+  [43;6;1;5;5;7;1;1], "authorityInfoAccess";
 ]
 
 

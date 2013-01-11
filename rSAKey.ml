@@ -19,3 +19,6 @@ struct rsa_public_key_content = {
   p_publicExponent : der_integer
 }
 asn1_alias rsa_public_key
+
+
+alias rsa_signature = der_integer_content
