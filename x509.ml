@@ -240,11 +240,10 @@ asn1_alias certificatePolicies = seq_of policyInformation (* 1..MAX *)
 
 (* CRL Distribution Points *)
 
-(* TODO *)
-(* DistributionPointName ::= CHOICE { *)
-(*      fullName                [0]     GeneralNames, *)
-(*      nameRelativeToCRLIssuer [1]     RelativeDistinguishedName } *)
-alias distributionPointName = der_object
+(* TODO: Make the exhaustive meaningful *)
+asn1_union distributionPointName [enrich; exhaustive] (UnparsedDistributionPointName) =
+  | C_ContextSpecific, true, T_Unknown 0 -> FullName of (list of generalName)
+  | C_ContextSpecific, true, T_Unknown 1 -> NameRelativeToCRLIssuer of (list of atv)
 
 let reasonFlags_values = [|
   "unused";
