@@ -1,10 +1,7 @@
 v0.1 (oct. 2012 -> jan. 2013)
  - X509
    * split x509.ml in multiple files (x509Basics, x509Extensions, x509 with aliases to x509Basics like DNs)
-   * add support for RSA/DSA public key and signature
-   * other extensions (2.16.840.1.113730.1.1, 1.3.6.1.5.5.7.1.1)
- - Tools
-   * probe_server: Add a way to handle extensions
+   * add support for DSA public key and signature
  - TlsEngine
    * work on TlsEngine.update* functions
    * write the automata (client, server, transparent proxy, normalizing proxy)
@@ -48,13 +45,17 @@ v0.1 (oct. 2012 -> jan. 2013)
    * Add a way to create a certificate object
  - Tools
    * bgpdump and/or obsdump
-   * x509compare
    * x509check (enrich the x509 object before analysing!)
    * chaincheck
    * check_sslserver (see check_sslserver.ml for a complete TODO)
    * Create simple PKI tools to create a RSA key, sign, verify, encrypt, decrypt, handle a simple PKI (rsa tool)
    * Write acu (AceSL Cert Util) to read certs / pubkeys / privkeys and manipulate them
    * Passive TLS_Proxy
+ - General
+   * have a redmine to put all this stuff
+   * Produce a real camlp4 syntax package
+   * add Pollux' MakefileV6
+   * split parsifal in several repos: parsifal, AceSL, etc.
 
 
 v0.2 (feb. 2013 -> mar. 2013)
@@ -63,11 +64,12 @@ v0.2 (feb. 2013 -> mar. 2013)
    * Produce a real camlp4 syntax package
    * add Pollux' MakefileV6
    * Think about the exception system (fatal or not) => merge all in ParsifalException
+   * add a field "handle_non_lethal_exceptions" to *_input (a function that could be raise or prerr_endline)
    * Improve the printing systems
      + do we need a separate string_of function, a way to ask for a one liner?
      + do we need a hookable string_of function?
  - Software Engineering
-   * Write some tests (unit tests, non-regression, etc.)
+   * Write some tests (unit tests, non-regression [for X.509 for example], etc.)
    * Write .mli files
  - Camlp4/Language
    * rethink the exhaustive/enrich options for unions/asn1_unions
@@ -85,8 +87,6 @@ v0.2 (feb. 2013 -> mar. 2013)
        -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
-   * add a field "handle_non_lethal_exceptions" to *_input (a function that could be raise or prerr_endline)
-   * handle string constraints
  - ASN.1
    * add a printer version of asn1parse for der_object
    * add a event-driven der_object version to have a cool asn1parse
@@ -95,6 +95,8 @@ v0.2 (feb. 2013 -> mar. 2013)
    * Add SSLv2 support in probe_server and other programs
    * Implement every extension/PK present in ssl-data
  - X509
+   * other extensions: 2.16.840.1.113730.1.1 (NSCertType), 2.16.840.1.113730.1.13 (NSComment)
+   * relax constraints to allow parsing
    * Add support for CSR
    * OCSP and CRL parsers
  - Crypto
@@ -104,6 +106,9 @@ v0.2 (feb. 2013 -> mar. 2013)
    * Add support for DSA
    * Think about the bigint (Big_int, Cryptokit, or stg else?)
  - Tools
+   * probe_server: Add an option to extract the certificates presented
+   * probe_server: Add a way to handle TLS extensions
+   * x509compare
    * Begin a GUI for PKI tools
    * crlshow / crlcompare
    * a tool to re-sign a modified certificate (given you have the adequate private key of course)
