@@ -76,7 +76,7 @@ v0.2 (feb. 2013 -> mar. 2013)
    * try and merge unions and asn1_unions (by using parse/dump params to pass header argument for cases?)
    * add control commands in struct (check / seek / stop)
    * be more cautious about int32 types...
-   * add base64_container / gzip_container as custom containers
+   * add hex_container / base64_container / gzip_container as custom containers
    * Document the preprocessor (update the JFLA article)
    * Add a way to access to fields with a "language" (browse) (from the command line: tls_record.record_content.handshake_type -> string option)
    * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
