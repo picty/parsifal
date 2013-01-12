@@ -53,6 +53,7 @@ v0.1 (oct. 2012 -> jan. 2013)
    * Produce a real camlp4 syntax package
    * add Pollux' MakefileV6
    * split parsifal in several repos: parsifal, AceSL, etc.
+   * clean up TODOs in ml files.
 
 
 v0.2 (feb. 2013 -> mar. 2013)

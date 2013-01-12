@@ -142,7 +142,7 @@ union signature [enrich] (UnparsedSignature of der_object) =
 (* Validity *)
 (************)
 
-(* TODO: this "exhaustive" should produce a warningé *)
+(* TODO: this "exhaustive" should produce a warning *)
 asn1_union der_time [enrich; exhaustive] (UnparsedTime) =
   | (C_Universal, false, T_UTCTime) -> UTCTime of der_utc_time_content
   | (C_Universal, false, T_GeneralizedTime) -> GeneralizedTime of der_generalized_time_content

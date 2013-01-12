@@ -82,7 +82,7 @@ struct ssl2_server_hello = {
   ssl2_server_certificate_length : uint16;
   ssl2_server_cipher_specs_length : uint16;
   ssl2_server_session_id_length : uint16;
-  ssl2_server_certificate : binstring(ssl2_server_certificate_length); (* TODO *)
+  ssl2_server_certificate : container(ssl2_server_certificate_length) of Tls._certificate(());
   ssl2_server_cipher_specs : container(ssl2_server_cipher_specs_length) of list of ssl2_cipher_spec;
   ssl2_server_session_id : binstring(ssl2_server_session_id_length)
 }
@@ -96,7 +96,7 @@ struct ssl2_client_certificate = {
   ssl2_client_certificate_type : ssl2_certificate_type;
   ssl2_client_certificate_length : uint16;
   ssl2_response_length : uint16;
-  ssl2_client_certificate : binstring(ssl2_client_certificate_length); (* TODO *)
+  ssl2_client_certificate : container(ssl2_client_certificate_length) of Tls._certificate (());
   ssl2_response : binstring(ssl2_response_length) (* TODO *)
 }
 

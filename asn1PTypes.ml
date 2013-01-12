@@ -248,7 +248,6 @@ asn1_alias der_bitstring = primitive [T_BitString] der_bitstring_content
 
 
 
-(* TODO: Should this really be a string list? *)
 type der_enumerated_bitstring_content = string list
 
 let extract_bit_list s =
