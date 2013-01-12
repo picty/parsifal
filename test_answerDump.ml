@@ -6,6 +6,7 @@ open AnswerDump
 open TlsEnums
 open Tls
 open Getopt
+open X509Basics
 open X509
 
 type action = IP | Dump | All | Suite | SKE | Subject

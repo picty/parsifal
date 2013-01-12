@@ -4,7 +4,7 @@ open Asn1PTypes
 
 
 struct certId_content = {
-  hashAlgorithm : X509.algorithmIdentifier;
+  hashAlgorithm : X509Basics.algorithmIdentifier;
   issuerNameHash : der_octetstring;
   issuerKeyHash : der_octetstring;
   serialNumber : der_integer
@@ -13,13 +13,13 @@ asn1_alias certId
 
 struct request_content = {
   reqCert : certId;
-  optional singleRequestExtensions : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of X509.extension_list
+  optional singleRequestExtensions : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of X509Extensions.extension_list
 }
 asn1_alias request
 asn1_alias request_list = seq_of request
 
 struct signature_content = {
-  signatureAlgorithm : X509.algorithmIdentifier;
+  signatureAlgorithm : X509Basics.algorithmIdentifier;
   signature : der_bitstring;
   optional certs : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of asn1 [(C_Universal, true, T_Sequence)] of X509.certificate
 }
@@ -30,7 +30,7 @@ struct tbsRequest_content = {
   optional version : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_smallint;
   optional requestorName : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_object; (* TODO *)    
   requestList : request_list;
-  optional requestExtensions : asn1 [(C_ContextSpecific, true, T_Unknown 2)] of X509.extension_list
+  optional requestExtensions : asn1 [(C_ContextSpecific, true, T_Unknown 2)] of X509Extensions.extension_list
 }  
 asn1_alias tbsRequest
 

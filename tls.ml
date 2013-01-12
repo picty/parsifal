@@ -147,7 +147,7 @@ struct signature_and_hash_algorithm = {
 }
 
 union _distinguishedName [exhaustive] (UnparsedDN) =
-  | () -> ParsedDN of X509.distinguishedName
+  | () -> ParsedDN of X509Basics.distinguishedName
 
 struct certificate_request = {
   certificate_types : client_certificate_type;

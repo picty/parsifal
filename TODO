@@ -1,6 +1,4 @@
 v0.1 (oct. 2012 -> jan. 2013)
- - X509
-   * split x509.ml in multiple files (x509Basics, x509Extensions, x509 with aliases to x509Basics like DNs)
  - TlsEngine
    * work on TlsEngine.update* functions
    * write the automata (client, server, transparent proxy, normalizing proxy)
