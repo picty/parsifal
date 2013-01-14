@@ -1,0 +1,204 @@
+
+
+Bonjour,
+
+Nous avons le regret de vous informer que nous n'avons pas retenu votre article, intitulé :
+ Parsifal : utilisation de camlp4 pour l'écriture rapide de parsers,
+pour les JFLAs 2013.
+
+La compétition a été particulièrement rude cette année ; nous espérons que les reviews, ci-jointes, vous 
+serons utiles. 
+
+Nous espérons également vous participerez quand même aux journées, du 3 au 6 février 2013.
+
+Damien Pous, pour le comité de programme des JFLAs 2013.
+
+
+----------------------- REVIEW 1 ---------------------
+PAPER: 16
+TITLE:  Parsifal : utilisation de camlp4 pour l'écriture rapide de parsers
+AUTHORS: Olivier Levillain
+
+OVERALL EVALUATION: 1 (weak accept)
+REVIEWER'S CONFIDENCE: 3 (medium)
+
+----------- REVIEW -----------
+# Résumé
+
+L'article présente un langage dédié embarqué pour l'analyse syntaxique
+de données, par exemple de messages échangés dans des protocoles
+réseaux. Le langage repose sur le pré-processeur camlp4, qui permet de
+générer types et fonctions d'analyse à partir de descriptions
+succinctes. Les fonctionnalités sont illustrées par des exemples de
+formats de données.
+
+# Avis
+
+Points forts de la communication :
+
+- Le besoin d'outils fiables et performants pour l'analyse de messages
+  sur les réseaux mérite d'être répété, tant la tendance au
+  bidouillage et au code ad-hoc est forte dans ce domaine, avec des
+  conséquences potentiellement graves en matière de sécurité. Une
+  approche déclarative avec un langage dédié pour décrire les formats
+  de message paraît tout à fait indiquée.
+
+- La contribution est clairement expliquée et illustrée, une section
+  consacrée à un exemple complet (les archives TAR) est même
+  proposée. Les différents exemples sont autant de mini études de cas
+  sur les difficultés des langages de données et leur analyse.
+
+Points faibles de la communication :
+
+- La recherche dans le domaine des langages de données est un sujet
+  qui est très actif depuis quelques années, par exemple le projet
+  PADS a eu un écho assez large dans la communauté (voir l'article de
+  Kathleen Fisher, Yitzhak Mandelbaum et David Walker : _The next 700
+  data description languages_ dans J. ACM 57(2), 2010, doi:
+  10.1145/1667053.1667059). Il est du coup un peu dommage que les
+  comparaisons fournies en fin d'article soient aussi succinctes,
+  l'auteur se contentant de citer deux approches en Python. Je pense
+  qu'un peu plus de recul sur les différentes approches essayées
+  jusqu'ici et les spécificités de Parsifal serait très bénéfique.
+
+- L'outil n'est pas disponible en ligne. Cela nuit fortement à
+  l'impact que pourrait avoir la recherche présentée.
+
+# Typos
+
+p. 1 : « la section 4 conclut » : il s'agit de la section 5.
+p. 4 : « par un champ longueur le ou la précédent » : « par un champ
+       longueur la précédant ».
+p. 9 : « finaliser l'implémentatin » : l'implémentation
+
+
+----------------------- REVIEW 2 ---------------------
+PAPER: 16
+TITLE:  Parsifal : utilisation de camlp4 pour l'écriture rapide de parsers
+AUTHORS: Olivier Levillain
+
+OVERALL EVALUATION: -1 (weak reject)
+REVIEWER'S CONFIDENCE: 4 (high)
+
+----------- REVIEW -----------
+Résumé
+------
+
+Cet article décrit "Parsifal", un outil de génération d'analyseurs de
+format binaire écrit en OCaml. Il prend la forme d'une extension de
+syntaxe Camlp4 qui transforme des déclarations de type de données
+binaires écrits dans une syntaxe propre à l'outil en combinateurs de
+désérialisation pour ces types. Les types de données binaires de
+Parsifal sont ceux générés par : 
+- des types atomiques dont les combinateurs sont fournis par l'utilisateur ;
+- des types énumerations sous-ensembles des types entiers bornées sur N-bits ;
+- des types enregistrements (appelés structures) dont les champs sont des types binaires ;
+- des types sommes dont les constructeurs sont codés par des entiers et dont les
+  sous-composantes sont des types binaires.
+
+Ces types peut-être paramétrés par la taille de leur représentation. Cette taille
+peut-être n'importe quelle expression. Elle est effacée du type quand on traduit
+la déclaration de type vers OCaml mais elle apparaît dans les combinateurs de 
+désérialisation.
+
+L'article décrit en détails l'implémentation d'une désérialisation du
+format TAR et fait référence à plusieurs implémentations d'outils
+d'analyse de logs de protocole réseau. L'auteur évoque un gain en
+productivité dû au passage au langage OCaml après plusieurs tentatives
+insatisfaisantes de développement du même outil en C, C++ et Python.
+
+Remarques
+---------
+
+Tout d'abord, cet article est un retour d'expérience intéressant car
+il compare plusieurs implémentations du même outil dans des langages
+différents. Dans cette perspective, l'auteur aurait pu aller plus loin
+en donnant un rapport plus exhaustif d'autres mesures comme le temps
+de développement des différents outils, le nombre de rapports de bug
+pour chacun, l'empreinte mémoire, quelle quantité de log peut être
+traitée par seconde, ... etc.
+
+Là où le bât blesse, c'est qu'il n'est pas très clair que Parsifal
+apporte une réelle innovation dans l'écosystème OCaml sur le problème
+de l'analyse de données binaires, en particulier en comparaison avec
+l'outil "bitstring"[1] de Richard Jones. 
+
+Les deux outils sont des extensions de camlp4. Tandis que bitstring
+s'appuie sur l'enrichissement de l'analyse de motifs en introduisant
+une construction "bitmatch", Parsifal enrichit la syntaxe des types
+pour en déduire automatiquement des combinateurs. Il y a des avantages
+et des inconvénients aux deux approches. L'avantage de bitmatch est de
+donner à l'utilisateur le contrôle de la production des données ce qui
+peut être essentiel si ces données sont de taille importante. Si
+l'utilisateur souhaite obtenir une représentation intermédiaire,
+l'approche de Parsival permet de réduire le travail de construction de
+cette représentation intermédiaire. Cependant, je donne un avantage
+à bitmatch car il me semble que son approche est strictement plus
+générale. En effet, si on peut toujours écrire manuellement le code de
+production d'un arbre de syntaxe dans les branches d'un bitmatch, on
+ne peut pas éviter la production de cet arbre dans le cas de Parsival
+car on ne peut pas inverser le contrôle des fonctions "parse_*".
+
+Pour le reste, sauf erreur de ma part, l'ensemble des fonctionnalités
+de Parsifal est un strict sous-ensemble de celles de bitstring. Comme
+dans Parsifal, on trouve dans bitstring des motifs dont la longueur
+dépend du résultat de calculs ou de la valeur de champs précédents.
+Les motifs de bitstring incluent strictement les types de Parsifal. En
+sus, on trouve dans bitstring du pattern matching sur des séquences de
+bits plus petites qu'un octet, le traitement du little/big endian, du
+codage signé/nonsigné, la capacité de faire des tests dynamiques sur
+la forme des données pour restreindre les motifs, la possibilité de
+nommer des sous-parties du motifs, le traitement implicite du padding
+via des décalages calculés, ... Toutes ces fonctionnalités ne sont pas
+présentées dans le présent article donc il n'est pas clair que
+Parsifal les offre aussi.
+
+Par ailleurs, la présentation de l'article nous laisse un peu sur
+notre faim : les exemples illustrant la transformation de
+spécifications de type en code OCaml sont utiles pédagogiquement mais
+on aurait aussi aimer une description des difficultés rencontrées. Par
+exemple, pour l'expansion des types énumérations de taille inférieure
+à un octet comment l'outil procède-t-il? De même, est-ce que l'outil
+sait traiter correctement les énumérations dont la taille est
+supérieur à 64 bits et pour lesquels les litéraux associés dépassent
+les limites des litéraux standards d'OCaml? bitstring semble faire une
+traduction plus rigoureuse que celle de Parsifal et je lui ferai donc
+plus volontiers confiance. 
+
+[1] http://people.redhat.com/~rjones/bitstring/html/Bitstring.html
+
+
+----------------------- REVIEW 3 ---------------------
+PAPER: 16
+TITLE:  Parsifal : utilisation de camlp4 pour l'écriture rapide de parsers
+AUTHORS: Olivier Levillain
+
+OVERALL EVALUATION: -1 (weak reject)
+REVIEWER'S CONFIDENCE: 2 (low)
+
+----------- REVIEW -----------
+Cet article décrit Parsifal, un outil pour développer des dissecteurs de 
+manière robuste et efficace. Cet article insiste sur l'utilisation de Camlp4
+pour générer du code caml à partir d'un "langage dédié" qui consiste à 
+pouvoir définir des Enums et des Structs. L'utilisation de Parsifal est décrite
+sur un exemple concret de modélisation du format TAR.
+
+Cet article présente un travail d'ingénierie plus que de recherche. L'utilisation 
+de Camlp4 est standard, aucune propriété n'est prouvée sur l'outil Parsifal et 
+la description de l'outil est trop morcelée.
+  
+C'est pourquoi je recommande de ne pas accepter l'article.
+	
+
+Remarque:
+
+- insister sur le fait que magic n'a rien à voir avec obj.magic, que les utilisateurs
+  de caml connaissent (malheureusement) bien.
+
+- En lisant l'article, je me suis demandé si l'utilisation d'Haskell ne serait
+  pas plus appropriée. En effet, il est possible que l'utilisation de camlp4 pour 
+  générer du code caml puisse être remplacé par l'utilisation de classes de type
+  pour les Enums et le Structs. De plus, le développement de dissecteurs monadiques
+  est chose aisée en Haskell.
+
+
