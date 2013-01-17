@@ -117,6 +117,8 @@ v0.2 (feb. 2013 -> mar. 2013)
    * Ajouter liens dgst <- sha1sum
    * dgst : options (-quiet, -hex, -check, -file + args / ou stdin)
    * Gestion du temps passé (man 2 times) et ajout de barres de progression
+   * servercheck
+   * clientcheck
  - Write some tests to check in browsers
    * certificates with extensions containing images
    * certificates signing each other (A <-> B)
