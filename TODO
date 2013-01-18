@@ -1,4 +1,6 @@
 v0.1 (oct. 2012 -> jan. 2013)
+ - Docs
+   * Write index.txt for all subdirs
  - TlsEngine
    * work on TlsEngine.update* functions
    * write the automata (client, server, transparent proxy, normalizing proxy)
