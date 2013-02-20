@@ -9,7 +9,7 @@ open Getopt
 open X509Basics
 open X509
 
-type action = IP | Dump | All | Suite | SKE | Subject
+type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom
 let action = ref IP
 let verbose = ref false
 let raw_records = ref false
@@ -26,6 +26,7 @@ let options = [
   mkopt (Some 'D') "dump" (TrivialFun (fun () -> action := Dump)) "dumps the answers";
   mkopt (Some 's') "ciphersuite" (TrivialFun (fun () -> action := Suite)) "only show the ciphersuite chosen";
   mkopt (Some 'S') "ske" (TrivialFun (fun () -> action := SKE)) "only show information relative to ServerKeyExchange";
+  mkopt None "server-random" (TrivialFun (fun () -> action := ServerRandom)) "only output the server random";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject)) "show the subect";
 
   mkopt None "filter-ip" (StringVal filter_ip) "only print info regarding this ip"
@@ -137,6 +138,17 @@ let rec handle_answer answer =
             | None -> ()
             | Some s -> Printf.printf "%s: %s\n" ip s
         end
+      | ServerRandom ->
+        let records, _, _ = parse_all_records answer in
+        begin
+	  match records with
+          | { content_type = CT_Handshake;
+              record_content = Handshake {
+                handshake_type = HT_ServerHello;
+                handshake_content = ServerHello {server_random = r} }}::_
+	    -> Printf.printf "%s: %s\n" ip (hexdump r)
+          | _ -> ()
+        end;
       | Subject ->
         let records, _, _ = parse_all_records answer in
         let rec extractSubjectOfFirstCert = function
