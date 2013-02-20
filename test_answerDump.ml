@@ -9,7 +9,7 @@ open Getopt
 open X509Basics
 open X509
 
-type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy
+type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap
 let action = ref IP
 let verbose = ref false
 let raw_records = ref false
@@ -28,6 +28,7 @@ let options = [
   mkopt (Some 'S') "ske" (TrivialFun (fun () -> action := SKE)) "only show information relative to ServerKeyExchange";
   mkopt None "server-random" (TrivialFun (fun () -> action := ServerRandom)) "only output the server random";
   mkopt None "scapy-style" (TrivialFun (fun () -> action := Scapy)) "outputs the records as independant scapy-style packets";
+  mkopt None "output-pcap" (TrivialFun (fun () -> action := Pcap)) "export the answer as a PCAP";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject)) "show the subect";
 
   mkopt None "filter-ip" (StringVal filter_ip) "only print info regarding this ip"
@@ -163,6 +164,17 @@ let rec handle_answer answer =
 	    convert_to_scapy (len + (String.length dump), new_p::ps) rs
 	in
 	Printf.printf "ps = [%s]\n" (String.concat ",\n  " (convert_to_scapy (0, []) records))
+      | Pcap ->
+	let records, _, _ = parse_all_records answer in
+	let rec convert_to_pcap len ps = function
+	  | [] -> ()
+	  | r::rs ->
+	    let dump = dump_tls_record r in
+	    let new_p = Pcap.mk_packet answer.ip answer.port dump len in
+	    print_string (Pcap.dump_packet new_p);
+	    convert_to_pcap (len + (String.length dump)) (new_p::ps) rs
+	in
+	convert_to_pcap 0 [] records
       | Subject ->
         let records, _, _ = parse_all_records answer in
         let rec extractSubjectOfFirstCert = function
@@ -197,6 +209,8 @@ let rec handle_one_file input =
 let _ =
   try
     let args = parse_args getopt_params Sys.argv in
+    if !action = Pcap
+    then print_string (Pcap.std_pcap_hdr_str);
     let open_files = function
       | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= fun x -> return [x]
       | _ -> Lwt_list.map_s input_of_filename args
