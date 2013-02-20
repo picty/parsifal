@@ -9,7 +9,7 @@ open Getopt
 open X509Basics
 open X509
 
-type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom
+type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy
 let action = ref IP
 let verbose = ref false
 let raw_records = ref false
@@ -27,6 +27,7 @@ let options = [
   mkopt (Some 's') "ciphersuite" (TrivialFun (fun () -> action := Suite)) "only show the ciphersuite chosen";
   mkopt (Some 'S') "ske" (TrivialFun (fun () -> action := SKE)) "only show information relative to ServerKeyExchange";
   mkopt None "server-random" (TrivialFun (fun () -> action := ServerRandom)) "only output the server random";
+  mkopt None "scapy-style" (TrivialFun (fun () -> action := Scapy)) "outputs the records as independant scapy-style packets";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject)) "show the subect";
 
   mkopt None "filter-ip" (StringVal filter_ip) "only print info regarding this ip"
@@ -149,6 +150,19 @@ let rec handle_answer answer =
 	    -> Printf.printf "%s: %s\n" ip (hexdump r)
           | _ -> ()
         end;
+      | Scapy ->
+	let records, _, _ = parse_all_records answer in
+	let rec convert_to_scapy (len, ps) = function
+	  | [] -> List.rev ps
+	  | r::rs ->
+	    let dump = dump_tls_record r in
+	    let new_p =
+	      Printf.sprintf "IP(src=\"%s\")/TCP(sport=%d,dport=12345,seq=%d,flags=\"\")/(\"%s\".decode(\"hex\"))"
+		ip answer.port len (hexdump dump)
+	    in
+	    convert_to_scapy (len + (String.length dump), new_p::ps) rs
+	in
+	Printf.printf "ps = [%s]\n" (String.concat ",\n  " (convert_to_scapy (0, []) records))
       | Subject ->
         let records, _, _ = parse_all_records answer in
         let rec extractSubjectOfFirstCert = function
