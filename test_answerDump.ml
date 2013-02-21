@@ -9,11 +9,12 @@ open Getopt
 open X509Basics
 open X509
 
-type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap
+type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType
 let action = ref IP
 let verbose = ref false
 let raw_records = ref false
 let filter_ip = ref ""
+let junk_length = ref 16
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
@@ -29,6 +30,8 @@ let options = [
   mkopt None "server-random" (TrivialFun (fun () -> action := ServerRandom)) "only output the server random";
   mkopt None "scapy-style" (TrivialFun (fun () -> action := Scapy)) "outputs the records as independant scapy-style packets";
   mkopt None "output-pcap" (TrivialFun (fun () -> action := Pcap)) "export the answer as a PCAP";
+  mkopt None "answer-type" (TrivialFun (fun () -> action := AnswerType)) "prints the answer types";
+  mkopt None "junk-length" (IntVal junk_length) "Sets the max length of junk stuff to print";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject)) "show the subect";
 
   mkopt None "filter-ip" (StringVal filter_ip) "only print info regarding this ip"
@@ -93,7 +96,24 @@ let parse_all_records answer =
     then read_records [] answer_input, None, false
     else split_records [] None None (TlsUtil.merge_records ~enrich:false (read_records [] answer_input))
   with _ -> [], None, true
-  
+
+
+let dump_extract s =
+  let len2consider = min !junk_length (String.length s) in
+  let s2consider = String.sub s 0 len2consider in
+  let hex_s = hexdump s2consider
+  and printable_s = String.copy s2consider in
+  let rec mk_printable_s i =
+    if i < len2consider
+    then begin
+      let c = int_of_char (printable_s.[i]) in
+      if c < 32 || c > 126
+      then printable_s.[i] <- '.';
+      mk_printable_s (i+1)
+    end
+  in
+  mk_printable_s 0;
+  Printf.sprintf "%s (%s)" hex_s printable_s
 
 
 let rec handle_answer answer =
@@ -175,6 +195,35 @@ let rec handle_answer answer =
 	    convert_to_pcap (len + (String.length dump)) (new_p::ps) rs
 	in
 	convert_to_pcap 0 [] records
+      | AnswerType ->
+        let records, _, _ = parse_all_records answer in
+        begin
+	  match records, answer.content with
+	  | _, "" ->
+	    Printf.printf "%s\tE\n" ip
+          | [{ content_type = CT_Alert;
+              record_content = Alert a }], _ ->
+	    Printf.printf "%s\tA\t%s\t%s\n" ip (string_of_tls_alert_level a.alert_level) (string_of_tls_alert_type a.alert_type)
+
+	  | { content_type = CT_Handshake;
+              record_content = Handshake {
+                handshake_type = HT_ServerHello;
+                handshake_content = ServerHello {server_version = v; ciphersuite = c} }}::
+	    { content_type = CT_Handshake;
+	      record_content = Handshake {
+                handshake_type = HT_Certificate;
+                handshake_content = Certificate ((ParsedCertificate cert)::_) }}::_, _
+	    -> Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
+              (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
+
+	  | { content_type = CT_Handshake;
+              record_content = Handshake {
+                handshake_type = HT_ServerHello;
+                handshake_content = ServerHello {server_version = v; ciphersuite = c} }}::_, _
+	    -> Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
+
+          | _, s -> Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
+        end;
       | Subject ->
         let records, _, _ = parse_all_records answer in
         let rec extractSubjectOfFirstCert = function
@@ -188,7 +237,12 @@ let rec handle_answer answer =
                 let cert = parse_certificate (input_of_string "" cert_string) in
                 Some (String.concat ", " (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
               with _ -> None
-                  end
+            end
+          | { content_type = CT_Handshake;
+              record_content = Handshake {
+                handshake_type = HT_Certificate;
+                handshake_content = Certificate ((ParsedCertificate cert)::_) }}::_ ->
+            Some (String.concat ", " (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
           | _::r -> extractSubjectOfFirstCert r
         in
         begin
