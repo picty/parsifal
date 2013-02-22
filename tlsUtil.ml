@@ -2,7 +2,7 @@ open Parsifal
 open Asn1Engine
 open Tls
 
-let merge_records ?context:(ctx=None) ?enrich:(enrich=true) recs =
+let merge_records ?context:(ctx=None) ?enrich:(enrich=AlwaysEnrich) recs =
   let mk_merged_record ct v contents =
     let merged_contents = String.concat "" (List.rev contents) in
     let real_content =

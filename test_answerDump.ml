@@ -16,6 +16,13 @@ let raw_records = ref false
 let filter_ip = ref ""
 let junk_length = ref 16
 
+let enrich_style = ref DefaultEnrich
+let set_enrich_level l =
+  if l > 0 then begin
+    enrich_style := EnrichLevel l;
+    ActionDone
+  end else ShowUsage (Some "enrich level should be a positive number.")
+
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
@@ -34,6 +41,10 @@ let options = [
   mkopt None "junk-length" (IntVal junk_length) "Sets the max length of junk stuff to print";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject)) "show the subect";
 
+  mkopt None "always-enrich" (TrivialFun (fun () -> enrich_style := AlwaysEnrich)) "always enrich the structure parsed";
+  mkopt None "never-enrich" (TrivialFun (fun () -> enrich_style := NeverEnrich)) "never enrich the structure parsed";
+  mkopt None "enrich-level" (IntFun set_enrich_level) "enrich the structure parsed up to a certain level";
+
   mkopt None "filter-ip" (StringVal filter_ip) "only print info regarding this ip"
 ]
 
@@ -48,7 +59,7 @@ let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
   input_of_fd filename fd
 
-let parse_all_records answer =
+let parse_all_records enrich answer =
   let rec read_records accu i =
     if not (eos i)
     then begin
@@ -60,7 +71,7 @@ let parse_all_records answer =
   let rec split_records accu ctx str_input recs = match str_input, recs with
     | None, [] -> List.rev accu, ctx, false
     | None, record::r ->
-      let record_input = input_of_string ~enrich:true (string_of_ipv4 answer.ip) (dump_record_content record.record_content) in
+      let record_input = input_of_string ~enrich:enrich (string_of_ipv4 answer.ip) (dump_record_content record.record_content) in
       let cursor = record.content_type, record.record_version, record_input in
       split_records accu ctx (Some cursor) r
     | Some (ct, v, i), _ ->
@@ -85,8 +96,14 @@ let parse_all_records answer =
               | _ -> split_records (next_record::accu) ctx str_input recs
           end;
 
-        with _ -> List.rev accu, ctx, true
-      end
+        with
+        | ParsingException (e, h) ->
+          if !verbose then prerr_endline (string_of_exception e h);
+          List.rev accu, ctx, true
+        | e ->
+          if !verbose then prerr_endline (Printexc.to_string e);
+          List.rev accu, ctx, true
+     end
   in
 
   let answer_input = input_of_string (string_of_ipv4 answer.ip) answer.content in
@@ -94,7 +111,7 @@ let parse_all_records answer =
   try
     if !raw_records
     then read_records [] answer_input, None, false
-    else split_records [] None None (TlsUtil.merge_records ~enrich:false (read_records [] answer_input))
+    else split_records [] None None (TlsUtil.merge_records ~enrich:NeverEnrich (read_records [] answer_input))
   with _ -> [], None, true
 
 
@@ -130,12 +147,12 @@ let rec handle_answer answer =
       | IP -> print_endline ip
       | Dump -> print_string (dump_answer_dump answer)
       | All ->
-        let records, _, error = parse_all_records answer in
+        let records, _, error = parse_all_records !enrich_style answer in
         print_endline ip;
         List.iter (fun r -> print_endline (print_tls_record ~indent:"  " r)) records;
         if error then print_endline "  ERROR"
       | Suite ->
-        let _, ctx, _ = parse_all_records answer in
+        let _, ctx, _ = parse_all_records !enrich_style answer in
         let cs = match ctx with
           | None -> if !verbose then (Some "ERROR") else None
           | Some ctx -> Some (string_of_ciphersuite ctx.future.s_ciphersuite.suite_name)
@@ -146,7 +163,7 @@ let rec handle_answer answer =
             | Some s -> Printf.printf "%s: %s\n" ip s
         end
       | SKE ->
-        let _, ctx, _ = parse_all_records answer in
+        let _, ctx, _ = parse_all_records !enrich_style answer in
         let ske = match ctx with
           | None -> if !verbose then (Some "ERROR") else None
           | Some { future = { s_server_key_exchange = (SKE_DHE { params = params } ) } } ->
@@ -161,7 +178,7 @@ let rec handle_answer answer =
             | Some s -> Printf.printf "%s: %s\n" ip s
         end
       | ServerRandom ->
-        let records, _, _ = parse_all_records answer in
+        let records, _, _ = parse_all_records !enrich_style answer in
         begin
 	  match records with
           | { content_type = CT_Handshake;
@@ -172,7 +189,7 @@ let rec handle_answer answer =
           | _ -> ()
         end;
       | Scapy ->
-	let records, _, _ = parse_all_records answer in
+	let records, _, _ = parse_all_records !enrich_style answer in
 	let rec convert_to_scapy (len, ps) = function
 	  | [] -> List.rev ps
 	  | r::rs ->
@@ -185,7 +202,7 @@ let rec handle_answer answer =
 	in
 	Printf.printf "ps = [%s]\n" (String.concat ",\n  " (convert_to_scapy (0, []) records))
       | Pcap ->
-	let records, _, _ = parse_all_records answer in
+	let records, _, _ = parse_all_records !enrich_style answer in
 	let rec convert_to_pcap len ps = function
 	  | [] -> ()
 	  | r::rs ->
@@ -196,7 +213,7 @@ let rec handle_answer answer =
 	in
 	convert_to_pcap 0 [] records
       | AnswerType ->
-        let records, _, _ = parse_all_records answer in
+        let records, _, _ = parse_all_records !enrich_style answer in
         begin
 	  match records, answer.content with
 	  | _, "" ->
@@ -225,7 +242,7 @@ let rec handle_answer answer =
           | _, s -> Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
         end;
       | Subject ->
-        let records, _, _ = parse_all_records answer in
+        let records, _, _ = parse_all_records !enrich_style answer in
         let rec extractSubjectOfFirstCert = function
           | [] -> None
           | { content_type = CT_Handshake;
