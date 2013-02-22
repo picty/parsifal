@@ -132,7 +132,7 @@ let signatureType_of_algo algo =
     f algo.algorithmParams
   with Not_found -> ST_Unknown
 
-union signature [enrich] (UnparsedSignature of der_object) =
+union signature [enrich] (UnparsedSignature of binstring) =
   | ST_DSA -> DSASignature of DSAKey.dsa_signature
   | ST_RSA -> RSASignature of RSAKey.rsa_signature
 
