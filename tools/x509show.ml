@@ -6,6 +6,7 @@ open X509Basics
 open X509Extensions
 open X509
 open Getopt
+open Base64
 
 type action =
   | Text | PrettyPrint | Dump | BinDump
@@ -20,11 +21,14 @@ let set_print_names value = TrivialFun (fun () -> print_names := value)
 
 let verbose = ref false
 let keep_going = ref false
+let base64 = ref true
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
   mkopt (Some 'k') "keep-going" (Set keep_going) "keep working even when errors arise";
+  mkopt None "pem" (Set base64) "use PEM format (default)";
+  mkopt None "der" (Clear base64) "use DER format";
 
   mkopt (Some 't') "text" (set_action Text) "prints the certificates given";
   mkopt (Some 'p') "pretty-print" (set_action PrettyPrint) "prints the certificates given";
@@ -77,7 +81,12 @@ let pretty_print_certificate cert =
   ]
 
 let handle_input input =
-  lwt_parse_certificate input >>= fun certificate ->
+  let parse_fun =
+    if !base64
+    then lwt_parse_base64_container None parse_certificate
+    else lwt_parse_certificate
+  in
+  parse_fun input>>= fun certificate ->
   let display = match !action with
     | Serial -> [hexdump certificate.tbsCertificate.serialNumber]
     | CheckSelfSigned ->
