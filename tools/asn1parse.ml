@@ -4,16 +4,28 @@ open Asn1Engine
 open Asn1PTypes
 open Getopt
 open X509
+open Base64
 
 let indent = ref false
 let keep_going = ref false
 let openssl_mode = ref false
+
+let base64 = ref true
+let base64_header = ref (AnyHeader)
+let set_b64_header s =
+  base64_header := HeaderInList [s];
+  ActionDone
+
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'i') "indent" (Set indent) "indent the elements";
   mkopt (Some 'k') "keep-going" (Set keep_going) "keep working even when errors arise";
   mkopt (Some 'o') "openssl-mode" (Set openssl_mode) "mimic the output of openssl asn1parse";
+  mkopt None "pem" (Set base64) "use PEM format (default)";
+  mkopt None "der" (Clear base64) "use DER format";
+  mkopt None "pem-header" (StringFun (set_b64_header)) "specify the header/trailer expected for PEM format";
+  mkopt None "no-pem-header" (TrivialFun (fun () -> base64_header := NoHeader)) "do not expect header/trailer for PEM format";
 
   mkopt (Some 'n') "numeric" (Clear resolve_oids) "show numerical fields (do not resolve OIds)";
   mkopt None "resolve-oids" (Set resolve_oids) "show OID names";
@@ -141,20 +153,25 @@ let catch_exceptions e =
     return ()
   end else fail e
 
-let rec iter_on_names = function
+let rec iter_on_names parse_fun = function
   | [] -> return ()
   | f::r ->
-    let t = input_of_filename f >>= lwt_parse in
+    let t = input_of_filename f >>= parse_fun in
     catch (fun () -> t) catch_exceptions >>= fun () ->
-    iter_on_names r
+    iter_on_names parse_fun r
 
 
 
 let _ =
   let args = parse_args getopt_params Sys.argv in
+  let parse_fun =
+    if !base64
+    then lwt_parse_base64_container !base64_header (parse 0 0)
+    else lwt_parse
+  in
   let t = match args with
-    | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= lwt_parse
-    | _  -> iter_on_names args
+    | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= parse_fun
+    | _  -> iter_on_names parse_fun args
   in
   try
     Lwt_unix.run t;

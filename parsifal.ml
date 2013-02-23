@@ -138,6 +138,7 @@ type parsing_exception =
   | EmptyHistory
   | NonEmptyHistory
   | UnableToRewind
+  | InvalidBase64String of string
   | CustomException of string
   | NotImplemented of string
   | TooFewObjects of int * int
@@ -149,6 +150,7 @@ let print_parsing_exception = function
   | EmptyHistory -> "EmptyHistory"
   | NonEmptyHistory -> "NonEmptyHistory"
   | UnableToRewind -> "UnableToRewind"
+  | InvalidBase64String e -> "Invalid base64 string (" ^ e ^ ")"
   | CustomException e -> e
   | NotImplemented feat -> "Not implemented (" ^ feat ^ ")"
   | TooFewObjects (x, exp_x) ->
@@ -861,3 +863,44 @@ let parse_raw_value offset input =
   String.sub input.str (input.cur_base + offset) (input.cur_offset - offset)
 let lwt_parse_raw_value _offset input =
   raise (ParsingException (NotImplemented "lwt_parse_raw_value", _h_of_li input))
+
+
+
+(* Some useful tools *)
+
+let rec drop_while predicate input =
+  let c = parse_uint8 input in
+  if predicate c
+  then drop_while predicate input
+  else c
+
+let rec _read_while b predicate input =
+  let c = parse_uint8 input in
+  if predicate c then begin
+    Buffer.add_char b (char_of_int c);
+    _read_while b predicate input
+  end
+
+let read_while predicate input =
+  let b = Buffer.create 32 in
+  _read_while b predicate input;
+  Buffer.contents b
+
+
+let rec lwt_drop_while predicate input =
+  lwt_parse_uint8 input >>= fun c ->
+  if predicate c
+  then lwt_drop_while predicate input
+  else return c
+
+let rec _lwt_read_while b predicate input =
+  lwt_parse_uint8 input >>= fun c ->
+  if predicate c then begin
+    Buffer.add_char b (char_of_int c);
+    _lwt_read_while b predicate input
+  end else return ()
+
+let lwt_read_while predicate input =
+  let b = Buffer.create 32 in
+  _lwt_read_while b predicate input >>= fun () ->
+  return (Buffer.contents b)

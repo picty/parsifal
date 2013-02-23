@@ -29,80 +29,150 @@ let reverse_base64_chars =
     -3; -3; -3; -3; -3; -3; -3; -3; -3; -3; -3; -3; -3; -3; -3; -3|]
 
 
-(* TODO: Avoid using a custom exception *)
-exception InvalidBase64String of string
+type header_expected =
+  | NoHeader
+  | AnyHeader
+  | HeaderInList of string list
+
+let raiseB64 s i =
+  let h = _h_of_si i in
+  raise (ParsingException (InvalidBase64String s, h))
+
+let lwt_raiseB64 s i =
+  let h = _h_of_li i in
+  fail (ParsingException (InvalidBase64String s, h))
+
+
+
+(* Useful real base64 funs *)
+
+let decode_rev_chunk b = function
+  | [-1; -1; v2; v1] -> 
+    Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)));
+    None
+  | [-1; v3; v2; v1] ->
+    Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)));
+    Buffer.add_char b (char_of_int (((v2 land 0xf) lsl 4) lor (v3 lsr 2)));
+    None
+  | [v4; v3; v2; v1] ->
+    Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)));
+    Buffer.add_char b (char_of_int (((v2 land 0xf) lsl 4) lor (v3 lsr 2)));
+    Buffer.add_char b (char_of_int (((v3 land 0x3) lsl 6) lor v4));
+    Some []
+  | new_chunk -> Some new_chunk
+
+
+let rec debaser b b64chunk input =
+  let c = drop_while (fun c -> reverse_base64_chars.(c) = -2) input in
+  let v = reverse_base64_chars.(c) in
+  if v >= -1 
+  then begin
+    match decode_rev_chunk b (v::b64chunk) with
+    | None -> ()
+    | Some new_chunk -> debaser b new_chunk input
+  end else raiseB64 "Invalid character" input
+
+let rec lwt_debaser b b64chunk lwt_input =
+  lwt_drop_while (fun c -> reverse_base64_chars.(c) = -2) lwt_input >>= fun c ->
+  let v = reverse_base64_chars.(c) in
+  if v >= -1 
+  then begin
+    match decode_rev_chunk b (v::b64chunk) with
+    | None -> return ()
+    | Some new_chunk -> lwt_debaser b new_chunk lwt_input
+  end else lwt_raiseB64 "Invalid character" lwt_input
+
+
+
+let string_of_base64_title title input =
+  let read_title header input =
+    let c = drop_while (fun c -> reverse_base64_chars.(c) = -2) input in
+    if char_of_int c <> '-'
+    then raiseB64 "Dash expected" input;
+    parse_magic (if header then "----BEGIN " else "----END ") input;
+    let title = read_while (fun c -> c <> (int_of_char '-')) input in
+    parse_magic "----" input;
+    title
+  in
+
+  let res = Buffer.create 1024 in
+  let t1 = read_title true input in
+  debaser res [] input;
+  let t2 = read_title false input in
+  match title, t1 = t2 with
+  | None, true -> Buffer.contents res
+  | Some t, true ->
+    if not (List.mem t1 t)
+    then raiseB64 (List.hd t ^ " expected, " ^ t1 ^ " found") input
+    else Buffer.contents res
+  | _, false -> raiseB64 "inconsistent titles" input
+
+
+let lwt_string_of_base64_title title lwt_input =
+  let lwt_read_title header lwt_input =
+    lwt_drop_while (fun c -> reverse_base64_chars.(c) = -2) lwt_input >>= fun c ->
+    if char_of_int c <> '-'
+    then lwt_raiseB64 "Dash expected" lwt_input
+    else begin
+      lwt_parse_magic (if header then  "----BEGIN " else "----END ") lwt_input >>= fun () ->
+      lwt_read_while (fun c -> c <> (int_of_char '-')) lwt_input >>= fun title ->
+      lwt_parse_magic "----" lwt_input >>= fun () ->
+      return title
+    end
+  in
+
+  let res = Buffer.create 1024 in
+  lwt_read_title true lwt_input >>= fun t1 ->
+  lwt_debaser res [] lwt_input >>= fun () ->
+  lwt_read_title false lwt_input >>= fun t2 ->
+  match title, t1 = t2 with
+  | None, true ->
+    return (Buffer.contents res)
+  | Some t, true ->
+    if not (List.mem t1 t)
+    then lwt_raiseB64 (List.hd t ^ " expected, " ^ t1 ^ " found") lwt_input
+    else return (Buffer.contents res)
+  | _, false -> lwt_raiseB64 "inconsistent titles" lwt_input
+
+
 
 let to_raw_base64 s =
   let n = String.length s in
-  let n_groups = (n+2) / 3 in
-  let res = String.make (n_groups * 4) '=' in
-
-  let rec get_next_group i =
-    match n - i with
-      | 0 -> 0, 0
-      | 1 -> (int_of_char (s.[i]) lsl 16), 2
-      | 2 ->
-	(int_of_char (s.[i]) lsl 16) lor
-	  (int_of_char (s.[i+1]) lsl 8), 3
-      | _ ->
-	(int_of_char (s.[i]) lsl 16) lor
-	  (int_of_char (s.[i+1]) lsl 8) lor
-	  (int_of_char (s.[i+2])), 4
+  let res = Buffer.create n in
+  let rec add_group = function
+    | v::r, n ->
+      Buffer.add_char res base64_chars.[v];
+      add_group (r, n)
+    | [], 0 -> ()
+    | [], _ ->
+      Buffer.add_char res '=';
+      add_group ([], n-1)
   in
-
-  let encode_group dest_i v significant_bytes =
-    let rec encode_aux v k =
-      if k < significant_bytes
-      then res.[dest_i + k] <- base64_chars.[v land 63];
-      if (k>0) then encode_aux (v lsr 6) (k-1)
-    in
-    encode_aux v 3
-  in
-
-  for i = 0 to n_groups - 1 do
-    let group, significant_bytes = get_next_group (i*3) in
-    encode_group (i*4) group significant_bytes;
-  done;
-  res
-
-
-let from_raw_base64 s =
-  let n = String.length s in
-  if n mod 4 <> 0 then raise (InvalidBase64String "Wrong length");
-  let n_groups = n/4 in
-  let to_drop, entire_groups =
-    if s.[n-1] = '=' then begin
-      (if s.[n-2] = '=' then 2 else 1), n_groups - 1
-    end else 0, n_groups
-  in
-  let decoded_len = (n_groups * 3) - to_drop in
-  let res = String.make decoded_len '\x00' in
-  
-  for i = 0 to entire_groups - 1 do
-    let v1 = reverse_base64_chars.(int_of_char (s.[i * 4]))
-    and v2 = reverse_base64_chars.(int_of_char (s.[i * 4 + 1]))
-    and v3 = reverse_base64_chars.(int_of_char (s.[i * 4 + 2]))
-    and v4 = reverse_base64_chars.(int_of_char (s.[i * 4 + 3])) in
-    res.[i * 3] <- char_of_int ((v1 lsl 2) lor (v2 lsr 4));
-    res.[i * 3 + 1] <- char_of_int (((v2 land 0xf) lsl 4) lor (v3 lsr 2));
-    res.[i * 3 + 2] <- char_of_int (((v3 land 0x3) lsl 6) lor v4)
-  done;
-
-  begin
-    match to_drop with
+  let rec handle_next_group i rem =
+    match rem with
+      | 0 -> ()
       | 1 ->
-	let v1 = reverse_base64_chars.(int_of_char (s.[n - 4]))
-	and v2 = reverse_base64_chars.(int_of_char (s.[n - 3]))
-	and v3 = reverse_base64_chars.(int_of_char (s.[n - 2])) in
-	res.[decoded_len - 2] <- char_of_int ((v1 lsl 2) lor (v2 lsr 4));
-	res.[decoded_len - 1] <- char_of_int (((v2 land 0xf) lsl 4) lor (v3 lsr 2));
+	let v1 = int_of_char (s.[i]) in
+	add_group ([v1 lsr 2;
+		    (v1 lsl 4) land 0x3f], 2)
       | 2 ->
-	let v1 = reverse_base64_chars.(int_of_char (s.[n - 4]))
-	and v2 = reverse_base64_chars.(int_of_char (s.[n - 3])) in
-	res.[decoded_len - 1] <- char_of_int ((v1 lsl 2) lor (v2 lsr 4));
-      | _ -> ()
-  end;
-  res;;
+	let v1 = int_of_char (s.[i])
+	and v2 = int_of_char (s.[i+1]) in
+	add_group ([v1 lsr 2;
+		    ((v1 lsl 4) land 0x3f) lor (v2 lsr 4);
+		    (v2 lsl 2) land 0x3f], 1)
+      | _ ->
+	let v1 = int_of_char (s.[i])
+	and v2 = int_of_char (s.[i+1])
+	and v3 = int_of_char (s.[i+2]) in
+	add_group ([v1 lsr 2;
+		    ((v1 lsl 4) land 0x3f) lor (v2 lsr 4);
+		    ((v2 lsl 2) land 0x3f) lor (v2 lsr 6);
+	      v3 land 0x3f], 0);
+	handle_next_group (i+3) (rem-3)
+  in
+  handle_next_group 0 n;
+    Buffer.contents res
 
 
 let to_base64 title s =
@@ -124,138 +194,17 @@ let to_base64 title s =
 
 
 
-let from_base64 title input =
-  let rec next_nonblank input =
-    let c = parse_uint8 input in
-    if reverse_base64_chars.(c) = -2
-    then next_nonblank input
-    else c
+(* Base64 container *)
+
+let parse_base64_container header_expected parse_fun input =
+  let content = match header_expected with
+    | NoHeader ->
+      let res = Buffer.create 1024 in
+      debaser res [] input;
+      Buffer.contents res
+    | AnyHeader -> string_of_base64_title None input
+    | HeaderInList l -> string_of_base64_title (Some l) input
   in
-
-  let rec debaser b b64chunk input =
-    let v = next_nonblank input in
-    if v >= -1 
-    then begin
-      match v::b64chunk with
-      | [-1; -1; v2; v1] -> 
-	Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)))
-      | [-1; v3; v2; v1] ->
-	Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)));
-	Buffer.add_char b (char_of_int (((v2 land 0xf) lsl 4) lor (v3 lsr 2)))
-      | [v4; v3; v2; v1] ->
-	Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)));
-	Buffer.add_char b (char_of_int (((v2 land 0xf) lsl 4) lor (v3 lsr 2)));
-	Buffer.add_char b (char_of_int (((v3 land 0x3) lsl 6) lor v4));
-	debaser b [] input
-      | new_chunk -> debaser b new_chunk input
-    end else raise (InvalidBase64String "Invalid character")
-  in
-
-  let rec read_until_dash b input =
-    let c = parse_char input in
-    if c <> '-' then begin
-      Buffer.add_char b c;
-      read_until_dash b input
-    end
-  in
-
-  let read_title header input =
-    let c = next_nonblank input in
-    if char_of_int c <> '-'
-    then raise (InvalidBase64String "Invalid character");
-    let title = Buffer.create 32 in
-    if header
-    then parse_magic "----BEGIN " input
-    else parse_magic "----END " input;
-    read_until_dash title input;
-    parse_magic "----" input;
-    Buffer.contents title
-  in
-
-  let res = Buffer.create 1024 in
-  let t1 = read_title true input in
-  debaser res [] input;
-  let t2 = read_title false input in
-  match title, t1 = t2 with
-  | None, true -> Buffer.contents res
-  | Some t, true ->
-    if not (List.mem t1 t)
-    then raise (InvalidBase64String (t1 ^ " expected, " ^ t2 ^ " found"))
-    else Buffer.contents res
-  | _, false ->
-    raise (InvalidBase64String ("inconsistent titles"))
-
-
-let lwt_from_base64 title input =
-  let rec next_nonblank input =
-    lwt_parse_uint8 input >>= fun c ->
-    if reverse_base64_chars.(c) = -2
-    then next_nonblank input
-    else return c
-  in
-
-  let rec debaser b b64chunk input =
-    next_nonblank input >>= fun c ->
-    let v = reverse_base64_chars.(c) in
-    if v >= -1
-    then begin
-      match v::b64chunk with
-      | [-1; -1; v2; v1] -> 
-	Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)));
-	return ()
-      | [-1; v3; v2; v1] ->
-	Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)));
-	Buffer.add_char b (char_of_int (((v2 land 0xf) lsl 4) lor (v3 lsr 2)));
-	return ()
-      | [v4; v3; v2; v1] ->
-	Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)));
-	Buffer.add_char b (char_of_int (((v2 land 0xf) lsl 4) lor (v3 lsr 2)));
-	Buffer.add_char b (char_of_int (((v3 land 0x3) lsl 6) lor v4));
-	debaser b [] input
-      | new_chunk -> debaser b new_chunk input
-    end else fail (InvalidBase64String "Invalid character")
-  in
-
-  let rec read_until_dash b input =
-    lwt_parse_char input >>= fun c ->
-    if c <> '-' then begin
-      Buffer.add_char b c;
-      read_until_dash b input
-    end else return ()
-  in
-
-  let read_title header input =
-    next_nonblank input >>= fun c ->
-    if char_of_int c <> '-'
-    then fail (InvalidBase64String "Invalid character")
-    else begin
-      let title = Buffer.create 32 in
-      (if header
-      then lwt_parse_magic "----BEGIN "
-      else lwt_parse_magic "----END ") input >>= fun () ->
-      read_until_dash title input >>= fun () ->
-      lwt_parse_magic "----" input >>= fun () ->
-      return (Buffer.contents title)
-    end
-  in
-
-  let res = Buffer.create 1024 in
-  read_title true input >>= fun t1 ->
-  debaser res [] input >>= fun () ->
-  read_title false input >>= fun t2 ->
-  match title, t1 = t2 with
-  | None, true ->
-    return (Buffer.contents res)
-  | Some t, true ->
-    if not (List.mem t1 t)
-    then fail (InvalidBase64String (t1 ^ " expected, " ^ t2 ^ " found"))
-    else return (Buffer.contents res)
-  | _, false ->
-    fail (InvalidBase64String ("inconsistent titles"))
-
-
-let parse_base64_container title parse_fun input =
-  let content = from_base64 title input in
   let new_input = {
     (input_of_string "base64_container" content) with
       history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history;
@@ -265,16 +214,25 @@ let parse_base64_container title parse_fun input =
   check_empty_input true new_input;
   res
 
-let lwt_parse_base64_container title parse_fun input =
-  lwt_from_base64 title input >>= fun content ->
+let lwt_parse_base64_container title parse_fun lwt_input =
+  begin
+    match title with
+    | NoHeader ->
+      let res = Buffer.create 1024 in
+      lwt_debaser res [] lwt_input >>= fun () ->
+      return (Buffer.contents res)
+    | AnyHeader -> lwt_string_of_base64_title None lwt_input
+    | HeaderInList l -> lwt_string_of_base64_title (Some l) lwt_input
+  end >>= fun content ->
   let new_input = {
     (input_of_string "base64_container" content) with
-      history = [input.lwt_name, input.lwt_offset, None];
-      enrich = input.lwt_enrich
+      history = [lwt_input.lwt_name, lwt_input.lwt_offset, None];
+      enrich = lwt_input.lwt_enrich
   } in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   return res
+
 
 let dump_base64_container title dump_fun o =
   let content = dump_fun o in
