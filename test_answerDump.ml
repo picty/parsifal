@@ -62,6 +62,17 @@ let getopt_params = {
 }
 
 
+let handle_exn f x =
+  try Some (f x)
+  with
+  | ParsingException (e, h) ->
+    if !verbose then prerr_endline (string_of_exception e h);
+    None
+  | e ->
+    if !verbose then prerr_endline (Printexc.to_string e);
+    None
+
+
 let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
   input_of_fd filename fd
@@ -70,22 +81,24 @@ let parse_all_records enrich answer =
   let rec read_records accu i =
     if not (eos i)
     then begin
-      let next = (parse_tls_record None i) in
-      read_records (next::accu) i
-    end else List.rev accu
+      match handle_exn (parse_tls_record None) i with
+      | Some next -> read_records (next::accu) i
+      | None -> List.rev accu, true
+    end else List.rev accu, false
   in
+
   (* TODO: Move this function in TlsUtil? *)
-  let rec split_records accu ctx str_input recs = match str_input, recs with
-    | None, [] -> List.rev accu, ctx, false
+  let rec split_records accu ctx str_input recs error = match str_input, recs with
+    | None, [] -> List.rev accu, ctx, error
     | None, record::r ->
       let record_input = input_of_string ~enrich:enrich (string_of_ipv4 answer.ip) (dump_record_content record.record_content) in
       let cursor = record.content_type, record.record_version, record_input in
-      split_records accu ctx (Some cursor) r
+      split_records accu ctx (Some cursor) r error
     | Some (ct, v, i), _ ->
-      if eos i then split_records accu ctx None recs
+      if eos i then split_records accu ctx None recs error
       else begin
-        try
-          let next_content = parse_record_content ctx ct i in
+        match handle_exn (parse_record_content ctx ct) i with
+        | Some next_content ->
           let next_record = {
             content_type = ct;
             record_version = v;
@@ -96,30 +109,23 @@ let parse_all_records enrich answer =
               | None, Handshake {handshake_content = ServerHello sh} ->
                 let real_ctx = empty_context () in
                 TlsEngine.update_with_server_hello real_ctx sh;
-                split_records (next_record::accu) (Some real_ctx) str_input recs
+                split_records (next_record::accu) (Some real_ctx) str_input recs error
               | Some c, Handshake {handshake_content = ServerKeyExchange ske} ->
                 TlsEngine.update_with_server_key_exchange c ske;
-                split_records (next_record::accu) ctx str_input recs
-              | _ -> split_records (next_record::accu) ctx str_input recs
+                split_records (next_record::accu) ctx str_input recs error
+              | _ -> split_records (next_record::accu) ctx str_input recs error
           end;
-
-        with
-        | ParsingException (e, h) ->
-          if !verbose then prerr_endline (string_of_exception e h);
-          List.rev accu, ctx, true
-        | e ->
-          if !verbose then prerr_endline (Printexc.to_string e);
-          List.rev accu, ctx, true
+        | None -> List.rev accu, ctx, true
      end
   in
 
   let answer_input = input_of_string (string_of_ipv4 answer.ip) answer.content in
   enrich_record_content := false;
-  try
-    if !raw_records
-    then read_records [] answer_input, None, false
-    else split_records [] None None (TlsUtil.merge_records ~enrich:NeverEnrich (read_records [] answer_input))
-  with _ -> [], None, true
+  let raw_recs, err = read_records [] answer_input in
+  if !raw_records
+  then raw_recs, None, err
+  else split_records [] None None (TlsUtil.merge_records ~enrich:NeverEnrich raw_recs) err
+
 
 
 let dump_extract s =
