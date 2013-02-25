@@ -22,6 +22,13 @@ let set_enrich_level l =
     enrich_style := EnrichLevel l;
     ActionDone
   end else ShowUsage (Some "enrich level should be a positive number.")
+let update_enrich_level l =
+  let new_style = match !enrich_style with
+    | DefaultEnrich | NeverEnrich -> EnrichLevel l
+    | EnrichLevel x -> EnrichLevel (max x l)
+    | AlwaysEnrich -> AlwaysEnrich
+  in enrich_style := new_style
+
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
@@ -32,14 +39,14 @@ let options = [
   mkopt (Some 'a') "all" (TrivialFun (fun () -> action := All)) "show all the information and records of an answer";
   mkopt (Some 'I') "ip" (TrivialFun (fun () -> action := IP)) "only show the IP of the answers";
   mkopt (Some 'D') "dump" (TrivialFun (fun () -> action := Dump)) "dumps the answers";
-  mkopt (Some 's') "ciphersuite" (TrivialFun (fun () -> action := Suite)) "only show the ciphersuite chosen";
-  mkopt (Some 'S') "ske" (TrivialFun (fun () -> action := SKE)) "only show information relative to ServerKeyExchange";
-  mkopt None "server-random" (TrivialFun (fun () -> action := ServerRandom)) "only output the server random";
+  mkopt (Some 's') "ciphersuite" (TrivialFun (fun () -> action := Suite; update_enrich_level 2)) "only show the ciphersuite chosen";
+  mkopt (Some 'S') "ske" (TrivialFun (fun () -> action := SKE; update_enrich_level 2)) "only show information relative to ServerKeyExchange";
+  mkopt None "server-random" (TrivialFun (fun () -> action := ServerRandom; update_enrich_level 2)) "only output the server random";
   mkopt None "scapy-style" (TrivialFun (fun () -> action := Scapy)) "outputs the records as independant scapy-style packets";
   mkopt None "output-pcap" (TrivialFun (fun () -> action := Pcap)) "export the answer as a PCAP";
-  mkopt None "answer-type" (TrivialFun (fun () -> action := AnswerType)) "prints the answer types";
+  mkopt None "answer-type" (TrivialFun (fun () -> action := AnswerType; update_enrich_level 5)) "prints the answer types";
   mkopt None "junk-length" (IntVal junk_length) "Sets the max length of junk stuff to print";
-  mkopt None "cn" (TrivialFun (fun () -> action := Subject)) "show the subect";
+  mkopt None "cn" (TrivialFun (fun () -> action := Subject; update_enrich_level 2)) "show the subect";
 
   mkopt None "always-enrich" (TrivialFun (fun () -> enrich_style := AlwaysEnrich)) "always enrich the structure parsed";
   mkopt None "never-enrich" (TrivialFun (fun () -> enrich_style := NeverEnrich)) "never enrich the structure parsed";
