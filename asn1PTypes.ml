@@ -146,7 +146,7 @@ let parse_der_oid_content input =
 	let next = parse_subid input in
 	next::(aux ())
       with ParsingException (OutOfBounds, h) ->
-	warning_h OIdNotInNormalForm h;
+	warning_h input.err_fun OIdNotInNormalForm h;
 	[]
     end
   in
@@ -292,7 +292,7 @@ let dump_der_enumerated_bitstring_content description l =
 	then enumerate_bits next_bv (bitval::accu) (i+1) r_v
 	else enumerate_bits next_bv (0::accu) (i+1) l_v
       end else begin
-	warning_h (BitStringNotInNormalForm "Ignoring unknown strings in the given list") [];
+	warning_h prerr_endline (BitStringNotInNormalForm "Ignoring unknown strings in the given list") [];
 	List.rev accu
       end
   in
@@ -547,7 +547,8 @@ let parse_bitstring_container parse_fun input =
   let new_input = {
     (input_of_string "bitstring_container" content) with
       history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history;
-      enrich = input.enrich
+      enrich = input.enrich;
+      err_fun = input.err_fun
   } in
   let res = parse_fun new_input in
   check_empty_input true new_input;
@@ -563,7 +564,8 @@ let parse_octetstring_container parse_fun input =
   let new_input = {
     (input_of_string "subjectPublicKey_content" content) with
       history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history;
-      enrich = input.enrich
+      enrich = input.enrich;
+      err_fun = input.err_fun
   } in
   let res = parse_fun new_input in
   check_empty_input true new_input;

@@ -109,7 +109,8 @@ type string_input = {
   mutable cur_offset : int;
   cur_length : int;
   mutable enrich : enrich_style;
-  history : history
+  history : history;
+  err_fun : string -> unit
 }
 
 type lwt_input = {
@@ -118,7 +119,8 @@ type lwt_input = {
   mutable lwt_offset : int;
   lwt_rewindable : bool;
   mutable lwt_length : int;
-  lwt_enrich : enrich_style
+  lwt_enrich : enrich_style;
+  lwt_err_fun : string -> unit
 }
 
 let print_history ?prefix:(prefix=" in ") history =
@@ -173,26 +175,27 @@ let emit_parsing_exception fatal e i =
   let h = _h_of_si i in
   if fatal
   then raise (ParsingException (e, h))
-  else prerr_endline (string_of_exception e h)
+  else i.err_fun (string_of_exception e h)
 
 let lwt_emit_parsing_exception fatal e i =
   let h = _h_of_li i in
   if fatal
   then fail (ParsingException (e, h))
-  else Lwt_io.write_line Lwt_io.stderr (string_of_exception e h)
+  else return (i.lwt_err_fun (string_of_exception e h))
 
 
 
 (* string_input manipulation *)
 
-let input_of_string ?enrich:(enrich=DefaultEnrich) name s = {
+let input_of_string ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name s = {
     str = s;
     cur_name = name;
     cur_base = 0;
     cur_offset = 0;
     cur_length = String.length s;
     enrich = enrich;
-    history = []
+    history = [];
+    err_fun = if verbose then prerr_endline else ignore
   }
 
 let get_in input name len =
@@ -205,7 +208,8 @@ let get_in input name len =
     cur_offset = 0;
     cur_length = len;
     enrich = update_enrich input.enrich;
-    history = new_history
+    history = new_history;
+    err_fun = input.err_fun
   } else raise (ParsingException (OutOfBounds, new_history))
 
 let get_out old_input input =
@@ -272,7 +276,7 @@ let channel_length ch =
   and is_not_null x = return (Some (Int64.to_int x))  (* TODO: Warning, integer overflow is possible! *)
   in try_bind get_length is_not_null handle_unix_error
 
-let input_of_channel ?enrich:(enrich=DefaultEnrich) name ch =
+let input_of_channel ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name ch =
   channel_length ch >>= fun l ->
   let rewindable, length = match l with
     | None -> false, 0
@@ -283,15 +287,16 @@ let input_of_channel ?enrich:(enrich=DefaultEnrich) name ch =
 	   (* TODO: Possible integer overflow in 32-bit *)
 	   lwt_rewindable = rewindable;
 	   lwt_length = length;
-	   lwt_enrich = enrich }
+	   lwt_enrich = enrich;
+           lwt_err_fun = if verbose then prerr_endline else ignore }
 
-let input_of_fd ?enrich:(enrich=DefaultEnrich) name fd =
+let input_of_fd ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name fd =
   let ch = Lwt_io.of_fd Lwt_io.input fd in
-  input_of_channel ~enrich:enrich name ch
+  input_of_channel ~verbose:verbose ~enrich:enrich name ch
 
-let input_of_filename ?enrich:(enrich=DefaultEnrich) filename =
+let input_of_filename ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  input_of_fd ~enrich:enrich filename fd
+  input_of_fd ~verbose:verbose ~enrich:enrich filename fd
 
 
 let lwt_really_read input len =
@@ -317,7 +322,8 @@ let lwt_get_in input name len =
     cur_offset = 0;
     cur_length = len;
     enrich = update_enrich input.lwt_enrich;
-    history = [input.lwt_name, input.lwt_offset, None]
+    history = [input.lwt_name, input.lwt_offset, None];
+    err_fun = input.lwt_err_fun
   }
 
 let lwt_get_out old_input input =

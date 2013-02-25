@@ -2,12 +2,12 @@ open Parsifal
 open Asn1Engine
 open Tls
 
-let merge_records ?context:(ctx=None) ?enrich:(enrich=AlwaysEnrich) recs =
+let merge_records ?context:(ctx=None) ?verbose:(verbose=true) ?enrich:(enrich=AlwaysEnrich) recs =
   let mk_merged_record ct v contents =
     let merged_contents = String.concat "" (List.rev contents) in
     let real_content =
       try
-	let input = input_of_string ~enrich:enrich "Merged records" merged_contents in
+	let input = input_of_string ~verbose:verbose ~enrich:enrich "Merged records" merged_contents in
 	parse_record_content ctx ct input
       with ParsingException _ -> Unparsed_Record merged_contents
     in

@@ -75,7 +75,7 @@ let handle_exn f x =
 
 let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  input_of_fd filename fd
+  input_of_fd ~verbose:(!verbose) filename fd
 
 let parse_all_records enrich answer =
   let rec read_records accu i =
@@ -91,7 +91,7 @@ let parse_all_records enrich answer =
   let rec split_records accu ctx str_input recs error = match str_input, recs with
     | None, [] -> List.rev accu, ctx, error
     | None, record::r ->
-      let record_input = input_of_string ~enrich:enrich (string_of_ipv4 answer.ip) (dump_record_content record.record_content) in
+      let record_input = input_of_string ~verbose:(!verbose) ~enrich:enrich (string_of_ipv4 answer.ip) (dump_record_content record.record_content) in
       let cursor = record.content_type, record.record_version, record_input in
       split_records accu ctx (Some cursor) r error
     | Some (ct, v, i), _ ->
@@ -119,12 +119,12 @@ let parse_all_records enrich answer =
      end
   in
 
-  let answer_input = input_of_string (string_of_ipv4 answer.ip) answer.content in
+  let answer_input = input_of_string ~verbose:(!verbose) (string_of_ipv4 answer.ip) answer.content in
   enrich_record_content := false;
   let raw_recs, err = read_records [] answer_input in
   if !raw_records
   then raw_recs, None, err
-  else split_records [] None None (TlsUtil.merge_records ~enrich:NeverEnrich raw_recs) err
+  else split_records [] None None (TlsUtil.merge_records ~verbose:(!verbose) ~enrich:NeverEnrich raw_recs) err
 
 
 
@@ -264,7 +264,7 @@ let rec handle_answer answer =
                 handshake_content = Certificate ((UnparsedCertificate cert_string)::_) }}::_ ->
             begin
               try
-                let cert = parse_certificate (input_of_string "" cert_string) in
+                let cert = parse_certificate (input_of_string ~verbose:(!verbose) "" cert_string) in
                 Some (String.concat ", " (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
               with _ -> None
             end
@@ -296,7 +296,7 @@ let _ =
     if !action = Pcap
     then print_string (Pcap.std_pcap_hdr_str);
     let open_files = function
-      | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= fun x -> return [x]
+      | [] -> input_of_channel ~verbose:(!verbose) "(stdin)" Lwt_io.stdin >>= fun x -> return [x]
       | _ -> Lwt_list.map_s input_of_filename args
     in
     Lwt_unix.run (open_files args >>= Lwt_list.iter_s handle_one_file);

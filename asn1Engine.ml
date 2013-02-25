@@ -94,8 +94,8 @@ let print_asn1_exception = function
 
 
 let fatal_error e i = raise (ParsingException (CustomException (print_asn1_exception e), _h_of_si i))
-let warning_h e h = prerr_endline (string_of_exception (CustomException (print_asn1_exception e)) h)
-let warning e i = warning_h e (_h_of_si i)
+let warning_h f e h = f (string_of_exception (CustomException (print_asn1_exception e)) h)
+let warning e i = warning_h i.err_fun e (_h_of_si i)
 
 
 (* Header *)
@@ -253,7 +253,8 @@ let _lwt_extract_der_object name header_constraint parse_content input =
     cur_offset = offset;
     cur_length = -1;
     enrich = input.lwt_enrich;
-    history = []
+    history = [];
+    err_fun = input.lwt_err_fun
   } in
   check_header header_constraint fake_input (c, isC, t);
   let hlen = input.lwt_offset - offset in
