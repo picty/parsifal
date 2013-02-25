@@ -9,7 +9,7 @@ open Getopt
 open X509Basics
 open X509
 
-type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType
+type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType | RecordTypes
 let action = ref IP
 let verbose = ref false
 let raw_records = ref false
@@ -45,6 +45,7 @@ let options = [
   mkopt None "scapy-style" (TrivialFun (fun () -> action := Scapy)) "outputs the records as independant scapy-style packets";
   mkopt None "output-pcap" (TrivialFun (fun () -> action := Pcap)) "export the answer as a PCAP";
   mkopt None "answer-type" (TrivialFun (fun () -> action := AnswerType; update_enrich_level 5)) "prints the answer types";
+  mkopt None "record-types" (TrivialFun (fun () -> action := RecordTypes; update_enrich_level 2)) "prints the records received";
   mkopt None "junk-length" (IntVal junk_length) "Sets the max length of junk stuff to print";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject; update_enrich_level 2)) "show the subect";
 
@@ -254,6 +255,21 @@ let rec handle_answer answer =
 
           | _, s -> Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
         end;
+      | RecordTypes ->
+        let records, _, err = parse_all_records !enrich_style answer in
+	let rec get_type = function
+	  | [], false -> []
+	  | [], true -> ["ERROR"]
+	  | { content_type = CT_Alert; record_content = Alert a }::r, err ->
+	    let al = int_of_tls_alert_level a.alert_level
+	    and at = int_of_tls_alert_type  a.alert_type in
+	    (Printf.sprintf "Alert(%d,%d)" al at)::(get_type (r, err))
+	  | { content_type = CT_Handshake ; record_content = Handshake h }::r, err ->
+	    (string_of_hs_message_type h.handshake_type)::(get_type (r, err))
+	  | _::r, err -> "UNKNOWN"::(get_type (r, err))
+	in
+	let res = String.concat " " (get_type (records, err)) in
+	Printf.printf "%s\t%s\n" ip res
       | Subject ->
         let records, _, _ = parse_all_records !enrich_style answer in
         let rec extractSubjectOfFirstCert = function
@@ -302,5 +318,5 @@ let _ =
     Lwt_unix.run (open_files args >>= Lwt_list.iter_s handle_one_file);
   with
     | End_of_file -> ()
-    | e -> print_endline (Printexc.to_string e)
+    | e -> prerr_endline (Printexc.to_string e)
 
