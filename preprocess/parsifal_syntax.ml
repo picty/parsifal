@@ -177,7 +177,6 @@ type field_len =
 
 type ptype =
   | PT_Empty
-  | PT_Char
   | PT_Int of string                        (* name of the integer type *)
   | PT_String of field_len * bool
   | PT_Array of expr * ptype
@@ -301,7 +300,6 @@ let expr_list_of_decorator = function
 
 let ptype_of_ident name decorator subtype =
   match name, decorator, subtype with
-    | <:ident< $lid:"char"$ >>, (None, None), None -> PT_Char
     | <:ident< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, (None, None), None -> PT_Int int_t
 
     | <:ident< $lid:"list"$ >>, (None, None), Some t ->
@@ -451,7 +449,6 @@ let mk_enum_of_string _loc enum =
 
 let rec ocaml_type_of_ptype _loc = function
   | PT_Empty
-  | PT_Char -> <:ctyp< $lid:"char"$ >>
   | PT_Int _ -> <:ctyp< $lid:"int"$ >>
   | PT_String _ -> <:ctyp< $lid:"string"$ >>
   | PT_List (_, subtype) -> <:ctyp< list $ocaml_type_of_ptype _loc subtype$ >>
@@ -534,7 +531,6 @@ let rec fun_of_ptype ftype _loc name t =
   match t, ftype with
   (* Trivial ptypes *)
     | PT_Empty, _ -> mkf "empty"
-    | PT_Char, _ -> mkf "char"
     | PT_Int int_t, _ -> mkf int_t
 
   (* String *)
