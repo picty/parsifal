@@ -440,7 +440,6 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
 let mk_parse_fun lwt_fun _loc c =
   let prefix = if lwt_fun then "lwt_" else "" in
   let add_qprefix fname = exp_qname _loc (Some "Parsifal") (prefix ^ fname) in
-  let res_name = prefix ^ "parse_" ^ c.name in
 
   let mk_return e = if lwt_fun then <:expr< Lwt.return $e$ >> else e
   and mk_compose f g x = (* f (g x) *)
@@ -451,6 +450,10 @@ let mk_parse_fun lwt_fun _loc c =
     if lwt_fun
     then <:expr< Lwt.bind ($v$) (fun $lid:x$ -> $e$) >> 
     else <:expr< let $lid:x$ = $v$ in $e$ >>
+  and mk_union_res f cons = (* Cons (f input) *)
+    if lwt_fun
+    then <:expr< Lwt.bind ($f$ input) (fun x -> Lwt.return ($uid:cons$ x)) >>
+    else <:expr< $uid:cons$ ($f$ input) >>
   in
 
   let body = match c.construction with
@@ -486,16 +489,10 @@ let mk_parse_fun lwt_fun _loc c =
 	  <:match_case< $p$ -> $ mk_return <:expr< $uid:cons$ >> $ >>
 	| (_loc, cons, p, t) ->
 	  let f = parse_fun_of_ptype lwt_fun _loc c.name t in
-	  let case_body =
-	    if lwt_fun
-	    then <:expr< Lwt.bind ($f$ input) (fun v -> Lwt.return ($ <:expr< $uid:cons$ >> $ v)) >>
-	    else <:expr< $ <:expr< $uid:cons$ >> $ ($f$ input) >>
-	  in <:match_case< $p$ -> $case_body$ >>
+	  <:match_case< $p$ -> $mk_union_res f cons$ >>
       and mk_unparsed =
 	let f = parse_fun_of_ptype lwt_fun _loc c.name union.unparsed_type in
-	if lwt_fun
-	then <:expr< Lwt.bind ($f$ input) (fun v -> Lwt.return ($ <:expr< $uid:union.unparsed_constr$ >> $ v)) >>
-	else <:expr< $uid:union.unparsed_constr$ ($f$ input) >>
+	mk_union_res f union.unparsed_constr
       in
       let parsed_cases = List.map mk_case union.uchoices
       and last_case = <:match_case< _ -> $mk_unparsed$ >> in
@@ -513,39 +510,31 @@ let mk_parse_fun lwt_fun _loc c =
       let meta_f = exp_qname _loc (Some "Asn1Engine") (prefix ^ meta_f_name) in
       [ <:expr< $meta_f$ $str:c.name$ $header_constraint$ $f$ input >> ]
 
-    | ASN1Union union -> []
+    | ASN1Union union ->
+      let mk_case (_loc, cons, p, t) =
+	let parse_fun = parse_fun_of_ptype false _loc c.name t in
+	<:match_case< $p$ -> $ <:expr< $uid:cons$ ($parse_fun$ new_input) >> $ >>
+      in
+      let parsed_cases = List.map mk_case union.uchoices
+      and last_case =
+	<:match_case< (c, _, t) as h -> $ <:expr< $uid:union.unparsed_constr$
+          (Asn1PTypes.mk_object c t (Asn1PTypes.parse_der_object_content h new_input)) >> $ >>
+      in
+      let enrich_flag = <:expr< input.$add_qprefix "enrich"$ >>
+      and wrapper_fun = exp_qname _loc (Some "Asn1PTypes") (prefix ^ "advanced_der_parse")
+      and default_fun = exp_qname _loc (Some "Asn1PTypes") (prefix ^ "parse_der_object") in
 
-(* let mk_asn1_union_parse_fun _loc union = *)
-(*   let mk_case (_loc, p, c, t) = *)
-(*     let parse_fun = fun_of_ptype Parse _loc union.uname t in *)
-(*     <:match_case< $p$ -> $ <:expr< $uid:c$ >> $ ($parse_fun$ new_input) >> *)
-(*   in *)
-(*   let parsed_cases = List.map mk_case union.uchoices *)
-(*   and last_case = <:match_case< (c, _, t) as h -> *)
-(*     $ <:expr< $uid:union.unparsed_constr$ (Asn1PTypes.mk_object c t (Asn1PTypes.parse_der_object_content h new_input)) >> $ *)
-(*   >> in *)
-(*   let body = <:expr< *)
-(*     let aux h new_input = match h with *)
-(*       [ $list:(parsed_cases@[last_case])$ ] *)
-(*     in *)
-(*     if Parsifal.should_enrich $lid:"enrich_" ^ union.uname$ input.Parsifal.enrich *)
-(*     then Asn1PTypes.advanced_der_parse aux input *)
-(*     else $ <:expr< $uid:union.unparsed_constr$ (Asn1PTypes.parse_der_object input) >> $ >> *)
-(*   and lwt_body = <:expr< *)
-(*     let aux h new_input = match h with *)
-(*       [ $list:(parsed_cases@[last_case])$ ] *)
-(*     in *)
-(*     if Parsifal.should_enrich $lid:"enrich_" ^ union.uname$ input.Parsifal.lwt_enrich *)
-(*     then Asn1PTypes.lwt_advanced_der_parse aux input *)
-(*     else Lwt.bind (Asn1PTypes.lwt_parse_der_object input) (fun o -> $ <:expr< Lwt.return ($uid:union.unparsed_constr$ o) >> $) >> *)
-(*   in *)
-(*   let params = union.uparse_params@["input"] in *)
-(*   if union.udo_lwt then [ *)
-(*     mk_multiple_args_fun _loc ("parse_" ^ union.uname) params body; *)
-(*     mk_multiple_args_fun _loc ("lwt_parse_" ^ union.uname) params lwt_body *)
-(*   ] else [ mk_multiple_args_fun _loc ("parse_" ^ union.uname) params body ] *)
+      [ <:expr<
+	  let aux h new_input = match h with
+	      [ $list:(parsed_cases@[last_case])$ ]
+	  in
+	  if Parsifal.should_enrich $lid:"enrich_" ^ c.name$ $enrich_flag$
+	  then $wrapper_fun$ aux input
+	  else $mk_union_res default_fun union.unparsed_constr$ >> ]
 
-  in List.map (mk_multiple_args_fun _loc res_name (c.parse_params@["input"])) body
+  in
+  let res_name = prefix ^ "parse_" ^ c.name in
+  List.map (mk_multiple_args_fun _loc res_name (c.parse_params@["input"])) body
 
 
 
