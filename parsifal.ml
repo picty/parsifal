@@ -864,11 +864,11 @@ let lwt_parse_seek_offset offset input =
   in try_bind (set_offset) (fun () -> return ()) handle_unix_error
 
 
-type raw_value = string
+type raw_value = string option
 let parse_raw_value offset input =
-  String.sub input.str (input.cur_base + offset) (input.cur_offset - offset)
+  Some (String.sub input.str (input.cur_base + offset) (input.cur_offset - offset))
 let lwt_parse_raw_value _offset input =
-  raise (ParsingException (NotImplemented "lwt_parse_raw_value", _h_of_li input))
+  fail (ParsingException (NotImplemented "lwt_parse_raw_value", _h_of_li input))
 
 
 
