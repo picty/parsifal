@@ -100,3 +100,29 @@ let parse_length_constrained_container len_cons parse_fun input =
 let dump_length_constrained_container (* len_cons *) dump_fun o =
   (* Warning if length constraint not validated? *)
   dump_fun o
+
+
+
+
+(* Parse checkpoints and raw values *)
+
+let parse_save_offset input = input.cur_offset
+let lwt_parse_save_offset input = input.lwt_offset
+let parse_seek_offset offset input = input.cur_offset <- offset
+let lwt_parse_seek_offset offset input =
+  let handle_unix_error = function
+    | Unix.Unix_error (Unix.ESPIPE, "lseek", "") -> return ()
+    | e -> fail e
+  and set_offset () =
+    Lwt_io.set_position input.lwt_ch (Int64.of_int offset) >>= fun _ ->
+    (* TODO: Warning, integer overflow is possible! *)
+      input.lwt_offset <- offset;
+      return ()
+  in try_bind (set_offset) (fun () -> return ()) handle_unix_error
+
+
+type raw_value = string option
+let parse_raw_value offset input =
+  Some (String.sub input.str (input.cur_base + offset) (input.cur_offset - offset))
+let lwt_parse_raw_value _offset input =
+  fail (ParsingException (NotImplemented "lwt_parse_raw_value", _h_of_li input))

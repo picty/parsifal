@@ -365,9 +365,27 @@ let lwt_exact_parse lwt_parse_fun input =
 
 
 
+(* Enums *)
+
+let print_enum string_of_val int_of_val nchars ?indent:(indent="") ?name:(name="enum") v =
+  Printf.sprintf "%s%s: %s (%*.*x)\n" indent name (string_of_val v) nchars nchars (int_of_val v)
+
+
+(* Unions *)
+
+let should_enrich global_ref local_arg =
+  match !global_ref, local_arg with
+  | true, DefaultEnrich -> true
+  | _, (AlwaysEnrich | EnrichLevel _) -> true
+  | _ -> false
+
+
+
+
 (**************)
 (* Base types *)
 (**************)
+(* TODO: Move this code to basePTypes *)
 
 (* Integers *)
 
@@ -608,22 +626,6 @@ let print_uint64le ?indent:(indent="") ?name:(name="uint64le") v =
 
 
 
-(* Enums *)
-
-let print_enum string_of_val int_of_val nchars ?indent:(indent="") ?name:(name="enum") v =
-  Printf.sprintf "%s%s: %s (%*.*x)\n" indent name (string_of_val v) nchars nchars (int_of_val v)
-
-
-(* Unions *)
-
-let should_enrich global_ref local_arg =
-  match !global_ref, local_arg with
-  | true, DefaultEnrich -> true
-  | _, (AlwaysEnrich | EnrichLevel _) -> true
-  | _ -> false
-
-
-
 (* Strings *)
 
 let parse_string n input =
@@ -833,32 +835,6 @@ let try_print (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?inde
   | _, None -> ""
   | None, Some x -> print_fun ~indent:indent x
   | Some n, Some x -> print_fun ~indent:indent ~name:n x
-
-
-
-
-(* Parse checkpoints and raw values *)
-
-let parse_save_offset input = input.cur_offset
-let lwt_parse_save_offset input = input.lwt_offset
-let parse_seek_offset offset input = input.cur_offset <- offset
-let lwt_parse_seek_offset offset input =
-  let handle_unix_error = function
-    | Unix.Unix_error (Unix.ESPIPE, "lseek", "") -> return ()
-    | e -> fail e
-  and set_offset () =
-    Lwt_io.set_position input.lwt_ch (Int64.of_int offset) >>= fun _ ->
-    (* TODO: Warning, integer overflow is possible! *)
-      input.lwt_offset <- offset;
-      return ()
-  in try_bind (set_offset) (fun () -> return ()) handle_unix_error
-
-
-type raw_value = string option
-let parse_raw_value offset input =
-  Some (String.sub input.str (input.cur_base + offset) (input.cur_offset - offset))
-let lwt_parse_raw_value _offset input =
-  fail (ParsingException (NotImplemented "lwt_parse_raw_value", _h_of_li input))
 
 
 
