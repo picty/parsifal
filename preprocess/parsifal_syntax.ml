@@ -21,7 +21,7 @@ type parsifal_option =
   | ParseParam of string list
   | DumpParam of string list
 
-type ('a, 'b) choice = Loc.t * string * 'a * 'b   (* loc, constructor name *)
+type 'a choice = Loc.t * string * 'a   (* loc, constructor name *)
 
 
 (* Enums *)
@@ -31,7 +31,7 @@ type enum_unknown_behaviour =
 
 type enum_description = {
   size : int;
-  echoices : (string, string) choice list;     (* int value for enum, display string *)
+  echoices : (string * string) choice list;     (* int value for enum, display string *)
   unknown_behaviour : enum_unknown_behaviour;
 }
 
@@ -61,7 +61,7 @@ type struct_description = (Loc.t * string * ptype * field_attribute) list
 (* Unions *)
 (* ASN1 Unions *)
 type union_description = {
-  uchoices : (patt, ptype) choice list;  (* discriminating value, subtype *)
+  uchoices : (patt * ptype) choice list;  (* discriminating value, subtype *)
   unparsed_constr : string;
   unparsed_type : ptype;
 }
@@ -141,9 +141,9 @@ let rec choices_of_match_cases = function
     (choices_of_match_cases m1)@(choices_of_match_cases m2)
   | McArr (_loc, <:patt< $int:i$ >>, <:expr< >>,
 	   ExTup (_, ExCom (_, <:expr< $uid:c$ >>, <:expr< $str:s$ >> ))) ->
-    [_loc, i, c, s]
+    [_loc, c, (i, s)]
   | McArr (_loc, <:patt< $int:i$ >>, <:expr< >>, <:expr< $uid:c$ >> ) ->
-    [_loc, i, c, c]
+    [_loc, c, (i, c)]
   | mc -> Loc.raise (loc_of_match_case mc) (Failure "Invalid choice for an enum")
 
 
@@ -231,10 +231,10 @@ let asn1_alias_of_ident name hdr =
 (*       for enums, we only need to check the 4th field is the same *)
 (*       for unions it is more complicated                          *)
 
-let keep_unique_cons (constructors : ('a, 'b) choice list) =
+let keep_unique_cons (constructors : 'a choice list) =
   let rec _keep_unique_cons names accu = function
   | [] -> List.rev accu
-  | ((_, n, _, _) as c)::r ->
+  | ((_, n, _) as c)::r ->
     if List.mem n names
     then _keep_unique_cons names accu r
     else _keep_unique_cons (n::names) (c::accu) r
@@ -255,8 +255,8 @@ let ocaml_type_of_field_type _loc t opt =
   let real_t = ocaml_type_of_ptype _loc t in
   if opt = Optional then <:ctyp< option $real_t$ >> else real_t
 
-let keep_built_fields (_, _, _, o) = o <> ParseCheckpoint
-let keep_real_fields (_, _, _, o) = (o <> ParseCheckpoint) && (o <> ParseField)
+let keep_built_fields (_, _, _, a) = a <> ParseCheckpoint
+let keep_real_fields (_, _, _, a) = (a <> ParseCheckpoint) && (a <> ParseField)
 
 let split_header _loc (hdr, isC) =
   let _c, _t = match hdr with
@@ -284,7 +284,7 @@ let mk_decls _loc c =
 let mk_type _loc c =
   let type_body = match c.construction with
     | Enum enum ->
-      let ctors = List.map (fun (_loc, _, n, _) -> <:ctyp< $uid:n$ >>) (keep_unique_cons enum.echoices) in
+      let ctors = List.map (fun (_loc, n, _) -> <:ctyp< $uid:n$ >>) (keep_unique_cons enum.echoices) in
       let suffix_choice = match enum.unknown_behaviour with
 	| UnknownVal v -> [ <:ctyp< $ <:ctyp< $uid:v$ >> $ of int >> ]
 	| _ -> []
@@ -302,9 +302,9 @@ let mk_type _loc c =
 	| [] ->
 	  [ <:ctyp< $ <:ctyp< $uid:union.unparsed_constr$ >> $ of
 	      $ocaml_type_of_ptype _loc union.unparsed_type$ >> ]
-	| (_loc, n, _, PT_Empty)::r -> 
+	| (_loc, n, (_, PT_Empty))::r -> 
 	  (<:ctyp< $uid:n$ >>)::(mk_ctors r)
-	| (_loc, n, _, t)::r ->
+	| (_loc, n, (_, t))::r ->
 	  ( <:ctyp< $ <:ctyp< $uid:n$ >> $ of
           $ocaml_type_of_ptype _loc t$ >> )::(mk_ctors r)
       in
@@ -335,7 +335,7 @@ let mk_specific_funs _loc c =
     in
 
     let mk_string_of_enum =
-      let mk_case (_loc, _, n, d) = <:patt< $uid:n$ >>, <:expr< $str:d$ >> in
+      let mk_case (_loc, n, (_, d)) = <:patt< $uid:n$ >>, <:expr< $str:d$ >> in
       let _cases = List.map mk_case (keep_unique_cons enum.echoices) in
       let cases = match enum.unknown_behaviour with
 	| UnknownVal v ->
@@ -347,7 +347,7 @@ let mk_specific_funs _loc c =
       (fname, cases)
 
     and mk_int_of_enum =
-      let mk_case (_loc, v, n, _) = <:patt< $uid:n$ >>, <:expr< $int:v$ >> in
+      let mk_case (_loc, n, (v, _)) = <:patt< $uid:n$ >>, <:expr< $int:v$ >> in
       let _cases = List.map mk_case (keep_unique_cons enum.echoices) in
       let cases = match enum.unknown_behaviour with
 	| UnknownVal v ->
@@ -359,7 +359,7 @@ let mk_specific_funs _loc c =
       (fname, cases)
 
     and mk_enum_of_int =
-      let mk_case (_loc, v, n, _) = <:patt< $int:v$ >>, <:expr< $uid:n$ >> in
+      let mk_case (_loc, n, (v, _)) = <:patt< $int:v$ >>, <:expr< $uid:n$ >> in
       let _cases = List.map mk_case enum.echoices in
       let last_p, last_e = match enum.unknown_behaviour with
 	| UnknownVal v ->
@@ -373,7 +373,7 @@ let mk_specific_funs _loc c =
       (fname, cases)
 
     and mk_enum_of_string =
-      let mk_case (_loc, _, n, d) = <:patt< $str:d$ >>, <:expr< $uid:n$ >> in
+      let mk_case (_loc, n, (_, d)) = <:patt< $str:d$ >>, <:expr< $uid:n$ >> in
       let _cases = List.map mk_case (keep_unique_cons enum.echoices) in
       let last_p = <:patt< $lid:"s"$ >>
       and eoi = <:expr< $lid:c.name ^ "_of_int"$ >> in
@@ -486,9 +486,9 @@ let mk_parse_fun lwt_fun _loc c =
 
     | Union union ->
       let mk_case = function
-	| (_loc, cons, p, PT_Empty) ->
+	| (_loc, cons, (p, PT_Empty)) ->
 	  <:match_case< $p$ -> $ mk_return <:expr< $uid:cons$ >> $ >>
-	| (_loc, cons, p, t) ->
+	| (_loc, cons, (p, t)) ->
 	  let f = parse_fun_of_ptype lwt_fun _loc c.name t in
 	  <:match_case< $p$ -> $mk_union_res f cons$ >>
       and mk_unparsed =
@@ -513,7 +513,7 @@ let mk_parse_fun lwt_fun _loc c =
       [ <:expr< $meta_f$ $str:c.name$ $header_constraint$ $parse_content$ input >> ]
 
     | ASN1Union union ->
-      let mk_case (_loc, cons, p, t) =
+      let mk_case (_loc, cons, (p, t)) =
 	let parse_fun = parse_fun_of_ptype false _loc c.name t in
 	<:match_case< $p$ -> $ <:expr< $uid:cons$ ($parse_fun$ new_input) >> $ >>
       in
@@ -607,9 +607,9 @@ let mk_dump_fun _loc c =
 
   | Union union ->
     let mk_case = function
-      | _loc, cons, _, PT_Empty ->
+      | _loc, cons, (_, PT_Empty) ->
 	<:match_case< $ <:patt< $uid:cons$ >> $ -> "" >>
-      | _loc, cons, n, t ->
+      | _loc, cons, (n, t) ->
 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
         $ <:expr< $dump_fun_of_ptype _loc c.name t$ x >> $ >>
     and last_case =
@@ -629,7 +629,7 @@ let mk_dump_fun _loc c =
     [ <:expr< $meta_f$ $header_constraint$ $dump_content$ $lid:c.name$ >> ]
 
   | ASN1Union union ->
-    let mk_case (_loc, cons, p, t) =
+    let mk_case (_loc, cons, (p, t)) =
       <:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
       $ <:expr< Asn1Engine.produce_der_object $expr_of_pat p$ $dump_fun_of_ptype _loc c.name t$ x >> $ >>
     and last_case =
@@ -693,10 +693,10 @@ let mk_print_fun _loc c =
   | Union union
   | ASN1Union union ->
     let mk_case = function
-      | _loc, cons, _, PT_Empty ->
+      | _loc, cons, (_, PT_Empty) ->
 	<:match_case< $ <:patt< $uid:cons$ >> $ ->
 	Parsifal.print_binstring ~indent:indent ~name:name "" >>
-      | (_loc, cons, n, t) ->
+      | (_loc, cons, (n, t)) ->
 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
 	$ <:expr< $print_fun_of_ptype _loc c.name t$ ~indent:indent ~name: $ <:expr< $str:cons$ >> $ x >> $ >>
     in
@@ -828,9 +828,9 @@ EXTEND Gram
 
   union_choice: [[
     "|"; discr_val = patt; "->"; constructor = ident; "of"; t = ptype ->
-      (_loc, uid_of_ident constructor, discr_val, t)
+      (_loc, uid_of_ident constructor, (discr_val, t))
   | "|"; discr_val = patt; "->"; constructor = ident ->
-      (_loc, uid_of_ident constructor, discr_val, PT_Empty)
+      (_loc, uid_of_ident constructor, (discr_val, PT_Empty))
   ]];
 
   union_unparsed_behaviour: [[
