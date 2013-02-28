@@ -5,7 +5,6 @@ open Lwt
 (* Useful functions *)
 (********************)
 
-
 let pop_opt default = function
   | None -> default
   | Some x -> x
@@ -369,15 +368,6 @@ let lwt_exact_parse lwt_parse_fun input =
 (**************)
 (* Base types *)
 (**************)
-
-
-(* Empty *)
-
-let parse_empty _ = ()
-let lwt_parse_empty _ = return ()
-let dump_empty () = ""
-let print_empty ?indent:(indent="") ?name:(name="empty") _ = ""
-
 
 (* Integers *)
 

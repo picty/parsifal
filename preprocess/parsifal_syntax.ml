@@ -394,8 +394,6 @@ let mk_specific_funs _loc c =
 (* PARSING FUNCTIONS *)
 (*********************)
 
-(* Common *)
-
 let rec parse_fun_of_ptype lwt_fun _loc name t =
   let prefix = if lwt_fun then "lwt_parse_" else "parse_" in
   let mkf fname = exp_qname _loc (Some "Parsifal") (prefix ^ fname) in
@@ -409,7 +407,7 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
 
     | PT_Custom (m, n, e, _) ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
-      
+
     | PT_List (ExprLen e, subtype) ->
       <:expr< $mkf "list"$ $e$
               $parse_fun_of_ptype lwt_fun _loc name subtype$ >>
@@ -555,8 +553,6 @@ let mk_exact_parse_fun _loc c =
 (* DUMPING FUNCTIONS *)
 (*********************)
 
-(* Common *)
-
 let rec dump_fun_of_ptype _loc name t =
   let mkf fname = exp_qname _loc (Some "Parsifal") ("dump_" ^ fname) in
   match t with
@@ -646,8 +642,6 @@ let mk_dump_fun _loc c =
 (* PRINTING FUNCTIONS *)
 (**********************)
 
-(* Common *)
-
 let rec print_fun_of_ptype _loc name t =
   let mkf fname = exp_qname _loc (Some "Parsifal") ("print_" ^ fname) in
   match t with
@@ -658,7 +652,7 @@ let rec print_fun_of_ptype _loc name t =
     | PT_String (_, false) -> mkf "printablestring"
 
     | PT_Custom (m, n, _, _) -> exp_qname _loc m ("print_" ^ n)
-      
+
     | PT_List (_, subtype) -> <:expr< $mkf "list"$ $print_fun_of_ptype _loc name subtype$ >>
     | PT_Array (_, subtype) -> <:expr< $mkf "array"$ $print_fun_of_ptype _loc name subtype$ >>
     | PT_Container (_, subtype) -> print_fun_of_ptype _loc name subtype
@@ -793,12 +787,10 @@ EXTEND Gram
   | "["; _opts = expr; "]" -> opts_of_seq_expr _opts
   ]];
 
-
   enum_unknown_behaviour: [[
     "Exception"; x = ident -> Exception (uid_of_ident x)
   | "UnknownVal"; x = ident -> UnknownVal (uid_of_ident x)
   ]];
-
 
   ptype_decorator: [[
     "("; e = expr; ")" -> (None, Some e)
@@ -813,7 +805,6 @@ EXTEND Gram
     ptype_of_ident type_name e t
   ]];
 
-
   struct_field: [[
     attr = OPT [
       "optional" -> Optional;
@@ -824,7 +815,6 @@ EXTEND Gram
     | Some a -> (_loc, lid_of_ident name, field, a)
     | None -> (_loc, lid_of_ident name, field, NoFieldAttr)
   ]];
-
 
   union_choice: [[
     "|"; discr_val = patt; "->"; constructor = ident; "of"; t = ptype ->
@@ -837,7 +827,6 @@ EXTEND Gram
     unparsed_const = ident -> (uid_of_ident unparsed_const, None)
   | unparsed_const = ident; "of"; unparsed_type = ptype -> (uid_of_ident unparsed_const, Some unparsed_type)
   ]];
-
 
   asn1_aliased_type_decorator: [[
     "["; tag = ident; "]" -> Some (Universal (uid_of_ident tag))
