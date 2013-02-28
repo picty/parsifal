@@ -60,8 +60,6 @@ v0.1 (oct. 2012 -> jan. 2013)
 
 v0.2 (feb. 2013 -> mar. 2013)
  - General
-   * have a redmine to put all this stuff
-   * Produce a real camlp4 syntax package
    * add Pollux' MakefileV6
    * Think about the exception system (fatal or not) => merge all in ParsifalException
    * add a field "handle_non_lethal_exceptions" to *_input (a function that could be raise or prerr_endline)
@@ -69,13 +67,12 @@ v0.2 (feb. 2013 -> mar. 2013)
      + do we need a separate string_of function, a way to ask for a one liner?
      + do we need a hookable string_of function?
  - Software Engineering
-   * Write some tests (unit tests, non-regression [for X.509 for example], etc.)
+   * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
    * Write .mli files
  - Camlp4/Language
    * rethink the exhaustive/enrich options for unions/asn1_unions
      + *dont_enrich* (enrich_ var) / enrich (enrich_ var) / force_enrich
      + <standard> / force_exhaustive (exhaustive + fail_hard) -> force_enrich / exhaustive / fail_soft (fail_on_enrich var + emit warning) 
-   * try and merge unions and asn1_unions (by using parse/dump params to pass header argument for cases?)
    * add control commands in struct (check / seek / stop)
    * be more cautious about int32 types...
    * add hex_container / gzip_container as custom containers
@@ -86,9 +83,6 @@ v0.2 (feb. 2013 -> mar. 2013)
        -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
- - ASN.1
-   * add a printer version of asn1parse for der_object
-   * add a event-driven der_object version to have a cool asn1parse
  - Tls
    * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
    * Add SSLv2 support in probe_server and other programs
