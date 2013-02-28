@@ -296,7 +296,8 @@ let mk_type _loc c =
       let ctyp_fields = List.map mk_line (List.filter keep_built_fields fields) in
       <:ctyp< { $list:ctyp_fields$ } >>
 
-    | Union union | ASN1Union union ->
+    | Union union
+    | ASN1Union union ->
       let rec mk_ctors = function
 	| [] ->
 	  [ <:ctyp< $ <:ctyp< $uid:union.unparsed_constr$ >> $ of
@@ -501,14 +502,15 @@ let mk_parse_fun lwt_fun _loc c =
 	then match discriminator with [ $list:cases$ ]
 	else $mk_unparsed$ >> ]
 
-    | Alias atype -> [parse_fun_of_ptype lwt_fun _loc c.name atype]
+    | Alias atype ->
+      [ <:expr< $parse_fun_of_ptype lwt_fun _loc c.name atype$ input >> ]
 
     | ASN1Alias alias ->
       let header_constraint = split_header _loc alias.aaheader
-      and f = parse_fun_of_ptype lwt_fun _loc (c.name ^ "_content") alias.aatype in
+      and parse_content = parse_fun_of_ptype false _loc (c.name ^ "_content") alias.aatype in
       let meta_f_name = if alias.aalist then "extract_der_seqof" else "extract_der_object" in
       let meta_f = exp_qname _loc (Some "Asn1Engine") (prefix ^ meta_f_name) in
-      [ <:expr< $meta_f$ $str:c.name$ $header_constraint$ $f$ input >> ]
+      [ <:expr< $meta_f$ $str:c.name$ $header_constraint$ $parse_content$ input >> ]
 
     | ASN1Union union ->
       let mk_case (_loc, cons, p, t) =
@@ -539,7 +541,7 @@ let mk_parse_fun lwt_fun _loc c =
 
 
 let mk_exact_parse_fun _loc c =
-  if List.mem ExactParser c.options then begin
+  if c <.> ExactParser then begin
     let partial_params = List.map (fun p -> <:expr< $lid:p$ >>) c.parse_params
     and params = c.parse_params@["input"] in
     let parse_fun = apply_exprs _loc (exp_qname _loc None ("parse_" ^ c.name)) partial_params in
@@ -588,81 +590,55 @@ let mk_dump_fun _loc c =
   | Enum enum ->
     if enum.size mod 8 = 0 then begin
       let le = (if c <.> LittleEndian then "le" else "") in
-      let dump_int_fun = add_qprefix ("dump_uint" ^ (string_of_int enum.size) ^ le)
+      let dump_int_fun = add_qprefix ("uint" ^ (string_of_int enum.size) ^ le)
       and ioe = <:expr< $lid:"int_of_" ^ c.name$ >> in
-      Some ( <:expr< $dump_int_fun$ ($ioe$ $lid:c.name$) >> )
-    end else None
-
+      [ <:expr< $dump_int_fun$ ($ioe$ $lid:c.name$) >> ]
+    end else []
 
   | Struct fields ->
-    None
+    let dump_one_field (_loc, n, t, attr) =
+      let raw_f = dump_fun_of_ptype _loc n t in
+      let f = if attr = Optional then <:expr< Parsifal.try_dump $raw_f$ >> else raw_f in
+      <:expr< $f$ $lid:c.name$.$lid:n$ >>
+    in
+    let fields_dumped_expr = exp_of_list _loc (List.map dump_one_field (List.filter keep_real_fields fields)) in
+    [ <:expr< let fields_dumped = $fields_dumped_expr$ in
+	      String.concat "" fields_dumped >> ]
 
+  | Union union ->
+    let mk_case = function
+      | _loc, cons, _, PT_Empty ->
+	<:match_case< $ <:patt< $uid:cons$ >> $ -> "" >>
+      | _loc, cons, n, t ->
+	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
+        $ <:expr< $dump_fun_of_ptype _loc c.name t$ x >> $ >>
+    and last_case =
+      <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
+      $ <:expr< $dump_fun_of_ptype _loc c.name union.unparsed_type$ x >> $ >>
+    in
+    let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
+    [ <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >> ]
 
-  | _ -> None  (* TODO !!! *)
+  | Alias atype -> [ <:expr< $dump_fun_of_ptype _loc c.name atype$ $lid:c.name$ >> ]
 
-  in
-  match body with
-  | None -> []
-  | Some b -> [ mk_multiple_args_fun _loc ("dump_" ^ c.name) (c.dump_params@[c.name]) b ]
+  | ASN1Alias alias ->
+    let header_constraint = split_header _loc alias.aaheader in
+    let dump_content = dump_fun_of_ptype _loc (c.name ^ "_content") alias.aatype in
+    let meta_f_name = if alias.aalist then "produce_der_seqof" else "produce_der_object" in
+    let meta_f = exp_qname _loc (Some "Asn1Engine") meta_f_name in
+    [ <:expr< $meta_f$ $header_constraint$ $dump_content$ $lid:c.name$ >> ]
 
+  | ASN1Union union ->
+    let mk_case (_loc, cons, p, t) =
+      <:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
+      $ <:expr< Asn1Engine.produce_der_object $expr_of_pat p$ $dump_fun_of_ptype _loc c.name t$ x >> $ >>
+    and last_case =
+      <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  o ) -> Asn1PTypes.dump_der_object o >>
+    in
+    let cases = (List.map mk_case union.uchoices)@[last_case] in
+    [ <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >> ]
 
-(* let mk_struct_dump_fun _loc record = *)
-(*   let dump_one_field (_loc, n, t, attribute) = *)
-(*     let f = fun_of_ptype Dump _loc n t in *)
-(*     if attribute = Optional *)
-(*     then <:expr< Parsifal.try_dump $f$ $lid:record.rname$.$lid:n$ >> *)
-(*     else <:expr< $f$ $lid:record.rname$.$lid:n$ >> *)
-(*   in *)
-(*   let fields_dumped_expr = exp_of_list _loc (List.map dump_one_field (List.filter keep_real_fields record.fields)) in *)
-(*   let body = *)
-(*     <:expr< let $lid:"fields_dumped"$ = $fields_dumped_expr$ in *)
-(* 	    String.concat "" fields_dumped >> *)
-(*   in *)
-(*   let params = record.rdump_params@[record.rname] in *)
-(*   [ mk_multiple_args_fun _loc ("dump_" ^ record.rname) params body ] *)
-
-(* let mk_union_dump_fun _loc union = *)
-(*   let mk_case = function *)
-(*     | _loc, _, c, PT_Empty -> *)
-(*       <:match_case< $ <:patt< $uid:c$ >> $ -> "" >> *)
-(*     | _loc, n, c, t -> *)
-(*       <:match_case< ( $ <:patt< $uid:c$ >> $  $ <:patt< $lid:"x"$ >> $ ) -> *)
-(*                     $ <:expr< $fun_of_ptype Dump _loc union.uname t$ x >> $ >> *)
-(*   in *)
-(*   let last_case = *)
-(*     <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  $ <:patt< $lid:"x"$ >> $ ) -> *)
-(*                   $ <:expr< $fun_of_ptype Dump _loc union.uname union.unparsed_type$ x >> $ >> *)
-(*   in *)
-(*   let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in *)
-(*   let body = <:expr< fun [ $list:cases$ ] >> in *)
-(*   [ mk_multiple_args_fun _loc ("dump_" ^ union.uname) union.udump_params body ] *)
-
-(* let mk_alias_dump_fun _loc alias = *)
-(*   let body = <:expr< $fun_of_ptype Dump _loc alias.aname alias.atype$ >> in *)
-(*   [ mk_multiple_args_fun _loc ("dump_" ^ alias.aname) alias.adump_params body ] *)
-  
-(* let mk_asn1_alias_dump_fun _loc alias = *)
-(*   (\* TODO: improve this! *\) *)
-(*   let header_constraint = split_header _loc alias.aaheader in *)
-(*   let dump_content = fun_of_ptype Dump _loc (alias.aaname ^ "_content") alias.aatype in *)
-(*   let body = *)
-(*     if alias.aalist *)
-(*     then <:expr< Asn1Engine.produce_der_seqof $header_constraint$ $dump_content$ >> *)
-(*     else <:expr< Asn1Engine.produce_der_object $header_constraint$ $dump_content$ >> *)
-(*   in *)
-(*   [ mk_multiple_args_fun _loc ("dump_" ^ alias.aaname) alias.aadump_params body ] *)
-
-(* let mk_asn1_union_dump_fun _loc union = *)
-(*   let mk_case (_loc, p, c, t) = *)
-(*     <:match_case< ( $ <:patt< $uid:c$ >> $  $ <:patt< $lid:"x"$ >> $ ) -> *)
-(*     $ <:expr< Asn1Engine.produce_der_object $expr_of_pat p$ $fun_of_ptype Dump _loc union.uname t$ x >> $ >> *)
-(*   in *)
-(*   let last_case = *)
-(*     <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  $ <:patt< $lid:"o"$ >> $ ) -> Asn1PTypes.dump_der_object o >> *)
-(*   in *)
-(*   let cases = (List.map mk_case union.uchoices)@[last_case] in *)
-(*   let body = <:expr< fun [ $list:cases$ ] >> in *)
-(*   [ mk_multiple_args_fun _loc ("dump_" ^ union.uname) union.udump_params body ] *)
+  in List.map (mk_multiple_args_fun _loc ("dump_" ^ c.name) (c.dump_params@[c.name])) body
 
 
 
@@ -714,48 +690,37 @@ let mk_print_fun _loc c =
 	      (String.concat "" fields_printed) ^
 	      indent ^ "}\\n" >>
 
+  | Union union
+  | ASN1Union union ->
+    let mk_case = function
+      | _loc, cons, _, PT_Empty ->
+	<:match_case< $ <:patt< $uid:cons$ >> $ ->
+	Parsifal.print_binstring ~indent:indent ~name:name "" >>
+      | (_loc, cons, n, t) ->
+	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
+	$ <:expr< $print_fun_of_ptype _loc c.name t$ ~indent:indent ~name: $ <:expr< $str:cons$ >> $ x >> $ >>
+    in
+    let last_case =
+      <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
+      $ <:expr< $print_fun_of_ptype _loc c.name union.unparsed_type$
+        ~indent:indent ~name:(name ^ "[Unparsed]") x >> $ >>
+    in
+    let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
+    <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >>
 
-  | _ -> <:expr< >>  (* TODO !!! *)
+  | Alias atype ->
+    <:expr< $print_fun_of_ptype _loc c.name atype$ ~indent:indent ~name:name $lid:c.name$ >>
+
+  | ASN1Alias alias ->
+    let print_content = print_fun_of_ptype _loc (c.name ^ "_content") alias.aatype in
+    if alias.aalist
+    then <:expr< Parsifal.print_list $print_content$ ~indent:indent ~name:name $lid:c.name$ >>
+    else <:expr< $print_content$ ~indent:indent ~name:name $lid:c.name$ >>
 
   in
   let optargs = ["indent", <:expr< $str:""$ >>; "name", <:expr< $str:c.name$ >>] in
   [ mk_multiple_args_fun _loc ("print_" ^ c.name) [c.name] ~optargs:optargs body ]
 
-
-
-(* let mk_union_print_fun _loc union = *)
-(*   let mk_case = function *)
-(*     | _loc, _, c, PT_Empty -> *)
-(*       <:match_case< $ <:patt< $uid:c$ >> $ -> *)
-(*       Parsifal.print_binstring ~indent:indent ~name:name "" >> *)
-(*     | _loc, n, c, t -> *)
-(*       <:match_case< ( $ <:patt< $uid:c$ >> $  $ <:patt< $lid:"x"$ >> $ ) -> *)
-(*                     $ <:expr< $fun_of_ptype Print _loc union.uname t$ ~indent:indent ~name: $ <:expr< $str:c$ >> $ x >> $ >> *)
-(*   in *)
-(*   let last_case = *)
-(*     <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  $ <:patt< $lid:"x"$ >> $ ) -> *)
-(*                   $ <:expr< $fun_of_ptype Print _loc union.uname union.unparsed_type$ *)
-(*                                   ~indent:indent ~name:(name ^ "[Unparsed]") x >> $ >> *)
-(*   in *)
-(*   let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in *)
-(*   let body = <:expr< fun [ $list:cases$ ] >> in *)
-(*   [ mk_multiple_args_fun _loc ("print_" ^ union.uname) []  *)
-(*       ~optargs:(["indent", <:expr< $str:""$ >>; "name", <:expr< $str:union.uname$ >> ]) body ] *)
-
-(* let mk_alias_print_fun _loc alias = *)
-(*   let body = <:expr< $fun_of_ptype Print _loc alias.aname alias.atype$ ~indent:indent ~name:name >> in *)
-(*   [ mk_multiple_args_fun _loc ("print_" ^ alias.aname) []  *)
-(*       ~optargs:(["indent", <:expr< $str:""$ >>; "name", <:expr< $str:alias.aname$ >> ]) body ] *)
-  
-(* let mk_asn1_alias_print_fun _loc alias = *)
-(*   let print_content = fun_of_ptype Print _loc (alias.aaname ^ "_content") alias.aatype in *)
-(*   let body = *)
-(*     if alias.aalist *)
-(*     then <:expr< Parsifal.print_list $print_content$ ~indent:indent ~name:name >> *)
-(*     else <:expr< $print_content$ ~indent:indent ~name:name >> *)
-(*   in *)
-(*   [ mk_multiple_args_fun _loc ("print_" ^ alias.aaname) []  *)
-(*       ~optargs:(["indent", <:expr< $str:""$ >>; "name", <:expr< $str:alias.aaname$ >> ]) body ] *)
 
 
 
@@ -798,18 +763,19 @@ let check_options construction options =
   o, List.concat p, List.concat d
 
 let mk_parsifal_construction _loc name raw_opts specific_descr =
-  let options, parse_params, dump_params = check_options specific_descr raw_opts in
+  let options, raw_parse_params, dump_params = check_options specific_descr raw_opts in
+  let parse_params = match specific_descr with
+    | Union _ -> raw_parse_params@["discriminator"]
+    | _ -> raw_parse_params
+  in
   let pc = { name = lid_of_ident name;
 	     options = options;
 	     parse_params = parse_params;
 	     dump_params = dump_params;
 	     construction = specific_descr }
-  and funs = [ mk_decls;
-	       mk_type;
-	       mk_specific_funs;
-	       mk_parse_fun false;
-	       mk_parse_fun true;
-	       mk_dump_fun ] in
+  and funs = [ mk_decls; mk_type; mk_specific_funs;
+	       mk_parse_fun false; mk_parse_fun true; mk_exact_parse_fun;
+	       mk_dump_fun; mk_print_fun ] in
   let rec mk_sequence = function
     | [] -> <:str_item< >>
     | [si] -> <:str_item< $si$ >>
