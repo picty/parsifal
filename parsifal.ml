@@ -591,17 +591,17 @@ let lwt_parse_uint64le input =
     return r
 
 let dump_uint64le v =
-  (*
-  let c3 = char_of_int ((v lsr 24) land 0xff)
-  and c2 = char_of_int ((v lsr 16) land 0xff)
-  and c1 = char_of_int ((v lsr 8) land 0xff)
-  and c0 = char_of_int (v land 0xff) in
+  let open Int64 in
+  let ff = of_int 0xff in
+  let c3 = char_of_int (to_int (logand (shift_right v 24) ff))
+  and c2 = char_of_int (to_int (logand (shift_right v 16) ff))
+  and c1 = char_of_int (to_int (logand (shift_right v 8) ff))
+  and c0 = char_of_int (to_int (logand v ff)) in
   let res = String.make 4 c0 in
   res.[1] <- c1;
   res.[2] <- c2;
   res.[3] <- c3;
-  res*)
-  (Int64.to_string v)
+  res
 
 let print_uint64le ?indent:(indent="") ?name:(name="uint64le") v =
   Printf.sprintf "%s%s: %Ld (%16.16Lx)\n" indent name v v
