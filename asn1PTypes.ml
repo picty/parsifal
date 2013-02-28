@@ -336,7 +336,7 @@ let print_der_octetstring_content ?indent:(indent="") ?name:(name="der_octetstri
 asn1_alias der_octetstring = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
 
-alias der_printable_octetstring_content = der_octetstring_content
+alias der_printable_octetstring_content [param constr] = der_octetstring_content(constr)
 let print_der_printable_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
   Printf.sprintf "%s%s: %s\n" indent name s
 
