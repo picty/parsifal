@@ -655,7 +655,7 @@ let rec print_fun_of_ptype _loc name t =
 
     | PT_List (_, subtype) -> <:expr< $mkf "list"$ $print_fun_of_ptype _loc name subtype$ >>
     | PT_Array (_, subtype) -> <:expr< $mkf "array"$ $print_fun_of_ptype _loc name subtype$ >>
-    | PT_Container (_, subtype) -> print_fun_of_ptype _loc name subtype
+    | PT_Container (_, subtype)
     | PT_CustomContainer (_, _, _, _, subtype) -> print_fun_of_ptype _loc name subtype
 
 
