@@ -50,9 +50,10 @@ let check_server_hello ctx sh =
   check_server_version ctx sh.server_version;
   check_ciphersuite ctx sh.ciphersuite;
   check_compression ctx sh.compression_method;
-  match sh.server_extensions with
+  ()
+(*  match sh.server_extensions with
   | None | Some [] -> ()
-  | _ -> failwith "Extensions not supported for now"
+  | _ -> failwith "Extensions not supported for now" *)
 
 let update_with_server_hello ctx sh =
   (* TODO: exts *)
@@ -61,9 +62,10 @@ let update_with_server_hello ctx sh =
   ctx.future.s_version <- sh.server_version;
   ctx.future.s_ciphersuite <- find_csdescr sh.ciphersuite;
   ctx.future.s_compression_method <- sh.compression_method;
-  match sh.server_extensions with
+  ()
+(*  match sh.server_extensions with
   | None | Some [] -> ()
-  | _ -> failwith "Extensions not supported for now"
+  | _ -> failwith "Extensions not supported for now" *)
 
 
 let update_with_certificate ctx cert =

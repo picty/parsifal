@@ -15,7 +15,7 @@ let verbose = ref false
 let raw_records = ref false
 let filter_ip = ref ""
 let junk_length = ref 16
-let path = ref ""
+let path = ref []
 
 let enrich_style = ref DefaultEnrich
 let set_enrich_level l =
@@ -305,9 +305,9 @@ let rec handle_answer answer =
         end;
       | Get ->
         let records, _, _ = parse_all_records !enrich_style answer in
-	match (get_list get_record records !path) with
-	| Left s -> Printf.printf "Left \"%s\"\n" (String.concat "." s)
-	| Right s -> Printf.printf "Right \"%s\"\n" s
+	match (get_list get_tls_record records !path) with
+	| Left s -> if !verbose then prerr_endline (String.concat "." s)
+	| Right s -> Printf.printf "%s: %s\n" ip s
 
   end;
   return again
