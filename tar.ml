@@ -25,11 +25,12 @@ let parse_tar_numstring len input =
 let dump_tar_numstring len v =
   Printf.sprintf "%*.*o\x00" len len v
 
+let string_of_tar_numstring = string_of_int
 let print_tar_numstring ?indent:(indent="")
                         ?name:(name="numstring") v =
   Printf.sprintf "%s%s: %d (%o)\n" indent name v v
 
-let get_tar_numstring len = trivial_get (dump_tar_numstring len) print_tar_numstring
+let get_tar_numstring len = trivial_get (dump_tar_numstring len) string_of_int
 
 
 type optional_tar_numstring = int option
@@ -45,12 +46,16 @@ let dump_optional_tar_numstring len = function
   | None -> String.make len '\x00'
   | Some v -> dump_tar_numstring len v
 
+let string_of_optional_tar_numstring = function
+  | None -> ""
+  | Some v -> string_of_int v
+
 let print_optional_tar_numstring ?indent:(indent="")
                                  ?name:(name="numstring") = function
   | None -> Printf.sprintf "%s%s" indent name
   | Some v -> print_tar_numstring ~indent:indent ~name:name v
 
-let get_optional_tar_numstring len = trivial_get (dump_optional_tar_numstring len) print_optional_tar_numstring
+let get_optional_tar_numstring len = trivial_get (dump_optional_tar_numstring len) string_of_optional_tar_numstring
 
 
 struct ustar_header = {

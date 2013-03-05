@@ -638,6 +638,52 @@ let mk_dump_fun _loc c =
 
 
 
+(***********************)
+(* STRING_OF FUNCTIONS *)
+(***********************)
+
+let rec stringof_fun_of_ptype _loc t =
+  match t with
+    | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
+    | PT_Int int_t -> <:expr< string_of_int >>
+    | PT_String (_, true) -> <:expr< Parsifal.hexdump >>
+    | PT_String (_, false) -> <:expr< Parsifal.quote_string >>
+    | PT_Custom (m, n, _, _) -> exp_qname _loc m ("string_of_" ^ n)
+    | PT_List (_, subtype) -> <:expr< Parsifal.const "list" >>
+    | PT_Array (_, subtype) -> <:expr< Parsifal.const "array" >>
+    | PT_Container (_, subtype)
+    | PT_CustomContainer (_, _, _, _, subtype) -> stringof_fun_of_ptype _loc subtype
+
+let mk_stringof_fun _loc c =
+  let string_of_info = match c.construction with
+  | Enum enum -> [] (* Already done earlier *)
+  | Struct fields -> [ "_", <:expr< $str:c.name$ >> ]
+  | Union union
+  | ASN1Union union ->
+    let mk_case = function
+      | _loc, cons, (_, PT_Empty) ->
+	<:match_case< $ <:patt< $uid:cons$ >> $ -> "" >>
+      | (_loc, cons, (n, t)) ->
+	<:match_case< ( $ <:patt< $uid:cons$ >> $ x ) ->
+	$ <:expr< $stringof_fun_of_ptype _loc t$ x >> $ >>
+    in
+    let last_case =
+      <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
+      $ <:expr< $stringof_fun_of_ptype _loc union.unparsed_type$ x >> $ >>
+    in
+    let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
+    [ c.name, <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >> ]
+  | Alias atype -> [ c.name, <:expr< $stringof_fun_of_ptype _loc atype$ $lid:c.name$ >> ]
+  | ASN1Alias alias ->
+    if alias.aalist
+    then [ "_", <:expr< "list" >> ]
+    else [ c.name, <:expr< $stringof_fun_of_ptype _loc alias.aatype$ $lid:c.name$ >> ]
+  in
+  let aux (varname, body) = mk_multiple_args_fun _loc ("string_of_" ^ c.name) [varname] body
+  in List.map aux string_of_info
+
+
+
 (**********************)
 (* PRINTING FUNCTIONS *)
 (**********************)
@@ -724,7 +770,7 @@ let mk_print_fun _loc c =
 
 let rec get_fun_of_ptype _loc t =
   let dump_fun = dump_fun_of_ptype _loc t
-  and print_fun = print_fun_of_ptype _loc t in
+  and print_fun = stringof_fun_of_ptype _loc t in
   let wrap_fun get_fun =
     apply_exprs _loc <:expr< Parsifal.get_wrapper >>
       [dump_fun; print_fun; get_fun]
@@ -747,7 +793,7 @@ let mk_get_fun _loc c =
   let add_qprefix fname = exp_qname _loc (Some "Parsifal") ("get_" ^ fname) in
   let this_type = PT_Custom (None, c.name, [], List.map (exp_lid _loc) c.dump_params) in
   let dump_fun = dump_fun_of_ptype _loc this_type
-  and print_fun = print_fun_of_ptype _loc this_type in
+  and print_fun = stringof_fun_of_ptype _loc this_type in
 
   let body = match c.construction with
   | Enum enum ->
@@ -858,7 +904,7 @@ let mk_parsifal_construction _loc name raw_opts specific_descr =
 	     construction = specific_descr }
   and funs = [ mk_decls; mk_type; mk_specific_funs;
 	       mk_parse_fun false; mk_parse_fun true; mk_exact_parse_fun;
-	       mk_dump_fun; mk_print_fun;
+	       mk_dump_fun; mk_stringof_fun; mk_print_fun;
 	       mk_get_fun ] in
   let rec mk_sequence = function
     | [] -> <:str_item< >>

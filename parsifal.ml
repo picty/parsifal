@@ -5,6 +5,9 @@ open Lwt
 (* Useful functions *)
 (********************)
 
+let const s _ = s
+let id x = x
+
 let pop_opt default = function
   | None -> default
   | Some x -> x
@@ -52,8 +55,8 @@ let quote_string s =
     else estimate_len (accu + estimate_len_char (s.[offset])) (offset + 1)
   in
 
-  let newlen = estimate_len 0 0 in
-  let res = String.make newlen ' ' in
+  let newlen = estimate_len 2 0 in
+  let res = String.make newlen '"' in
 
   let mk_two_char c offset =
     res.[offset] <- '\\';
@@ -86,7 +89,7 @@ let quote_string s =
       write_string (src_offset + 1) (new_offset)
     end
   in
-  write_string 0 0;
+  write_string 0 1;
   res
 
 
@@ -500,8 +503,8 @@ let print_uint8 ?indent:(indent="") ?name:(name="uint8") v =
 let print_char ?indent:(indent="") ?name:(name="char") c =
   Printf.sprintf "%s%s: %c (%2.2x)\n" indent name c (int_of_char c)
 
-let get_uint8 = trivial_get dump_uint8 print_uint8
-let get_char = trivial_get dump_char print_char
+let get_uint8 = trivial_get dump_uint8 string_of_int
+let get_char = trivial_get dump_char (String.make 1)
 
 
 let parse_uint16 input =
@@ -534,7 +537,7 @@ let dump_uint16 v =
 let print_uint16 ?indent:(indent="") ?name:(name="uint16") v =
   Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
 
-let get_uint16 = trivial_get dump_uint16 print_uint16
+let get_uint16 = trivial_get dump_uint16 string_of_int
 
 
 type uint16le = int
@@ -563,7 +566,7 @@ let dump_uint16le v =
 let print_uint16le ?indent:(indent="") ?name:(name="uint16le") v =
   Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
 
-let get_uint16le = trivial_get dump_uint16le print_uint16le
+let get_uint16le = trivial_get dump_uint16le string_of_int
 
 
 let parse_uint24 input =
@@ -594,7 +597,7 @@ let dump_uint24 v =
 let print_uint24 ?indent:(indent="") ?name:(name="uint24") v =
   Printf.sprintf "%s%s: %d (%6.6x)\n" indent name v v
 
-let get_uint24 = trivial_get dump_uint24 print_uint24
+let get_uint24 = trivial_get dump_uint24 string_of_int
 
 
 let parse_uint32 input =
@@ -628,7 +631,7 @@ let dump_uint32 v =
 let print_uint32 ?indent:(indent="") ?name:(name="uint32") v =
   Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
 
-let get_uint32 = trivial_get dump_uint32 print_uint32
+let get_uint32 = trivial_get dump_uint32 string_of_int
 
 
 type uint32le = int
@@ -664,7 +667,7 @@ let dump_uint32le v =
 let print_uint32le ?indent:(indent="") ?name:(name="uint32le") v =
   Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
 
-let get_uint32le = trivial_get dump_uint32le print_uint32le
+let get_uint32le = trivial_get dump_uint32le string_of_int
 
 
 type uint64le = Int64.t
@@ -712,7 +715,7 @@ let dump_uint64le v =
 let print_uint64le ?indent:(indent="") ?name:(name="uint64le") v =
   Printf.sprintf "%s%s: %Ld (%16.16Lx)\n" indent name v v
 
-let get_uint64le = trivial_get dump_uint64le print_uint64le
+let get_uint64le = trivial_get dump_uint64le (Int64.to_string)
 
 
 (* Strings *)
@@ -779,7 +782,7 @@ let dump_varlen_string len_fun s =
 
 let print_printablestring ?indent:(indent="") ?name:(name="string") = function
   | "" -> Printf.sprintf "%s%s\n" indent name
-  | s  -> Printf.sprintf "%s%s: \"%s\"\n" indent name (quote_string s)
+  | s  -> Printf.sprintf "%s%s: %s\n" indent name (quote_string s)
 
 let print_binstring ?indent:(indent="") ?name:(name="binstring") = function
   | "" -> Printf.sprintf "%s%s\n" indent name

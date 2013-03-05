@@ -23,6 +23,7 @@ let dump_der_boolean_content = function
   | true -> String.make 1 '\xff'
   | false -> String.make 1 '\x00'
 
+let string_of_der_boolean_content = string_of_bool
 let print_der_boolean_content ?indent:(indent="") ?name:(name="der_boolean") v =
   Printf.sprintf "%s%s: %s\n" indent name (string_of_bool v)
 
@@ -53,6 +54,7 @@ let parse_der_integer_content input =
 
 let dump_der_integer_content s = s
 
+let string_of_der_integer_content = hexdump
 let print_der_integer_content ?indent:(indent="") ?name:(name="der_integer") v =
   Printf.sprintf "%s%s: %s\n" indent name (hexdump v)
 
@@ -94,6 +96,7 @@ let dump_der_smallint_content i =
   mk_content (sz-1) i;
   res
 
+let string_of_der_smallint_content = string_of_int
 let print_der_smallint_content ?indent:(indent="") ?name:(name="der_smallint") v =
   Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
 
@@ -115,6 +118,7 @@ let parse_der_null_content input =
 
 let dump_der_null_content () = ""
 
+let string_of_der_null_content () = ""
 let print_der_null_content ?indent:(indent="") ?name:(name="der_null_content") () =
   Printf.sprintf "%s%s\n" indent name
 
@@ -211,6 +215,7 @@ let short_string_of_oid oid =
     with Not_found -> string_of_oid oid
   else raw_string_of_oid oid
 
+let string_of_der_oid_content = string_of_oid
 let print_der_oid_content ?indent:(indent="") ?name:(name="der_oid_content") oid =
   let value = if !resolve_oids then
       try (Hashtbl.find oid_directory oid) ^ " (" ^ raw_string_of_oid oid ^ ")"
@@ -245,10 +250,11 @@ let dump_der_bitstring_content (nBits, s) =
   let prefix = String.make 1 (char_of_int nBits) in
   prefix ^ s
 
+let string_of_der_bitstring_content (_, s) = hexdump s
 let print_der_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_content") (nBits, s) =
   Printf.sprintf "%s%s: [%d] %s\n" indent name nBits (hexdump s)
 
-let get_der_bitstring_content = trivial_get dump_der_bitstring_content print_der_bitstring_content
+let get_der_bitstring_content = trivial_get dump_der_bitstring_content string_of_der_bitstring_content
 
 asn1_alias der_bitstring = primitive [T_BitString] der_bitstring_content
 
@@ -314,6 +320,7 @@ let dump_der_enumerated_bitstring_content description l =
   let nBits, intlist = encode [] bits in
   dump_der_bitstring_content (nBits, _string_of_int_list intlist)
 
+let string_of_der_enumerated_bitstring_content = String.concat ", "
 let print_der_enumerated_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_content") l =
   Printf.sprintf "%s%s: %s\n" indent name (String.concat ", " l)
 
@@ -338,12 +345,13 @@ let parse_der_octetstring_content apply_constraints input =
 
 let dump_der_octetstring_content s = s
 
+let string_of_der_octetstring_content = hexdump
 let print_der_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
   Printf.sprintf "%s%s: %s\n" indent name (hexdump s)
 
 asn1_alias der_octetstring = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
-
+let string_of_der_printable_octetstring_content s = s
 alias der_printable_octetstring_content [param constr] = der_octetstring_content(constr)
 let print_der_printable_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
   Printf.sprintf "%s%s: %s\n" indent name s
@@ -398,6 +406,7 @@ let parse_der_utc_time_content input =
 let dump_der_utc_time_content t =
   Printf.sprintf "%2.2d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
     (utc_year_of_int t.year) t.month t.day t.hour t.minute t.second
+let string_of_der_utc_time_content = string_of_time_content
 let print_der_utc_time_content = print_time_content
 
 type der_generalized_time_content = time_content
@@ -407,6 +416,7 @@ let parse_der_generalized_time_content input =
 let dump_der_generalized_time_content t =
   Printf.sprintf "%4.4d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
     t.year t.month t.day t.hour t.minute t.second
+let string_of_der_generalized_time_content = string_of_time_content
 let print_der_generalized_time_content = print_time_content
 
 
@@ -523,6 +533,8 @@ and dump_der_object_content = function
     String.concat "" (List.map dump_der_object l)
 
 
+let string_of_der_object_content _ = "der_object"
+let string_of_der_object _ = "der_object"
 let rec print_der_object ?indent:(indent="") ?name:(name="") o =
   let real_name =
     if name = ""

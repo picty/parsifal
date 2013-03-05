@@ -65,10 +65,11 @@ let lwt_parse_magic magic_expected input =
 let dump_magic magic_expected () =
   String.copy magic_expected
 
+let string_of_magic _ = ""
 let print_magic ?indent:(indent="") ?name:(name="magic") () =
   print_binstring ~indent:indent ~name:name ""
 
-let get_magic magic_expected = trivial_get (dump_magic magic_expected) print_magic
+let get_magic magic_expected = trivial_get (dump_magic magic_expected) string_of_magic
 
 
 (* Container *)
