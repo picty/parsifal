@@ -553,7 +553,7 @@ let mk_exact_parse_fun _loc c =
 (* DUMPING FUNCTIONS *)
 (*********************)
 
-let rec dump_fun_of_ptype _loc name t =
+let rec dump_fun_of_ptype _loc t =
   let mkf fname = exp_qname _loc (Some "Parsifal") ("dump_" ^ fname) in
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
@@ -565,18 +565,18 @@ let rec dump_fun_of_ptype _loc name t =
     | PT_Custom (m, n, _, e) -> apply_exprs _loc (exp_qname _loc m ("dump_" ^ n)) e
 
     | PT_List (VarLen int_t, subtype) ->
-      <:expr< $mkf "varlen_list"$ $mkf int_t$ $dump_fun_of_ptype _loc name subtype$ >>
+      <:expr< $mkf "varlen_list"$ $mkf int_t$ $dump_fun_of_ptype _loc subtype$ >>
     | PT_List (_, subtype) ->
-      <:expr< $mkf "list"$ $dump_fun_of_ptype _loc name subtype$ >>
+      <:expr< $mkf "list"$ $dump_fun_of_ptype _loc subtype$ >>
     | PT_Array (_, subtype) ->
-      <:expr< $mkf "array"$ $dump_fun_of_ptype _loc name subtype$ >>
+      <:expr< $mkf "array"$ $dump_fun_of_ptype _loc subtype$ >>
     | PT_Container (VarLen int_t, subtype) ->
-      <:expr< $mkf "container"$ $mkf int_t$ $dump_fun_of_ptype _loc name subtype$ >>
-    | PT_Container (_, subtype) -> dump_fun_of_ptype _loc name subtype
+      <:expr< $mkf "container"$ $mkf int_t$ $dump_fun_of_ptype _loc subtype$ >>
+    | PT_Container (_, subtype) -> dump_fun_of_ptype _loc subtype
 
     | PT_CustomContainer (m, n, _, e, subtype) ->
       apply_exprs _loc (exp_qname _loc m ("dump_" ^ n))
-	(e@[dump_fun_of_ptype _loc name subtype])
+	(e@[dump_fun_of_ptype _loc subtype])
 
 
 let mk_dump_fun _loc c =
@@ -593,7 +593,7 @@ let mk_dump_fun _loc c =
 
   | Struct fields ->
     let dump_one_field (_loc, n, t, attr) =
-      let raw_f = dump_fun_of_ptype _loc n t in
+      let raw_f = dump_fun_of_ptype _loc t in
       let f = if attr = Optional then <:expr< Parsifal.try_dump $raw_f$ >> else raw_f in
       <:expr< $f$ $lid:c.name$.$lid:n$ >>
     in
@@ -607,19 +607,19 @@ let mk_dump_fun _loc c =
 	<:match_case< $ <:patt< $uid:cons$ >> $ -> "" >>
       | _loc, cons, (n, t) ->
 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
-        $ <:expr< $dump_fun_of_ptype _loc c.name t$ x >> $ >>
+        $ <:expr< $dump_fun_of_ptype _loc t$ x >> $ >>
     and last_case =
       <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
-      $ <:expr< $dump_fun_of_ptype _loc c.name union.unparsed_type$ x >> $ >>
+      $ <:expr< $dump_fun_of_ptype _loc union.unparsed_type$ x >> $ >>
     in
     let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
     [ <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >> ]
 
-  | Alias atype -> [ <:expr< $dump_fun_of_ptype _loc c.name atype$ $lid:c.name$ >> ]
+  | Alias atype -> [ <:expr< $dump_fun_of_ptype _loc atype$ $lid:c.name$ >> ]
 
   | ASN1Alias alias ->
     let header_constraint = split_header _loc alias.aaheader in
-    let dump_content = dump_fun_of_ptype _loc (c.name ^ "_content") alias.aatype in
+    let dump_content = dump_fun_of_ptype _loc alias.aatype in
     let meta_f_name = if alias.aalist then "produce_der_seqof" else "produce_der_object" in
     let meta_f = exp_qname _loc (Some "Asn1Engine") meta_f_name in
     [ <:expr< $meta_f$ $header_constraint$ $dump_content$ $lid:c.name$ >> ]
@@ -627,7 +627,7 @@ let mk_dump_fun _loc c =
   | ASN1Union union ->
     let mk_case (_loc, cons, (p, t)) =
       <:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
-      $ <:expr< Asn1Engine.produce_der_object $expr_of_pat p$ $dump_fun_of_ptype _loc c.name t$ x >> $ >>
+      $ <:expr< Asn1Engine.produce_der_object $expr_of_pat p$ $dump_fun_of_ptype _loc t$ x >> $ >>
     and last_case =
       <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  o ) -> Asn1PTypes.dump_der_object o >>
     in
@@ -642,7 +642,7 @@ let mk_dump_fun _loc c =
 (* PRINTING FUNCTIONS *)
 (**********************)
 
-let rec print_fun_of_ptype _loc name t =
+let rec print_fun_of_ptype _loc t =
   let mkf fname = exp_qname _loc (Some "Parsifal") ("print_" ^ fname) in
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
@@ -653,10 +653,10 @@ let rec print_fun_of_ptype _loc name t =
 
     | PT_Custom (m, n, _, _) -> exp_qname _loc m ("print_" ^ n)
 
-    | PT_List (_, subtype) -> <:expr< $mkf "list"$ $print_fun_of_ptype _loc name subtype$ >>
-    | PT_Array (_, subtype) -> <:expr< $mkf "array"$ $print_fun_of_ptype _loc name subtype$ >>
+    | PT_List (_, subtype) -> <:expr< $mkf "list"$ $print_fun_of_ptype _loc subtype$ >>
+    | PT_Array (_, subtype) -> <:expr< $mkf "array"$ $print_fun_of_ptype _loc subtype$ >>
     | PT_Container (_, subtype)
-    | PT_CustomContainer (_, _, _, _, subtype) -> print_fun_of_ptype _loc name subtype
+    | PT_CustomContainer (_, _, _, _, subtype) -> print_fun_of_ptype _loc subtype
 
 
 
@@ -673,7 +673,7 @@ let mk_print_fun _loc c =
 
   | Struct fields ->
     let print_one_field (_loc, n, t, attr) =
-      let raw_f = print_fun_of_ptype _loc n t in
+      let raw_f = print_fun_of_ptype _loc t in
       let f = if attr = Optional then <:expr< Parsifal.try_print $raw_f$ >> else raw_f in
       <:expr< $f$ ~indent:new_indent ~name:$str:n$ $lid:c.name$.$lid:n$ >>
     in
@@ -692,21 +692,21 @@ let mk_print_fun _loc c =
 	Parsifal.print_binstring ~indent:indent ~name:name "" >>
       | (_loc, cons, (n, t)) ->
 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
-	$ <:expr< $print_fun_of_ptype _loc c.name t$ ~indent:indent ~name: $ <:expr< $str:cons$ >> $ x >> $ >>
+	$ <:expr< $print_fun_of_ptype _loc t$ ~indent:indent ~name: $ <:expr< $str:cons$ >> $ x >> $ >>
     in
     let last_case =
       <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
-      $ <:expr< $print_fun_of_ptype _loc c.name union.unparsed_type$
+      $ <:expr< $print_fun_of_ptype _loc union.unparsed_type$
         ~indent:indent ~name:(name ^ "[Unparsed]") x >> $ >>
     in
     let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
     <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >>
 
   | Alias atype ->
-    <:expr< $print_fun_of_ptype _loc c.name atype$ ~indent:indent ~name:name $lid:c.name$ >>
+    <:expr< $print_fun_of_ptype _loc atype$ ~indent:indent ~name:name $lid:c.name$ >>
 
   | ASN1Alias alias ->
-    let print_content = print_fun_of_ptype _loc (c.name ^ "_content") alias.aatype in
+    let print_content = print_fun_of_ptype _loc alias.aatype in
     if alias.aalist
     then <:expr< Parsifal.print_list $print_content$ ~indent:indent ~name:name $lid:c.name$ >>
     else <:expr< $print_content$ ~indent:indent ~name:name $lid:c.name$ >>
@@ -717,15 +717,14 @@ let mk_print_fun _loc c =
 
 
 
-
 (*********************)
 (* GETTING FUNCTIONS *)
 (*********************)
 
 
-let rec get_fun_of_ptype _loc name t =
-  let dump_fun = dump_fun_of_ptype _loc name t
-  and print_fun = print_fun_of_ptype _loc name t in
+let rec get_fun_of_ptype _loc t =
+  let dump_fun = dump_fun_of_ptype _loc t
+  and print_fun = print_fun_of_ptype _loc t in
   let wrap_fun get_fun =
     apply_exprs _loc <:expr< Parsifal.get_wrapper >>
       [dump_fun; print_fun; get_fun]
@@ -736,19 +735,19 @@ let rec get_fun_of_ptype _loc name t =
     | PT_String _ -> wrap_fun <:expr< Parsifal.default_get >>
     | PT_Custom (m, n, _, e) -> apply_exprs _loc (exp_qname _loc m ("get_" ^ n)) e
     | PT_List (_, subtype) ->
-      wrap_fun <:expr< Parsifal.get_list $get_fun_of_ptype _loc name subtype$ >>
+      wrap_fun <:expr< Parsifal.get_list $get_fun_of_ptype _loc subtype$ >>
     | PT_Array (_, subtype) ->
-      wrap_fun <:expr< Parsifal.get_array $get_fun_of_ptype _loc name subtype$ >>
+      wrap_fun <:expr< Parsifal.get_array $get_fun_of_ptype _loc subtype$ >>
     | PT_Container (_, subtype)
-    | PT_CustomContainer (_, _, _, _, subtype) -> get_fun_of_ptype _loc name subtype
+    | PT_CustomContainer (_, _, _, _, subtype) -> get_fun_of_ptype _loc subtype
 
 
 
 let mk_get_fun _loc c =
   let add_qprefix fname = exp_qname _loc (Some "Parsifal") ("get_" ^ fname) in
   let this_type = PT_Custom (None, c.name, [], List.map (exp_lid _loc) c.dump_params) in
-  let dump_fun = dump_fun_of_ptype _loc c.name this_type
-  and print_fun = print_fun_of_ptype _loc c.name this_type in
+  let dump_fun = dump_fun_of_ptype _loc this_type
+  and print_fun = print_fun_of_ptype _loc this_type in
 
   let body = match c.construction with
   | Enum enum ->
@@ -759,7 +758,7 @@ let mk_get_fun _loc c =
 
   | Struct fields ->
     let get_one_field (_loc, n, t, attr) =
-      let raw_f = get_fun_of_ptype _loc n t in
+      let raw_f = get_fun_of_ptype _loc t in
       let f = if attr = Optional then <:expr< Parsifal.try_get $raw_f$ >> else raw_f in
       <:match_case< $ <:patt< $uid:"::"$ $str:n$ r >> $ ->
       $f$ ($lid:c.name$.$lid:n$) r >>
