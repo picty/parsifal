@@ -307,7 +307,7 @@ let rec handle_answer answer =
         let records, _, _ = parse_all_records !enrich_style answer in
 	match (get_list get_tls_record records !path) with
 	| Left s -> if !verbose then prerr_endline (String.concat "." s)
-	| Right s -> Printf.printf "%s: %s\n" ip s
+	| Right s -> Printf.printf "%s: %s\n" ip (String.concat ", " s)
 
   end;
   return again

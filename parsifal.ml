@@ -401,9 +401,9 @@ type ('a, 'b) either = Left of 'a | Right of 'b
 let default_get _ path = Left path
 
 let get_wrapper dump print get v = function
-  | ["@hex"] -> Right (hexdump (dump v))
+  | ["@hex"] -> Right [hexdump (dump v)]
 (*  | "@base64" -> base64      TODO: Find a way to call base64 here...   *)
-  | [] -> Right (print v)   (* TODO: Should use to_string when available *)
+  | [] -> Right [print v]   (* TODO: Should use to_string when available *)
   | path -> get v path
 
 let trivial_get dump print = get_wrapper dump print default_get
@@ -415,7 +415,7 @@ let get_list get_fun l = function
       | Left x, Left _ -> Left x
       | Right x, Left _
       | Left _, Right x -> Right x
-      | Right x, Right y -> Right (x ^ ", " ^ y)
+      | Right x, Right y -> Right (x@y)
     in
     List.fold_left fold_results (Left path)
       (List.map (fun x -> get_fun x ps) l)
@@ -444,13 +444,14 @@ let get_array get_fun a = function
 
 
 let get_enum string_of_val int_of_val nchars v = function
-  | ["@hex"] -> Right (Printf.sprintf "%*.*x" nchars nchars (int_of_val v))
-  | [] -> Right (string_of_val v)
+  | ["@hex"] -> Right [Printf.sprintf "%*.*x" nchars nchars (int_of_val v)]
+  | [] -> Right [string_of_val v]
   | path -> Left path
 
-let try_get (get_fun : 'a -> string list -> (string list, string) either) (x : 'a option) (path : string list) =
+let try_get (get_fun : 'a -> string list -> (string list, string list) either)
+            (x : 'a option) (path : string list) =
   match x, path with
-  | None, [] -> Right "None"
+  | None, [] -> Right ["None"]
   | None, path -> Left path
   | Some x, path -> get_fun x path
 

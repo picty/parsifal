@@ -70,6 +70,6 @@ let _ =
   for i = 1 to (Array.length Sys.argv) - 1 do
     match (get_st (parse_st (input_of_string "" "\x04toto\x02AABB")) (string_split '.' (Sys.argv.(i)))) with
     | Left s -> Printf.printf "Left \"%s\"\n" (String.concat "." s)
-    | Right s -> Printf.printf "Right \"%s\"\n" s
+    | Right s -> Printf.printf "Right [%s]\n" (String.concat ", " s)
   done;
   ()
