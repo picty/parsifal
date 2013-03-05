@@ -126,3 +126,8 @@ let parse_raw_value offset input =
   Some (String.sub input.str (input.cur_base + offset) (input.cur_offset - offset))
 let lwt_parse_raw_value _offset input =
   fail (ParsingException (NotImplemented "lwt_parse_raw_value", _h_of_li input))
+
+
+
+(* Ignore trailing bytes *)
+let parse_ignore = drop_rem_bytes
