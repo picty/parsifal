@@ -56,6 +56,8 @@ let dump_der_integer_content s = s
 let print_der_integer_content ?indent:(indent="") ?name:(name="der_integer") v =
   Printf.sprintf "%s%s: %s\n" indent name (hexdump v)
 
+let get_der_integer_content s path = failwith "get_der_integer_contant"
+
 asn1_alias der_integer = primitive [T_Integer] der_integer_content
 
 
@@ -94,6 +96,8 @@ let dump_der_smallint_content i =
 
 let print_der_smallint_content ?indent:(indent="") ?name:(name="der_smallint") v =
   Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
+
+let get_der_smallint_content s path = failwith "get_der_smallint_contant"
 
 asn1_alias der_smallint = primitive [T_Integer] der_smallint_content
 
@@ -244,6 +248,8 @@ let dump_der_bitstring_content (nBits, s) =
 let print_der_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_content") (nBits, s) =
   Printf.sprintf "%s%s: [%d] %s\n" indent name nBits (hexdump s)
 
+let get_der_bitstring_content = trivial_get dump_der_bitstring_content print_der_bitstring_content
+
 asn1_alias der_bitstring = primitive [T_BitString] der_bitstring_content
 
 
@@ -310,6 +316,8 @@ let dump_der_enumerated_bitstring_content description l =
 
 let print_der_enumerated_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_content") l =
   Printf.sprintf "%s%s: %s\n" indent name (String.concat ", " l)
+
+let get_der_enumerated_bitstring_content description l path = Left path (* TODO *)
 
 asn1_alias der_enumerated_bitstring [both_param description] = primitive [T_BitString] der_enumerated_bitstring_content[description]
 
@@ -533,6 +541,7 @@ and print_der_object_content ?indent:(indent="") ?name:(name="der_object") = fun
   | String (s, false) -> print_printablestring ~indent:indent ~name:name s
   | Constructed l -> print_list print_der_object ~indent:indent ~name:name l
 
+let get_der_object o path = failwith "get_der_object not implemented"
 
 
 (* ASN.1 Containers *)

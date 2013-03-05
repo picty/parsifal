@@ -46,7 +46,7 @@ let string_of_ip_prefix ip_prefix =
 let print_ip_prefix ?indent:(indent="") ?name:(n="ip_prefix") ip_prefix =
   Printf.sprintf "%s%s: %s\n" indent n (string_of_ip_prefix ip_prefix)
 
-
+let get_ip_prefix = trivial_get dump_ip_prefix print_ip_prefix
 
 
 
@@ -73,6 +73,7 @@ let print_bgp_attribute_len ?indent:(indent="") ?name:(name="bgp_attribute_len")
   if extended
   then print_uint16 ~indent:indent ~name:name v
   else print_uint8 ~indent:indent ~name:name v
+let get_bgp_attribute_len = trivial_get dump_bgp_attribute_len print_bgp_attribute_len
 
 
 enum bgp_attribute_type (8, UnknownVal UnknownBGPAttributeType) =

@@ -57,6 +57,8 @@ let list_of_sem_expr =
   | e -> [e]
 
 
+let exp_lid _loc n = <:expr< $lid:n$ >>
+
 let exp_qname _loc m n = match m with
   | None -> <:expr< $lid:n$ >>
   | Some module_name -> <:expr< $uid:module_name$.$lid:n$ >>

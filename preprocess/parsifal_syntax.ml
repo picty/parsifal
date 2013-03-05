@@ -718,6 +718,96 @@ let mk_print_fun _loc c =
 
 
 
+(*********************)
+(* GETTING FUNCTIONS *)
+(*********************)
+
+
+let rec get_fun_of_ptype _loc name t =
+  let dump_fun = dump_fun_of_ptype _loc name t
+  and print_fun = print_fun_of_ptype _loc name t in
+  let wrap_fun get_fun =
+    apply_exprs _loc <:expr< Parsifal.get_wrapper >>
+      [dump_fun; print_fun; get_fun]
+  in
+  match t with
+    | PT_Empty
+    | PT_Int _
+    | PT_String _ -> wrap_fun <:expr< Parsifal.default_get >>
+    | PT_Custom (m, n, _, e) -> apply_exprs _loc (exp_qname _loc m ("get_" ^ n)) e
+    | PT_List (_, subtype) ->
+      wrap_fun <:expr< Parsifal.get_list $get_fun_of_ptype _loc name subtype$ >>
+    | PT_Array (_, subtype) ->
+      wrap_fun <:expr< Parsifal.get_array $get_fun_of_ptype _loc name subtype$ >>
+    | PT_Container (_, subtype)
+    | PT_CustomContainer (_, _, _, _, subtype) -> get_fun_of_ptype _loc name subtype
+
+
+
+let mk_get_fun _loc c =
+  let add_qprefix fname = exp_qname _loc (Some "Parsifal") ("get_" ^ fname) in
+  let this_type = PT_Custom (None, c.name, [], List.map (exp_lid _loc) c.dump_params) in
+  let dump_fun = dump_fun_of_ptype _loc c.name this_type
+  and print_fun = print_fun_of_ptype _loc c.name this_type in
+
+  let body = match c.construction with
+  | Enum enum ->
+    let ioe = <:expr< $lid:"int_of_" ^ c.name$ >>
+    and soe = <:expr< $lid:"string_of_" ^ c.name$ >>
+    and get_fun = add_qprefix "enum" in
+    <:expr< $get_fun$ $soe$ $ioe$ $int:string_of_int (enum.size / 4)$ $lid:c.name$ >>
+
+  | Struct fields ->
+    let get_one_field (_loc, n, t, attr) =
+      let raw_f = get_fun_of_ptype _loc n t in
+      let f = if attr = Optional then <:expr< Parsifal.try_get $raw_f$ >> else raw_f in
+      <:match_case< $ <:patt< $uid:"::"$ $str:n$ r >> $ ->
+      $f$ ($lid:c.name$.$lid:n$) r >>
+    and last_case = <:match_case< $ <:patt< path >> $ -> Parsifal.Left path >> in
+    let cases = (List.map get_one_field (List.filter keep_built_fields fields))@[last_case] in
+
+    let aux_name = "get_" ^ c.name ^ "_aux" in
+    let aux_body = <:expr< fun [ $list:cases$ ] >>
+    and get_aux_fun = <:expr< $lid:aux_name$ >> in
+    <:expr< let $lid:aux_name$ $lid:c.name$ = $aux_body$ in
+	    $apply_exprs _loc <:expr< Parsifal.get_wrapper >>
+	      [dump_fun; print_fun; get_aux_fun; <:expr< $lid:c.name$ >>]$ >>
+
+  | _ ->
+    <:expr< Parsifal.get_wrapper $dump_fun$ $print_fun$ Parsifal.default_get $lid:c.name$ >>
+
+
+  (* | Union union *)
+  (* | ASN1Union union -> *)
+  (*   let mk_case = function *)
+  (*     | _loc, cons, (_, PT_Empty) -> *)
+  (* 	<:match_case< $ <:patt< $uid:cons$ >> $ -> *)
+  (* 	Parsifal.print_binstring ~indent:indent ~name:name "" >> *)
+  (*     | (_loc, cons, (n, t)) -> *)
+  (* 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) -> *)
+  (* 	$ <:expr< $print_fun_of_ptype _loc c.name t$ ~indent:indent ~name: $ <:expr< $str:cons$ >> $ x >> $ >> *)
+  (*   in *)
+  (*   let last_case = *)
+  (*     <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) -> *)
+  (*     $ <:expr< $print_fun_of_ptype _loc c.name union.unparsed_type$ *)
+  (*       ~indent:indent ~name:(name ^ "[Unparsed]") x >> $ >> *)
+  (*   in *)
+  (*   let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in *)
+  (*   <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >> *)
+
+  (* | Alias atype -> *)
+  (*   <:expr< $print_fun_of_ptype _loc c.name atype$ ~indent:indent ~name:name $lid:c.name$ >> *)
+
+  (* | ASN1Alias alias -> *)
+  (*   let print_content = print_fun_of_ptype _loc (c.name ^ "_content") alias.aatype in *)
+  (*   if alias.aalist *)
+  (*   then <:expr< Parsifal.print_list $print_content$ ~indent:indent ~name:name $lid:c.name$ >> *)
+  (*   else <:expr< $print_content$ ~indent:indent ~name:name $lid:c.name$ >> *)
+
+  in [ mk_multiple_args_fun _loc ("get_" ^ c.name) (c.dump_params@[c.name]) body ]
+
+
+
 (************************)
 (* Camlp4 grammar rules *)
 (************************)
@@ -769,7 +859,8 @@ let mk_parsifal_construction _loc name raw_opts specific_descr =
 	     construction = specific_descr }
   and funs = [ mk_decls; mk_type; mk_specific_funs;
 	       mk_parse_fun false; mk_parse_fun true; mk_exact_parse_fun;
-	       mk_dump_fun; mk_print_fun ] in
+	       mk_dump_fun; mk_print_fun;
+	       mk_get_fun ] in
   let rec mk_sequence = function
     | [] -> <:str_item< >>
     | [si] -> <:str_item< $si$ >>

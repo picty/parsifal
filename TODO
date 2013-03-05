@@ -79,6 +79,7 @@ v0.2 (feb. 2013 -> mar. 2013)
    * add hex_container / gzip_container as custom containers
    * Document the preprocessor (update the JFLA article)
    * Add a way to access to fields with a "language" (browse) (from the command line: tls_record.record_content.handshake_type -> string option)
+   * improve basic get functions
    * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
    * Add a "flexible" decorator in structures
        -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)

@@ -9,12 +9,13 @@ open Getopt
 open X509Basics
 open X509
 
-type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType | RecordTypes
+type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType | RecordTypes | Get
 let action = ref IP
 let verbose = ref false
 let raw_records = ref false
 let filter_ip = ref ""
 let junk_length = ref 16
+let path = ref ""
 
 let enrich_style = ref DefaultEnrich
 let set_enrich_level l =
@@ -28,6 +29,11 @@ let update_enrich_level l =
     | EnrichLevel x -> EnrichLevel (max x l)
     | AlwaysEnrich -> AlwaysEnrich
   in enrich_style := new_style
+
+let do_get_action path_str =
+  action := Get;
+  path := string_split '.' path_str;
+  ActionDone  
 
 
 let options = [
@@ -48,6 +54,7 @@ let options = [
   mkopt None "record-types" (TrivialFun (fun () -> action := RecordTypes; update_enrich_level 2)) "prints the records received";
   mkopt None "junk-length" (IntVal junk_length) "Sets the max length of junk stuff to print";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject; update_enrich_level 2)) "show the subect";
+  mkopt (Some 'g') "get" (StringFun do_get_action) "Walks through the answers using a get string";
 
   mkopt None "always-enrich" (TrivialFun (fun () -> enrich_style := AlwaysEnrich)) "always enrich the structure parsed";
   mkopt None "never-enrich" (TrivialFun (fun () -> enrich_style := NeverEnrich)) "never enrich the structure parsed";
@@ -296,6 +303,12 @@ let rec handle_answer answer =
             | None -> ()
             | Some subject -> Printf.printf "%s: %s\n" ip subject
         end;
+      | Get ->
+        let records, _, _ = parse_all_records !enrich_style answer in
+	match (get_list get_record records !path) with
+	| Left s -> Printf.printf "Left \"%s\"\n" (String.concat "." s)
+	| Right s -> Printf.printf "Right \"%s\"\n" s
+
   end;
   return again
 

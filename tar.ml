@@ -29,6 +29,8 @@ let print_tar_numstring ?indent:(indent="")
                         ?name:(name="numstring") v =
   Printf.sprintf "%s%s: %d (%o)\n" indent name v v
 
+let get_tar_numstring len = trivial_get (dump_tar_numstring len) print_tar_numstring
+
 
 type optional_tar_numstring = int option
 
@@ -47,6 +49,8 @@ let print_optional_tar_numstring ?indent:(indent="")
                                  ?name:(name="numstring") = function
   | None -> Printf.sprintf "%s%s" indent name
   | Some v -> print_tar_numstring ~indent:indent ~name:name v
+
+let get_optional_tar_numstring len = trivial_get (dump_optional_tar_numstring len) print_optional_tar_numstring
 
 
 struct ustar_header = {

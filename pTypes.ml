@@ -19,6 +19,7 @@ let print_ipv4 ?indent:(indent="") ?name:(name="ipv4") s =
   let res = string_of_ipv4 s in
   Printf.sprintf "%s%s: %s\n" indent name res
 
+let get_ipv4 = trivial_get dump_ipv4 string_of_ipv4
 
 
 type ipv6 = string
@@ -40,6 +41,8 @@ let string_of_ipv6 s =
 let print_ipv6 ?indent:(indent="") ?name:(name="ipv6") s =
   let res = string_of_ipv6 s in
   Printf.sprintf "%s%s: %s\n" indent name res
+
+let get_ipv6 = trivial_get dump_ipv6 string_of_ipv6
 
 
 
@@ -65,6 +68,7 @@ let dump_magic magic_expected () =
 let print_magic ?indent:(indent="") ?name:(name="magic") () =
   print_binstring ~indent:indent ~name:name ""
 
+let get_magic magic_expected = trivial_get (dump_magic magic_expected) print_magic
 
 
 (* Container *)
@@ -127,6 +131,11 @@ let parse_raw_value offset input =
 let lwt_parse_raw_value _offset input =
   fail (ParsingException (NotImplemented "lwt_parse_raw_value", _h_of_li input))
 
+let get_raw_value v path = match v, path with
+  | None, [] -> Right "None"
+  | Some s, []
+  | Some s, ["@hex"] -> Right (hexdump s)
+  | _, path -> Left path
 
 
 (* Ignore trailing bytes *)

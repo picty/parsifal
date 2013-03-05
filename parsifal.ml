@@ -27,6 +27,17 @@ let hexdump s =
   res
 
 
+let string_split c s =
+  let rec aux offset =
+    try
+      let next_index = String.index_from s offset c in
+      (String.sub s offset (next_index - offset))::(aux (next_index + 1))
+    with Not_found ->
+      let len = String.length s in
+      if offset < len then [String.sub s offset (len - offset)] else []
+  in aux 0
+
+
 let quote_string s =
   let n = String.length s in
 
@@ -381,6 +392,69 @@ let should_enrich global_ref local_arg =
 
 
 
+(*********************)
+(* Getting functions *)
+(*********************)
+
+type ('a, 'b) either = Left of 'a | Right of 'b
+
+let default_get _ path = Left path
+
+let get_wrapper dump print get v = function
+  | ["@hex"] -> Right (hexdump (dump v))
+(*  | "@base64" -> base64      TODO: Find a way to call base64 here...   *)
+  | [] -> Right (print v)   (* TODO: Should use to_string when available *)
+  | path -> get v path
+
+let trivial_get dump print = get_wrapper dump print default_get
+
+let get_list get_fun l = function
+  | ("*"::ps as path) ->
+    let fold_results accu next =
+      match accu, next with
+      | Left x, Left _ -> Left x
+      | Right x, Left _
+      | Left _, Right x -> Right x
+      | Right x, Right y -> Right (x ^ ", " ^ y)
+    in
+    List.fold_left fold_results (Left path)
+      (List.map (fun x -> get_fun x ps) l)
+  | (p::ps) as path ->
+    begin
+      try
+	let len = String.length p in
+	if len > 2 && p.[0] = '[' && p.[len - 1] = ']'
+	then get_fun (List.nth l (int_of_string (String.sub p 1 (len - 2)))) ps
+	else Left path
+      with _ -> Left path
+    end
+  | path -> Left path
+
+let get_array get_fun a = function
+  | (p::ps) as path ->
+    begin
+      try
+	let len = String.length p in
+	if len > 2 && p.[0] = '[' && p.[len - 1] = ']'
+	then get_fun (Array.get a (int_of_string (String.sub p 1 (len - 2)))) ps
+	else Left path
+      with _ -> Left path
+    end
+  |  path -> Left path
+
+
+let get_enum string_of_val int_of_val nchars v = function
+  | ["@hex"] -> Right (Printf.sprintf "%*.*x" nchars nchars (int_of_val v))
+  | [] -> Right (string_of_val v)
+  | path -> Left path
+
+let try_get (get_fun : 'a -> string list -> (string list, string) either) (x : 'a option) (path : string list) =
+  match x, path with
+  | None, [] -> Right "None"
+  | None, path -> Left path
+  | Some x, path -> get_fun x path
+
+
 
 (**************)
 (* Base types *)
@@ -417,7 +491,6 @@ let lwt_parse_char input =
   return (s.[0])
 
 let dump_uint8 v = String.make 1 (char_of_int (v land 0xff))
-
 let dump_char c = String.make 1 c
 
 let print_uint8 ?indent:(indent="") ?name:(name="uint8") v =
@@ -425,6 +498,9 @@ let print_uint8 ?indent:(indent="") ?name:(name="uint8") v =
 
 let print_char ?indent:(indent="") ?name:(name="char") c =
   Printf.sprintf "%s%s: %c (%2.2x)\n" indent name c (int_of_char c)
+
+let get_uint8 = trivial_get dump_uint8 print_uint8
+let get_char = trivial_get dump_char print_char
 
 
 let parse_uint16 input =
@@ -457,6 +533,9 @@ let dump_uint16 v =
 let print_uint16 ?indent:(indent="") ?name:(name="uint16") v =
   Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
 
+let get_uint16 = trivial_get dump_uint16 print_uint16
+
+
 type uint16le = int
 
 let parse_uint16le input =
@@ -482,6 +561,8 @@ let dump_uint16le v =
 
 let print_uint16le ?indent:(indent="") ?name:(name="uint16le") v =
   Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
+
+let get_uint16le = trivial_get dump_uint16le print_uint16le
 
 
 let parse_uint24 input =
@@ -511,6 +592,8 @@ let dump_uint24 v =
 
 let print_uint24 ?indent:(indent="") ?name:(name="uint24") v =
   Printf.sprintf "%s%s: %d (%6.6x)\n" indent name v v
+
+let get_uint24 = trivial_get dump_uint24 print_uint24
 
 
 let parse_uint32 input =
@@ -543,6 +626,8 @@ let dump_uint32 v =
 
 let print_uint32 ?indent:(indent="") ?name:(name="uint32") v =
   Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
+
+let get_uint32 = trivial_get dump_uint32 print_uint32
 
 
 type uint32le = int
@@ -577,6 +662,8 @@ let dump_uint32le v =
 
 let print_uint32le ?indent:(indent="") ?name:(name="uint32le") v =
   Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
+
+let get_uint32le = trivial_get dump_uint32le print_uint32le
 
 
 type uint64le = Int64.t
@@ -624,6 +711,7 @@ let dump_uint64le v =
 let print_uint64le ?indent:(indent="") ?name:(name="uint64le") v =
   Printf.sprintf "%s%s: %Ld (%16.16Lx)\n" indent name v v
 
+let get_uint64le = trivial_get dump_uint64le print_uint64le
 
 
 (* Strings *)
@@ -835,7 +923,6 @@ let try_print (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?inde
   | _, None -> ""
   | None, Some x -> print_fun ~indent:indent x
   | Some n, Some x -> print_fun ~indent:indent ~name:n x
-
 
 
 (* Some useful tools *)
