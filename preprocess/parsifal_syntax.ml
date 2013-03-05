@@ -818,36 +818,29 @@ let mk_get_fun _loc c =
 	    $apply_exprs _loc <:expr< Parsifal.get_wrapper >>
 	      [dump_fun; print_fun; get_aux_fun; <:expr< $lid:c.name$ >>]$ >>
 
-  | _ ->
-    <:expr< Parsifal.get_wrapper $dump_fun$ $print_fun$ Parsifal.default_get $lid:c.name$ >>
+  | Union union
+  | ASN1Union union ->
+    let mk_case = function
+      | _loc, cons, (_, PT_Empty) ->
+  	<:match_case< $ <:patt< $uid:cons$ >> $ -> Parsifal.default_get () >>
+      | (_loc, cons, (n, t)) ->
+  	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
+  	$ <:expr< $get_fun_of_ptype _loc t$ x >> $ >>
+    in
+    let last_case =
+      <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
+      $ <:expr< $get_fun_of_ptype _loc union.unparsed_type$ x >> $ >>
+    in
+    let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
+    <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >>
 
+  | Alias atype -> <:expr< $get_fun_of_ptype _loc atype$ $lid:c.name$ >>
 
-  (* | Union union *)
-  (* | ASN1Union union -> *)
-  (*   let mk_case = function *)
-  (*     | _loc, cons, (_, PT_Empty) -> *)
-  (* 	<:match_case< $ <:patt< $uid:cons$ >> $ -> *)
-  (* 	Parsifal.print_binstring ~indent:indent ~name:name "" >> *)
-  (*     | (_loc, cons, (n, t)) -> *)
-  (* 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) -> *)
-  (* 	$ <:expr< $print_fun_of_ptype _loc c.name t$ ~indent:indent ~name: $ <:expr< $str:cons$ >> $ x >> $ >> *)
-  (*   in *)
-  (*   let last_case = *)
-  (*     <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) -> *)
-  (*     $ <:expr< $print_fun_of_ptype _loc c.name union.unparsed_type$ *)
-  (*       ~indent:indent ~name:(name ^ "[Unparsed]") x >> $ >> *)
-  (*   in *)
-  (*   let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in *)
-  (*   <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >> *)
-
-  (* | Alias atype -> *)
-  (*   <:expr< $print_fun_of_ptype _loc c.name atype$ ~indent:indent ~name:name $lid:c.name$ >> *)
-
-  (* | ASN1Alias alias -> *)
-  (*   let print_content = print_fun_of_ptype _loc (c.name ^ "_content") alias.aatype in *)
-  (*   if alias.aalist *)
-  (*   then <:expr< Parsifal.print_list $print_content$ ~indent:indent ~name:name $lid:c.name$ >> *)
-  (*   else <:expr< $print_content$ ~indent:indent ~name:name $lid:c.name$ >> *)
+  | ASN1Alias alias ->
+    let get_content = get_fun_of_ptype _loc alias.aatype in
+    if alias.aalist
+    then <:expr< Parsifal.get_list $get_content$ $lid:c.name$ >>
+    else <:expr< $get_content$ $lid:c.name$ >>
 
   in [ mk_multiple_args_fun _loc ("get_" ^ c.name) (c.dump_params@[c.name]) body ]
 

@@ -66,7 +66,9 @@ let string_of_distinguishedName dn =
 
 let print_distinguishedName ?indent:(indent="") ?name:(name="distinguishedName") dn =
   Printf.sprintf "%s%s: %s\n" indent name (string_of_distinguishedName dn)
-  
+
+(* TODO: rewrite that! *)
+let get_distinguishedName = trivial_get dump_distinguishedName string_of_distinguishedName
 
 
 (***********************)

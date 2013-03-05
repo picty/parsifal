@@ -1,4 +1,12 @@
+
 v0.1 (oct. 2012 -> jan. 2013)
+ - General
+   * have a redmine to put all this stuff
+   * Produce a real camlp4 syntax package
+   * add Pollux' MakefileV6
+   * split parsifal in several repos: parsifal, AceSL, etc.
+   * put basePTypes in another file.
+   * clean up TODOs in ml files.
  - Docs
    * Write index.txt for all subdirs
  - TlsEngine
@@ -44,19 +52,13 @@ v0.1 (oct. 2012 -> jan. 2013)
    * Add a way to create a certificate object
  - Tools
    * bgpdump and/or obsdump
+   * add get feature to x509show
    * x509check (enrich the x509 object before analysing!)
    * chaincheck
    * check_sslserver (see check_sslserver.ml for a complete TODO)
    * Create simple PKI tools to create a RSA key, sign, verify, encrypt, decrypt, handle a simple PKI (rsa tool)
    * Write acu (AceSL Cert Util) to read certs / pubkeys / privkeys and manipulate them
    * Passive TLS_Proxy
- - General
-   * have a redmine to put all this stuff
-   * Produce a real camlp4 syntax package
-   * add Pollux' MakefileV6
-   * split parsifal in several repos: parsifal, AceSL, etc.
-   * put basePTypes in another file.
-   * clean up TODOs in ml files.
 
 
 v0.2 (feb. 2013 -> mar. 2013)
@@ -78,8 +80,9 @@ v0.2 (feb. 2013 -> mar. 2013)
    * be more cautious about int32 types...
    * add hex_container / gzip_container as custom containers
    * Document the preprocessor (update the JFLA article)
-   * Add a way to access to fields with a "language" (browse) (from the command line: tls_record.record_content.handshake_type -> string option)
    * improve basic get functions
+   * improve get_wrapper (raw, gzip, base64, etc.)
+   * add {,} to get path language (x.{y,z}.{t,a})
    * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
    * Add a "flexible" decorator in structures
        -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)

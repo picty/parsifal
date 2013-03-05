@@ -27,6 +27,8 @@ let string_of_der_boolean_content = string_of_bool
 let print_der_boolean_content ?indent:(indent="") ?name:(name="der_boolean") v =
   Printf.sprintf "%s%s: %s\n" indent name (string_of_bool v)
 
+let get_der_boolean_content = trivial_get dump_der_boolean_content string_of_der_boolean_content
+
 asn1_alias der_boolean = primitive [T_Boolean] der_boolean_content
 
 
@@ -58,7 +60,7 @@ let string_of_der_integer_content = hexdump
 let print_der_integer_content ?indent:(indent="") ?name:(name="der_integer") v =
   Printf.sprintf "%s%s: %s\n" indent name (hexdump v)
 
-let get_der_integer_content s path = failwith "get_der_integer_contant"
+let get_der_integer_content = trivial_get id hexdump
 
 asn1_alias der_integer = primitive [T_Integer] der_integer_content
 
@@ -100,7 +102,7 @@ let string_of_der_smallint_content = string_of_int
 let print_der_smallint_content ?indent:(indent="") ?name:(name="der_smallint") v =
   Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
 
-let get_der_smallint_content s path = failwith "get_der_smallint_contant"
+let get_der_smallint_content = trivial_get dump_der_smallint_content string_of_int
 
 asn1_alias der_smallint = primitive [T_Integer] der_smallint_content
 
@@ -121,6 +123,8 @@ let dump_der_null_content () = ""
 let string_of_der_null_content () = ""
 let print_der_null_content ?indent:(indent="") ?name:(name="der_null_content") () =
   Printf.sprintf "%s%s\n" indent name
+
+let get_der_null_content = trivial_get (fun () -> "") (fun () -> "")
 
 asn1_alias der_null = primitive [T_Null] der_null_content
 
@@ -224,6 +228,8 @@ let print_der_oid_content ?indent:(indent="") ?name:(name="der_oid_content") oid
   in
   Printf.sprintf "%s%s: %s\n" indent name (value)
 
+let get_der_oid_content = trivial_get dump_der_oid_content string_of_oid
+
 asn1_alias der_oid = primitive [T_OId] der_oid_content
 
 
@@ -324,7 +330,8 @@ let string_of_der_enumerated_bitstring_content = String.concat ", "
 let print_der_enumerated_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_content") l =
   Printf.sprintf "%s%s: %s\n" indent name (String.concat ", " l)
 
-let get_der_enumerated_bitstring_content description l path = Left path (* TODO *)
+let get_der_enumerated_bitstring_content description =
+  trivial_get (dump_der_enumerated_bitstring_content description) string_of_der_enumerated_bitstring_content
 
 asn1_alias der_enumerated_bitstring [both_param description] = primitive [T_BitString] der_enumerated_bitstring_content[description]
 
@@ -348,6 +355,7 @@ let dump_der_octetstring_content s = s
 let string_of_der_octetstring_content = hexdump
 let print_der_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
   Printf.sprintf "%s%s: %s\n" indent name (hexdump s)
+let get_der_octetstring_content = trivial_get id hexdump
 
 asn1_alias der_octetstring = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
@@ -355,6 +363,7 @@ let string_of_der_printable_octetstring_content s = s
 alias der_printable_octetstring_content [param constr] = der_octetstring_content(constr)
 let print_der_printable_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
   Printf.sprintf "%s%s: %s\n" indent name s
+let get_der_printable_octetstring_content = trivial_get id quote_string
 
 
 (* Time types *)
@@ -408,6 +417,7 @@ let dump_der_utc_time_content t =
     (utc_year_of_int t.year) t.month t.day t.hour t.minute t.second
 let string_of_der_utc_time_content = string_of_time_content
 let print_der_utc_time_content = print_time_content
+let get_der_utc_time_content = trivial_get dump_der_utc_time_content string_of_time_content
 
 type der_generalized_time_content = time_content
 let parse_der_generalized_time_content input =
@@ -418,6 +428,7 @@ let dump_der_generalized_time_content t =
     t.year t.month t.day t.hour t.minute t.second
 let string_of_der_generalized_time_content = string_of_time_content
 let print_der_generalized_time_content = print_time_content
+let get_der_generalized_time_content = trivial_get dump_der_generalized_time_content string_of_time_content
 
 
 (* Generic ASN.1 Object *)
@@ -535,6 +546,7 @@ and dump_der_object_content = function
 
 let string_of_der_object_content _ = "der_object"
 let string_of_der_object _ = "der_object"
+
 let rec print_der_object ?indent:(indent="") ?name:(name="") o =
   let real_name =
     if name = ""
@@ -553,7 +565,8 @@ and print_der_object_content ?indent:(indent="") ?name:(name="der_object") = fun
   | String (s, false) -> print_printablestring ~indent:indent ~name:name s
   | Constructed l -> print_list print_der_object ~indent:indent ~name:name l
 
-let get_der_object o path = failwith "get_der_object not implemented"
+let get_der_object_content = trivial_get dump_der_object_content string_of_der_object_content
+let get_der_object = trivial_get dump_der_object string_of_der_object
 
 
 (* ASN.1 Containers *)
