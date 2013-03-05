@@ -134,16 +134,6 @@ let other_oids = [
 ]
 
 
-let populate_atv_directory (id, name, short, value) =
-  register_oid ~short:short id name;
-  Hashtbl.replace attributeValueType_directory id value
-
-let populate_alg_directory dir (id, name, algParam, value) =
-  register_oid id name;
-  Hashtbl.replace algorithmParamsType_directory id algParam;
-  Hashtbl.replace dir id value
-
-
 let _ =
   List.iter (populate_atv_directory) attribute_value_types;
   List.iter (fun (id, name) -> register_oid id name) extension_types;

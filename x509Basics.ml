@@ -30,6 +30,10 @@ type attributeValueType =
 
 let attributeValueType_directory : (int list, attributeValueType) Hashtbl.t = Hashtbl.create 10
 
+let populate_atv_directory (id, name, short, value) =
+  register_oid ~short:short id name;
+  Hashtbl.replace attributeValueType_directory id value
+
 union attributeValue [enrich] (UnparsedAV of der_object) =
   | AVT_IA5String len_cons -> AV_IA5String of der_ia5string (len_cons)
   | AVT_PrintableString len_cons -> AV_PrintableString of der_printablestring (len_cons)
@@ -75,6 +79,12 @@ type algorithmParamsType =
   | APT_Unknown
 
 let algorithmParamsType_directory : (int list, algorithmParamsType) Hashtbl.t = Hashtbl.create 10
+
+let populate_alg_directory dir (id, name, algParam, value) =
+  register_oid id name;
+  Hashtbl.replace algorithmParamsType_directory id algParam;
+  Hashtbl.replace dir id value
+
 
 union algorithmParams [enrich] (UnparsedParams of der_object) =
   | APT_Null -> NoParams of der_null

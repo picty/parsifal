@@ -11,36 +11,18 @@ exception InvalidSignature
 
 (* TODO: Define a private key / public key type? *)
 
-let hash_funs = [
-  "md5", [42;840;113549;2;5], md5sum;
-  "sha1", [43;14;3;2;26], sha1sum;
-  "sha256", [96;840;1;101;3;4;2;1], sha256sum;
-(*  "sha384", [96;840;1;101;3;4;2;2], sha384sum;
-  "sha512", [96;840;1;101;3;4;2;3], sha512sum;
-  "sha224", [96;840;1;101;3;4;2;4], sha224sum;*)
-]
+let hash_funs : (int list, string -> string) Hashtbl.t = Hashtbl.create 10
 
 let get_hash_fun_by_name n =
-  let rec aux = function
-    | [] -> raise (NotFound ("Unknown hash function " ^ n))
-    | (name, oid, f)::r ->
-      if n = name
-      then oid, f
-      else aux r
-  in aux hash_funs
+  try
+    let oid = Hashtbl.find rev_oid_directory n in
+    let f = Hashtbl.find hash_funs oid in
+    (oid, f)
+  with Not_found -> raise (NotFound ("Unknown hash function " ^ n))
 
-let get_hash_fun_by_oid id =
-  let rec aux = function
-    | [] -> raise (NotFound ("Unknown hash function oid " ^ (raw_string_of_oid id)))
-    | (_, oid, f)::r ->
-      if oid = id
-      then f
-      else aux r
-  in aux hash_funs
-
-let _ =
-  let register_hash_fun (name, oid, _) = register_oid oid name in
-  List.map register_hash_fun hash_funs
+let get_hash_fun_by_oid oid =
+  try Hashtbl.find hash_funs oid
+  with Not_found -> raise (NotFound ("Unknown hash oid " ^ (string_of_oid oid)))
 
 
 
@@ -166,3 +148,17 @@ let raw_verify typ msg s n e =
       | _ -> false
   with
     | Not_found _ | Parsifal.ParsingException _ -> false
+
+
+
+let hash_fun_list = [
+  [42;840;113549;2;5], "md5", X509Basics.APT_Null, md5sum;
+  [43;14;3;2;26], "sha1", X509Basics.APT_Null, sha1sum;
+  [96;840;1;101;3;4;2;1], "sha256", X509Basics.APT_Null, sha256sum;
+(*  "sha384", [96;840;1;101;3;4;2;2], sha384sum;
+  "sha512", [96;840;1;101;3;4;2;3], sha512sum;
+  "sha224", [96;840;1;101;3;4;2;4], sha224sum;*)
+]
+
+let _ =
+  List.iter (X509Basics.populate_alg_directory hash_funs) hash_fun_list
