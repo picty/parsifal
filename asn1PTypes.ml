@@ -448,6 +448,7 @@ and der_object_content =
   | OId of int list
   | String of (string * bool)       (* bool : isBinary *)
   | Constructed of der_object list
+  | UnparsedDER of (bool * string)  (* bool : constructed *)
 
 
 let mk_object c t content = {
@@ -457,7 +458,8 @@ let mk_object c t content = {
 }
 
 let isConstructed o = match o.a_content with
-  | Constructed _ -> true
+  | Constructed _
+  | UnparsedDER (true, _) -> true
   | _ -> false
 
 
@@ -468,7 +470,11 @@ let rec parse_der_object input =
   let len = extract_der_length input in
 (*   let _hlen = input.cur_offset - old_cur_offset in *)
   let new_input = get_in input (print_header (c, isC, t)) len in
-  let content = parse_der_object_content (c, isC, t) new_input in
+  let content =
+    if input.enrich <> NeverEnrich
+    then parse_der_object_content (c, isC, t) new_input
+    else UnparsedDER (isC, parse_rem_string new_input)
+ in
   get_out input new_input;
   mk_object c t content
 
@@ -476,7 +482,11 @@ and lwt_parse_der_object input =
   lwt_extract_der_header input >>= fun (c, isC, t) ->
   lwt_extract_der_length input >>= fun len ->
   lwt_get_in input (print_header (c, isC, t)) len >>= fun new_input ->
-  let content = parse_der_object_content (c, isC, t) new_input in
+  let content =
+    if input.lwt_enrich <> NeverEnrich
+    then parse_der_object_content (c, isC, t) new_input
+    else UnparsedDER (isC, parse_rem_string new_input)
+  in
   lwt_get_out input new_input >>= fun () ->
   return (mk_object c t content)
 
@@ -550,6 +560,7 @@ and dump_der_object_content = function
   | String (s, _) -> dump_der_octetstring_content s
   | Constructed l ->
     String.concat "" (List.map dump_der_object l)
+  | UnparsedDER (_, s) -> s
 
 
 let string_of_der_object_content _ = "der_object"
@@ -572,6 +583,7 @@ and print_der_object_content ?indent:(indent="") ?name:(name="der_object") = fun
   | String (s, true) -> print_binstring ~indent:indent ~name:name s
   | String (s, false) -> print_printablestring ~indent:indent ~name:name s
   | Constructed l -> print_list print_der_object ~indent:indent ~name:name l
+  | UnparsedDER (_, s) -> print_binstring ~indent:indent ~name:name s
 
 let get_der_object_content = trivial_get dump_der_object_content string_of_der_object_content
 let get_der_object = trivial_get dump_der_object string_of_der_object
