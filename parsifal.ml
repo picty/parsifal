@@ -121,7 +121,7 @@ type string_input = {
   cur_base : int;
   mutable cur_offset : int;
   cur_length : int;
-  mutable enrich : enrich_style;
+  enrich : enrich_style;
   history : history;
   err_fun : string -> unit
 }
