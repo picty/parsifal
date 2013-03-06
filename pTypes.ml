@@ -72,7 +72,7 @@ let print_magic ?indent:(indent="") ?name:(name="magic") () =
 let get_magic magic_expected = trivial_get (dump_magic magic_expected) string_of_magic
 
 
-(* Container *)
+(* Containers *)
 
 type length_constraint =
   | NoConstraint
@@ -106,6 +106,15 @@ let dump_length_constrained_container (* len_cons *) dump_fun o =
   (* Warning if length constraint not validated? *)
   dump_fun o
 
+
+
+let parse_enrich_blocker level parse_fun input =
+  let new_input = { input with enrich = EnrichLevel level } in
+  let res = parse_fun new_input in
+  input.cur_offset <- new_input.cur_offset;
+  res
+
+let dump_enrich_blocker dump_fun o = dump_fun o
 
 
 
