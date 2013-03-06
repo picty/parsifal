@@ -483,6 +483,7 @@ and lwt_parse_der_object input =
 and parse_der_object_content h input = match h with
   | (C_Universal, false, T_Boolean) -> Boolean (parse_der_boolean_content input)
   | (C_Universal, false, T_Integer) -> Integer (parse_der_integer_content input)
+  | (C_Universal, false, T_EndOfContents)
   | (C_Universal, false, T_Null) -> parse_der_null_content input; Null
   | (C_Universal, false, T_OId) -> OId (parse_der_oid_content input)
   | (C_Universal, false, T_BitString) -> let nBits, s = parse_der_bitstring_content input in BitString (nBits, s)
@@ -503,10 +504,17 @@ and parse_der_object_content h input = match h with
   | (C_Universal, false, T_UnspecifiedCharacterString)
   | (C_Universal, false, T_BMPString) -> String (parse_der_octetstring_content no_constraint input, false) (* TODO *)
 
+  | (C_Universal, false, T_ObjectDescriptor)
+  | (C_Universal, false, T_External)
+  | (C_Universal, false, T_Real)
+  | (C_Universal, false, T_Enumerated)
+  | (C_Universal, false, T_EmbeddedPDV)
+  | (C_Universal, false, T_RelativeOId) -> String (parse_rem_string input, true)
+
   | (C_Universal, true, T_Sequence)
   | (C_Universal, true, T_Set) -> Constructed (parse_der_constructed_content input)
 
-  | (C_Universal, false, t) ->
+  | (C_Universal, false, ((T_Set | T_Sequence | T_Unknown _) as t) ) ->
     warning (UnknownUniversalObject (false, t)) input;
     String (parse_der_octetstring_content no_constraint input, true)
 
