@@ -864,7 +864,7 @@ let dump_varlen_list len_fun dump_fun l =
 
 let print_list (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?indent:(indent="") ?name:(name="list") l =
   (Printf.sprintf "%s%s {\n" indent name) ^
-  (String.concat "" (List.map (fun x -> print_fun ~indent:(indent ^ "  ") ~name:name x) l)) ^
+  (String.concat "" (List.map (fun x -> print_fun ~indent:(indent ^ "  ") x) l)) ^
   (Printf.sprintf "%s}\n" indent)
 
 
@@ -909,9 +909,9 @@ let lwt_parse_array n lwt_parse_fun input =
 let dump_array dump_fun a =
   String.concat "" (Array.to_list (Array.map dump_fun a))
 
-let print_array (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?indent:(indent="") ?name:(name="list") a =
+let print_array (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?indent:(indent="") ?name:(name="array") a =
   (Printf.sprintf "%s%s {\n" indent name) ^
-  (String.concat "" (Array.to_list (Array.map (fun x -> print_fun ~indent:(indent ^ "  ") ~name:name x) a))) ^
+  (String.concat "" (Array.to_list (Array.map (fun x -> print_fun ~indent:(indent ^ "  ") x) a))) ^
   (Printf.sprintf "%s}\n" indent)
 
 

@@ -1,4 +1,5 @@
 open Parsifal
+open Asn1PTypes
 
 enum tls_version [with_lwt] (16, UnknownVal V_Unknown) =
   | 0x0002 -> V_SSLv2, "SSLv2"
@@ -40,10 +41,13 @@ asn1_union der_time [top; enrich; exhaustive] (UnparsedTime) =
   | (Asn1Engine.C_Universal, false, Asn1Engine.T_GeneralizedTime) -> GeneralizedTime of Asn1PTypes.der_generalized_time_content
 
 
-let test parse dump print name s =
+let test (parse : string_input -> 'a)
+         (dump : 'a -> string)
+	 (print : ?indent:string -> ?name:string -> 'a -> string)
+	 (name : string) (s : string) =
   try
     let x = parse (input_of_string "" s) in
-    print_endline (print x);
+    print_endline (print ~name:name x);
     if (dump x = s)
     then Printf.printf "Parse/Dump is idempotent for %s\n" name
     else Printf.printf "Parse/Dump is NOT idempotent for %s\n" name
@@ -55,6 +59,7 @@ let test_st = test exact_parse_st dump_st print_st "st"
 let test_st2 = test exact_parse_st2 dump_st2 print_st2 "st2"
 let test_l1 = test exact_parse_l1 dump_l1 print_l1 "l1"
 let test_rsa = test exact_parse_rsa_public_key dump_rsa_public_key print_rsa_public_key "rsa_public_key"
+let test_der_object = test parse_der_object dump_der_object print_der_object "der_object"
 
 let _ =
   print_endline (string_of_tls_version (tls_version_of_int 768));
@@ -67,6 +72,7 @@ let _ =
   test_st2 "\x02";
   test_l1 "\x04toto\x02AABB\x02yo\x00";
   test_rsa "\x30\x0d\x02\x08AABBCCDD\x02\x01\x03";
+  test_der_object "\x30\x0d\x02\x08AABBCCDD\x02\x01\x03";
   for i = 1 to (Array.length Sys.argv) - 1 do
     match (get_st (parse_st (input_of_string "" "\x04toto\x02AABB")) (string_split '.' (Sys.argv.(i)))) with
     | Left s -> Printf.printf "Left \"%s\"\n" (String.concat "." s)
