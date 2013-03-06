@@ -519,7 +519,7 @@ and parse_der_object_content h input = match h with
   | (C_Universal, false, T_Real)
   | (C_Universal, false, T_Enumerated)
   | (C_Universal, false, T_EmbeddedPDV)
-  | (C_Universal, false, T_RelativeOId) -> String (parse_rem_string input, true)
+  | (C_Universal, false, T_RelativeOId) -> String (parse_rem_string input, true) (* TODO *)
 
   | (C_Universal, true, T_Sequence)
   | (C_Universal, true, T_Set) -> Constructed (parse_der_constructed_content input)
