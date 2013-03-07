@@ -281,7 +281,7 @@ let test_filter m =
   | Some f ->
     let [path; value] = string_split '=' f in
     match get_mrt_message m (string_split '.' path) with
-    | Right l -> List.mem value l
+    | Right l -> find_in_tree value l
     | _ -> false
 
 let rec map_mrt f input =
@@ -318,9 +318,8 @@ let get_mrt mrt_msg =
   match (get_mrt_message mrt_msg !path) with
   | Left s -> if !verbose then prerr_endline (String.concat "." s)
   | Right s -> Printf.printf "%8.8x %s %s: %s\n" mrt_msg.mrt_timestamp
-    (string_of_mrt_type mrt_msg.mrt_type)
-    (string_of_mrt_subtype mrt_msg.mrt_subtype)
-    (String.concat ", " s)
+    (string_of_mrt_type mrt_msg.mrt_type) (string_of_mrt_subtype mrt_msg.mrt_subtype)
+    (flatten s)
 
 
 let handle_input input =

@@ -803,14 +803,14 @@ let mk_get_fun _loc c =
     <:expr< $get_fun$ $soe$ $ioe$ $int:string_of_int (enum.size / 4)$ $lid:c.name$ >>
 
   | Struct fields ->
-    let strexp_of_field (_, n, _, _) = <:expr< $str:n$ >> in
+    let field_leaf (_, n, _, _) = <:expr< Parsifal.Leaf $str:n$ >> in
+    let all_fields = exp_of_list _loc (List.map field_leaf (List.filter keep_built_fields fields)) in
     let get_one_field (_loc, n, t, attr) =
       let raw_f = get_fun_of_ptype _loc t in
       let f = if attr = Optional then <:expr< Parsifal.try_get $raw_f$ >> else raw_f in
       <:match_case< $ <:patt< $uid:"::"$ $str:n$ r >> $ ->
       $f$ ($lid:c.name$.$lid:n$) r >>
-    and index_case = <:match_case< ["@index"] -> Parsifal.Right $exp_of_list _loc 
-      (List.map strexp_of_field (List.filter keep_built_fields fields))$ >>
+    and index_case = <:match_case< ["@index"] -> Parsifal.Right (Parsifal.Node $all_fields$) >>
     and last_case = <:match_case< $ <:patt< path >> $ -> Parsifal.Left path >> in
     let cases = (List.map get_one_field (List.filter keep_built_fields fields))@[index_case; last_case] in
 

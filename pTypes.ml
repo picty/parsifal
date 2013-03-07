@@ -142,9 +142,9 @@ let lwt_parse_raw_value _offset input =
   fail (ParsingException (NotImplemented "lwt_parse_raw_value", _h_of_li input))
 
 let get_raw_value v path = match v, path with
-  | None, [] -> Right []
+  | None, [] -> Right (Leaf "None")
   | Some s, []
-  | Some s, ["@hex"] -> Right [hexdump s]
+  | Some s, ["@hex"] -> Right (Leaf "hexdump s")
   | _, path -> Left path
 
 
