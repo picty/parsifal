@@ -87,6 +87,12 @@ v0.2 (feb. 2013 -> mar. 2013)
        -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
+   * Add recursive type definitions (PKCS#7 / DEX)
+   * Use a standard format for printing data (JSON?)
+   * Add bitfield support
+     + this should look like struct
+     + it should use bitparse_ / bitdump_ functions, that take two more args (current_byte, current_pos)
+     + enums on n bits (where n % 8 <> 0) should offer bitparse and bitdump funs
  - Tls
    * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
    * Add SSLv2 support in probe_server and other programs
