@@ -1,12 +1,13 @@
 v0.1 (oct. 2012 -> jan. 2013)
+ - Docs
+   * Document the preprocessor (update the JFLA article)
+   * Write index.txt for all subdirs
  - General
    * have a redmine to put all this stuff
    * Produce a real camlp4 syntax package
    * add Pollux' MakefileV6
    * split parsifal in several repos: parsifal, AceSL, etc.
    * clean up TODOs in ml files.
- - Docs
-   * Write index.txt for all subdirs
  - TlsEngine
    * work on TlsEngine.update* functions
    * write the automata (client, server, transparent proxy, normalizing proxy)
@@ -61,11 +62,9 @@ v0.1 (oct. 2012 -> jan. 2013)
 
 v0.2 (feb. 2013 -> mar. 2013)
  - General
-   * add Pollux' MakefileV6
    * Think about the exception system (fatal or not) => merge all in ParsifalException
    * add a field "handle_non_lethal_exceptions" to *_input (a function that could be raise or prerr_endline)
    * Improve the printing systems
-     + do we need a separate string_of function, a way to ask for a one liner?
      + do we need a hookable string_of function?
  - Software Engineering
    * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
@@ -78,7 +77,6 @@ v0.2 (feb. 2013 -> mar. 2013)
    * add control commands in struct (check / seek / stop)
    * be more cautious about int32 types...
    * add hex_container / gzip_container as custom containers
-   * Document the preprocessor (update the JFLA article)
    * improve basic get functions
    * improve get_wrapper (raw, gzip, base64, etc.)
    * add {,} to get path language (x.{y,z}.{t,a})
