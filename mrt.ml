@@ -183,7 +183,7 @@ union bgp_message_content [enrich; param ipa_type; param as_size] (UnparsedBGPMe
   | BMT_KEEPALIVE -> BGP_KeepAlive
   | BMT_ROUTE_REFRESH -> BGP_RouteRefresh of bgp_route_refresh
 
-alias bgp_message_marker = magic ["\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"]
+alias bgp_message_marker = magic ("\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff")
 
 struct bgp_message [param ipa_type; param as_size] = {
   bgp_message_marker : bgp_message_marker;

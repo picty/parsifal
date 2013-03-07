@@ -89,9 +89,9 @@ let string_of_base64_title title input =
     let c = drop_while (fun c -> reverse_base64_chars.(c) = -2) input in
     if char_of_int c <> '-'
     then raiseB64 "Dash expected" input;
-    parse_magic (if header then "----BEGIN " else "----END ") input;
+    ignore (parse_magic (if header then "----BEGIN " else "----END ") input);
     let title = read_while (fun c -> c <> (int_of_char '-')) input in
-    parse_magic "----" input;
+    ignore (parse_magic "----" input);
     title
   in
 
@@ -114,9 +114,9 @@ let lwt_string_of_base64_title title lwt_input =
     if char_of_int c <> '-'
     then lwt_raiseB64 "Dash expected" lwt_input
     else begin
-      lwt_parse_magic (if header then  "----BEGIN " else "----END ") lwt_input >>= fun () ->
+      lwt_parse_magic (if header then  "----BEGIN " else "----END ") lwt_input >>= fun _ ->
       lwt_read_while (fun c -> c <> (int_of_char '-')) lwt_input >>= fun title ->
-      lwt_parse_magic "----" lwt_input >>= fun () ->
+      lwt_parse_magic "----" lwt_input >>= fun _ ->
       return title
     end
   in

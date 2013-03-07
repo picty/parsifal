@@ -4,7 +4,7 @@ open PTypes
 
 
 struct msdos_header [with_lwt] = {
-  e_magic : magic["MZ"];
+  e_magic : magic("MZ");
   e_cblp : uint16le;              (* Bytes on last page of file *)
   e_cp : uint16le;                (* Pages in file *)
   e_crlc : uint16le;              (* Relocations *)
@@ -40,7 +40,7 @@ enum subsystem [with_lwt; little_endian] (16, UnknownVal IMAGE_SUBSYSTEM_UNKNOWN
 	| 16 -> IMAGE_SUBSYSTEM_WINDOWS_BOOT_APPLICATION (* Boot application. *)
 
 struct pe_header [with_lwt] = {
-  pe_magic : magic["PE\x00\x00"];
+  pe_magic : magic("PE\x00\x00");
   machine : uint16le;      (* Machine type *)
   numsections : uint16le;  (* Number of Sections *)
   time : uint32le;         (* File Creation Time Stamp, number of seconds since epoch *)

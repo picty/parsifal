@@ -21,7 +21,7 @@ struct packet [top] = {
 }
 
 struct pcap_file [top] = {
-  magic_number : magic["\xd4\xc3\xb2\xa1"];
+  magic_number : magic("\xd4\xc3\xb2\xa1");
   pcap_version : pcap_version;
   gmt_timezone_offset : binstring(8);
   packets_max_len : uint32le;
@@ -30,7 +30,7 @@ struct pcap_file [top] = {
 }
 
 let std_pcap_hdr = {
-  magic_number = ();
+  magic_number = "\xd4\xc3\xb2\xa1";
   pcap_version = { major_version = 2; minor_version = 4 };
   gmt_timezone_offset = "\x00\x00\x00\x00\x00\x00\x00\x00";
   packets_max_len = 65535;

@@ -71,6 +71,7 @@ v0.2 (feb. 2013 -> mar. 2013)
    * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
    * Write .mli files
  - Camlp4/Language
+   * are dump_params really necessary after all?
    * rethink the exhaustive/enrich options for unions/asn1_unions
      + *dont_enrich* (enrich_ var) / enrich (enrich_ var) / force_enrich
      + <standard> / force_exhaustive (exhaustive + fail_hard) -> force_enrich / exhaustive / fail_soft (fail_on_enrich var + emit warning) 

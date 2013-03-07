@@ -49,28 +49,27 @@ let get_ipv6 = trivial_get dump_ipv6 string_of_ipv6
 
 (* Magic *)
 
-type magic = unit
+type magic = string
 
 let parse_magic magic_expected input =
   let s = parse_string (String.length magic_expected) input in
-  if s = magic_expected then ()
+  if s = magic_expected then s
   else raise (ParsingException (CustomException ("invalid magic (\"" ^
 				  (hexdump s) ^ "\")"), _h_of_si input))
 
 let lwt_parse_magic magic_expected input =
   lwt_parse_string (String.length magic_expected) input >>= fun s ->
-  if s = magic_expected then return ()
+  if s = magic_expected then return s
   else fail (ParsingException (CustomException ("invalid magic (\"" ^
 				 (hexdump s) ^ "\")"), _h_of_li input))
 
-let dump_magic magic_expected () =
-  String.copy magic_expected
+let dump_magic s = s
 
-let string_of_magic _ = ""
-let print_magic ?indent:(indent="") ?name:(name="magic") () =
-  print_binstring ~indent:indent ~name:name ""
+let string_of_magic s = hexdump s
+let print_magic ?indent:(indent="") ?name:(name="magic") s =
+  print_binstring ~indent:indent ~name:name s
 
-let get_magic magic_expected = trivial_get (dump_magic magic_expected) string_of_magic
+let get_magic = trivial_get dump_magic string_of_magic
 
 
 (* Containers *)

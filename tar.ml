@@ -60,7 +60,7 @@ let get_optional_tar_numstring len = trivial_get (dump_optional_tar_numstring le
 
 
 struct ustar_header = {
-  ustar_magic : magic["ustar"];
+  ustar_magic : magic("ustar");
   _ustar_magic_padding : binstring(3);
   owner_user : string(32);
   owner_group : string(32);
