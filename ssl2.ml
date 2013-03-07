@@ -1,5 +1,6 @@
 open Lwt
 open Parsifal
+open BasePTypes 
 
 type ssl2_context = {
   cleartext : bool

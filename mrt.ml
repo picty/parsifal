@@ -1,5 +1,7 @@
 open Parsifal
+open BasePTypes
 open PTypes
+
 
 (* Generic useful types and functions *)
 

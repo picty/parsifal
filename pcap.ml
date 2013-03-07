@@ -1,4 +1,5 @@
 open Parsifal
+open BasePTypes
 open PTypes
 
 struct pcap_version [top] = {

@@ -110,7 +110,7 @@ let extract_der_isConstructed (x : int) : bool =
 
 let extract_der_longtype input : asn1_tag  =
   let rec aux accu =
-    let byte = parse_uint8 input in
+    let byte = parse_byte input in
     let new_accu = (accu lsl 7) lor (byte land 0x7f) in
     if (byte land 0x80) = 0
     then new_accu
@@ -118,7 +118,7 @@ let extract_der_longtype input : asn1_tag  =
   in T_Unknown (aux 0)
 
 let extract_der_header input : (asn1_class * bool * asn1_tag) =
-  let hdr = parse_uint8 input in
+  let hdr = parse_byte input in
   let c = extract_der_class hdr in
   let isC = extract_der_isConstructed hdr in
   let hdr_t = hdr land 31 in
@@ -132,13 +132,13 @@ let extract_der_header input : (asn1_class * bool * asn1_tag) =
   in (c, isC, t)
 
 let extract_der_length input =
-  let first = parse_uint8 input in
+  let first = parse_byte input in
   if first land 0x80 = 0
   then first
   else begin
     let accu = ref 0 in
     for i = 1 to (first land 0x7f) do
-      accu := (!accu lsl 8) lor (parse_uint8 input);
+      accu := (!accu lsl 8) lor (parse_byte input);
     done;
     !accu
   end
@@ -208,7 +208,7 @@ let produce_der_object hdr dump_content v =
 
 let lwt_extract_der_longtype input =
   let rec aux accu =
-    lwt_parse_uint8 input >>= fun byte ->
+    lwt_parse_byte input >>= fun byte ->
     let new_accu = (accu lsl 7) lor (byte land 0x7f) in
     if (byte land 0x80) = 0
     then return new_accu
@@ -216,7 +216,7 @@ let lwt_extract_der_longtype input =
   in aux 0 >>= fun x -> return (T_Unknown x)
 
 let lwt_extract_der_header input =
-  lwt_parse_uint8 input >>= fun hdr ->
+  lwt_parse_byte input >>= fun hdr ->
   let c = extract_der_class hdr in
   let isC = extract_der_isConstructed hdr in
   let hdr_t = hdr land 31 in
@@ -231,14 +231,14 @@ let lwt_extract_der_header input =
   end
 
 let lwt_extract_der_length input =
-  lwt_parse_uint8 input >>= fun first ->
+  lwt_parse_byte input >>= fun first ->
   if first land 0x80 = 0
   then return first
   else begin
     let rec aux accu = function
       | 0 -> return accu
       | i ->
-	lwt_parse_uint8 input >>= fun x ->
+	lwt_parse_byte input >>= fun x ->
 	aux ((accu lsl 8) lor x) (i-1)
     in aux 0 (first land 0x7f)
   end

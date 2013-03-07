@@ -396,7 +396,7 @@ let mk_specific_funs _loc c =
 
 let rec parse_fun_of_ptype lwt_fun _loc name t =
   let prefix = if lwt_fun then "lwt_parse_" else "parse_" in
-  let mkf fname = exp_qname _loc (Some "Parsifal") (prefix ^ fname) in
+  let mkf fname = exp_qname _loc (Some "BasePTypes") (prefix ^ fname) in
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
     | PT_Int int_t -> mkf int_t
@@ -438,7 +438,7 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
 
 let mk_parse_fun lwt_fun _loc c =
   let prefix = if lwt_fun then "lwt_" else "" in
-  let add_qprefix fname = exp_qname _loc (Some "Parsifal") (prefix ^ fname) in
+  let mkname m fname = exp_qname _loc (Some m) (prefix ^ fname) in
 
   let mk_return e = if lwt_fun then <:expr< Lwt.return $e$ >> else e
   and mk_compose f g x = (* f (g x) *)
@@ -461,7 +461,7 @@ let mk_parse_fun lwt_fun _loc c =
     | Enum enum ->
       if enum.size mod 8 = 0 then begin
 	let le = (if c <.> LittleEndian then "le" else "") in
-	let parse_int_fun = add_qprefix ("parse_uint" ^ (string_of_int enum.size) ^ le)
+	let parse_int_fun = mkname "BasePTypes" ("parse_uint" ^ (string_of_int enum.size) ^ le)
 	and eoi = <:expr< $lid:c.name ^ "_of_int"$ >> in
 	[ mk_compose eoi parse_int_fun <:expr< input >> ]
       end else []
@@ -476,7 +476,7 @@ let mk_parse_fun lwt_fun _loc c =
 	  let tmp = parse_fields r
 	  and f = parse_fun_of_ptype lwt_fun _loc n t in
 	  let parse_f = match lwt_fun, attribute with
-	    | _, Optional -> <:expr< $add_qprefix "try_parse"$ $f$ >>
+	    | _, Optional -> <:expr< $mkname "Parsifal" "try_parse"$ $f$ >>
 	    | _, _ -> f
 	  in
 	  mk_let_in n <:expr< $parse_f$ input >> tmp
@@ -496,7 +496,7 @@ let mk_parse_fun lwt_fun _loc c =
       let parsed_cases = List.map mk_case union.uchoices
       and last_case = <:match_case< _ -> $mk_unparsed$ >> in
       let cases = if c <.> ExhaustiveChoices then parsed_cases else parsed_cases@[last_case] in
-      [ <:expr< if Parsifal.should_enrich $lid:"enrich_" ^ c.name$ input.$add_qprefix "enrich"$
+      [ <:expr< if Parsifal.should_enrich $lid:"enrich_" ^ c.name$ input.$mkname "Parsifal" "enrich"$
 	then match discriminator with [ $list:cases$ ]
 	else $mk_unparsed$ >> ]
 
@@ -520,7 +520,7 @@ let mk_parse_fun lwt_fun _loc c =
 	<:match_case< (c, _, t) as h -> $ <:expr< $uid:union.unparsed_constr$
           (Asn1PTypes.mk_object c t (Asn1PTypes.parse_der_object_content h new_input)) >> $ >>
       in
-      let enrich_flag = <:expr< input.$add_qprefix "enrich"$ >>
+      let enrich_flag = <:expr< input.$mkname "Parsifal" "enrich"$ >>
       and wrapper_fun = exp_qname _loc (Some "Asn1PTypes") (prefix ^ "advanced_der_parse")
       and default_fun = exp_qname _loc (Some "Asn1PTypes") (prefix ^ "parse_der_object") in
 
@@ -554,7 +554,7 @@ let mk_exact_parse_fun _loc c =
 (*********************)
 
 let rec dump_fun_of_ptype _loc t =
-  let mkf fname = exp_qname _loc (Some "Parsifal") ("dump_" ^ fname) in
+  let mkf fname = exp_qname _loc (Some "BasePTypes") ("dump_" ^ fname) in
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
     | PT_Int int_t -> mkf int_t
@@ -580,13 +580,11 @@ let rec dump_fun_of_ptype _loc t =
 
 
 let mk_dump_fun _loc c =
-  let add_qprefix fname = exp_qname _loc (Some "Parsifal") ("dump_" ^ fname) in
-
   let body = match c.construction with
   | Enum enum ->
     if enum.size mod 8 = 0 then begin
       let le = (if c <.> LittleEndian then "le" else "") in
-      let dump_int_fun = add_qprefix ("uint" ^ (string_of_int enum.size) ^ le)
+      let dump_int_fun = exp_qname _loc (Some "BasePTypes") ("dump_uint" ^ (string_of_int enum.size) ^ le)
       and ioe = <:expr< $lid:"int_of_" ^ c.name$ >> in
       [ <:expr< $dump_int_fun$ ($ioe$ $lid:c.name$) >> ]
     end else []
@@ -689,7 +687,7 @@ let mk_stringof_fun _loc c =
 (**********************)
 
 let rec print_fun_of_ptype _loc t =
-  let mkf fname = exp_qname _loc (Some "Parsifal") ("print_" ^ fname) in
+  let mkf fname = exp_qname _loc (Some "BasePTypes") ("print_" ^ fname) in
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
     | PT_Int int_t -> mkf int_t
@@ -707,14 +705,11 @@ let rec print_fun_of_ptype _loc t =
 
 
 let mk_print_fun _loc c =
-  let add_qprefix fname = exp_qname _loc (Some "Parsifal") ("print_" ^ fname) in
-
   let body = match c.construction with
   | Enum enum ->
     let ioe = <:expr< $lid:"int_of_" ^ c.name$ >>
-    and soe = <:expr< $lid:"string_of_" ^ c.name$ >>
-    and print_fun = add_qprefix "enum" in
-    <:expr< $print_fun$ $soe$ $ioe$ $int:string_of_int (enum.size / 4)$
+    and soe = <:expr< $lid:"string_of_" ^ c.name$ >> in
+    <:expr< Parsifal.print_enum $soe$ $ioe$ $int:string_of_int (enum.size / 4)$
       ~indent:indent ~name:name $lid:c.name$ >>
 
   | Struct fields ->
@@ -735,7 +730,7 @@ let mk_print_fun _loc c =
     let mk_case = function
       | _loc, cons, (_, PT_Empty) ->
 	<:match_case< $ <:patt< $uid:cons$ >> $ ->
-	Parsifal.print_binstring ~indent:indent ~name:name "" >>
+	BasePTypes.print_binstring ~indent:indent ~name:name "" >>
       | (_loc, cons, (n, t)) ->
 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
 	$ <:expr< $print_fun_of_ptype _loc t$ ~indent:indent ~name: $ <:expr< $str:cons$ >> $ x >> $ >>
@@ -754,7 +749,7 @@ let mk_print_fun _loc c =
   | ASN1Alias alias ->
     let print_content = print_fun_of_ptype _loc alias.aatype in
     if alias.aalist
-    then <:expr< Parsifal.print_list $print_content$ ~indent:indent ~name:name $lid:c.name$ >>
+    then <:expr< BasePTypes.print_list $print_content$ ~indent:indent ~name:name $lid:c.name$ >>
     else <:expr< $print_content$ ~indent:indent ~name:name $lid:c.name$ >>
 
   in
@@ -781,16 +776,15 @@ let rec get_fun_of_ptype _loc t =
     | PT_String _ -> wrap_fun <:expr< Parsifal.default_get >>
     | PT_Custom (m, n, _, e) -> apply_exprs _loc (exp_qname _loc m ("get_" ^ n)) e
     | PT_List (_, subtype) ->
-      wrap_fun <:expr< Parsifal.get_list $get_fun_of_ptype _loc subtype$ >>
+      wrap_fun <:expr< BasePTypes.get_list $get_fun_of_ptype _loc subtype$ >>
     | PT_Array (_, subtype) ->
-      wrap_fun <:expr< Parsifal.get_array $get_fun_of_ptype _loc subtype$ >>
+      wrap_fun <:expr< BasePTypes.get_array $get_fun_of_ptype _loc subtype$ >>
     | PT_Container (_, subtype)
     | PT_CustomContainer (_, _, _, _, subtype) -> get_fun_of_ptype _loc subtype
 
 
 
 let mk_get_fun _loc c =
-  let add_qprefix fname = exp_qname _loc (Some "Parsifal") ("get_" ^ fname) in
   let this_type = PT_Custom (None, c.name, [], List.map (exp_lid _loc) c.dump_params) in
   let dump_fun = dump_fun_of_ptype _loc this_type
   and print_fun = stringof_fun_of_ptype _loc this_type in
@@ -798,9 +792,8 @@ let mk_get_fun _loc c =
   let body = match c.construction with
   | Enum enum ->
     let ioe = <:expr< $lid:"int_of_" ^ c.name$ >>
-    and soe = <:expr< $lid:"string_of_" ^ c.name$ >>
-    and get_fun = add_qprefix "enum" in
-    <:expr< $get_fun$ $soe$ $ioe$ $int:string_of_int (enum.size / 4)$ $lid:c.name$ >>
+    and soe = <:expr< $lid:"string_of_" ^ c.name$ >> in
+    <:expr< Parsifal.get_enum $soe$ $ioe$ $int:string_of_int (enum.size / 4)$ $lid:c.name$ >>
 
   | Struct fields ->
     let field_leaf (_, n, _, _) = <:expr< Parsifal.Leaf $str:n$ >> in
@@ -842,7 +835,7 @@ let mk_get_fun _loc c =
   | ASN1Alias alias ->
     let get_content = get_fun_of_ptype _loc alias.aatype in
     if alias.aalist
-    then <:expr< Parsifal.get_list $get_content$ $lid:c.name$ >>
+    then <:expr< BasePTypes.get_list $get_content$ $lid:c.name$ >>
     else <:expr< $get_content$ $lid:c.name$ >>
 
   in [ mk_multiple_args_fun _loc ("get_" ^ c.name) (c.dump_params@[c.name]) body ]

@@ -1,5 +1,7 @@
 open Parsifal
+open BasePTypes
 open PTypes
+
 
 struct msdos_header [with_lwt] = {
   e_magic : magic["MZ"];
