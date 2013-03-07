@@ -23,18 +23,29 @@ type action =
   | JustParse
   | PrettyPrint
   | ObsDump
+  | Get
 let action = ref PrettyPrint
-
 let set_action v = TrivialFun (fun () -> action := v)
 
-(* PrettyPrint options *)
-type pretty_mode =
-  | StandardMode
-  | RawMode
-  | SafeMode
-let pretty_mode = ref StandardMode
+let verbose = ref false
 
-let set_mode m = TrivialFun (fun () -> pretty_mode := m)
+let enrich_style = ref DefaultEnrich
+let set_enrich_level l =
+  if l > 0 then begin
+    enrich_style := EnrichLevel l;
+    ActionDone
+  end else ShowUsage (Some "enrich level should be a positive number.")
+let update_enrich_level l =
+  let new_style = match !enrich_style with
+    | DefaultEnrich | NeverEnrich -> EnrichLevel l
+    | EnrichLevel x -> EnrichLevel (max x l)
+    | AlwaysEnrich -> AlwaysEnrich
+  in enrich_style := new_style
+
+let safe_mode = ref false
+
+let filter = ref None
+
 
 (* ObsDump options *)
 let do_degrees = ref false
@@ -56,23 +67,31 @@ let add_asn_file fn =
     | End_of_file -> ActionDone
     | e -> ShowUsage (Some "Error while reading the list of ASN to watch")
 
+(* Get options *)
+let path = ref []
+let do_get_action path_str =
+  action := Get;
+  path := string_split '.' path_str;
+  ActionDone
 
-let stop_after_RIB t st _ = match t, st with
-  | MT_TABLE_DUMP_V2, MST_TABLE_DUMP_V2 RIB_IPV4_UNICAST -> fail (Failure "STOP")
-  | _ -> return ()
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
+  mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
 
-  mkopt None "pretty" (set_action PrettyPrint) "simply display message";
-  mkopt None "raw" (set_mode RawMode) "do not parse in depth the MRT messages (in pretty mode)";
-  mkopt None "safe" (set_mode SafeMode) "activate safe mode (in pretty mode)";
-
+  mkopt None "always-enrich" (TrivialFun (fun () -> enrich_style := AlwaysEnrich)) "always enrich the structure parsed";
+  mkopt None "never-enrich" (TrivialFun (fun () -> enrich_style := NeverEnrich)) "never enrich the structure parsed";
+  mkopt None "enrich-level" (IntFun set_enrich_level) "enrich the structure parsed up to a certain level";
+  mkopt None "safe" (TrivialFun (fun () -> safe_mode := true; enrich_style := NeverEnrich)) "activate safe mode";
   mkopt None "silent" (set_action JustParse) "silent mode";
+
+  mkopt None "filter" (StringFun (fun s -> filter := Some s; ActionDone)) "filter on a path";
 
   mkopt None "obsdump" (set_action ObsDump) "obsdump mode";
   mkopt (Some 'W') "watch-asn" (IntFun add_asn) "add an ASN to watch";
-  mkopt None "degrees" (StringFun add_asn_file) "watch the ASN listed in the file given"
+  mkopt None "degrees" (StringFun add_asn_file) "watch the ASN listed in the file given";
+
+  mkopt (Some 'g') "get" (StringFun do_get_action) "obsdump mode";
 ]
 
 let getopt_params = {
@@ -253,52 +272,74 @@ let obsdump mrt = match mrt.mrt_type, mrt.mrt_subtype, mrt.mrt_message with
 
 let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  input_of_fd filename fd
+  input_of_fd ~verbose:(!verbose) ~enrich:(!enrich_style) filename fd
 
 
-let rec just_parse input =
-  lwt_parse_mrt_message input >>= fun _mrt_msg ->
-  just_parse input
+let test_filter m =
+  match !filter with
+  | None  -> true
+  | Some f ->
+    let [path; value] = string_split '=' f in
+    match get_mrt_message m (string_split '.' path) with
+    | Right l -> List.mem value l
+    | _ -> false
 
-let rec pretty_parse input =
+let rec map_mrt f input =
   lwt_parse_mrt_message input >>= fun mrt_msg ->
-  let real_msg = match !pretty_mode with
-    | SafeMode ->
-      enrich_mrt_message_content := true;
+  let real_msg =
+    if !safe_mode then begin
+      let str_input = input_of_string ~enrich:AlwaysEnrich "" (dump_mrt_message mrt_msg) in
       let res =
-	try parse_mrt_message (input_of_string "" (dump_mrt_message mrt_msg))
-	with _ -> mrt_msg
+	try parse_mrt_message str_input
+	with _ ->
+          let rec enrich_as_we_can current_msg level =
+            let next_msg =
+              try Some (parse_mrt_message { str_input with enrich=EnrichLevel level } )
+              with _ -> None
+            in match next_msg with
+            | None ->
+              if (!verbose)
+              then prerr_endline ("Failed at level " ^ (string_of_int (level - 1)));
+              current_msg
+            | Some x ->
+              if x <> current_msg
+              then enrich_as_we_can x (level + 1)
+              else current_msg
+          in enrich_as_we_can mrt_msg 1
       in
-      enrich_mrt_message_content := false;
       res
-    | _ -> mrt_msg
-  in print_endline (print_mrt_message real_msg);
-  pretty_parse input
+    end else mrt_msg
+  in
+  if test_filter real_msg
+  then f real_msg;
+  map_mrt f input
 
-let rec obsdump_parse input =
-  lwt_parse_mrt_message input >>= fun mrt_msg ->
-  obsdump mrt_msg;
-  obsdump_parse input
+let get_mrt mrt_msg =
+  match (get_mrt_message mrt_msg !path) with
+  | Left s -> if !verbose then prerr_endline (String.concat "." s)
+  | Right s -> Printf.printf "%8.8x %s %s: %s\n" mrt_msg.mrt_timestamp
+    (string_of_mrt_type mrt_msg.mrt_type)
+    (string_of_mrt_subtype mrt_msg.mrt_subtype)
+    (String.concat ", " s)
 
 
 let handle_input input =
-  match !action, !pretty_mode with
-    | PrettyPrint, (SafeMode | RawMode) ->
-      enrich_mrt_message_content := false;
-      pretty_parse input
-    | PrettyPrint, _ -> pretty_parse input
-    | ObsDump, _ -> obsdump_parse input
-    | JustParse, _ -> just_parse input
+  match !action with
+    | PrettyPrint -> map_mrt (fun m -> print_endline (print_mrt_message m)) input
+    | ObsDump -> map_mrt obsdump input
+    | JustParse -> map_mrt ignore input
+    | Get -> map_mrt get_mrt input
+      
 
 let _ =
   let args = parse_args getopt_params Sys.argv in
   let t = match args with
-    | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= handle_input
+    | [] -> input_of_channel ~verbose:(!verbose) ~enrich:(!enrich_style) "(stdin)" Lwt_io.stdin >>= handle_input
     | [filename] -> input_of_filename filename >>= handle_input
     | _ -> failwith "Too many files given"
   in
   try Lwt_unix.run t;
   with
-    | End_of_file -> ()
+    | ParsingException (OutOfBounds _, _) -> ()
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h)
     | e -> prerr_endline (Printexc.to_string e)

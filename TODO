@@ -82,6 +82,7 @@ v0.2 (feb. 2013 -> mar. 2013)
    * improve basic get functions
    * improve get_wrapper (raw, gzip, base64, etc.)
    * add {,} to get path language (x.{y,z}.{t,a})
+   * add @index for records!
    * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
    * Add a "flexible" decorator in structures
        -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)

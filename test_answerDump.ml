@@ -33,7 +33,7 @@ let update_enrich_level l =
 let do_get_action path_str =
   action := Get;
   path := string_split '.' path_str;
-  ActionDone  
+  ActionDone
 
 
 let options = [
