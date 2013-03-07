@@ -9,8 +9,14 @@ let dns_answer = "\x32\x65\x81\x80\x00\x01\x00\x02\x00\x02\x00\x03\x04\x79\x65\x
 
 let _ =
   try
-    print_endline (print_dns_message (parse_dns_message (input_of_string "dns_query" dns_query)));
-    print_endline (print_dns_message (parse_dns_message (input_of_string "dns_answer" dns_answer)))
+    print_endline "DUMB VERSION\n";
+    print_endline (print_dumb_dns_message (parse_dumb_dns_message (input_of_string "dns_query" dns_query)));
+    print_endline (print_dumb_dns_message (parse_dumb_dns_message (input_of_string "dns_answer" dns_answer)));
+
+    print_newline ();
+    print_endline "SMART VERSION\n";
+    print_endline (print_smart_dns_message (parse_smart_dns_message (input_of_string "dns_query" dns_query)));
+    print_endline (print_smart_dns_message (parse_smart_dns_message (input_of_string "dns_answer" dns_answer)));
   with
   | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
   | e -> prerr_endline (Printexc.to_string e); exit 1
