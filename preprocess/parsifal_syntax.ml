@@ -803,13 +803,16 @@ let mk_get_fun _loc c =
     <:expr< $get_fun$ $soe$ $ioe$ $int:string_of_int (enum.size / 4)$ $lid:c.name$ >>
 
   | Struct fields ->
+    let strexp_of_field (_, n, _, _) = <:expr< $str:n$ >> in
     let get_one_field (_loc, n, t, attr) =
       let raw_f = get_fun_of_ptype _loc t in
       let f = if attr = Optional then <:expr< Parsifal.try_get $raw_f$ >> else raw_f in
       <:match_case< $ <:patt< $uid:"::"$ $str:n$ r >> $ ->
       $f$ ($lid:c.name$.$lid:n$) r >>
+    and index_case = <:match_case< ["@index"] -> Parsifal.Right $exp_of_list _loc 
+      (List.map strexp_of_field (List.filter keep_built_fields fields))$ >>
     and last_case = <:match_case< $ <:patt< path >> $ -> Parsifal.Left path >> in
-    let cases = (List.map get_one_field (List.filter keep_built_fields fields))@[last_case] in
+    let cases = (List.map get_one_field (List.filter keep_built_fields fields))@[index_case; last_case] in
 
     let aux_name = "get_" ^ c.name ^ "_aux" in
     let aux_body = <:expr< fun [ $list:cases$ ] >>

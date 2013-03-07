@@ -412,6 +412,8 @@ let get_wrapper dump print get v = function
 let trivial_get dump print = get_wrapper dump print default_get
 
 let get_list get_fun l = function
+  | [] -> Right ["list"]
+  | ["@count"] -> Right [string_of_int (List.length l)]
   | ("*"::ps as path) ->
     let fold_results accu next =
       match accu, next with
