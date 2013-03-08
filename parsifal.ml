@@ -505,3 +505,8 @@ let lwt_read_while predicate input =
   let b = Buffer.create 32 in
   _lwt_read_while b predicate input >>= fun () ->
   return (Buffer.contents b)
+
+
+let parse_both_equal fatal err a b input =
+  if a <> b
+  then emit_parsing_exception fatal err input

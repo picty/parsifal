@@ -36,6 +36,8 @@ struct certificate_content = {
   tbsCertificate : tbsCertificate;
   parse_field tbsCertificate_raw : raw_value(position_before_tbs);
   signatureAlgorithm : algorithmIdentifier;
+  parse_checkpoint _constraint : both_equal(false; (CustomException "signature algos should be equal");
+                                            tbsCertificate.signature; signatureAlgorithm);
   signatureValue : bitstring_container of signature(signatureType_of_algo signatureAlgorithm)
 }
 asn1_alias certificate [top]
