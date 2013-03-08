@@ -72,7 +72,6 @@ type alias_description = ptype
 
 
 (* ASN1 Aliases *)
-(* TODO: Add options [keep header/keep raw string] *)
 type asn1_alias_header =
   | Universal of string
   | Header of string * int
@@ -1010,12 +1009,11 @@ EXTEND Gram
     mk_parsifal_construction _loc name raw_opts aa_descr      
 
   | "asn1_union"; name = ident; raw_opts = option_list;
-    "("; u_b = union_unparsed_behaviour; ")";
+    "("; u_c = ident; ")";
     "="; choices = LIST1 union_choice ->
-    (* TODO: Check that snd u_b == None *)
     let asn1_union_descr = ASN1Union {
       uchoices = choices;
-      unparsed_constr = fst u_b;
+      unparsed_constr = uid_of_ident u_c;
       unparsed_type = PT_Custom (Some "Asn1PTypes", "der_object", [], []);
     } in
     mk_parsifal_construction _loc name raw_opts asn1_union_descr
