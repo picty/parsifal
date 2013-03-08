@@ -33,7 +33,7 @@ let update_enrich_level l =
 
 let do_get_action path_str =
   action := Get;
-  path := string_split '.' path_str;
+  path := (!path)@[string_split '.' path_str];
   ActionDone
 
 
@@ -306,10 +306,14 @@ let rec handle_answer answer =
         end;
       | Get ->
         let records, _, _ = parse_all_records !enrich_style answer in
-	match (get_list get_tls_record records !path) with
-	| Left s -> if !verbose then prerr_endline (String.concat "." s)
-	| Right s -> Printf.printf "%s: %s\n" ip (flatten s)
-
+	let get_one_path p = 
+	  match (get_list get_tls_record records p) with
+	  | Left s ->
+	    if !verbose
+	    then prerr_endline (ip ^ ": " ^ (String.concat "." s)); []
+	  | Right s -> [flatten s]
+	in
+	Printf.printf "%s: %s\n" ip (String.concat ", " (List.flatten (List.map get_one_path !path)))
   end;
   return again
 
