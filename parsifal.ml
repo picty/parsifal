@@ -314,20 +314,26 @@ let input_of_filename ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) fil
 
 let lwt_really_read input len =
   let buf = String.make len ' ' in
-  let _really_read () =
-    Lwt_io.read_into_exactly input.lwt_ch buf 0 len
+  let _really_read () = Lwt_io.read_into_exactly input.lwt_ch buf 0 len
   and finalize_ok () =
     input.lwt_offset <- input.lwt_offset + len;
     return buf
   and finalize_nok = function
     | End_of_file -> fail (ParsingException (OutOfBounds, _h_of_li input))
     | e -> fail e
-  in
-    try_bind _really_read finalize_ok finalize_nok
+  in try_bind _really_read finalize_ok finalize_nok
 
-(* TODO: Using really_read here has the side effect that the offset in lwt_input is already shifted while parsing the content *)
+let lwt_really_read_no_update input len =
+  let buf = String.make len ' ' in
+  let _really_read () = Lwt_io.read_into_exactly input.lwt_ch buf 0 len
+  and finalize_ok () = return buf
+  and finalize_nok = function
+    | End_of_file -> fail (ParsingException (OutOfBounds, _h_of_li input))
+    | e -> fail e
+  in try_bind _really_read finalize_ok finalize_nok
+
 let lwt_get_in input name len =
-  lwt_really_read input len >>= fun s ->
+  lwt_really_read_no_update input len >>= fun s ->
   return {
     str = s;
     cur_name = name;
@@ -343,7 +349,7 @@ let lwt_get_out old_input input =
   if input.cur_offset < input.cur_length
   then fail (ParsingException (UnexpectedTrailingBytes, _h_of_si input))
   else begin
-    old_input.lwt_offset <- old_input.lwt_offset;
+    old_input.lwt_offset <- old_input.lwt_offset + input.cur_length;
     return ()
   end
 
