@@ -1,28 +1,31 @@
-parsifal.useful (depends on syntax and core)? Currently in core
- - base64.ml
- - getopt.ml
+parsifal.useful (depends on syntax and core)?
+ - base64.ml (Currently in core)
+ - getopt.ml (Currently in core)
+ - test_getopt.ml
 
-parsifal.net (depends on syntax and core)? Currently in ssl
- - pcap
+parsifal.net (depends on syntax and core)?
+ - pcap  (Currently in ssl)
+ - dns.ml
+ - test_dns.ml
+ - test_pcap.ml
 
-check_sslclient.ml
-check_sslserver.ml
-dex.ml
-dns.ml
-mrt.ml
-myocamlbuild.ml
-ocsp.ml
-pcap.ml
-pe.ml
-png.ml
-probe_server.ml
-serveranswer.ml
-sslproxy.ml
-tar.ml
-test_dns.ml
-test_getopt.ml
-test_mrt.ml
-test_ocsp.ml
-test_pcap.ml
-test_pe.ml
-test_tar.ml
+find a place for those
+ - check_sslclient.ml
+ - check_sslserver.ml
+ - dex.ml
+ - mrt.ml
+ - myocamlbuild.ml
+ - ocsp.ml
+ - pcap.ml
+ - pe.ml
+ - png.ml
+ - probe_server.ml
+ - serveranswer.ml
+ - sslproxy.ml
+ - tar.ml
+ - test_mrt.ml
+ - test_ocsp.ml
+ - test_pe.ml
+ - test_tar.ml
+ - tools/asn1parse
+ - tools/x509show
