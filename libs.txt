@@ -3,12 +3,6 @@ parsifal.useful (depends on syntax and core)?
  - getopt.ml (Currently in core)
  - test_getopt.ml
 
-parsifal.net (depends on syntax and core)?
- - pcap  (Currently in ssl)
- - dns.ml
- - test_dns.ml
- - test_pcap.ml
-
 find a place for those
  - check_sslclient.ml
  - check_sslserver.ml

@@ -1,11 +1,8 @@
 # configurable section
 TARGETS =
-MLLIBS = parsifal_ssl
+MLLIBS = parsifal_net
 
-parsifal_ssl_SRCS := dSAKey.ml rSAKey.ml x509Basics.ml x509Extensions.ml cryptoUtil.ml \
-                     randomEngine.ml pkcs1.ml x509.ml answerDump.ml \
-                     lwtUtil.ml tlsEnums.ml tls.ml ssl2.ml tlsDatabase.ml \
-                     tlsUtil.ml lwtUtil.ml tlsEngine.ml
+parsifal_net_SRCS := dns.ml pcap.ml
 
 # x509CertificateStore.ml
 
@@ -30,8 +27,8 @@ BUILD_DIR = build
 include ../Makefile.ocaml
 
 
-install: parsifal_ssl.cma parsifal_ssl.cmxa parsifal_ssl.a
-	cp parsifal_ssl.cma ../usrlibocaml/parsifal-ssl.cma
-	cp parsifal_ssl.cmxa ../usrlibocaml/parsifal-ssl.cmxa
-	cp parsifal_ssl.a ../usrlibocaml/parsifal-ssl.a
+install: parsifal_net.cma parsifal_net.cmxa parsifal_net.a
+	cp parsifal_net.cma ../usrlibocaml/parsifal-net.cma
+	cp parsifal_net.cmxa ../usrlibocaml/parsifal-net.cmxa
+	cp parsifal_net.a ../usrlibocaml/parsifal-net.a
 	cp build/*.cmi ../usrlibocaml/

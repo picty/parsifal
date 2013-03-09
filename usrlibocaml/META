@@ -16,6 +16,15 @@ package "core" (
  exists_if = "parsifal-core.cma"
 )
 
+package "net" (
+ version = "0.1"
+ description = "Parsifal Network library"
+ requires = "unix lwt lwt.unix str cryptokit camlp4 parsifal.syntax parsifal.core"
+ archive(byte) = "parsifal-net.cma"
+ archive(native) = "parsifal-net.cmxa"
+ exists_if = "parsifal-net.cma"
+)
+
 package "ssl" (
  version = "0.1"
  description = "Parsifal SSL library"
