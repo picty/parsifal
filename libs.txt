@@ -1,13 +1,3 @@
-parsifal.syntax
- - preprocess/*.ml
-
-parsifal.core (depends on syntax)
- - parsifal.ml
- - basePTypes.ml
- - pTypes.ml
- - asn1Engine.ml
- - asn1PTypes.ml
-
 parsifal.ssl (depends on syntax and core)
  - x509Basics.ml
  - x509Extensions.ml

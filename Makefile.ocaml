@@ -19,20 +19,29 @@ OCAMLC_CC = $(GEN_BYTE_INCLUDES) $(EXTRA_OCAMLC_CC_FLAGS)
 OCAMLC_LD = $(GEN_BYTE_INCLUDES) $(GEN_BYTE_LIBS) $(EXTRA_OCAMLC_LD_FLAGS)
 
 # generic rules
-all: builddir depends $(TARGETS)
+all: builddir depends $(TARGETS) $(MLLIBS:%=%.cmxa)
 
 top:
 	$(MAKE) $(TARGETS:%=%.top)
 
 byte:
-	$(MAKE) $(TARGETS:%=%.byte)
+	$(MAKE) $(TARGETS:%=%.byte) $(MLLIBS:%=%.cma)
 
 test:
 	echo $(OCAMLFIND) query -format "%o" -predicates byte -recursive $(OCAML_LIBS)
 
+
+# TARGET handling (native, byte and toplevel)
+
 define TARGET_template
  $(1)_OBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmx)
  $(1): $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -o $$@ $(OCAMLOPTS_LD) $$^
+
+ $(1)_BOBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmo)
+ $(1).byte: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -o $$@ $(OCAMLC_LD) $$^
+
+ $(1).top: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLMKTOP) -o $$@ $(OCAMLC_LD) $$^
+
  ALL_INCS   += $$($(1)_INCS)
  ALL_SRCS   += $$($(1)_SRCS)
  ALL_OBJS   += $$($(1)_OBJS)
@@ -40,24 +49,27 @@ endef
 
 $(foreach prog,$(TARGETS),$(eval $(call TARGET_template,$(prog))))
 
-define TARGET_template_byte
+
+
+# MLLIB handling (native and byte)
+
+define MLLIB_template
+ $(1)_OBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmx)
+ $(1).cmxa: $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -a -o $$@ $$^
+
  $(1)_BOBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmo)
- $(1).byte: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -o $$@ $(OCAMLC_LD) $$^
+ $(1).cma: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -a -o $$@ $(OCAMLC_LD) $$^
+
+ ALL_INCS   += $$($(1)_INCS)
+ ALL_SRCS   += $$($(1)_SRCS)
+ ALL_OBJS   += $$($(1)_OBJS)
 endef
 
-$(foreach prog,$(TARGETS),$(eval $(call TARGET_template_byte,$(prog))))
+$(foreach lib,$(MLLIBS),$(eval $(call MLLIB_template,$(lib))))
 
-define TARGET_template_top
- $(1).top: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLMKTOP) -o $$@ $(OCAMLC_LD) $$^
-endef
 
-$(foreach prog,$(TARGETS),$(eval $(call TARGET_template_top,$(prog))))
 
-#$(TARGETS):
-#	$(OCAMLOPT) -o $@ $(OCAMLOPTS_LD) $^
-
-#%.native: $($(@)_OBJECTS) $@
-#	$(OCAMLOPT) -o $@ $(OCAMLOPTS_LD) $^
+# Simple compilation rules and dependencies
 
 $(BUILD_DIR)/%.cmi: %.mli
 	$(OCAMLC) -c $<
@@ -76,9 +88,12 @@ else
 	$(OCAMLC) -o $@ -c -g $(OCAMLOPTS_CC) $<
 endif
 
+
 clean:
-	rm -f *.cmo *.cmx *.cmi *.o $(TARGETS) $(TARGETS:%=%.byte) $(TARGETS:%=%.top) .depends
+	rm -f *.cmo *.cmx *.cmi *.o $(TARGETS) $(TARGETS:%=%.byte) $(TARGETS:%=%.top) \
+	   $(MLLIBS:%=%.cmxa) $(MLLIBS:%=%.cma) $(MLLIBS:%=%.a) .depends
 	[ -z "$(BUILD_DIR)" ] || rm -rf $(BUILD_DIR)
+
 
 depends: builddir $(BUILD_DIR)/.depends
 
@@ -96,6 +111,8 @@ $(BUILD_DIR):
 	mkdir $(BUILD_DIR)
 
 .PHONY: all builddir clean depends byte top
+
+
 
 -include $(BUILD_DIR)/.depends
 

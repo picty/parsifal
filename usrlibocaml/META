@@ -1,0 +1,17 @@
+package "core" (
+ version = "0.1"
+ description = "Parsifal core library"
+ requires = "camlp4 parsifal.syntax str lwt"
+ archive(byte) = "parsifal-core.cma"
+ archive(native) = "parsifal-core.cmxa"
+ exists_if = "parsifal-core.cma"
+)
+
+package "syntax" (
+ version = "0.1"
+ description = "Parsifal syntax extensions"
+ requires = "camlp4"
+ archive(syntax,preprocessor) = "parsifal-syntax.cma"
+ archive(syntax,toploop) = "parsifal-syntax.cma"
+ exists_if = "parsifal-syntax.cma"
+)
