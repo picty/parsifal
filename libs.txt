@@ -1,29 +1,9 @@
-parsifal.ssl (depends on syntax and core)
- - x509Basics.ml
- - x509Extensions.ml
- - dSAKey.ml
- - rSAKey.ml
- - randomEngine.ml
- - pkcs1.ml
- - x509.ml
- - answerDump.ml
- - x509CertificateStore.ml
- - cryptoUtil.ml
- - lwtUtil.ml
- - tlsEnums.ml
- - tls.ml
- - ssl2.ml
- - tlsDatabase.ml
- - tlsUtil.ml
- - lwtUtil.ml
- - tlsEngine.ml
-
-parsifal.useful (depends on syntax and core)
+parsifal.useful (depends on syntax and core)? Currently in core
  - base64.ml
  - getopt.ml
 
-
-
+parsifal.net (depends on syntax and core)? Currently in ssl
+ - pcap
 
 check_sslclient.ml
 check_sslserver.ml
@@ -39,17 +19,10 @@ probe_server.ml
 serveranswer.ml
 sslproxy.ml
 tar.ml
-test_answerDump.ml
 test_dns.ml
 test_getopt.ml
 test_mrt.ml
 test_ocsp.ml
-test_parsifal.ml
 test_pcap.ml
 test_pe.ml
-test_pkcs1.ml
-test_random.ml
-test_rsa_private_key.ml
-test_ssl2.ml
 test_tar.ml
-test_tls_record.ml

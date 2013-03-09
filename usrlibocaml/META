@@ -1,3 +1,12 @@
+package "syntax" (
+ version = "0.1"
+ description = "Parsifal syntax extensions"
+ requires = "camlp4"
+ archive(syntax,preprocessor) = "parsifal-syntax.cma"
+ archive(syntax,toploop) = "parsifal-syntax.cma"
+ exists_if = "parsifal-syntax.cma"
+)
+
 package "core" (
  version = "0.1"
  description = "Parsifal core library"
@@ -7,11 +16,11 @@ package "core" (
  exists_if = "parsifal-core.cma"
 )
 
-package "syntax" (
+package "ssl" (
  version = "0.1"
- description = "Parsifal syntax extensions"
- requires = "camlp4"
- archive(syntax,preprocessor) = "parsifal-syntax.cma"
- archive(syntax,toploop) = "parsifal-syntax.cma"
- exists_if = "parsifal-syntax.cma"
+ description = "Parsifal SSL library"
+ requires = "unix lwt lwt.unix str cryptokit camlp4 parsifal.syntax parsifal.core"
+ archive(byte) = "parsifal-ssl.cma"
+ archive(native) = "parsifal-ssl.cmxa"
+ exists_if = "parsifal-ssl.cma"
 )

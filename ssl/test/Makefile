@@ -1,7 +1,13 @@
 # configurable section
-TARGETS = test_parsifal
+TARGETS = test_answerDump test_pkcs1 test_random \
+          test_rsa_private_key test_ssl2 test_tls_record
 
-test_parsifal_SRCS := test_parsifal.ml
+test_answerDump_SRCS := test_answerDump.ml
+test_pkcs1_SRCS := test_pkcs1.ml
+test_random_SRCS := test_random.ml
+test_rsa_private_key_SRCS := test_rsa_private_key.ml
+test_ssl2_SRCS := test_ssl2.ml
+test_tls_record_SRCS := test_tls_record.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
@@ -10,7 +16,7 @@ CC = gcc
 
 # use the following lines to guess .cmxa files from libs names.
 # remember, libs are always lowercase
-OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal.core
+OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal.core parsifal.ssl
 
 # use the following variables to add extra flags (not guessed by ocamlfind)
 EXTRA_OCAMLOPT_CC_FLAGS = -package parsifal.syntax
@@ -25,6 +31,5 @@ BUILD_DIR = build
 include ../../Makefile.ocaml
 
 
-check:	test_parsifal.byte test_parsifal
-	./test_parsifal.byte
-	./test_parsifal
+check: all byte
+	./test_random
