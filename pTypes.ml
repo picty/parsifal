@@ -30,6 +30,7 @@ let lwt_parse_ipv6 = lwt_parse_string 16
 
 let dump_ipv6 ipv6 = ipv6
 
+(* TODO: Compress it! *)
 let string_of_ipv6 s =
   let res = String.make 39 ':' in
   for i = 0 to 15 do

@@ -5,8 +5,6 @@ open PTypes
 open Getopt
 
 
-let string_of_ipv6 raw_s = Socket.inet_ntop Socket.AF_INET6 raw_s
-
 let string_of_ip_prefix_space ip_prefix =
   let a, len = match ip_prefix with
     | IPv4Prefix (s, prefix_length) ->
