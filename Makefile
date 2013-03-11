@@ -9,14 +9,14 @@ PREPROCESSORS = preprocess/parsifal_syntax.cma
 
 
 all: $(PREPROCESSORS)
-	ocamlbuild -cflags -I,+lwt,-I,+cryptokit \
+	ocamlbuild -j 0 -cflags -I,+lwt,-I,+cryptokit \
                    -lflags -I,+lwt,-I,+cryptokit \
                    -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit \
                    -pp "camlp4o $(PREPROCESSORS)" \
                    $(PROGRAMS) $(TEST_PROGRAMS)
 
 toplevel:
-	ocamlbuild -cflags -I,+lwt,-I,+cryptokit \
+	ocamlbuild -j 0 -cflags -I,+lwt,-I,+cryptokit \
                    -lflags -I,+lwt,-I,+cryptokit \
                    -libs str,unix,nums,bigarray,lwt,lwt-unix,cryptokit \
                    -pp "camlp4o $(PREPROCESSORS)" \
@@ -29,7 +29,7 @@ check: $(TEST_PROGRAMS) $(ASN1RECS)
 preprocessors: $(PREPROCESSORS)
 
 preprocess/%.cma: preprocess/%.mllib
-	ocamlbuild -pp "camlp4o pa_extend.cmo q_MLast.cmo" -cflags -I,+camlp4 -lflags -I,+camlp4 $@
+	ocamlbuild -j 0 -pp "camlp4o pa_extend.cmo q_MLast.cmo" -cflags -I,+camlp4 -lflags -I,+camlp4 $@
 
 
 clean:
