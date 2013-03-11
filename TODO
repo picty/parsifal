@@ -6,7 +6,6 @@ v0.1 (oct. 2012 -> jan. 2013)
    * Document the preprocessor (update the JFLA article)
    * Write index.txt for all subdirs
  - General
-   * finalize and clean up the package creation (syntax, core, util, net, ssl, formats, tools)
    * have a redmine to put all this stuff
    * clean up TODOs in ml files.
  - TlsEngine
@@ -63,6 +62,7 @@ v0.1 (oct. 2012 -> jan. 2013)
 
 v0.2 (feb. 2013 -> mar. 2013)
  - General
+   * finalize and clean up the package creation (cleanup.txt)
    * Think about the exception system (fatal or not) => merge all in ParsifalException
    * add a field "handle_non_lethal_exceptions" to *_input (a function that could be raise or prerr_endline)
    * Improve the printing systems

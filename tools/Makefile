@@ -1,7 +1,7 @@
 # configurable section
-TARGETS = test_answerDump asn1parse x509show
+TARGETS = mapAnswers asn1parse x509show
 
-test_answerDump_SRCS := test_answerDump.ml
+mapAnswers_SRCS := mapAnswers.ml
 asn1parse_SRCS := asn1parse.ml
 x509show_SRCS := x509show.ml
 
