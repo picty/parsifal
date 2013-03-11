@@ -63,14 +63,17 @@ let decode_rev_chunk b = function
 
 
 let rec debaser b b64chunk input =
-  let c = drop_while (fun c -> reverse_base64_chars.(c) = -2) input in
-  let v = reverse_base64_chars.(c) in
-  if v >= -1 
-  then begin
-    match decode_rev_chunk b (v::b64chunk) with
-    | None -> ()
-    | Some new_chunk -> debaser b new_chunk input
-  end else raiseB64 "Invalid character" input
+  if eos input then ()
+  else begin
+    let c = drop_while (fun c -> reverse_base64_chars.(c) = -2) input in
+    let v = reverse_base64_chars.(c) in
+    if v >= -1
+    then begin
+      match decode_rev_chunk b (v::b64chunk) with
+      | None -> ()
+      | Some new_chunk -> debaser b new_chunk input
+    end else raiseB64 "Invalid character" input
+  end
 
 let rec lwt_debaser b b64chunk lwt_input =
   lwt_drop_while (fun c -> reverse_base64_chars.(c) = -2) lwt_input >>= fun c ->
@@ -176,10 +179,10 @@ let to_raw_base64 s =
 
 
 let to_base64 title s =
-  let mk_boundary header =
+  let mk_boundary t header =
     if header
-    then "-----BEGIN " ^ title ^ "-----\n"
-    else "\n-----END " ^ title ^ "-----"
+    then "-----BEGIN " ^ t ^ "-----\n"
+    else "\n-----END " ^ t ^ "-----"
   and cut_at l s =
     let rec cut_at_aux accu remaining start =
       if remaining > l
@@ -187,10 +190,14 @@ let to_base64 title s =
       else List.rev ((String.sub s start remaining)::accu)
     in cut_at_aux [] (String.length s) 0
   in
-
-  (mk_boundary true) ^
+  match title with
+  | HeaderInList [t] ->
+    (mk_boundary t true) ^
     (String.concat "\n" (cut_at 64 (to_raw_base64 s))) ^
-    (mk_boundary false)
+    (mk_boundary t false)
+  | HeaderInList _
+  | AnyHeader
+  | NoHeader -> to_raw_base64 s
 
 
 
