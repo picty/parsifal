@@ -91,7 +91,7 @@ endif
 
 clean:
 	rm -f *.cmo *.cmx *.cmi *.o $(TARGETS) $(TARGETS:%=%.byte) $(TARGETS:%=%.top) \
-	   $(MLLIBS:%=%.cmxa) $(MLLIBS:%=%.cma) $(MLLIBS:%=%.a) .depends
+	   $(MLLIBS:%=%.cmxa) $(MLLIBS:%=%.cma) $(MLLIBS:%=%.a)
 	[ -z "$(BUILD_DIR)" ] || rm -rf $(BUILD_DIR)
 
 
@@ -104,6 +104,7 @@ ifdef USE_CAMLP4
 else
 	$(OCAMLDEP) $(OCAMLOPTS_CC) -native $^ > $@
 endif
+	sed -i -e "s+^\(.*\.cm.\):+$(BUILD_DIR)/\1:+" -e "s+ \([^/.]*\.cm.\)+ $(BUILD_DIR)/\1+g" $(BUILD_DIR)/.depends
 
 builddir: $(BUILD_DIR)
 
