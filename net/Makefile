@@ -2,7 +2,7 @@
 TARGETS =
 MLLIBS = parsifal_net
 
-parsifal_net_SRCS := dns.ml pcap.ml
+parsifal_net_SRCS := dns.ml pcap.ml mrt.ml
 
 # x509CertificateStore.ml
 

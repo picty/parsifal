@@ -1,11 +1,11 @@
 all:
 	$(MAKE) -C syntax
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core all byte
-	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/test check
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/test all byte check
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net all byte
-	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net/test check
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net/test all byte check
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl all byte
-	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl/test check
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl/test all byte check
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C tools all byte
 
 clean:
