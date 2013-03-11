@@ -1,12 +1,9 @@
 # configurable section
-TARGETS = test_pkcs1 test_random \
-          test_rsa_private_key test_ssl2 test_tls_record
+TARGETS = test_answerDump asn1parse x509show
 
-test_pkcs1_SRCS := test_pkcs1.ml
-test_random_SRCS := test_random.ml
-test_rsa_private_key_SRCS := test_rsa_private_key.ml
-test_ssl2_SRCS := test_ssl2.ml
-test_tls_record_SRCS := test_tls_record.ml
+test_answerDump_SRCS := test_answerDump.ml
+asn1parse_SRCS := asn1parse.ml
+x509show_SRCS := x509show.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
@@ -26,9 +23,4 @@ EXTRA_OCAMLC_LD_FLAGS =
 BUILD_DIR = build
 
 
-
-include ../../Makefile.ocaml
-
-
-check: all byte
-	./test_random
+include ../Makefile.ocaml

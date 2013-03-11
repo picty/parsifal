@@ -1,5 +1,3 @@
-test_answerDump
-test_answerDump.byte
 test_pkcs1
 test_pkcs1.byte
 test_random
