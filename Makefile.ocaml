@@ -18,14 +18,15 @@ OCAMLOPTS_LD = $(GEN_INCLUDES) $(GEN_LIBS) $(EXTRA_OCAMLOPT_LD_FLAGS)
 OCAMLC_CC = $(GEN_BYTE_INCLUDES) $(EXTRA_OCAMLC_CC_FLAGS)
 OCAMLC_LD = $(GEN_BYTE_INCLUDES) $(GEN_BYTE_LIBS) $(EXTRA_OCAMLC_LD_FLAGS)
 
+
 # generic rules
-all: builddir depends $(TARGETS) $(MLLIBS:%=%.cmxa)
+all: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(META_TO_BUILD)
 
 top:
 	$(MAKE) $(TARGETS:%=%.top)
 
 byte:
-	$(MAKE) $(TARGETS:%=%.byte) $(MLLIBS:%=%.cma)
+	$(MAKE) $(TARGETS:%=%.byte) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(META_TO_BUILD)
 
 test:
 	echo $(OCAMLFIND) query -format "%o" -predicates byte -recursive $(OCAML_LIBS)
@@ -55,11 +56,12 @@ $(foreach prog,$(TARGETS),$(eval $(call TARGET_template,$(prog))))
 
 define MLLIB_template
  $(1)_OBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmx)
- $(1).cmxa: $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -a -o $$@ $$^
+ $(BUILD_DIR)/$(1).cmxa: $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -a -o $$@ $$^
 
  $(1)_BOBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmo)
- $(1).cma: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -a -o $$@ $(OCAMLC_LD) $$^
+ $(BUILD_DIR)/$(1).cma: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -a -o $$@ $(OCAMLC_LD) $$^
 
+ META_TO_BUILD = $(BUILD_DIR)/META
  ALL_INCS   += $$($(1)_INCS)
  ALL_SRCS   += $$($(1)_SRCS)
  ALL_OBJS   += $$($(1)_OBJS)
@@ -70,6 +72,9 @@ $(foreach lib,$(MLLIBS),$(eval $(call MLLIB_template,$(lib))))
 
 
 # Simple compilation rules and dependencies
+
+$(BUILD_DIR)/META: META
+	cp $< $@
 
 $(BUILD_DIR)/%.cmi: %.mli
 	$(OCAMLC) -c $<
@@ -104,7 +109,7 @@ ifdef USE_CAMLP4
 else
 	$(OCAMLDEP) $(OCAMLOPTS_CC) -native $^ > $@
 endif
-	sed -i -e "s+^\(.*\.cm.\):+$(BUILD_DIR)/\1:+" -e "s+ \([^/.]*\.cm.\)+ $(BUILD_DIR)/\1+g" $(BUILD_DIR)/.depends
+	sed -i -e "s+^\(.*\.cm.\):+$(BUILD_DIR)/\1:+" -e "s+ \([^/ ]*\.cm.\)+ $(BUILD_DIR)/\1+g" $(BUILD_DIR)/.depends
 
 builddir: $(BUILD_DIR)
 

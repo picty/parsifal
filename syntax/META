@@ -1,0 +1,6 @@
+version = "0.1"
+description = "Parsifal syntax extensions"
+requires = "camlp4"
+archive(syntax,preprocessor) = "parsifal_syntax.cma"
+archive(syntax,toploop) = "parsifal_syntax.cma"
+exists_if = "parsifal_syntax.cma"

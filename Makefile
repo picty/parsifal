@@ -1,17 +1,17 @@
 all:
-	$(MAKE) -C syntax install
-	$(MAKE) -C core install
-	$(MAKE) -C core/test check
-	$(MAKE) -C net install
-	$(MAKE) -C net/test check
-	$(MAKE) -C ssl install
-	$(MAKE) -C ssl/test check
+	$(MAKE) -C syntax
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core all byte
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/test check
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net all byte
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net/test check
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl all byte
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl/test check
 
 clean:
-	$(MAKE) -C syntax clean
-	$(MAKE) -C core clean
-	$(MAKE) -C core/test clean
-	$(MAKE) -C net clean
-	$(MAKE) -C net/test clean
-	$(MAKE) -C ssl clean
-	$(MAKE) -C ssl/test clean
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl/test clean
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl clean
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net/test clean
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net clean
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/test clean
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core clean
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C syntax clean

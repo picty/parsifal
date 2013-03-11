@@ -1,0 +1,6 @@
+version = "0.1"
+description = "Parsifal core library"
+requires = "camlp4 parsifal_syntax str lwt"
+archive(byte) = "parsifal_core.cma"
+archive(native) = "parsifal_core.cmxa"
+exists_if = "parsifal_core.cma"
