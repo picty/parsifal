@@ -1,2 +1,6 @@
 test_parsifal
 test_parsifal.byte
+test_getopt
+test_getopt.byte
+test_protobuf
+test_protobuf.byte

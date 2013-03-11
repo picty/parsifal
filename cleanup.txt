@@ -1,10 +1,8 @@
 rename tools => ssl-tools?
 
 find a place for those (currently in mess)
- - protobuf.ml => core ?
- - test_protobuf.ml => core ?
- - mrt.ml => bgp
- - test_mrt.ml => bgp
+ - mrt.ml => net
+ - test_mrt.ml => net
  - dex.ml => formats
  - pe.ml => formats
  - png.ml => formats

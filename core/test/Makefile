@@ -1,8 +1,9 @@
 # configurable section
-TARGETS = test_parsifal test_getopt
+TARGETS = test_parsifal test_getopt test_protobuf
 
 test_parsifal_SRCS := test_parsifal.ml
 test_getopt_SRCS := test_getopt.ml
+test_protobuf_SRCS := test_protobuf.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
