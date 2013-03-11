@@ -123,7 +123,7 @@ let catch_exceptions retry e =
   if retry > 1
   then return Retry
   else match e with
-  | Util.Timeout -> return Timeout
+  | LwtUtil.Timeout -> return Timeout
   | End_of_file -> return EndOfFile
   | e -> fail e
 

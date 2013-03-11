@@ -166,7 +166,7 @@ let do_nothing _ = NothingSoFar
 
 
 let _send_and_receive hs_fun alert_fun =
-  Util.client_socket ~timeout:(Some !timeout) !host !port >>= fun s ->
+  LwtUtil.client_socket ~timeout:(Some !timeout) !host !port >>= fun s ->
   if !verbose then Printf.fprintf Pervasives.stderr "Connected to %s:%d\n" !host !port;
   let ch = mk_client_hello None in
   if !verbose then prerr_endline (print_tls_record ~name:"Sending Handshake (C->S)" ch);

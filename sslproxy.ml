@@ -85,7 +85,7 @@ let catcher = function
 
 let rec accept sock =
   Lwt_unix.accept sock >>= fun (inp, _) ->
-  Util.client_socket !host !port >>= fun out ->
+  LwtUtil.client_socket !host !port >>= fun out ->
   input_of_fd "Client socket" inp >>= fun i ->
   input_of_fd "Server socket" out >>= fun o ->
   let io = forward (empty_state "C->S") i out in
@@ -97,5 +97,5 @@ let rec accept sock =
 
 let _ =
   let _ = parse_args getopt_params Sys.argv in
-  let socket = Util.server_socket 8080 in
+  let socket = LwtUtil.server_socket 8080 in
   Lwt_unix.run (accept socket)
