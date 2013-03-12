@@ -53,7 +53,6 @@ v0.2 (feb. 2013 -> apr. 2013)
    * Add a way to create a certificate object
  - Tools
    * bgpdump and/or obsdump
-   * add get feature to x509show
    * x509check (enrich the x509 object before analysing!)
    * chaincheck
    * check_sslserver (see check_sslserver.ml for a complete TODO)

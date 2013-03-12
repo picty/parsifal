@@ -11,7 +11,7 @@ open Base64
 type action =
   | Text | PrettyPrint | Dump | BinDump
   | Subject | Issuer | Serial | Modulus
-  | CheckSelfSigned
+  | CheckSelfSigned | Get
 let action = ref Text
 let set_action value = TrivialFun (fun () -> action := value)
 
@@ -22,6 +22,12 @@ let set_print_names value = TrivialFun (fun () -> print_names := value)
 let verbose = ref false
 let keep_going = ref false
 let base64 = ref true
+let path_str = ref ""
+
+let do_get_action path =
+  action := Get;
+  path_str := path;
+  ActionDone
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
@@ -39,6 +45,7 @@ let options = [
   mkopt (Some 'i') "issuer" (set_action Issuer) "prints the certificates issuer";
   mkopt (Some 'm') "modulus" (set_action Modulus) "prints the RSA modulus";
   mkopt None "check-selfsigned" (set_action CheckSelfSigned) "checks the signature of a self signed";
+  mkopt (Some 'g') "get" (StringFun do_get_action) "Walks through the certificate using a get string";
 
   mkopt (Some 'n') "numeric" (Clear resolve_oids) "show numerical fields (do not resolve OIds)";
   mkopt None "resolve-oids" (Set resolve_oids) "show OID names";
@@ -109,6 +116,10 @@ let handle_input input =
     | Dump -> [hexdump (dump_certificate certificate)]
     | Text -> Str.split (Str.regexp_string "\n") (print_certificate certificate)
     | PrettyPrint -> pretty_print_certificate certificate
+    | Get ->
+      match get get_certificate certificate !path_str with
+      | None -> []
+      | Some s -> [s]
   in
   match !print_names with
     | Default -> lwt_not_implemented "handle_input can not determine wether filenames should be printed"
