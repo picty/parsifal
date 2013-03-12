@@ -412,6 +412,11 @@ let get_wrapper dump print get v = function
 
 let trivial_get dump print = get_wrapper dump print default_get
 
+let get get_fun obj path_str =
+  let path = string_split '.' path_str in
+  match get_fun obj path with
+  | Left s -> None
+  | Right s -> Some (flatten s)
 
 
 (************************)
