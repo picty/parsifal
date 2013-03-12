@@ -1,5 +1,3 @@
-rename tools => ssl-tools?
-
 find a place for those (currently in mess)
  - dex.ml => formats
  - pe.ml => formats
@@ -7,8 +5,3 @@ find a place for those (currently in mess)
  - tar.ml => formats
  - test_pe.ml => formats
  - test_tar.ml => formats
- - check_sslclient.ml => tools
- - check_sslserver.ml => tools
- - probe_server.ml => tools
- - serveranswer.ml => tools
- - sslproxy.ml => tools

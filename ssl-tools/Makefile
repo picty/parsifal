@@ -1,9 +1,15 @@
 # configurable section
-TARGETS = mapAnswers asn1parse x509show
+TARGETS = mapAnswers asn1parse x509show probe_server serveranswer sslproxy
+	# check_sslclient check_sslserver
 
 mapAnswers_SRCS := mapAnswers.ml
 asn1parse_SRCS := asn1parse.ml
 x509show_SRCS := x509show.ml
+probe_server_SRCS := probe_server.ml
+serveranswer_SRCS := serveranswer.ml
+sslproxy_SRCS := sslproxy.ml
+# check_sslclient_SRCS := check_sslclient.ml
+# check_sslserver_SRCS := check_sslserver.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
