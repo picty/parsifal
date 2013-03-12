@@ -7,8 +7,6 @@ find a place for those (currently in mess)
  - tar.ml => formats
  - test_pe.ml => formats
  - test_tar.ml => formats
- - ocsp.ml => ssl
- - test_ocsp.ml => ssl
  - check_sslclient.ml => tools
  - check_sslserver.ml => tools
  - probe_server.ml => tools

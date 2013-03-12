@@ -8,3 +8,5 @@ test_ssl2
 test_ssl2.byte
 test_tls_record
 test_tls_record.byte
+test_ocsp
+test_ocsp.byte
