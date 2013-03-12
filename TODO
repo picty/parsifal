@@ -62,7 +62,6 @@ v0.1 (oct. 2012 -> jan. 2013)
 
 v0.2 (feb. 2013 -> mar. 2013)
  - General
-   * finalize and clean up the package creation (cleanup.txt)
    * Think about the exception system (fatal or not) => merge all in ParsifalException
    * add a field "handle_non_lethal_exceptions" to *_input (a function that could be raise or prerr_endline)
    * Improve the printing systems
@@ -71,6 +70,7 @@ v0.2 (feb. 2013 -> mar. 2013)
    * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
    * Write .mli files
  - Camlp4/Language
+   * Use a standard format for printing data (JSON?)
    * rethink parse_params / dump_params (for now, the latter is only use for enumerated_bitstring)
    * rethink the exhaustive/enrich options for unions/asn1_unions
      + *dont_enrich* (enrich_ var) / enrich (enrich_ var) / force_enrich
@@ -88,7 +88,6 @@ v0.2 (feb. 2013 -> mar. 2013)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
    * Add recursive type definitions (PKCS#7 / DEX)
-   * Use a standard format for printing data (JSON?)
    * Add bitfield support
      + this should look like struct
      + it should use bitparse_ / bitdump_ functions, that take two more args (current_byte, current_pos)
