@@ -1,7 +1,9 @@
 Critical
  - Bug on SKE which is not deep-parsed anymore.
+ - Finalize the Makefile (make install)
 
-v0.1 (oct. 2012 -> jan. 2013)
+v0.2 (feb. 2013 -> apr. 2013)
+ - Use a standard format for printing data (JSON?)
  - Docs
    * Document the preprocessor (update the JFLA article)
    * Write index.txt for all subdirs
@@ -59,8 +61,6 @@ v0.1 (oct. 2012 -> jan. 2013)
    * Write acu (AceSL Cert Util) to read certs / pubkeys / privkeys and manipulate them
    * Passive TLS_Proxy
 
-
-v0.2 (feb. 2013 -> mar. 2013)
  - General
    * Think about the exception system (fatal or not) => merge all in ParsifalException
    * add a field "handle_non_lethal_exceptions" to *_input (a function that could be raise or prerr_endline)
@@ -70,7 +70,6 @@ v0.2 (feb. 2013 -> mar. 2013)
    * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
    * Write .mli files
  - Camlp4/Language
-   * Use a standard format for printing data (JSON?)
    * rethink parse_params / dump_params (for now, the latter is only use for enumerated_bitstring)
    * rethink the exhaustive/enrich options for unions/asn1_unions
      + *dont_enrich* (enrich_ var) / enrich (enrich_ var) / force_enrich
