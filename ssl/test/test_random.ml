@@ -32,4 +32,3 @@ let getopt_params = {
 
 let _ =
   ignore (parse_args getopt_params Sys.argv);
-  exit 0

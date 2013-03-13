@@ -26,7 +26,6 @@ let main =
     let args = parse_args getopt_params Sys.argv in
     let t = parse_file !filename in
     Lwt_unix.run t;
-    exit 0
   with
   | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
   | e -> prerr_endline (Printexc.to_string e); exit 1

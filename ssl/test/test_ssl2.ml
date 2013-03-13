@@ -17,7 +17,6 @@ let _ =
   try
     List.iter (fun s -> print_endline (print_ssl2_record (parse_ssl2_record { cleartext = true } (input_of_string "SSLv2 Message" s)))) ssl2_msgs;
     print_endline (print_ssl2_record (parse_ssl2_record { cleartext = false } (input_of_string "SSLv2 Encrypted Message" "\x00\x28\x07\x52\xa1\x76\x84\x5c\x34\xb0\xd0\x89\x96\x38\x83\xe7\xfb\xe2\x6a\x13\x6a\xb9\x41\xc6\x56\x71\x40\x89\x8e\x40\x69\x16\x4d\xf3\xfd\xf9\x74\xeb\x13\xf1\x86\xe3\xa9")));
-    exit 0
   with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1
