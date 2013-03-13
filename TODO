@@ -1,6 +1,5 @@
 v0.2 (feb. 2013 -> apr. 2013)
- - Remove to_string/print/get from the preprocessor and write value_of instead
- - Rewrite to_string/print/get using value_of
+ - Rewrite to_string/print/get using value_of (use @dump / @string_of attributes in VRecord when necessary)
  - Finalize the Makefile (make install)
  - Use a standard format for printing data (JSON?)
  - Docs
