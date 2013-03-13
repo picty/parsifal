@@ -30,7 +30,7 @@ echo '();;'
 
 *)
 
-let _ =
+let enrich_suite_hash () =
   mk_csdescr TLS_NULL_WITH_NULL_NULL KX_Unknown AU_Null ENC_Null MAC_Unknown PRF_Default false 0x0300 0xffff;
   mk_csdescr TLS_RSA_WITH_NULL_MD5 KX_RSA AU_RSA ENC_Null (MAC_HMAC (HF_MD5, 128)) PRF_Default false 0x0300 0xffff;
   mk_csdescr TLS_RSA_WITH_NULL_SHA KX_RSA AU_RSA ENC_Null (MAC_HMAC (HF_SHA1, 160)) PRF_Default false 0x0300 0xffff;

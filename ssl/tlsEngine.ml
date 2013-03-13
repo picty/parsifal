@@ -208,3 +208,8 @@ let handle_answer handle_hs handle_alert s =
 (*   | Handshake {handshake_content = ServerHelloDone ()} -> return (FirstPhaseOK ([], [])) *)
 (*   | _ -> raise (TLS_AlertToSend (AT_UnexpectedMessage, "ServerHelloDone expected")) *)
 (* and expect_server_hello_done ctx recs = wrap_expect_fun _expect_server_hello_done ctx recs *)
+
+
+
+let _ =
+  enrich_suite_hash ()

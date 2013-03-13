@@ -1,5 +1,4 @@
 Critical
- - Bug on SKE which is not deep-parsed anymore.
  - Finalize the Makefile (make install)
 
 v0.2 (feb. 2013 -> apr. 2013)
