@@ -38,6 +38,10 @@ let print_char ?indent:(indent="") ?name:(name="char") c =
 let get_uint8 = trivial_get dump_uint8 string_of_int
 let get_char = trivial_get dump_char (String.make 1)
 
+let value_of_uint8 i = VInt (i, 8, LittleEndian)
+let value_of_char c = VString (String.make 1 c, true)
+
+
 
 let parse_uint16 input =
   if input.cur_offset + 2 <= input.cur_length then begin
@@ -71,6 +75,8 @@ let print_uint16 ?indent:(indent="") ?name:(name="uint16") v =
 
 let get_uint16 = trivial_get dump_uint16 string_of_int
 
+let value_of_uint16 i = VInt (i, 16, BigEndian)
+
 
 type uint16le = int
 
@@ -99,6 +105,8 @@ let print_uint16le ?indent:(indent="") ?name:(name="uint16le") v =
   Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
 
 let get_uint16le = trivial_get dump_uint16le string_of_int
+
+let value_of_uint16le i = VInt (i, 16, LittleEndian)
 
 
 let parse_uint24 input =
@@ -130,6 +138,8 @@ let print_uint24 ?indent:(indent="") ?name:(name="uint24") v =
   Printf.sprintf "%s%s: %d (%6.6x)\n" indent name v v
 
 let get_uint24 = trivial_get dump_uint24 string_of_int
+
+let value_of_uint24 i = VInt (i, 24, BigEndian)
 
 
 let parse_uint32 input =
@@ -164,6 +174,8 @@ let print_uint32 ?indent:(indent="") ?name:(name="uint32") v =
   Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
 
 let get_uint32 = trivial_get dump_uint32 string_of_int
+
+let value_of_uint32 i = VInt (i, 32, BigEndian)
 
 
 type uint32le = int
@@ -200,6 +212,9 @@ let print_uint32le ?indent:(indent="") ?name:(name="uint32le") v =
   Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
 
 let get_uint32le = trivial_get dump_uint32le string_of_int
+
+let value_of_uint32le i = VInt (i, 32, LittleEndian)
+
 
 
 type uint64le = Int64.t
@@ -256,6 +271,8 @@ let print_uint64le ?indent:(indent="") ?name:(name="uint64le") v =
   Printf.sprintf "%s%s: %Ld (%16.16Lx)\n" indent name v v
 
 let get_uint64le = trivial_get dump_uint64le (Int64.to_string)
+
+let value_of_uint64le i = VBigInt (dump_uint64le i, LittleEndian)
 
 
 
@@ -330,6 +347,8 @@ let print_printablestring ?indent:(indent="") ?name:(name="string") = function
 let print_binstring ?indent:(indent="") ?name:(name="binstring") = function
   | "" -> Printf.sprintf "%s%s\n" indent name
   | s -> Printf.sprintf "%s%s: %s\n" indent name (hexdump s)
+
+let value_of_string binary s = VString (s, binary)
 
 
 
@@ -439,6 +458,9 @@ let get_list get_fun l = function
       with _ -> Left path
     end
 
+let value_of_list sub_fun l = VList (List.map sub_fun l)
+
+
 
 
 (*************)
@@ -504,3 +526,5 @@ let get_array get_fun a = function
       with _ -> Left path
     end
   |  path -> Left path
+
+let value_of_array sub_fun a = VList (List.map sub_fun (Array.to_list a))

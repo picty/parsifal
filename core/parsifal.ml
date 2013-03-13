@@ -94,6 +94,33 @@ let quote_string s =
 
 
 
+(***************)
+(* value types *)
+(***************)
+
+(* TODO: value_of should be used when efficiency is not needed *)
+(*       -> string_of, print, json_of, get                     *)
+
+type size = int
+type endianness = LittleEndian | BigEndian
+(* type header = string *)
+
+type value =
+  | VUnit
+  | VBool of bool
+  | VSimpleInt of int
+  | VInt of int * size * endianness
+  | VBigInt of string * endianness
+  | VEnum of string * int * size * endianness
+  | VString of string * bool (* * header *)
+  | VList of value list (* * header *)
+  | VRecord of (string * value) list
+  | VOption of value option
+  | VError of string
+  | VThunk of (unit -> value)
+
+
+
 (**********************)
 (* Parsing structures *)
 (**********************)
@@ -433,6 +460,9 @@ let get_enum string_of_val int_of_val nchars v = function
   | [] -> Right (Leaf (string_of_val v))
   | path -> Left path
 
+let value_of_enum string_of_val int_of_val size endianness v =
+  VEnum (string_of_val v, int_of_val v, size, endianness)
+
 
 (* Struct *)
 
@@ -452,6 +482,11 @@ let try_get (get_fun : 'a -> string list -> (string list, string tree) either)
   | None, [] -> Right (Leaf "None")
   | None, path -> Left path
   | Some x, path -> get_fun x path
+
+let try_value_of (value_of_fun : 'a -> value) = function
+  | None -> VUnit
+  | Some x -> value_of_fun x
+
 
 
 (* Unions *)

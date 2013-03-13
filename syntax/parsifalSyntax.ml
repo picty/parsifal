@@ -841,6 +841,83 @@ let mk_get_fun _loc c =
 
 
 
+(**********************)
+(* VALUE_OF FUNCTIONS *)
+(**********************)
+
+let rec value_of_fun_of_ptype _loc t =
+  let mkf fname = exp_qname _loc (Some "BasePTypes") ("value_of_" ^ fname) in
+  match t with
+    | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
+    | PT_Int int_t -> mkf int_t
+
+(* TODO? It might be necessary to add stg about the header one day *)
+(*    | PT_String (VarLen int_t, binary) -> <:expr< $mkf "string"$ $exp_bool binary$ >> *)
+(*      <:expr< $mkf "string"$ $exp_bool binary$ $dump_fun _loc (PT_Int int_t)$ >> *)
+(*    | PT_String (_, binary) -> *)
+(*      <:expr< $mkf "string"$ $exp_bool binary$ (const "") >> *)
+    | PT_String (_, binary) -> <:expr< $mkf "string"$ $exp_bool _loc binary$ >>
+
+    | PT_Custom (m, n, _, _) -> exp_qname _loc m ("value_of_" ^ n)
+
+    | PT_List (_, subtype) -> <:expr< $mkf "list"$ $value_of_fun_of_ptype _loc subtype$ >>
+    | PT_Array (_, subtype) -> <:expr< $mkf "array"$ $value_of_fun_of_ptype _loc subtype$ >>
+    | PT_Container (_, subtype)
+    | PT_CustomContainer (_, _, _, _, subtype) -> value_of_fun_of_ptype _loc subtype
+
+
+
+let mk_value_of_fun _loc c =
+  let body = match c.construction with
+  | Enum enum ->
+    let ioe = <:expr< $lid:"int_of_" ^ c.name$ >>
+    and soe = <:expr< $lid:"string_of_" ^ c.name$ >>
+    and endianness =
+      if c <.> LittleEndian
+      then <:expr< Parsifal.LittleEndian >>
+      else <:expr< Parsifal.BigEndian >>
+    in
+    <:expr< Parsifal.value_of_enum $soe$ $ioe$ $int:string_of_int enum.size$
+      $endianness$ $lid:c.name$ >>
+
+  | Struct fields ->
+    let value_of_one_field (_loc, n, t, attr) =
+      let raw_f = value_of_fun_of_ptype _loc t in
+      let f = if attr = Optional then <:expr< Parsifal.try_value_of $raw_f$ >> else raw_f in
+      <:expr< ($str:n$, Parsifal.VThunk (fun () -> $f$ $lid:c.name$.$lid:n$)) >>
+    in
+    let fields_expr = exp_of_list _loc (List.map value_of_one_field (List.filter keep_built_fields fields)) in
+    <:expr< Parsifal.VRecord $fields_expr$ >>
+
+  | Union union
+  | ASN1Union union ->
+    let mk_case = function
+      | _loc, cons, (_, PT_Empty) ->
+	<:match_case< $ <:patt< $uid:cons$ >> $ -> Parsifal.VUnit >>
+      | (_loc, cons, (n, t)) ->
+	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
+	$ <:expr< $value_of_fun_of_ptype _loc t$ x >> $ >>
+    in
+    let last_case =
+      <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
+      $ <:expr< $value_of_fun_of_ptype _loc union.unparsed_type$ x >> $ >>
+    in
+    let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
+    <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >>
+
+  | Alias atype ->
+    <:expr< $value_of_fun_of_ptype _loc atype$ $lid:c.name$ >>
+
+  | ASN1Alias alias ->
+    let value_of_content = value_of_fun_of_ptype _loc alias.aatype in
+    if alias.aalist
+    then <:expr< BasePTypes.value_of_list $value_of_content$ $lid:c.name$ >>
+    else <:expr< $value_of_content$ $lid:c.name$ >>
+
+  in [ mk_multiple_args_fun _loc ("value_of_" ^ c.name) [c.name] body ]
+
+
+
 (************************)
 (* Camlp4 grammar rules *)
 (************************)
@@ -893,7 +970,7 @@ let mk_parsifal_construction _loc name raw_opts specific_descr =
   and funs = [ mk_decls; mk_type; mk_specific_funs;
 	       mk_parse_fun false; mk_parse_fun true; mk_exact_parse_fun;
 	       mk_dump_fun; mk_stringof_fun; mk_print_fun;
-	       mk_get_fun ] in
+	       mk_get_fun; mk_value_of_fun ] in
   let rec mk_sequence = function
     | [] -> <:str_item< >>
     | [si] -> <:str_item< $si$ >>

@@ -22,6 +22,10 @@ let print_ipv4 ?indent:(indent="") ?name:(name="ipv4") s =
 
 let get_ipv4 = trivial_get dump_ipv4 string_of_ipv4
 
+let value_of_ipv4 s =
+  let elts = [s.[0]; s.[1]; s.[2]; s.[3]] in
+  VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts)
+
 
 type ipv6 = string
 
@@ -45,6 +49,13 @@ let print_ipv6 ?indent:(indent="") ?name:(name="ipv6") s =
   Printf.sprintf "%s%s: %s\n" indent name res
 
 let get_ipv6 = trivial_get dump_ipv6 string_of_ipv6
+
+let value_of_ipv6 s =
+  let elts = [s.[0]; s.[1]; s.[2]; s.[3];
+	      s.[4]; s.[5]; s.[6]; s.[7];
+	      s.[8]; s.[9]; s.[10]; s.[11];
+	      s.[12]; s.[13]; s.[14]; s.[15]] in
+  VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts)
 
 
 
@@ -71,6 +82,8 @@ let print_magic ?indent:(indent="") ?name:(name="magic") s =
   print_binstring ~indent:indent ~name:name s
 
 let get_magic = trivial_get dump_magic string_of_magic
+
+let value_of_magic s = VString (s, true)
 
 
 (* Containers *)
@@ -147,6 +160,10 @@ let get_raw_value v path = match v, path with
   | Some s, []
   | Some s, ["@hex"] -> Right (Leaf "hexdump s")
   | _, path -> Left path
+
+let value_of_raw_value = function
+  | None -> VUnit
+  | Some s -> VString (s, true)
 
 
 (* Ignore trailing bytes *)

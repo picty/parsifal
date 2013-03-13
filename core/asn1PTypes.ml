@@ -30,6 +30,8 @@ let print_der_boolean_content ?indent:(indent="") ?name:(name="der_boolean") v =
 
 let get_der_boolean_content = trivial_get dump_der_boolean_content string_of_der_boolean_content
 
+let value_of_der_boolean_content b = VBool b
+
 asn1_alias der_boolean = primitive [T_Boolean] der_boolean_content
 
 
@@ -62,6 +64,8 @@ let print_der_integer_content ?indent:(indent="") ?name:(name="der_integer") v =
   Printf.sprintf "%s%s: %s\n" indent name (hexdump v)
 
 let get_der_integer_content = trivial_get id hexdump
+
+let value_of_der_integer_content i = VBigInt (i, BigEndian)
 
 asn1_alias der_integer = primitive [T_Integer] der_integer_content
 
@@ -105,6 +109,8 @@ let print_der_smallint_content ?indent:(indent="") ?name:(name="der_smallint") v
 
 let get_der_smallint_content = trivial_get dump_der_smallint_content string_of_int
 
+let value_of_der_smallint_content i = VSimpleInt i
+
 asn1_alias der_smallint = primitive [T_Integer] der_smallint_content
 
 
@@ -126,6 +132,8 @@ let print_der_null_content ?indent:(indent="") ?name:(name="der_null_content") (
   Printf.sprintf "%s%s\n" indent name
 
 let get_der_null_content = trivial_get (fun () -> "") (fun () -> "")
+
+let value_of_der_null_content () = VUnit
 
 asn1_alias der_null = primitive [T_Null] der_null_content
 
@@ -231,6 +239,10 @@ let print_der_oid_content ?indent:(indent="") ?name:(name="der_oid_content") oid
 
 let get_der_oid_content = trivial_get dump_der_oid_content string_of_oid
 
+let value_of_der_oid_content oid =
+  VList [VString (string_of_oid oid, false);
+	 VList (List.map (fun id -> VSimpleInt id) (oid_expand oid))]
+
 asn1_alias der_oid = primitive [T_OId] der_oid_content
 
 
@@ -262,6 +274,9 @@ let print_der_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_c
   Printf.sprintf "%s%s: [%d] %s\n" indent name nBits (hexdump s)
 
 let get_der_bitstring_content = trivial_get dump_der_bitstring_content string_of_der_bitstring_content
+
+let value_of_der_bitstring_content (nBits, s) =
+  VList [VSimpleInt nBits; VString (s, true)]
 
 asn1_alias der_bitstring = primitive [T_BitString] der_bitstring_content
 
@@ -334,6 +349,9 @@ let print_der_enumerated_bitstring_content ?indent:(indent="") ?name:(name="der_
 let get_der_enumerated_bitstring_content description =
   trivial_get (dump_der_enumerated_bitstring_content description) string_of_der_enumerated_bitstring_content
 
+let value_of_der_enumerated_bitstring_content l =
+  VList (List.map (fun s -> VString (s, false)) l)
+
 asn1_alias der_enumerated_bitstring [both_param description] = primitive [T_BitString] der_enumerated_bitstring_content[description]
 
 
@@ -357,6 +375,7 @@ let string_of_der_octetstring_content = hexdump
 let print_der_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
   Printf.sprintf "%s%s: %s\n" indent name (hexdump s)
 let get_der_octetstring_content = trivial_get id hexdump
+let value_of_der_octetstring_content s = VString (s, true)
 
 asn1_alias der_octetstring = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
@@ -365,6 +384,7 @@ alias der_printable_octetstring_content [param constr] = der_octetstring_content
 let print_der_printable_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
   Printf.sprintf "%s%s: %s\n" indent name s
 let get_der_printable_octetstring_content = trivial_get id quote_string
+let value_of_der_printable_octetstring_content s = VString (s, false)
 
 
 (* Time types *)
@@ -407,6 +427,11 @@ let string_of_time_content t =
     t.year t.month t.day t.hour t.minute t.second
 let print_time_content ?indent:(indent="") ?name:(name="time") t =
   Printf.sprintf "%s%s: %s\n" indent name (string_of_time_content t)
+let value_of_time_content t =
+  VRecord ["year", VSimpleInt t.year; "month", VSimpleInt t.month;
+	   "day", VSimpleInt t.day; "hour", VSimpleInt t.hour;
+	   "minute", VSimpleInt t.minute; "second", VSimpleInt t.second]
+   
 
 type der_utc_time_content = time_content
 let parse_der_utc_time_content input =
@@ -419,6 +444,7 @@ let dump_der_utc_time_content t =
 let string_of_der_utc_time_content = string_of_time_content
 let print_der_utc_time_content = print_time_content
 let get_der_utc_time_content = trivial_get dump_der_utc_time_content string_of_time_content
+let value_of_der_utc_time_content t = value_of_time_content t
 
 type der_generalized_time_content = time_content
 let parse_der_generalized_time_content input =
@@ -430,6 +456,7 @@ let dump_der_generalized_time_content t =
 let string_of_der_generalized_time_content = string_of_time_content
 let print_der_generalized_time_content = print_time_content
 let get_der_generalized_time_content = trivial_get dump_der_generalized_time_content string_of_time_content
+let value_of_der_generalized_time_content t = value_of_time_content t
 
 
 (* Generic ASN.1 Object *)
@@ -588,6 +615,22 @@ and print_der_object_content ?indent:(indent="") ?name:(name="der_object") = fun
 
 let get_der_object_content = trivial_get dump_der_object_content string_of_der_object_content
 let get_der_object = trivial_get dump_der_object string_of_der_object
+
+let rec value_of_der_object o =
+  let value_of_content = value_of_der_object_content o.a_content in
+  VRecord ["class", value_of_asn1_class o.a_class;
+	   "isConstructed", VBool (isConstructed o);
+	   "tag", value_of_asn1_tag o.a_tag;
+	   "content", value_of_content]
+and value_of_der_object_content = function
+  | Boolean b -> value_of_der_boolean_content b
+  | Integer i -> value_of_der_integer_content i
+  | BitString (nBits, s) -> value_of_der_bitstring_content (nBits, s)
+  | Null -> VUnit
+  | OId oid -> value_of_der_oid_content oid
+  | String (s, binary) -> VString (s, binary)
+  | Constructed l -> value_of_list value_of_der_object l
+  | UnparsedDER (_, s) -> VString (s, true)
 
 
 (* ASN.1 Containers *)

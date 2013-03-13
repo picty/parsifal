@@ -56,6 +56,7 @@ let print_varint ?indent:(indent="") ?name:(name="char") i =
 
 let get_varint = trivial_get dump_varint string_of_varint
 
+let value_of_varint i = VSimpleInt i
 
 
 (* Protobuf key *)
@@ -89,6 +90,9 @@ let print_protobuf_key ?indent:(indent="") ?name:(name="protobuf_key") (wt, fn) 
 
 let get_protobuf_key = trivial_get dump_protobuf_key string_of_protobuf_key
 
+let value_of_protobuf_key (wt, fn) =
+  VRecord ["wire_type", value_of_wire_type wt;
+	   "field_number", VSimpleInt fn]
 
 
 (* Length defined stuff *)
