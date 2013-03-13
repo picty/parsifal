@@ -33,6 +33,9 @@ let print_tar_numstring ?indent:(indent="")
 
 let get_tar_numstring len = trivial_get (dump_tar_numstring len) string_of_int
 
+(* TODO: change stg to get len in here? *)
+let value_of_tar_numstring i = VSimpleInt i
+
 
 type optional_tar_numstring = int option
 
@@ -58,6 +61,7 @@ let print_optional_tar_numstring ?indent:(indent="")
 
 let get_optional_tar_numstring len = trivial_get (dump_optional_tar_numstring len) string_of_optional_tar_numstring
 
+let value_of_optional_tar_numstring v = try_value_of value_of_tar_numstring v
 
 struct ustar_header = {
   ustar_magic : magic("ustar");

@@ -96,6 +96,10 @@ let print_label ?indent:(indent="") ?name:(name="label") l =
 
 let get_label = trivial_get dump_label string_of_label
 
+let value_of_label = function
+  | Label s -> VString (s, false)
+  | Pointer p -> VString ("@" ^ (string_of_int p), false)
+
 
 type domain =
   | RawDomain of label list
@@ -162,6 +166,10 @@ let print_domain ?indent:(indent="") ?name:(name="domain") d =
   Printf.sprintf "%s%s: %s\n" indent name (string_of_domain d)
 
 let get_domain = trivial_get dump_domain string_of_domain
+
+let value_of_domain = function
+  | RawDomain d -> VList ((List.map value_of_label) d)
+  | UnfoldedDomain d -> VList (List.map (value_of_string false) d)
 
 
 struct mx_rdata [param dns_context] = {

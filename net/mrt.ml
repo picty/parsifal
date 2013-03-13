@@ -50,6 +50,17 @@ let print_ip_prefix ?indent:(indent="") ?name:(n="ip_prefix") ip_prefix =
 
 let get_ip_prefix = trivial_get dump_ip_prefix string_of_ip_prefix
 
+let value_of_ip_prefix ip_prefix =
+  let a_name, a, len = match ip_prefix with
+    | IPv4Prefix (s, prefix_length) ->
+      let l = (prefix_length + 7) / 8 in
+      "ipv4_prefix", value_of_ipv4 (s ^ (String.make (4 - l) '\x00')), prefix_length
+    | IPv6Prefix (s, prefix_length) ->
+      let l = (prefix_length + 7) / 8 in
+      "ipv6_prefix", value_of_ipv6 (s ^ (String.make (16 - l) '\x00')), prefix_length
+  in
+  (* TODO: add a "@string_of" field to take into account the specifity of ip_prefix? *)
+  VRecord [a_name, a; "prefix_len", VSimpleInt len]
 
 
 (* BGP messages *)
@@ -77,7 +88,10 @@ let print_bgp_attribute_len ?indent:(indent="") ?name:(name="bgp_attribute_len")
   then print_uint16 ~indent:indent ~name:name v
   else print_uint8 ~indent:indent ~name:name v
 let get_bgp_attribute_len = trivial_get dump_bgp_attribute_len string_of_bgp_attribute_len
-
+let value_of_bgp_attribute_len (extended, v) =
+  if extended
+  then VInt (v, 16, BigEndian)
+  else VInt (v, 8, BigEndian)
 
 enum bgp_attribute_type (8, UnknownVal UnknownBGPAttributeType) =
   | 1 -> ORIGIN
