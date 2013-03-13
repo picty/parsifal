@@ -234,14 +234,22 @@ let lwt_parse_uint64le input =
 let dump_uint64le v =
   let open Int64 in
   let ff = of_int 0xff in
-  let c3 = char_of_int (to_int (logand (shift_right v 24) ff))
+  let c7 = char_of_int (to_int (logand (shift_right v 56) ff))
+  and c6 = char_of_int (to_int (logand (shift_right v 48) ff))
+  and c5 = char_of_int (to_int (logand (shift_right v 40) ff))
+  and c4 = char_of_int (to_int (logand (shift_right v 32) ff))
+  and c3 = char_of_int (to_int (logand (shift_right v 24) ff))
   and c2 = char_of_int (to_int (logand (shift_right v 16) ff))
   and c1 = char_of_int (to_int (logand (shift_right v 8) ff))
   and c0 = char_of_int (to_int (logand v ff)) in
-  let res = String.make 4 c0 in
+  let res = String.make 8 c0 in
   res.[1] <- c1;
   res.[2] <- c2;
   res.[3] <- c3;
+  res.[4] <- c4;
+  res.[5] <- c5;
+  res.[6] <- c6;
+  res.[7] <- c7;
   res
 
 let print_uint64le ?indent:(indent="") ?name:(name="uint64le") v =
