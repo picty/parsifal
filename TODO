@@ -1,4 +1,7 @@
 v0.2 (feb. 2013 -> apr. 2013)
+ - Make sure Base64 is accessible when linking with parsifal_core
+ - Clean up this TODO file
+ - Put lwt functions in parsifal_lwt_support, to avoid unnecessary dependencies
  - Rewrite to_string/print/get using value_of (use @dump / @string_of attributes in VRecord when necessary)
  - Finalize the Makefile (make install)
  - Use a standard format for printing data (JSON?)

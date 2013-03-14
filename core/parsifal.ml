@@ -117,6 +117,7 @@ type value =
   | VRecord of (string * value) list
   | VOption of value option
   | VError of string
+  (* TODO: Use lazy ? *)
   | VThunk of (unit -> value)
 
 
