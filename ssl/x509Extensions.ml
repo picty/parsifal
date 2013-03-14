@@ -227,7 +227,8 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "certificatePolicies" -> CertificatePolicies of certificatePolicies
   | "crlDistributionPoints" -> CRLDistributionPoints of crlDistributionPoints
   | "nameConstraints" -> NameConstraints of nameConstraints
-  | "subjectAlternativeName" -> SubjectAlternativeName of generalNames
+  | "subjectAltName" -> SubjectAltName of generalNames
+  | "issuerAltName" -> IssuerAltName of generalNames
   | "authorityInfoAccess" -> AuthorityInfoAccess of authorityInfoAccess
   | "nsCertType" -> NSCertType of der_enumerated_bitstring[nsCertType_values]
   | "nsComment" -> NSComment of der_ia5string(NoConstraint)

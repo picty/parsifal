@@ -99,7 +99,8 @@ let extension_types = [
   [85;29;1], "authorityKeyIdentifier";
   [85;29;14], "subjectKeyIdentifier";
   [85;29;15], "keyUsage";
-  [85;29;17], "subjectAlternativeName";
+  [85;29;17], "subjectAltName";
+  [85;29;18], "issuerAltName";
   [85;29;19], "basicConstraints";
   [85;29;30], "nameConstraints";
   [85;29;31], "crlDistributionPoints";
