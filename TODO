@@ -92,7 +92,6 @@ v0.2 (apr. 2013)
    * Add SSLv2 support in probe_server and other programs
    * Implement every extension/PK present in ssl-data
  - X509
-   * other extensions: 2.16.840.1.113730.1.1 (NSCertType), 2.16.840.1.113730.1.13 (NSComment)
    * relax constraints to allow parsing
    * Add support for CSR
    * OCSP and CRL parsers

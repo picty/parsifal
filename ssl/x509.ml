@@ -107,6 +107,8 @@ let extension_types = [
   [85;29;35], "authorityKeyIdentifier";
   [85;29;37], "extendedKeyUsage";
   [43;6;1;5;5;7;1;1], "authorityInfoAccess";
+  [96;840;1;113730;1;1], "nsCertType";
+  [96;840;1;113730;1;13], "nsComment"
 ]
 
 

@@ -202,6 +202,22 @@ asn1_alias accessDescription
 asn1_alias authorityInfoAccess = seq_of accessDescription (* TODO: 1 .. MAX *)
 
 
+(*************)
+(* Key Usage *)
+(*************)
+
+let nsCertType_values = [|
+  "SSL Client";
+  "SSL Server";
+  "S/MIME";
+  "Obj Sign";
+  "SSL CA";
+  "S/MIME CA";
+  "Obj Sign CA"
+|]
+
+
+
 union extnValue [enrich] (UnparsedExtension of binstring) =
   | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authorityKeyIdentifier
   | "subjectKeyIdentifier" -> SubjectKeyIdentifier of der_octetstring
@@ -213,24 +229,14 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "nameConstraints" -> NameConstraints of nameConstraints
   | "subjectAlternativeName" -> SubjectAlternativeName of generalNames
   | "authorityInfoAccess" -> AuthorityInfoAccess of authorityInfoAccess
+  | "nsCertType" -> NSCertType of der_enumerated_bitstring[nsCertType_values]
+  | "nsComment" -> NSComment of der_ia5string(NoConstraint)
+
 
 struct extension_content = {
   extnID : der_oid;
   optional critical : der_boolean;
   extnValue : octetstring_container of extnValue(hash_get oid_directory extnID "")
 }
-
-
-
-(* let print_extension_content ?indent:(indent="") ?name:(name="") ext = *)
-(*   let real_name = *)
-(*     if name = "" *)
-(*     then Asn1PTypes.string_of_oid ext.extnID *)
-(*     else name *)
-(*   in *)
-(*   let critical_str = if pop_opt false ext.critical then " (critical)" else "" in *)
-(*   let value_str = print_extnValue ext.extnValue in *)
-(*   Printf.sprintf "%s%s%s: %s\n" indent real_name critical_str value_str *)
-
 asn1_alias extension
 asn1_alias extension_list = seq_of extension (* TODO: min = 1 *)
