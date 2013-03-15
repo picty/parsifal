@@ -40,6 +40,7 @@ asn1_alias generalNames = seq_of generalName
 
 
 
+
 (****************************)
 (* Authority Key Identifier *)
 (****************************)
@@ -73,6 +74,19 @@ let keyUsage_values = [|
 
 
 
+(****************************)
+(* Private Key Usage Period *)
+(****************************)
+
+(* TODO: Add structural check: at least one field should be present *)
+struct privateKeyUsagePeriod_content = {
+  optional notBefore : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_generalized_time_content;
+  optional notAfter : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_generalized_time_content
+}
+asn1_alias privateKeyUsagePeriod
+
+
+
 (*********************)
 (* Basic Constraints *)
 (*********************)
@@ -85,11 +99,57 @@ asn1_alias basicConstraints
 
 
 
-(**********************)
-(* Extended Key Usage *)
-(**********************)
+(*******************)
+(* NameConstraints *)
+(*******************)
 
-asn1_alias extendedKeyUsage = seq_of der_oid
+struct generalSubtree_content = {
+  gst_base : generalName;
+  optional gst_minimum : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_integer_content;
+  optional gst_maximum : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_integer_content
+}
+asn1_alias generalSubtree
+asn1_alias generalSubtrees = seq_of generalSubtree (* TODO: 1 .. MAX *)
+
+(* TODO: Add structural constraint (0 or 1 must be present) *)
+struct nameConstraints_content = {
+  optional permittedSubtrees : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of generalSubtrees;
+  optional excludedSubtrees : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of generalSubtrees
+}
+asn1_alias nameConstraints
+
+
+
+(***************************)
+(* CRL Distribution Points *)
+(***************************)
+
+(* TODO: Make the exhaustive meaningful *)
+asn1_union distributionPointName [enrich; exhaustive] (UnparsedDistributionPointName) =
+  | C_ContextSpecific, true, T_Unknown 0 -> FullName of (list of generalName)
+  | C_ContextSpecific, true, T_Unknown 1 -> NameRelativeToCRLIssuer of (list of atv)
+
+let reasonFlags_values = [|
+  "unused";
+  "keyCompromise";
+  "caCompromise";
+  "affiliationChanged";
+  "superseded";
+  "cessationOfOperation";
+  "certificateHold";
+  "privilegeWithdrawn";
+  "aaCompromise"
+|]
+
+(* TODO: Add structural check: at least 0 or 2 should be present *)
+struct distributionPoint_content = {
+  optional distributionPoint : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of distributionPointName;
+  optional reasons : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_enumerated_bitstring_content[reasonFlags_values];
+  optional crlIssuer : asn1 [(C_ContextSpecific, true, T_Unknown 2)] of (list of generalName)
+}
+
+asn1_alias distributionPoint
+asn1_alias crlDistributionPoints = seq_of distributionPoint (* TODO: 1 .. MAX *)
 
 
 
@@ -136,57 +196,11 @@ asn1_alias certificatePolicies = seq_of policyInformation (* 1..MAX *)
 
 
 
-(***************************)
-(* CRL Distribution Points *)
-(***************************)
+(**********************)
+(* Extended Key Usage *)
+(**********************)
 
-(* TODO: Make the exhaustive meaningful *)
-asn1_union distributionPointName [enrich; exhaustive] (UnparsedDistributionPointName) =
-  | C_ContextSpecific, true, T_Unknown 0 -> FullName of (list of generalName)
-  | C_ContextSpecific, true, T_Unknown 1 -> NameRelativeToCRLIssuer of (list of atv)
-
-let reasonFlags_values = [|
-  "unused";
-  "keyCompromise";
-  "caCompromise";
-  "affiliationChanged";
-  "superseded";
-  "cessationOfOperation";
-  "certificateHold";
-  "privilegeWithdrawn";
-  "aaCompromise"
-|]
-
-(* TODO: Add structural check: at least 0 or 2 should be present *)
-struct distributionPoint_content = {
-  optional distributionPoint : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of distributionPointName;
-  optional reasons : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_enumerated_bitstring_content[reasonFlags_values];
-  optional crlIssuer : asn1 [(C_ContextSpecific, true, T_Unknown 2)] of (list of generalName)
-}
-
-asn1_alias distributionPoint
-asn1_alias crlDistributionPoints = seq_of distributionPoint (* TODO: 1 .. MAX *)
-
-
-
-(*******************)
-(* NameConstraints *)
-(*******************)
-
-struct generalSubtree_content = {
-  gst_base : generalName;
-  optional gst_minimum : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_integer_content;
-  optional gst_maximum : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_integer_content
-}
-asn1_alias generalSubtree
-asn1_alias generalSubtrees = seq_of generalSubtree (* TODO: 1 .. MAX *)
-
-(* TODO: Add structural constraint (0 or 1 must be present) *)
-struct nameConstraints_content = {
-  optional permittedSubtrees : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of generalSubtrees;
-  optional excludedSubtrees : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of generalSubtrees
-}
-asn1_alias nameConstraints
+asn1_alias extendedKeyUsage = seq_of der_oid
 
 
 
@@ -202,9 +216,9 @@ asn1_alias accessDescription
 asn1_alias authorityInfoAccess = seq_of accessDescription (* TODO: 1 .. MAX *)
 
 
-(*************)
-(* Key Usage *)
-(*************)
+(****************)
+(* NS Cert Type *)
+(****************)
 
 let nsCertType_values = [|
   "SSL Client";
@@ -222,13 +236,14 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authorityKeyIdentifier
   | "subjectKeyIdentifier" -> SubjectKeyIdentifier of der_octetstring
   | "keyUsage" -> KeyUsage of der_enumerated_bitstring[keyUsage_values]
-  | "basicConstraints" -> BasicConstraints of basicConstraints
-  | "extendedKeyUsage" -> ExtendedKeyUsage of extendedKeyUsage
-  | "certificatePolicies" -> CertificatePolicies of certificatePolicies
-  | "crlDistributionPoints" -> CRLDistributionPoints of crlDistributionPoints
-  | "nameConstraints" -> NameConstraints of nameConstraints
+  | "privateKeyUsagePeriod" -> PrivateKeyUsagePeriod of privateKeyUsagePeriod
   | "subjectAltName" -> SubjectAltName of generalNames
   | "issuerAltName" -> IssuerAltName of generalNames
+  | "basicConstraints" -> BasicConstraints of basicConstraints
+  | "nameConstraints" -> NameConstraints of nameConstraints
+  | "crlDistributionPoints" -> CRLDistributionPoints of crlDistributionPoints
+  | "certificatePolicies" -> CertificatePolicies of certificatePolicies
+  | "extendedKeyUsage" -> ExtendedKeyUsage of extendedKeyUsage
   | "authorityInfoAccess" -> AuthorityInfoAccess of authorityInfoAccess
   | "nsCertType" -> NSCertType of der_enumerated_bitstring[nsCertType_values]
   | "nsComment" -> NSComment of der_ia5string(NoConstraint)

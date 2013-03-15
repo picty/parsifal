@@ -96,9 +96,10 @@ let signature_types = [
 ]
 
 let extension_types = [
-  [85;29;1], "authorityKeyIdentifier";
+  [85;29;1], "authorityKeyIdentifier"; (* Deprecated *)
   [85;29;14], "subjectKeyIdentifier";
   [85;29;15], "keyUsage";
+  [85;29;16], "privateKeyUsagePeriod";
   [85;29;17], "subjectAltName";
   [85;29;18], "issuerAltName";
   [85;29;19], "basicConstraints";

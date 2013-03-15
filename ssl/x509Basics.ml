@@ -159,10 +159,6 @@ asn1_union der_time [enrich; exhaustive] (UnparsedTime) =
   | (C_Universal, false, T_UTCTime) -> UTCTime of der_utc_time_content
   | (C_Universal, false, T_GeneralizedTime) -> GeneralizedTime of der_generalized_time_content
 
-let string_of_der_time = function
-  | UTCTime t | GeneralizedTime t -> string_of_time_content t
-  | UnparsedTime o -> raise (ParsingException (CustomException "UnparsedTime", []))
-
 struct validity_content = {
   notBefore : der_time;
   notAfter : der_time
