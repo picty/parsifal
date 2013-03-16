@@ -80,8 +80,8 @@ let keyUsage_values = [|
 
 (* TODO: Add structural check: at least one field should be present *)
 struct privateKeyUsagePeriod_content = {
-  optional notBefore : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_generalized_time_content;
-  optional notAfter : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_generalized_time_content
+  optional pkup_notBefore : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_generalized_time_content;
+  optional pkup_notAfter : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_generalized_time_content
 }
 asn1_alias privateKeyUsagePeriod
 
