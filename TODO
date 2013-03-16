@@ -1,4 +1,5 @@
 v0.2 (apr. 2013)
+ - Factor some code (lwt_parse_file filename lwt_parse_fun; the more common options (enrich, verbose, input handling); get machinery)
  - X509
    * add popular extensions
        1.2.840.113549.1.9.15 (sMIMECapabilities)
@@ -17,8 +18,14 @@ v0.2 (apr. 2013)
  - Finalize the Makefile (make install)
  - Write json_of using value_of
  - Docs
-   * Document the preprocessor (update the JFLA article)
+   * Document the preprocessor and write a new version of the JFLA article. Comapre to existing stuff:
+     + https://github.com/jaked/deriving
+     + http://www.lexifi.com/blog/syntax-extensions-without-camlp4
+     + http://code.google.com/p/bitstring/
    * Write a tutorial
+     + Installation
+     + First use (x509 / dns)
+     + Creating support for new formats: tar, pcap
    * Write index.txt for all subdirs
  - General
    * have a redmine to put all this stuff
