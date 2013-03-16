@@ -147,7 +147,7 @@ let raw_verify typ msg s n e =
 	f msg = digest
       | _ -> false
   with
-    | Not_found _ | Parsifal.ParsingException _ -> false
+    | Not_found | Parsifal.ParsingException _ -> false
 
 
 
