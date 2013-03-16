@@ -91,6 +91,7 @@ let signature_types = [
   [42;840;113549;1;1;13], "sha512WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
   [42;840;113549;1;1;14], "sha224WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
   [42;840;10040;4;3], "dsaWithSha1", APT_Null, (fun _ -> ST_DSA);
+  [43;14;3;2;29], "sha1WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
   [96;840;1;101;3;4;3;1], "dsaWithSha224", APT_Null, (fun _ -> ST_DSA);
   [96;840;1;101;3;4;3;2], "dsaWithSha256", APT_Null, (fun _ -> ST_DSA);
 ]
