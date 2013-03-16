@@ -4,8 +4,7 @@ MLLIBS = parsifal_ssl
 
 parsifal_ssl_SRCS := dSAKey.ml rSAKey.ml x509Basics.ml x509Extensions.ml cryptoUtil.ml \
                      randomEngine.ml pkcs1.ml x509.ml ocsp.ml answerDump.ml \
-                     lwtUtil.ml tlsEnums.ml tls.ml ssl2.ml tlsDatabase.ml \
-                     tlsUtil.ml lwtUtil.ml tlsEngine.ml
+                     tlsEnums.ml tls.ml ssl2.ml tlsDatabase.ml tlsUtil.ml tlsEngine.ml
 		# x509CertificateStore.ml
 
 # comment this line if not using camlp4

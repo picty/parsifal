@@ -2,7 +2,8 @@
 TARGETS =
 MLLIBS = parsifal_core
 
-parsifal_core_SRCS := parsifal.ml basePTypes.ml pTypes.ml asn1Engine.ml asn1PTypes.ml base64.ml getopt.ml protobuf.ml
+parsifal_core_SRCS := parsifal.ml basePTypes.ml pTypes.ml asn1Engine.ml asn1PTypes.ml base64.ml \
+                      getopt.ml protobuf.ml lwtUtil.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
