@@ -1,5 +1,6 @@
 v0.2 (apr. 2013)
  - Factor some code (lwt_parse_file filename lwt_parse_fun; the more common options (enrich, verbose, input handling); get machinery)
+ - Improve value_of for der_enumerated_bitstring, atv/rdn/dn
  - X509
    * add popular extensions
        1.2.840.113549.1.9.15 (sMIMECapabilities)

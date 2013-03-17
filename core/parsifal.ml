@@ -576,7 +576,7 @@ let rec string_of_value = function
   | VThunk realize -> string_of_value (realize ())
 
 
-let rec print_value ?indent:(indent="") ?name:(name="value") = function
+let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="value") = function
   | VUnit ->  Printf.sprintf "%s%s\n" indent name
   | VBool b -> Printf.sprintf "%s%s: %b\n" indent name b
   | VSimpleInt i -> Printf.sprintf "%s%s: %d\n" indent name i
@@ -597,23 +597,26 @@ let rec print_value ?indent:(indent="") ?name:(name="value") = function
     Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (quote_string s) (String.length s)
 
   | VList l ->
+    let print_subvalue x = print_value ~verbose:verbose ~indent:(indent ^ "  ") x in
     (Printf.sprintf "%s%s {\n" indent name) ^
-      (String.concat "" (List.map (fun x -> print_value ~indent:(indent ^ "  ") x) l)) ^
+      (String.concat "" (List.map print_subvalue l)) ^
       (Printf.sprintf "%s}\n" indent)
   | VRecord l -> begin
     try
-      Printf.sprintf "%s%s: %s\n" indent name (string_of_value (List.assoc "@string_of" l))
+      if verbose
+      then raise Not_found
+      else Printf.sprintf "%s%s: %s\n" indent name (string_of_value (List.assoc "@string_of" l))
     with Not_found -> begin
       let new_indent = indent ^ "  " in
-      let no_at (name, _) = String.length name > 1 && name.[0] <> '@'
-      and print_field (name, v) = print_value ~indent:new_indent ~name:name v in
+      let no_at (name, _) = verbose || (String.length name > 1 && name.[0] <> '@')
+      and print_field (name, v) = print_value ~verbose:verbose ~indent:new_indent ~name:name v in
       (Printf.sprintf "%s%s {\n" indent name) ^
 	(String.concat "" (List.map print_field (List.filter no_at l))) ^
 	(Printf.sprintf "%s}\n" indent)
     end
   end
   | VOption None -> ""
-  | VOption (Some v) -> print_value ~indent:indent ~name:name v
+  | VOption (Some v) -> print_value ~verbose:verbose ~indent:indent ~name:name v
 
   | VError err -> "%s%s: ERROR (%s)\n"
-  | VThunk realize -> print_value ~indent:indent ~name:name (realize ())
+  | VThunk realize -> print_value ~verbose:verbose ~indent:indent ~name:name (realize ())

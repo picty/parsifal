@@ -171,7 +171,7 @@ let rec handle_answer answer =
       | All ->
         let records, _, error = parse_all_records !enrich_style answer in
         print_endline ip;
-        List.iter (fun r -> print_endline (print_value ~indent:"  " (value_of_tls_record r))) records;
+        List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_tls_record r))) records;
         if error then print_endline "  ERROR"
       | Suite ->
         let _, ctx, _ = parse_all_records !enrich_style answer in
