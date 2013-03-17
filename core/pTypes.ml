@@ -16,8 +16,6 @@ let string_of_ipv4 s =
   let elts = [s.[0]; s.[1]; s.[2]; s.[3]] in
   String.concat "." (List.map (fun e -> string_of_int (int_of_char e)) elts)
 
-let get_ipv4 = trivial_get dump_ipv4 string_of_ipv4
-
 let value_of_ipv4 s =
   let elts = [s.[0]; s.[1]; s.[2]; s.[3]] in
   VRecord [
@@ -43,8 +41,6 @@ let string_of_ipv6 s =
     res.[(i / 2) + i * 2 + 1] <- hexa_char.[x land 0xf];
   done;
   res
-
-let get_ipv6 = trivial_get dump_ipv6 string_of_ipv6
 
 let value_of_ipv6 s =
   let elts = [s.[0]; s.[1]; s.[2]; s.[3];
@@ -77,8 +73,6 @@ let lwt_parse_magic magic_expected input =
 let dump_magic s = s
 
 let string_of_magic s = hexdump s
-
-let get_magic = trivial_get dump_magic string_of_magic
 
 let value_of_magic s = VString (s, true)
 
@@ -151,12 +145,6 @@ let parse_raw_value offset input =
   Some (String.sub input.str (input.cur_base + offset) (input.cur_offset - offset))
 let lwt_parse_raw_value _offset input =
   fail (ParsingException (NotImplemented "lwt_parse_raw_value", _h_of_li input))
-
-let get_raw_value v path = match v, path with
-  | None, [] -> Right (Leaf "None")
-  | Some s, []
-  | Some s, ["@hex"] -> Right (Leaf "hexdump s")
-  | _, path -> Left path
 
 let value_of_raw_value = function
   | None -> VUnit

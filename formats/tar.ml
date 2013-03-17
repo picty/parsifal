@@ -26,10 +26,6 @@ let parse_tar_numstring len input =
 let dump_tar_numstring len v =
   Printf.sprintf "%*.*o\x00" len len v
 
-let string_of_tar_numstring = string_of_int
-
-let get_tar_numstring len = trivial_get (dump_tar_numstring len) string_of_int
-
 (* TODO: change stg to get len in here? *)
 let value_of_tar_numstring i = VSimpleInt i
 
@@ -46,12 +42,6 @@ let parse_optional_tar_numstring len input =
 let dump_optional_tar_numstring len = function
   | None -> String.make len '\x00'
   | Some v -> dump_tar_numstring len v
-
-let string_of_optional_tar_numstring = function
-  | None -> ""
-  | Some v -> string_of_int v
-
-let get_optional_tar_numstring len = trivial_get (dump_optional_tar_numstring len) string_of_optional_tar_numstring
 
 let value_of_optional_tar_numstring v = try_value_of value_of_tar_numstring v
 

@@ -74,8 +74,8 @@ let _ =
   test_rsa "\x30\x0d\x02\x08AABBCCDD\x02\x01\x03";
   test_der_object "\x30\x0d\x02\x08AABBCCDD\x02\x01\x03";
   for i = 1 to (Array.length Sys.argv) - 1 do
-    match (get_st (parse_st (input_of_string "" "\x04toto\x02AABB")) (string_split '.' (Sys.argv.(i)))) with
-    | Left s -> Printf.printf "Left \"%s\"\n" (String.concat "." s)
-    | Right s -> Printf.printf "Right %s\n" (flatten s)
+    match get (value_of_st (parse_st (input_of_string "" "\x04toto\x02AABB"))) Sys.argv.(i) with
+    | Left e -> Printf.printf "Left \"%s\"\n" e
+    | Right s -> Printf.printf "Right %s\n" s
   done;
   ()

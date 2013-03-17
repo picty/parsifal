@@ -24,10 +24,6 @@ let dump_der_boolean_content = function
   | true -> String.make 1 '\xff'
   | false -> String.make 1 '\x00'
 
-let string_of_der_boolean_content = string_of_bool
-
-let get_der_boolean_content = trivial_get dump_der_boolean_content string_of_der_boolean_content
-
 let value_of_der_boolean_content b = VBool b
 
 asn1_alias der_boolean = primitive [T_Boolean] der_boolean_content
@@ -56,10 +52,6 @@ let parse_der_integer_content input =
   l
 
 let dump_der_integer_content s = s
-
-let string_of_der_integer_content = hexdump
-
-let get_der_integer_content = trivial_get id hexdump
 
 let value_of_der_integer_content i = VBigInt (i, BigEndian)
 
@@ -99,10 +91,6 @@ let dump_der_smallint_content i =
   mk_content (sz-1) i;
   res
 
-let string_of_der_smallint_content = string_of_int
-
-let get_der_smallint_content = trivial_get dump_der_smallint_content string_of_int
-
 let value_of_der_smallint_content i = VSimpleInt i
 
 asn1_alias der_smallint = primitive [T_Integer] der_smallint_content
@@ -120,10 +108,6 @@ let parse_der_null_content input =
   end
 
 let dump_der_null_content () = ""
-
-let string_of_der_null_content () = ""
-
-let get_der_null_content = trivial_get (fun () -> "") (fun () -> "")
 
 let value_of_der_null_content () = VUnit
 
@@ -226,8 +210,6 @@ let string_of_der_oid_content oid =
     with Not_found -> raw_string_of_oid oid
   else raw_string_of_oid oid
 
-let get_der_oid_content = trivial_get dump_der_oid_content string_of_oid
-
 let value_of_der_oid_content oid =
   VRecord [
     "@name", VString ("oid", false);
@@ -260,10 +242,6 @@ let parse_der_bitstring_content input =
 let dump_der_bitstring_content (nBits, s) =
   let prefix = String.make 1 (char_of_int nBits) in
   prefix ^ s
-
-let string_of_der_bitstring_content (_, s) = hexdump s
-
-let get_der_bitstring_content = trivial_get dump_der_bitstring_content string_of_der_bitstring_content
 
 let value_of_der_bitstring_content (nBits, s) =
   VRecord [
@@ -337,16 +315,11 @@ let dump_der_enumerated_bitstring_content description l =
   let nBits, intlist = encode [] bits in
   dump_der_bitstring_content (nBits, _string_of_int_list intlist)
 
-let string_of_der_enumerated_bitstring_content = String.concat ", "
-
-let get_der_enumerated_bitstring_content description =
-  trivial_get (dump_der_enumerated_bitstring_content description) string_of_der_enumerated_bitstring_content
-
 let value_of_der_enumerated_bitstring_content l =
   VRecord [
     "@name", VString ("der_enumerated_bitstring_content", false);
     "@string_of", VString ("[" ^ (String.concat ", " l) ^ "]", false);
-    "content", VList (List.map (fun s -> VString (s, false)) l)
+    "content", VList (List.map (value_of_string false) l)
   ]
 
 asn1_alias der_enumerated_bitstring [both_param description] = primitive [T_BitString] der_enumerated_bitstring_content[description]
@@ -367,17 +340,11 @@ let parse_der_octetstring_content apply_constraints input =
   res
 
 let dump_der_octetstring_content s = s
-
-let string_of_der_octetstring_content = hexdump
-let get_der_octetstring_content = trivial_get id hexdump
 let value_of_der_octetstring_content s = VString (s, true)
-
 asn1_alias der_octetstring = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
 
 alias der_printable_octetstring_content [param constr] = der_octetstring_content(constr)
-let string_of_der_printable_octetstring_content s = s
-let get_der_printable_octetstring_content = trivial_get id quote_string
 let value_of_der_printable_octetstring_content s = VString (s, false)
 
 
@@ -437,8 +404,6 @@ let parse_der_utc_time_content input =
 let dump_der_utc_time_content t =
   Printf.sprintf "%2.2d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
     (utc_year_of_int t.year) t.month t.day t.hour t.minute t.second
-let string_of_der_utc_time_content = string_of_time_content
-let get_der_utc_time_content = trivial_get dump_der_utc_time_content string_of_time_content
 let value_of_der_utc_time_content t = value_of_time_content "utc_time" t
 
 type der_generalized_time_content = time_content
@@ -448,8 +413,6 @@ let parse_der_generalized_time_content input =
 let dump_der_generalized_time_content t =
   Printf.sprintf "%4.4d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
     t.year t.month t.day t.hour t.minute t.second
-let string_of_der_generalized_time_content = string_of_time_content
-let get_der_generalized_time_content = trivial_get dump_der_generalized_time_content string_of_time_content
 let value_of_der_generalized_time_content t = value_of_time_content "generalized_time" t
 
 
@@ -587,9 +550,6 @@ and dump_der_object_content = function
 
 let string_of_der_object_content _ = "der_object"
 let string_of_der_object _ = "der_object"
-
-let get_der_object_content = trivial_get dump_der_object_content string_of_der_object_content
-let get_der_object = trivial_get dump_der_object string_of_der_object
 
 let rec value_of_der_object o =
   let value_of_content = value_of_der_object_content o.a_content in

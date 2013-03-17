@@ -51,10 +51,6 @@ let lwt_parse_varint lwt_input =
 
 let dump_varint _ = not_implemented "dump_varint"
 
-let string_of_varint i = Printf.sprintf "%d (%x)" i i
-
-let get_varint = trivial_get dump_varint string_of_varint
-
 let value_of_varint i = VSimpleInt i
 
 
@@ -83,8 +79,6 @@ let dump_protobuf_key (wt, fn) =
 
 let string_of_protobuf_key (wt, fn) =
   Printf.sprintf "(%s, %d)" (string_of_wire_type wt) fn
-
-let get_protobuf_key = trivial_get dump_protobuf_key string_of_protobuf_key
 
 let value_of_protobuf_key (wt, fn) =
   VRecord [
@@ -188,7 +182,7 @@ let lwt_parse_rec_protobuf lwt_input =
 
 let rec print_rec_protobuf ?indent:(indent="") ?name:(name="rec_protobuf") (num, value) =
   let default_fun t v =
-    Printf.sprintf "%s%s_%s: %s\n" indent t (string_of_int num) (string_of_protobuf_value v)
+    Printf.sprintf "%s%s_%s: %s\n" indent t (string_of_int num) (string_of_value (value_of_protobuf_value v))
   in
   match value with
   | R_Varint i -> default_fun "Varint" (Varint i)

@@ -35,18 +35,6 @@ let dump_ip_prefix = function
   | IPv4Prefix (s, l)
   | IPv6Prefix (s, l) -> (dump_uint8 l) ^ s
 
-let string_of_ip_prefix ip_prefix =
-  let a, len = match ip_prefix with
-    | IPv4Prefix (s, prefix_length) ->
-      let l = (prefix_length + 7) / 8 in
-      string_of_ipv4 (s ^ (String.make (4 - l) '\x00')), prefix_length
-    | IPv6Prefix (s, prefix_length) ->
-      let l = (prefix_length + 7) / 8 in
-      string_of_ipv6 (s ^ (String.make (16 - l) '\x00')), prefix_length
-  in Printf.sprintf "%s/%d" a len
-
-let get_ip_prefix = trivial_get dump_ip_prefix string_of_ip_prefix
-
 let value_of_ip_prefix = function
   | IPv4Prefix (initial_s, prefix_len) ->
     let l = (prefix_len + 7) / 8 in
@@ -93,8 +81,6 @@ let dump_bgp_attribute_len (extended, v) =
   if extended
   then dump_uint16 v
   else dump_uint8 v
-let string_of_bgp_attribute_len (_, v) = string_of_int v
-let get_bgp_attribute_len = trivial_get dump_bgp_attribute_len string_of_bgp_attribute_len
 let value_of_bgp_attribute_len (extended, v) =
   if extended
   then VInt (v, 16, BigEndian)

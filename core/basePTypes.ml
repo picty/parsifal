@@ -17,7 +17,6 @@ let lwt_parse_uint8 = lwt_parse_byte
 
 let dump_uint8 v = String.make 1 (char_of_int (v land 0xff))
 
-let get_uint8 = trivial_get dump_uint8 string_of_int
 let value_of_uint8 i = VInt (i, 8, LittleEndian)
 
 
@@ -49,7 +48,6 @@ let dump_uint16 v =
   res.[1] <- c1;
   res
 
-let get_uint16 = trivial_get dump_uint16 string_of_int
 let value_of_uint16 i = VInt (i, 16, BigEndian)
 
 
@@ -76,8 +74,6 @@ let dump_uint16le v =
   let res = String.make 2 c0 in
   res.[1] <- c1;
   res
-
-let get_uint16le = trivial_get dump_uint16le string_of_int
 
 let value_of_uint16le i = VInt (i, 16, LittleEndian)
 
@@ -107,8 +103,6 @@ let dump_uint24 v =
   res.[1] <- c1;
   res.[2] <- c2;
   res
-
-let get_uint24 = trivial_get dump_uint24 string_of_int
 
 let value_of_uint24 i = VInt (i, 24, BigEndian)
 
@@ -141,8 +135,6 @@ let dump_uint32 v =
   res.[2] <- c2;
   res.[3] <- c3;
   res
-
-let get_uint32 = trivial_get dump_uint32 string_of_int
 
 let value_of_uint32 i = VInt (i, 32, BigEndian)
 
@@ -177,8 +169,6 @@ let dump_uint32le v =
   res.[2] <- c2;
   res.[3] <- c3;
   res
-
-let get_uint32le = trivial_get dump_uint32le string_of_int
 
 let value_of_uint32le i = VInt (i, 32, LittleEndian)
 
@@ -233,8 +223,6 @@ let dump_uint64le v =
   res.[6] <- c6;
   res.[7] <- c7;
   res
-
-let get_uint64le = trivial_get dump_uint64le (Int64.to_string)
 
 let value_of_uint64le i = VBigInt (dump_uint64le i, LittleEndian)
 
@@ -380,32 +368,6 @@ let dump_varlen_list len_fun dump_fun l =
   let n = String.length res in
   (len_fun n) ^ res
 
-let get_list get_fun l = function
-  | [] -> Right (Leaf "list")
-  | ["@count"] -> Right (Leaf (string_of_int (List.length l)))
-  | ("*"::ps as path) ->
-    let fold_results accu next =
-      match accu, next with
-      | Left x, Left _ -> Left x
-      | Right x, Left _ -> Right x
-      | Left _, Right x -> Right [x]
-      | Right x, Right y -> Right (x@[y])
-    and flatten = function
-      | Left x -> Left x
-      | Right l ->  Right (Node l)
-    in
-    flatten (List.fold_left fold_results (Left path)
-	       (List.map (fun x -> get_fun x ps) l))
-  | (p::ps) as path ->
-    begin
-      try
-	let len = String.length p in
-	if len > 2 && p.[0] = '[' && p.[len - 1] = ']'
-	then get_fun (List.nth l (int_of_string (String.sub p 1 (len - 2)))) ps
-	else Left path
-      with _ -> Left path
-    end
-
 let value_of_list sub_fun l = VList (List.map sub_fun l)
 
 
@@ -456,17 +418,5 @@ let lwt_parse_array n lwt_parse_fun input =
 
 let dump_array dump_fun a =
   String.concat "" (Array.to_list (Array.map dump_fun a))
-
-let get_array get_fun a = function
-  | (p::ps) as path ->
-    begin
-      try
-	let len = String.length p in
-	if len > 2 && p.[0] = '[' && p.[len - 1] = ']'
-	then get_fun (Array.get a (int_of_string (String.sub p 1 (len - 2)))) ps
-	else Left path
-      with _ -> Left path
-    end
-  |  path -> Left path
 
 let value_of_array sub_fun a = VList (List.map sub_fun (Array.to_list a))

@@ -71,9 +71,6 @@ let value_of_distinguishedName dn =
     "raw_content", VList (List.map value_of_rdn dn)
   ]
 
-(* TODO: rewrite that! *)
-let get_distinguishedName = trivial_get dump_distinguishedName string_of_distinguishedName
-
 
 (***********************)
 (* AlgorithmIdentifier *)

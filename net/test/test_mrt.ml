@@ -66,10 +66,10 @@ let add_asn_file fn =
     | e -> ShowUsage (Some "Error while reading the list of ASN to watch")
 
 (* Get options *)
-let path = ref []
+let path = ref ""
 let do_get_action path_str =
   action := Get;
-  path := string_split '.' path_str;
+  path := path_str;
   ActionDone
 
 
@@ -273,14 +273,19 @@ let input_of_filename filename =
   input_of_fd ~verbose:(!verbose) ~enrich:(!enrich_style) filename fd
 
 
+let rec find_value needle = function
+  | VError _ -> false
+  | VString (s, false) -> s = needle
+  | VList l -> List.fold_left (||) false (List.map (find_value needle) l)
+  | v -> needle = string_of_value v
+
 let test_filter m =
   match !filter with
   | None  -> true
   | Some f ->
     let [path; value] = string_split '=' f in
-    match get_mrt_message m (string_split '.' path) with
-    | Right l -> find_in_tree value l
-    | _ -> false
+    let v = get_value (string_split '.' path) (value_of_mrt_message m) in
+    find_value value v
 
 let rec map_mrt f input =
   lwt_parse_mrt_message input >>= fun mrt_msg ->
@@ -313,11 +318,10 @@ let rec map_mrt f input =
   map_mrt f input
 
 let get_mrt mrt_msg =
-  match (get_mrt_message mrt_msg !path) with
-  | Left s -> if !verbose then prerr_endline (String.concat "." s)
+  match get (value_of_mrt_message mrt_msg) !path with
+  | Left e -> if !verbose then prerr_endline e
   | Right s -> Printf.printf "%8.8x %s %s: %s\n" mrt_msg.mrt_timestamp
-    (string_of_mrt_type mrt_msg.mrt_type) (string_of_mrt_subtype mrt_msg.mrt_subtype)
-    (flatten s)
+    (string_of_mrt_type mrt_msg.mrt_type) (string_of_value (value_of_mrt_subtype mrt_msg.mrt_subtype)) s
 
 
 let handle_input input =

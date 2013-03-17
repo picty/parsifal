@@ -78,8 +78,8 @@ let pretty_print_certificate cert =
     Printf.sprintf "Signature: %s " (string_of_oid tbs.signature.algorithmId); (* TODO: Params *)
     Printf.sprintf "Issuer: %s " (string_of_distinguishedName tbs.issuer);
     "Validity";
-    Printf.sprintf "    Not before: %s" (string_of_der_time tbs.validity.notBefore);
-    Printf.sprintf "    Not after: %s" (string_of_der_time tbs.validity.notAfter);
+    Printf.sprintf "    Not before: %s" (string_of_value (value_of_der_time tbs.validity.notBefore));
+    Printf.sprintf "    Not after: %s" (string_of_value (value_of_der_time tbs.validity.notAfter));
     Printf.sprintf "Subject: %s" (string_of_distinguishedName tbs.subject);
   ]@
     (Str.split (Str.regexp_string "\n") (print_value

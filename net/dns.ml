@@ -91,11 +91,7 @@ let string_of_label = function
   | Label s -> s
   | Pointer p -> "@" ^ (string_of_int p)
 
-let get_label = trivial_get dump_label string_of_label
-
-let value_of_label = function
-  | Label s -> VString (s, false)
-  | Pointer p -> VString ("@" ^ (string_of_int p), false)
+let value_of_label l = VString (string_of_label l, false)
 
 
 type domain =
@@ -155,15 +151,16 @@ let dump_domain = function
   | RawDomain d -> dump_raw_domain d
   | UnfoldedDomain d -> failwith "NotImplemented: dump_unfolded_domain"
 
-let string_of_domain = function
-  | RawDomain d -> String.concat "." (List.map string_of_label d)
-  | UnfoldedDomain d -> String.concat "." d
-
-let get_domain = trivial_get dump_domain string_of_domain
-
-let value_of_domain = function
-  | RawDomain d -> VList ((List.map value_of_label) d)
-  | UnfoldedDomain d -> VList (List.map (value_of_string false) d)
+let value_of_domain d =
+  let content = match d with
+    | RawDomain d -> List.map string_of_label d
+    | UnfoldedDomain d -> d
+  in
+  VRecord [
+    "@name", VString ("domain", false);
+    "@string_of", VString (String.concat "." content, false);
+    "content", VList (List.map (value_of_string false) content)
+  ]
 
 
 struct mx_rdata [param dns_context] = {

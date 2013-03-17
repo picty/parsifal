@@ -412,35 +412,6 @@ let lwt_exact_parse lwt_parse_fun input =
   return res
 
 
-
-(*******************************)
-(* Getting types and functions *)
-(*******************************)
-
-type 'a tree = Leaf of 'a | Node of ('a tree) list
-
-let rec find_in_tree v = function
-  | Leaf x -> x = v
-  | Node l -> List.fold_left (||) false (List.map (find_in_tree v) l)
-
-let rec flatten = function
-  | Leaf s -> s
-  | Node l -> "[" ^ (String.concat ", " (List.map flatten l)) ^ "]"
-
-
-type ('a, 'b) either = Left of 'a | Right of 'b
-
-let default_get _ path = Left path
-
-let get_wrapper dump print get v = function
-  | ["@hex"] -> Right (Leaf (hexdump (dump v)))
-(*  | "@base64" -> base64      TODO: Find a way to call base64 here...   *)
-  | [] -> Right (Leaf (print v))   (* TODO: Should use to_string when available *)
-  | path -> get v path
-
-let trivial_get dump print = get_wrapper dump print default_get
-
-
 (************************)
 (* Construction helpers *)
 (************************)
@@ -449,11 +420,6 @@ let trivial_get dump print = get_wrapper dump print default_get
 
 let print_enum string_of_val int_of_val nchars ?indent:(indent="") ?name:(name="enum") v =
   Printf.sprintf "%s%s: %s (0x%*.*x)\n" indent name (string_of_val v) nchars nchars (int_of_val v)
-
-let get_enum string_of_val int_of_val nchars v = function
-  | ["@hex"] -> Right (Leaf (Printf.sprintf "%*.*x" nchars nchars (int_of_val v)))
-  | [] -> Right (Leaf (string_of_val v))
-  | path -> Left path
 
 let value_of_enum string_of_val int_of_val size endianness v =
   VEnum (string_of_val v, int_of_val v, size, endianness)
@@ -464,13 +430,6 @@ let value_of_enum string_of_val int_of_val size endianness v =
 let try_dump dump_fun = function
   | None -> ""
   | Some x -> dump_fun x
-
-let try_get (get_fun : 'a -> string list -> (string list, string tree) either)
-            (x : 'a option) (path : string list) =
-  match x, path with
-  | None, [] -> Right (Leaf "None")
-  | None, path -> Left path
-  | Some x, path -> get_fun x path
 
 let try_value_of (value_of_fun : 'a -> value) = function
   | None -> VUnit
@@ -548,6 +507,11 @@ let parse_both_equal fatal err a b input =
 
 
 
+(********************)
+(* Value of helpers *)
+(********************)
+
+type ('a, 'b) either = Left of 'a | Right of 'b
 
 let rec string_of_value = function
   | VUnit -> "()"
@@ -643,7 +607,8 @@ let rec get_value path v = match (realise_value v, path) with
   | VEnum (_, _, sz, _), ("@len" | "@size")::r -> get_value r (VSimpleInt ((sz + 7) / 8))
 
   | VList l, ("@len" | "@size" | "@count")::r -> get_value r (VSimpleInt (List.length l))
-  | VList l, "*"::r -> VList (List.map (get_value r) l)
+  | VList [], "+"::r -> VError "Empty list"
+  | VList l, ("+" | "*")::r -> VList (List.map (get_value r) l)
   | VList l, p::ps ->
     let len = String.length p in
     if len > 2 && p.[0] = '[' && p.[len - 1] = ']'
