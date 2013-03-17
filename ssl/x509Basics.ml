@@ -51,7 +51,7 @@ let string_of_atv_value = function
   | AV_PrintableString s
   | AV_DirectoryString (DS_T61String s|DS_PrintableString s|
       DS_UniversalString s|DS_UTF8String s|DS_BMPString s)
-  | AV_IA5String s -> quote_string s
+  | AV_IA5String s -> s  (* TODO: Was a quote_string here... *)
   | _ -> "NON-STRING-VALUE"
 
 let string_of_atv atv =

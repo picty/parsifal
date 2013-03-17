@@ -9,7 +9,7 @@ open Getopt
 open Base64
 
 type action =
-  | Text | PrettyPrint | Dump | BinDump
+  | Text | PrettyPrint | JSON | Dump | BinDump
   | Subject | Issuer | Serial | Modulus
   | CheckSelfSigned | Get
 let action = ref Text
@@ -38,6 +38,7 @@ let options = [
 
   mkopt (Some 't') "text" (set_action Text) "prints the certificates given";
   mkopt (Some 'p') "pretty-print" (set_action PrettyPrint) "prints the certificates given";
+  mkopt None "json" (set_action JSON) "prints the certificate given, JSON style";
   mkopt (Some 'D') "dump" (set_action Dump) "dumps the certificates given (in hexa)";
   mkopt None "binary-dump" (set_action BinDump) "dumps the certificates given";
   mkopt (Some 'S') "serial" (set_action Serial) "prints the certificates serial number";
@@ -116,6 +117,7 @@ let handle_input input =
     | Dump -> [hexdump (dump_certificate certificate)]
     | Text -> Str.split (Str.regexp_string "\n") (print_value (value_of_certificate certificate))
     | PrettyPrint -> pretty_print_certificate certificate
+    | JSON -> Str.split (Str.regexp_string "\n") (Json.json_of_value (value_of_certificate certificate))
     | Get ->
       match get (value_of_certificate certificate) !path_str with
       | Left _ -> []

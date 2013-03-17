@@ -18,7 +18,6 @@ v0.2 (apr. 2013)
  - Work on the Makefile to merge core / core_nolwt. It will need to fake-implement all the functions.
  - Use modules to aggregate the functions for some top-level objects (parse/dump/value_of)
  - Finalize the Makefile (make install)
- - Write json_of using value_of
  - Docs
    * Document the preprocessor and write a new version of the JFLA article. Comapre to existing stuff:
      + https://github.com/jaked/deriving
