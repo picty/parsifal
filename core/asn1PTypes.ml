@@ -343,7 +343,11 @@ let get_der_enumerated_bitstring_content description =
   trivial_get (dump_der_enumerated_bitstring_content description) string_of_der_enumerated_bitstring_content
 
 let value_of_der_enumerated_bitstring_content l =
-  VList (List.map (fun s -> VString (s, false)) l)
+  VRecord [
+    "@name", VString ("der_enumerated_bitstring_content", false);
+    "@string_of", VString ("[" ^ (String.concat ", " l) ^ "]", false);
+    "content", VList (List.map (fun s -> VString (s, false)) l)
+  ]
 
 asn1_alias der_enumerated_bitstring [both_param description] = primitive [T_BitString] der_enumerated_bitstring_content[description]
 

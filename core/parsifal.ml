@@ -573,8 +573,12 @@ let rec string_of_value = function
   | VOption None -> "()"
   | VOption (Some v) -> string_of_value v
   | VError s -> "Error: " ^ s
-  | VThunk realize -> string_of_value (realize ())
+  | VThunk realise -> string_of_value (realise ())
 
+
+let rec realise_value = function
+  | VThunk f -> realise_value (f ())
+  | v -> v
 
 let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="value") = function
   | VUnit ->  Printf.sprintf "%s%s\n" indent name
@@ -608,10 +612,16 @@ let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="va
       else Printf.sprintf "%s%s: %s\n" indent name (string_of_value (List.assoc "@string_of" l))
     with Not_found -> begin
       let new_indent = indent ^ "  " in
-      let no_at (name, _) = verbose || (String.length name > 1 && name.[0] <> '@')
-      and print_field (name, v) = print_value ~verbose:verbose ~indent:new_indent ~name:name v in
+      let handle_field accu (name, raw_v) = match (name, realise_value raw_v) with
+	| _, VUnit -> accu
+	| _, VOption None -> accu
+	| name, v ->
+	  if verbose || (String.length name > 1 && name.[0] <> '@')
+	  then (print_value ~verbose:verbose ~indent:new_indent ~name:name v)::accu
+	  else accu
+      in
       (Printf.sprintf "%s%s {\n" indent name) ^
-	(String.concat "" (List.map print_field (List.filter no_at l))) ^
+	(String.concat "" (List.rev (List.fold_left handle_field [] l))) ^
 	(Printf.sprintf "%s}\n" indent)
     end
   end
@@ -619,4 +629,4 @@ let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="va
   | VOption (Some v) -> print_value ~verbose:verbose ~indent:indent ~name:name v
 
   | VError err -> "%s%s: ERROR (%s)\n"
-  | VThunk realize -> print_value ~verbose:verbose ~indent:indent ~name:name (realize ())
+  | VThunk realise -> print_value ~verbose:verbose ~indent:indent ~name:name (realise ())
