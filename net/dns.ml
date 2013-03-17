@@ -91,9 +91,6 @@ let string_of_label = function
   | Label s -> s
   | Pointer p -> "@" ^ (string_of_int p)
 
-let print_label ?indent:(indent="") ?name:(name="label") l =
-  Printf.sprintf "%s%s: %s\n" indent name (string_of_label l)
-
 let get_label = trivial_get dump_label string_of_label
 
 let value_of_label = function
@@ -161,9 +158,6 @@ let dump_domain = function
 let string_of_domain = function
   | RawDomain d -> String.concat "." (List.map string_of_label d)
   | UnfoldedDomain d -> String.concat "." d
-
-let print_domain ?indent:(indent="") ?name:(name="domain") d =
-  Printf.sprintf "%s%s: %s\n" indent name (string_of_domain d)
 
 let get_domain = trivial_get dump_domain string_of_domain
 

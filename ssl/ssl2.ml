@@ -195,13 +195,12 @@ let dump_ssl2_record record =
   let padding = String.make record.ssl2_padding_length '\x00' in
   hdr ^ (dump_ssl2_content record.ssl2_content) ^ padding
 
-let print_ssl2_record ?indent:(indent="") ?name:(name="ssl2_record") record =
-  let new_indent = indent ^ "  " in
-  let fields_printed =
-    [ print_printablestring ~indent:new_indent ~name:"long" (string_of_bool record.ssl2_long_header);
-      print_printablestring ~indent:new_indent ~name:"escape" (string_of_bool record.ssl2_is_escape);
-      print_uint8 ~indent:new_indent ~name:"padding_length" record.ssl2_padding_length;
-      print_uint16 ~indent:new_indent ~name:"total length" record.ssl2_total_length;
-      print_ssl2_content ~indent:new_indent ~name:"content" record.ssl2_content ]
-  in
-  indent ^ name ^ " {\n" ^ (String.concat "" fields_printed) ^ indent ^ "}\n"
+let value_of_ssl2_record record =
+  VRecord [
+    "@name", VString ("ssl2_record", false);
+    "long_header", VBool record.ssl2_long_header;
+    "is_escape", VBool record.ssl2_is_escape;
+    "padding_len", VSimpleInt record.ssl2_padding_length;
+    "total_len", VSimpleInt record.ssl2_total_length;
+    "record_content", VThunk (fun () -> value_of_ssl2_content record.ssl2_content)
+  ]

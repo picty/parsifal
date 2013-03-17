@@ -2,20 +2,13 @@ open Lwt
 open Unix
 
 open Parsifal
+open LwtUtil
+
 open TlsEnums
 open Tls
 
 
 (* TODO: Handle exceptions in lwt code, and add timers *)
-
-let rec _really_write o s p l =
-  Lwt_unix.write o s p l >>= fun n ->
-  if l = n then
-    Lwt.return ()
-  else
-    _really_write o s (p + n) (l - n)
-
-let really_write o s = _really_write o s 0 (String.length s)
 
 let write_record o record =
   let s = dump_tls_record record in
@@ -24,7 +17,7 @@ let write_record o record =
 
 let rec print_msgs i =
   lwt_parse_tls_record None i >>= fun record ->
-  print_string (print_tls_record record);
+  print_string (print_value (value_of_tls_record record));
   print_msgs i
 
 let expect_clienthello s =

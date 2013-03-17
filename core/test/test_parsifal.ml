@@ -43,11 +43,11 @@ asn1_union der_time [top; enrich; exhaustive] (UnparsedTime) =
 
 let test (parse : string_input -> 'a)
          (dump : 'a -> string)
-	 (print : ?indent:string -> ?name:string -> 'a -> string)
+	 (value_of : 'a -> value)
 	 (name : string) (s : string) =
   try
     let x = parse (input_of_string "" s) in
-    print_endline (print ~name:name x);
+    print_endline (print_value ~name:name (value_of x));
     if (dump x = s)
     then Printf.printf "Parse/Dump is idempotent for %s\n" name
     else Printf.printf "Parse/Dump is NOT idempotent for %s\n" name
@@ -55,11 +55,11 @@ let test (parse : string_input -> 'a)
     Printf.printf "test failed for %s: %s\n" name (string_of_exception e h)
 
 
-let test_st = test exact_parse_st dump_st print_st "st"
-let test_st2 = test exact_parse_st2 dump_st2 print_st2 "st2"
-let test_l1 = test exact_parse_l1 dump_l1 print_l1 "l1"
-let test_rsa = test exact_parse_rsa_public_key dump_rsa_public_key print_rsa_public_key "rsa_public_key"
-let test_der_object = test parse_der_object dump_der_object print_der_object "der_object"
+let test_st = test exact_parse_st dump_st value_of_st "st"
+let test_st2 = test exact_parse_st2 dump_st2 value_of_st2 "st2"
+let test_l1 = test exact_parse_l1 dump_l1 value_of_l1 "l1"
+let test_rsa = test exact_parse_rsa_public_key dump_rsa_public_key value_of_rsa_public_key "rsa_public_key"
+let test_der_object = test parse_der_object dump_der_object value_of_der_object "der_object"
 
 let _ =
   print_endline (string_of_tls_version (tls_version_of_int 768));

@@ -681,82 +681,6 @@ let mk_stringof_fun _loc c =
 
 
 
-(**********************)
-(* PRINTING FUNCTIONS *)
-(**********************)
-
-let rec print_fun_of_ptype _loc t =
-  let mkf fname = exp_qname _loc (Some "BasePTypes") ("print_" ^ fname) in
-  match t with
-    | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
-    | PT_Int int_t -> mkf int_t
-
-    | PT_String (_, true) -> mkf "binstring"
-    | PT_String (_, false) -> mkf "printablestring"
-
-    | PT_Custom (m, n, _, _) -> exp_qname _loc m ("print_" ^ n)
-
-    | PT_List (_, subtype) -> <:expr< $mkf "list"$ $print_fun_of_ptype _loc subtype$ >>
-    | PT_Array (_, subtype) -> <:expr< $mkf "array"$ $print_fun_of_ptype _loc subtype$ >>
-    | PT_Container (_, subtype)
-    | PT_CustomContainer (_, _, _, _, subtype) -> print_fun_of_ptype _loc subtype
-
-
-
-let mk_print_fun _loc c =
-  let body = match c.construction with
-  | Enum enum ->
-    let ioe = <:expr< $lid:"int_of_" ^ c.name$ >>
-    and soe = <:expr< $lid:"string_of_" ^ c.name$ >> in
-    <:expr< Parsifal.print_enum $soe$ $ioe$ $int:string_of_int (enum.size / 4)$
-      ~indent:indent ~name:name $lid:c.name$ >>
-
-  | Struct fields ->
-    let print_one_field (_loc, n, t, attr) =
-      let raw_f = print_fun_of_ptype _loc t in
-      let f = if attr = Optional then <:expr< Parsifal.try_print $raw_f$ >> else raw_f in
-      <:expr< $f$ ~indent:new_indent ~name:$str:n$ $lid:c.name$.$lid:n$ >>
-    in
-    let fields_printed_expr = exp_of_list _loc (List.map print_one_field (List.filter keep_real_fields fields)) in
-    <:expr< let new_indent = indent ^ "  " in
-	    let fields_printed = $fields_printed_expr$ in
-	    indent ^ name ^ " {\\n" ^
-	      (String.concat "" fields_printed) ^
-	      indent ^ "}\\n" >>
-
-  | Union union
-  | ASN1Union union ->
-    let mk_case = function
-      | _loc, cons, (_, PT_Empty) ->
-	<:match_case< $ <:patt< $uid:cons$ >> $ ->
-	BasePTypes.print_binstring ~indent:indent ~name:name "" >>
-      | (_loc, cons, (n, t)) ->
-	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
-	$ <:expr< $print_fun_of_ptype _loc t$ ~indent:indent ~name: $ <:expr< $str:cons$ >> $ x >> $ >>
-    in
-    let last_case =
-      <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
-      $ <:expr< $print_fun_of_ptype _loc union.unparsed_type$
-        ~indent:indent ~name:(name ^ "[Unparsed]") x >> $ >>
-    in
-    let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
-    <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >>
-
-  | Alias atype ->
-    <:expr< $print_fun_of_ptype _loc atype$ ~indent:indent ~name:name $lid:c.name$ >>
-
-  | ASN1Alias alias ->
-    let print_content = print_fun_of_ptype _loc alias.aatype in
-    if alias.aalist
-    then <:expr< BasePTypes.print_list $print_content$ ~indent:indent ~name:name $lid:c.name$ >>
-    else <:expr< $print_content$ ~indent:indent ~name:name $lid:c.name$ >>
-
-  in
-  let optargs = ["indent", <:expr< $str:""$ >>; "name", <:expr< $str:c.name$ >>] in
-  [ mk_multiple_args_fun _loc ("print_" ^ c.name) [c.name] ~optargs:optargs body ]
-
-
-
 (*********************)
 (* GETTING FUNCTIONS *)
 (*********************)
@@ -886,8 +810,9 @@ let mk_value_of_fun _loc c =
       let f = if attr = Optional then <:expr< Parsifal.try_value_of $raw_f$ >> else raw_f in
       <:expr< ($str:n$, Parsifal.VThunk (fun () -> $f$ $lid:c.name$.$lid:n$)) >>
     in
+    let name_field = <:expr< ("@name", Parsifal.VString ($str:c.name$, False)) >> in
     let fields_expr = exp_of_list _loc (List.map value_of_one_field (List.filter keep_built_fields fields)) in
-    <:expr< Parsifal.VRecord $fields_expr$ >>
+    <:expr< Parsifal.VRecord ($uid:"::"$ $name_field$ $fields_expr$) >>
 
   | Union union
   | ASN1Union union ->
@@ -969,7 +894,7 @@ let mk_parsifal_construction _loc name raw_opts specific_descr =
 	     construction = specific_descr }
   and funs = [ mk_decls; mk_type; mk_specific_funs;
 	       mk_parse_fun false; mk_parse_fun true; mk_exact_parse_fun;
-	       mk_dump_fun; mk_stringof_fun; mk_print_fun;
+	       mk_dump_fun; mk_stringof_fun;
 	       mk_get_fun; mk_value_of_fun ] in
   let rec mk_sequence = function
     | [] -> <:str_item< >>

@@ -18,7 +18,7 @@ let getopt_params = {
 
 let parse_file filename =
   input_of_filename filename >>= lwt_parse_pe_file >>= fun pe_file ->
-    print_endline (print_pe_file pe_file);
+    print_endline (print_value (value_of_pe_file pe_file));
     return ()
 
 let main =

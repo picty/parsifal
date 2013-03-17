@@ -454,7 +454,7 @@ let get get_fun obj path_str =
 (* Enums *)
 
 let print_enum string_of_val int_of_val nchars ?indent:(indent="") ?name:(name="enum") v =
-  Printf.sprintf "%s%s: %s (%*.*x)\n" indent name (string_of_val v) nchars nchars (int_of_val v)
+  Printf.sprintf "%s%s: %s (0x%*.*x)\n" indent name (string_of_val v) nchars nchars (int_of_val v)
 
 let get_enum string_of_val int_of_val nchars v = function
   | ["@hex"] -> Right (Leaf (Printf.sprintf "%*.*x" nchars nchars (int_of_val v)))
@@ -470,12 +470,6 @@ let value_of_enum string_of_val int_of_val size endianness v =
 let try_dump dump_fun = function
   | None -> ""
   | Some x -> dump_fun x
-
-let try_print (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?indent:(indent="") ?name (x:'a option) =
-  match name, x with
-  | _, None -> ""
-  | None, Some x -> print_fun ~indent:indent x
-  | Some n, Some x -> print_fun ~indent:indent ~name:n x
 
 let try_get (get_fun : 'a -> string list -> (string list, string tree) either)
             (x : 'a option) (path : string list) =
@@ -557,3 +551,69 @@ let lwt_read_while predicate input =
 let parse_both_equal fatal err a b input =
   if a <> b
   then emit_parsing_exception fatal err input
+
+
+
+
+let rec string_of_value = function
+  | VUnit -> "()"
+  | VBool b -> string_of_bool b
+  | VSimpleInt i | VInt (i, _, _) -> string_of_int i
+  | VBigInt (s, _) | VString (s, true) -> hexdump s
+  | VString (s, false) -> quote_string s
+  | VEnum (s, _, _, _) -> s
+  | VList _ -> "list"
+  | VRecord l -> begin
+    try string_of_value (List.assoc "@string_of" l)
+    with Not_found -> begin
+      try string_of_value (List.assoc "@name" l)
+      with Not_found -> "record"
+    end
+  end
+  | VOption None -> "()"
+  | VOption (Some v) -> string_of_value v
+  | VError s -> "Error: " ^ s
+  | VThunk realize -> string_of_value (realize ())
+
+
+let rec print_value ?indent:(indent="") ?name:(name="value") = function
+  | VUnit ->  Printf.sprintf "%s%s\n" indent name
+  | VBool b -> Printf.sprintf "%s%s: %b\n" indent name b
+  | VSimpleInt i -> Printf.sprintf "%s%s: %d\n" indent name i
+  | VInt (i, sz, _) ->
+    let n_chars = sz / 4 in
+    Printf.sprintf "%s%s: %d (0x%*.*x)\n" indent name i n_chars n_chars i
+  | VBigInt (s, _) ->
+    Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (hexdump s) (String.length s)
+  | VEnum (s, i, sz, _) -> 
+    let n_chars = sz / 4 in
+    Printf.sprintf "%s%s: %s (0x%*.*x)\n" indent name s n_chars n_chars i
+
+  | VString ("", _) ->
+    Printf.sprintf "%s%s: \"\" (0 byte)\n" indent name
+  | VString (s, true) ->
+    Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (hexdump s) (String.length s)
+  | VString (s, false) ->
+    Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (quote_string s) (String.length s)
+
+  | VList l ->
+    (Printf.sprintf "%s%s {\n" indent name) ^
+      (String.concat "" (List.map (fun x -> print_value ~indent:(indent ^ "  ") x) l)) ^
+      (Printf.sprintf "%s}\n" indent)
+  | VRecord l -> begin
+    try
+      Printf.sprintf "%s%s: %s\n" indent name (string_of_value (List.assoc "@string_of" l))
+    with Not_found -> begin
+      let new_indent = indent ^ "  " in
+      let no_at (name, _) = String.length name > 1 && name.[0] <> '@'
+      and print_field (name, v) = print_value ~indent:new_indent ~name:name v in
+      (Printf.sprintf "%s%s {\n" indent name) ^
+	(String.concat "" (List.map print_field (List.filter no_at l))) ^
+	(Printf.sprintf "%s}\n" indent)
+    end
+  end
+  | VOption None -> ""
+  | VOption (Some v) -> print_value ~indent:indent ~name:name v
+
+  | VError err -> "%s%s: ERROR (%s)\n"
+  | VThunk realize -> print_value ~indent:indent ~name:name (realize ())

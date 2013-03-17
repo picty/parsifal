@@ -54,21 +54,21 @@ let write_record o record =
 
 let rec forward state i o =
   lwt_parse_tls_record None i >>= fun record ->
-  print_string (print_tls_record ~name:state.name record);
+  print_string (print_value ~name:state.name (value_of_tls_record record));
   write_record o record >>= fun () ->
   try
     begin
       match record.content_type, state.clear with
       | CT_Handshake, true ->
 	let hs_msg = parse_handshake_msg None (input_of_string "Handshake" (dump_record_content record.record_content)) in
-	print_endline (print_handshake_msg ~indent:"  " ~name:"Handshake content" hs_msg)
+	print_endline (print_value ~indent:"  " ~name:"Handshake content" (value_of_handshake_msg hs_msg))
       | CT_ChangeCipherSpec, true ->
 	let hs_msg = parse_change_cipher_spec (input_of_string "CCS" (dump_record_content record.record_content)) in
-	print_endline (print_change_cipher_spec ~indent:"  " ~name:"CCS content" hs_msg);
+	print_endline (print_value ~indent:"  " ~name:"CCS content" (value_of_change_cipher_spec hs_msg));
 	state.clear <- false
       | CT_Alert, true ->
 	let hs_msg = parse_tls_alert (input_of_string "Alert" (dump_record_content record.record_content)) in
-	print_endline (print_tls_alert ~indent:"  " ~name:"Alert content" hs_msg)
+	print_endline (print_value ~indent:"  " ~name:"Alert content" (value_of_tls_alert hs_msg))
       | _ -> print_newline ()
     end;
     forward state i o

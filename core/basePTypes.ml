@@ -8,13 +8,6 @@ open Parsifal
 
 let parse_uint8 = parse_byte
 
-let parse_char input =
-  if input.cur_offset < input.cur_length then begin
-    let res = input.str.[input.cur_base + input.cur_offset] in
-    input.cur_offset <- input.cur_offset + 1;
-    res
-  end else raise (ParsingException (OutOfBounds, _h_of_si input))
-
 let peek_uint8 input =
   if input.cur_offset < input.cur_length then begin
     int_of_char (input.str.[input.cur_base + input.cur_offset])
@@ -22,24 +15,10 @@ let peek_uint8 input =
 
 let lwt_parse_uint8 = lwt_parse_byte
 
-let lwt_parse_char input =
-  lwt_really_read input 1 >>= fun s ->
-  return (s.[0])
-
 let dump_uint8 v = String.make 1 (char_of_int (v land 0xff))
-let dump_char c = String.make 1 c
-
-let print_uint8 ?indent:(indent="") ?name:(name="uint8") v =
-  Printf.sprintf "%s%s: %d (%2.2x)\n" indent name v v
-
-let print_char ?indent:(indent="") ?name:(name="char") c =
-  Printf.sprintf "%s%s: %c (%2.2x)\n" indent name c (int_of_char c)
 
 let get_uint8 = trivial_get dump_uint8 string_of_int
-let get_char = trivial_get dump_char (String.make 1)
-
 let value_of_uint8 i = VInt (i, 8, LittleEndian)
-let value_of_char c = VString (String.make 1 c, true)
 
 
 
@@ -70,12 +49,9 @@ let dump_uint16 v =
   res.[1] <- c1;
   res
 
-let print_uint16 ?indent:(indent="") ?name:(name="uint16") v =
-  Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
-
 let get_uint16 = trivial_get dump_uint16 string_of_int
-
 let value_of_uint16 i = VInt (i, 16, BigEndian)
+
 
 
 type uint16le = int
@@ -101,12 +77,10 @@ let dump_uint16le v =
   res.[1] <- c1;
   res
 
-let print_uint16le ?indent:(indent="") ?name:(name="uint16le") v =
-  Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
-
 let get_uint16le = trivial_get dump_uint16le string_of_int
 
 let value_of_uint16le i = VInt (i, 16, LittleEndian)
+
 
 
 let parse_uint24 input =
@@ -134,12 +108,10 @@ let dump_uint24 v =
   res.[2] <- c2;
   res
 
-let print_uint24 ?indent:(indent="") ?name:(name="uint24") v =
-  Printf.sprintf "%s%s: %d (%6.6x)\n" indent name v v
-
 let get_uint24 = trivial_get dump_uint24 string_of_int
 
 let value_of_uint24 i = VInt (i, 24, BigEndian)
+
 
 
 let parse_uint32 input =
@@ -170,12 +142,10 @@ let dump_uint32 v =
   res.[3] <- c3;
   res
 
-let print_uint32 ?indent:(indent="") ?name:(name="uint32") v =
-  Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
-
 let get_uint32 = trivial_get dump_uint32 string_of_int
 
 let value_of_uint32 i = VInt (i, 32, BigEndian)
+
 
 
 type uint32le = int
@@ -207,9 +177,6 @@ let dump_uint32le v =
   res.[2] <- c2;
   res.[3] <- c3;
   res
-
-let print_uint32le ?indent:(indent="") ?name:(name="uint32le") v =
-  Printf.sprintf "%s%s: %d (%8.8x)\n" indent name v v
 
 let get_uint32le = trivial_get dump_uint32le string_of_int
 
@@ -266,9 +233,6 @@ let dump_uint64le v =
   res.[6] <- c6;
   res.[7] <- c7;
   res
-
-let print_uint64le ?indent:(indent="") ?name:(name="uint64le") v =
-  Printf.sprintf "%s%s: %Ld (%16.16Lx)\n" indent name v v
 
 let get_uint64le = trivial_get dump_uint64le (Int64.to_string)
 
@@ -338,15 +302,6 @@ let dump_string s = s
 let dump_varlen_string len_fun s =
   let n = String.length s in
   (len_fun n) ^ s
-
-
-let print_printablestring ?indent:(indent="") ?name:(name="string") = function
-  | "" -> Printf.sprintf "%s%s\n" indent name
-  | s  -> Printf.sprintf "%s%s: %s\n" indent name (quote_string s)
-
-let print_binstring ?indent:(indent="") ?name:(name="binstring") = function
-  | "" -> Printf.sprintf "%s%s\n" indent name
-  | s -> Printf.sprintf "%s%s: %s\n" indent name (hexdump s)
 
 let value_of_string binary s = VString (s, binary)
 
@@ -425,13 +380,6 @@ let dump_varlen_list len_fun dump_fun l =
   let n = String.length res in
   (len_fun n) ^ res
 
-
-let print_list (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?indent:(indent="") ?name:(name="list") l =
-  (Printf.sprintf "%s%s {\n" indent name) ^
-  (String.concat "" (List.map (fun x -> print_fun ~indent:(indent ^ "  ") x) l)) ^
-  (Printf.sprintf "%s}\n" indent)
-
-
 let get_list get_fun l = function
   | [] -> Right (Leaf "list")
   | ["@count"] -> Right (Leaf (string_of_int (List.length l)))
@@ -459,7 +407,6 @@ let get_list get_fun l = function
     end
 
 let value_of_list sub_fun l = VList (List.map sub_fun l)
-
 
 
 
@@ -509,11 +456,6 @@ let lwt_parse_array n lwt_parse_fun input =
 
 let dump_array dump_fun a =
   String.concat "" (Array.to_list (Array.map dump_fun a))
-
-let print_array (print_fun : ?indent:string -> ?name:string -> 'a -> string) ?indent:(indent="") ?name:(name="array") a =
-  (Printf.sprintf "%s%s {\n" indent name) ^
-  (String.concat "" (Array.to_list (Array.map (fun x -> print_fun ~indent:(indent ^ "  ") x) a))) ^
-  (Printf.sprintf "%s}\n" indent)
 
 let get_array get_fun a = function
   | (p::ps) as path ->

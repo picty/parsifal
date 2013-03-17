@@ -64,8 +64,12 @@ asn1_alias distinguishedName = seq_of rdn
 let string_of_distinguishedName dn =
   String.concat "" (List.map string_of_atv (List.flatten dn))
 
-let print_distinguishedName ?indent:(indent="") ?name:(name="distinguishedName") dn =
-  Printf.sprintf "%s%s: %s\n" indent name (string_of_distinguishedName dn)
+let value_of_distinguishedName dn =
+  VRecord [
+    "@string_of", VString (string_of_distinguishedName dn, false);
+    (* TODO: add stuff to get C= / CN= directly *)
+    "raw_content", VList (List.map value_of_rdn dn)
+  ]
 
 (* TODO: rewrite that! *)
 let get_distinguishedName = trivial_get dump_distinguishedName string_of_distinguishedName

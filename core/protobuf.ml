@@ -6,6 +6,7 @@ open BasePTypes
 
 type varint = int
 
+(* TODO: This version does handle signed var ints *)
 (* let varint_of_bytelist bytes h = *)
 (*   let rec add_bytes accu = function *)
 (*     | [] -> accu *)
@@ -51,8 +52,6 @@ let lwt_parse_varint lwt_input =
 let dump_varint _ = not_implemented "dump_varint"
 
 let string_of_varint i = Printf.sprintf "%d (%x)" i i
-let print_varint ?indent:(indent="") ?name:(name="char") i =
-  Printf.sprintf "%s%s: %d (%x)\n" indent name i i
 
 let get_varint = trivial_get dump_varint string_of_varint
 
@@ -85,14 +84,15 @@ let dump_protobuf_key (wt, fn) =
 let string_of_protobuf_key (wt, fn) =
   Printf.sprintf "(%s, %d)" (string_of_wire_type wt) fn
 
-let print_protobuf_key ?indent:(indent="") ?name:(name="protobuf_key") (wt, fn) =
-  Printf.sprintf "%s%s: (%s, %d)\n" indent name (string_of_wire_type wt) fn
-
 let get_protobuf_key = trivial_get dump_protobuf_key string_of_protobuf_key
 
 let value_of_protobuf_key (wt, fn) =
-  VRecord ["wire_type", value_of_wire_type wt;
-	   "field_number", VSimpleInt fn]
+  VRecord [
+    "@name", VString ("protobuf_key", false);
+    "@string_of", VString (string_of_protobuf_key (wt, fn), false);
+    "wire_type", value_of_wire_type wt;
+    "field_number", VSimpleInt fn
+  ]
 
 
 (* Length defined stuff *)
@@ -115,8 +115,6 @@ let dump_length_delimited_container dump_fun v =
 alias bothstring = binstring
 let string_of_bothstring s =
   Printf.sprintf "%s (%s)" (hexdump s) (quote_string s)
-let print_bothstring ?indent:(indent="") ?name:(name="both_string") s =
-  Printf.sprintf "%s%s: %s (%s)\n" indent name (hexdump s) (quote_string s)
 
 union protobuf_value [enrich; exhaustive; with_lwt] (Unparsed_Protobuf) =
   | WT_Varint, _ -> Varint of varint
@@ -196,7 +194,10 @@ let rec print_rec_protobuf ?indent:(indent="") ?name:(name="rec_protobuf") (num,
   | R_Varint i -> default_fun "Varint" (Varint i)
   | R_Fixed64bit s -> default_fun "Fixed64bit" (Fixed64bit s)
   | R_String s -> default_fun "String" (LengthDelimited s)
-  | R_List l -> print_list ~indent:indent ~name:("Seq_" ^ (string_of_int num)) print_rec_protobuf l
+  | R_List l ->
+    (Printf.sprintf "%sSeq_%d {\n" indent num) ^
+      (String.concat "" (List.map (fun x -> print_rec_protobuf ~indent:(indent ^ "  ") x) l)) ^
+      (Printf.sprintf "%s}\n" indent)
   | R_StartGroup -> default_fun "StartGroup" StartGroup
   | R_EndGroup -> default_fun "StartGroup" EndGroup
   | R_Fixed32bit i -> default_fun "Fixed32bit" (Fixed32bit i)

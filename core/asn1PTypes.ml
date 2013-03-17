@@ -25,8 +25,6 @@ let dump_der_boolean_content = function
   | false -> String.make 1 '\x00'
 
 let string_of_der_boolean_content = string_of_bool
-let print_der_boolean_content ?indent:(indent="") ?name:(name="der_boolean") v =
-  Printf.sprintf "%s%s: %s\n" indent name (string_of_bool v)
 
 let get_der_boolean_content = trivial_get dump_der_boolean_content string_of_der_boolean_content
 
@@ -60,8 +58,6 @@ let parse_der_integer_content input =
 let dump_der_integer_content s = s
 
 let string_of_der_integer_content = hexdump
-let print_der_integer_content ?indent:(indent="") ?name:(name="der_integer") v =
-  Printf.sprintf "%s%s: %s\n" indent name (hexdump v)
 
 let get_der_integer_content = trivial_get id hexdump
 
@@ -104,8 +100,6 @@ let dump_der_smallint_content i =
   res
 
 let string_of_der_smallint_content = string_of_int
-let print_der_smallint_content ?indent:(indent="") ?name:(name="der_smallint") v =
-  Printf.sprintf "%s%s: %d (%4.4x)\n" indent name v v
 
 let get_der_smallint_content = trivial_get dump_der_smallint_content string_of_int
 
@@ -128,8 +122,6 @@ let parse_der_null_content input =
 let dump_der_null_content () = ""
 
 let string_of_der_null_content () = ""
-let print_der_null_content ?indent:(indent="") ?name:(name="der_null_content") () =
-  Printf.sprintf "%s%s\n" indent name
 
 let get_der_null_content = trivial_get (fun () -> "") (fun () -> "")
 
@@ -228,20 +220,20 @@ let short_string_of_oid oid =
     with Not_found -> string_of_oid oid
   else raw_string_of_oid oid
 
-let string_of_der_oid_content = string_of_oid
-let print_der_oid_content ?indent:(indent="") ?name:(name="der_oid_content") oid =
-  let value = if !resolve_oids then
-      try (Hashtbl.find oid_directory oid) ^ " (" ^ raw_string_of_oid oid ^ ")"
-      with Not_found -> raw_string_of_oid oid
-    else raw_string_of_oid oid
-  in
-  Printf.sprintf "%s%s: %s\n" indent name (value)
+let string_of_der_oid_content oid =
+  if !resolve_oids then
+    try (Hashtbl.find oid_directory oid) ^ " (" ^ raw_string_of_oid oid ^ ")"
+    with Not_found -> raw_string_of_oid oid
+  else raw_string_of_oid oid
 
 let get_der_oid_content = trivial_get dump_der_oid_content string_of_oid
 
 let value_of_der_oid_content oid =
-  VList [VString (string_of_oid oid, false);
-	 VList (List.map (fun id -> VSimpleInt id) (oid_expand oid))]
+  VRecord [
+    "@name", VString ("oid", false);
+    "@string_of", VString (string_of_der_oid_content oid, false);
+    "oid", VList (List.map (fun x -> VSimpleInt x) (oid_expand oid))
+  ]
 
 asn1_alias der_oid = primitive [T_OId] der_oid_content
 
@@ -270,13 +262,16 @@ let dump_der_bitstring_content (nBits, s) =
   prefix ^ s
 
 let string_of_der_bitstring_content (_, s) = hexdump s
-let print_der_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_content") (nBits, s) =
-  Printf.sprintf "%s%s: [%d] %s\n" indent name nBits (hexdump s)
 
 let get_der_bitstring_content = trivial_get dump_der_bitstring_content string_of_der_bitstring_content
 
 let value_of_der_bitstring_content (nBits, s) =
-  VList [VSimpleInt nBits; VString (s, true)]
+  VRecord [
+    "@name", VString ("bitstring", false);
+    "@string_of", VString (Printf.sprintf "[%d] %s" nBits s, false);
+    "nBits", VSimpleInt nBits;
+    "content", VString (s, true)
+  ]
 
 asn1_alias der_bitstring = primitive [T_BitString] der_bitstring_content
 
@@ -343,8 +338,6 @@ let dump_der_enumerated_bitstring_content description l =
   dump_der_bitstring_content (nBits, _string_of_int_list intlist)
 
 let string_of_der_enumerated_bitstring_content = String.concat ", "
-let print_der_enumerated_bitstring_content ?indent:(indent="") ?name:(name="der_bitstring_content") l =
-  Printf.sprintf "%s%s: %s\n" indent name (String.concat ", " l)
 
 let get_der_enumerated_bitstring_content description =
   trivial_get (dump_der_enumerated_bitstring_content description) string_of_der_enumerated_bitstring_content
@@ -372,17 +365,14 @@ let parse_der_octetstring_content apply_constraints input =
 let dump_der_octetstring_content s = s
 
 let string_of_der_octetstring_content = hexdump
-let print_der_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
-  Printf.sprintf "%s%s: %s\n" indent name (hexdump s)
 let get_der_octetstring_content = trivial_get id hexdump
 let value_of_der_octetstring_content s = VString (s, true)
 
 asn1_alias der_octetstring = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
-let string_of_der_printable_octetstring_content s = s
+
 alias der_printable_octetstring_content [param constr] = der_octetstring_content(constr)
-let print_der_printable_octetstring_content ?indent:(indent="") ?name:(name="der_octetstring") s =
-  Printf.sprintf "%s%s: %s\n" indent name s
+let string_of_der_printable_octetstring_content s = s
 let get_der_printable_octetstring_content = trivial_get id quote_string
 let value_of_der_printable_octetstring_content s = VString (s, false)
 
@@ -425,12 +415,14 @@ let int_of_utc_year y = if y >= 50 then y + 1900 else y + 2000
 let string_of_time_content t =
   Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d UTC"
     t.year t.month t.day t.hour t.minute t.second
-let print_time_content ?indent:(indent="") ?name:(name="time") t =
-  Printf.sprintf "%s%s: %s\n" indent name (string_of_time_content t)
-let value_of_time_content t =
-  VRecord ["year", VSimpleInt t.year; "month", VSimpleInt t.month;
-	   "day", VSimpleInt t.day; "hour", VSimpleInt t.hour;
-	   "minute", VSimpleInt t.minute; "second", VSimpleInt t.second]
+let value_of_time_content name t =
+  VRecord [
+    "@name", VString (name, false);
+    "@string_of", VString (string_of_time_content t, false);
+    "year", VSimpleInt t.year; "month", VSimpleInt t.month;
+    "day", VSimpleInt t.day; "hour", VSimpleInt t.hour;
+    "minute", VSimpleInt t.minute; "second", VSimpleInt t.second
+  ]
    
 
 type der_utc_time_content = time_content
@@ -442,9 +434,8 @@ let dump_der_utc_time_content t =
   Printf.sprintf "%2.2d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
     (utc_year_of_int t.year) t.month t.day t.hour t.minute t.second
 let string_of_der_utc_time_content = string_of_time_content
-let print_der_utc_time_content = print_time_content
 let get_der_utc_time_content = trivial_get dump_der_utc_time_content string_of_time_content
-let value_of_der_utc_time_content t = value_of_time_content t
+let value_of_der_utc_time_content t = value_of_time_content "utc_time" t
 
 type der_generalized_time_content = time_content
 let parse_der_generalized_time_content input =
@@ -454,9 +445,8 @@ let dump_der_generalized_time_content t =
   Printf.sprintf "%4.4d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
     t.year t.month t.day t.hour t.minute t.second
 let string_of_der_generalized_time_content = string_of_time_content
-let print_der_generalized_time_content = print_time_content
 let get_der_generalized_time_content = trivial_get dump_der_generalized_time_content string_of_time_content
-let value_of_der_generalized_time_content t = value_of_time_content t
+let value_of_der_generalized_time_content t = value_of_time_content "generalized_time" t
 
 
 (* Generic ASN.1 Object *)
@@ -594,34 +584,18 @@ and dump_der_object_content = function
 let string_of_der_object_content _ = "der_object"
 let string_of_der_object _ = "der_object"
 
-let rec print_der_object ?indent:(indent="") ?name:(name="") o =
-  let real_name =
-    if name = ""
-    then print_header (o.a_class, isConstructed o, o.a_tag)
-    else name
-  in
-  print_der_object_content ~indent:indent ~name:real_name o.a_content
-
-and print_der_object_content ?indent:(indent="") ?name:(name="der_object") = function
-  | Boolean b -> print_der_boolean_content ~indent:indent ~name:name b
-  | Integer i -> print_der_integer_content ~indent:indent ~name:name i
-  | BitString (nBits, s) -> print_der_bitstring_content ~indent:indent ~name:name (nBits, s)
-  | Null -> print_der_null_content ~indent:indent ~name:name ()
-  | OId oid -> print_der_oid_content ~indent:indent ~name:name oid
-  | String (s, true) -> print_binstring ~indent:indent ~name:name s
-  | String (s, false) -> print_printablestring ~indent:indent ~name:name s
-  | Constructed l -> print_list print_der_object ~indent:indent ~name:name l
-  | UnparsedDER (_, s) -> print_binstring ~indent:indent ~name:name s
-
 let get_der_object_content = trivial_get dump_der_object_content string_of_der_object_content
 let get_der_object = trivial_get dump_der_object string_of_der_object
 
 let rec value_of_der_object o =
   let value_of_content = value_of_der_object_content o.a_content in
-  VRecord ["class", value_of_asn1_class o.a_class;
-	   "isConstructed", VBool (isConstructed o);
-	   "tag", value_of_asn1_tag o.a_tag;
-	   "content", value_of_content]
+  VRecord [
+    "header", VString (print_header (o.a_class, isConstructed o, o.a_tag), false);
+    "class", value_of_asn1_class o.a_class;
+    "isConstructed", VBool (isConstructed o);
+    "tag", value_of_asn1_tag o.a_tag;
+    "content", value_of_content
+  ]
 and value_of_der_object_content = function
   | Boolean b -> value_of_der_boolean_content b
   | Integer i -> value_of_der_integer_content i

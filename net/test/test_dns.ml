@@ -6,17 +6,22 @@ let dns_query = "\x32\x65\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x04\x79\x65\x7
 
 let dns_answer = "\x32\x65\x81\x80\x00\x01\x00\x02\x00\x02\x00\x03\x04\x79\x65\x79\x65\x02\x66\x72\x00\x00\x0f\x00\x01\xc0\x0c\x00\x0f\x00\x01\x00\x00\x07\x08\x00\x10\x00\x0a\x0b\x70\x61\x70\x65\x72\x73\x74\x72\x65\x65\x74\xc0\x0c\xc0\x0c\x00\x0f\x00\x01\x00\x00\x07\x08\x00\x0d\x00\x0a\x08\x70\x69\x63\x74\x79\x62\x6f\x78\xc0\x0c\xc0\x0c\x00\x02\x00\x01\x00\x00\x07\x08\x00\x0b\x08\x67\x61\x72\x66\x69\x65\x6c\x64\xc0\x0c\xc0\x0c\x00\x02\x00\x01\x00\x00\x07\x08\x00\x02\xc0\x43\xc0\x43\x00\x01\x00\x01\x00\x00\x07\x08\x00\x04\xd5\xba\x39\x67\xc0\x27\x00\x01\x00\x01\x00\x00\x07\x08\x00\x04\x52\xe7\xeb\x89\xc0\x5a\x00\x01\x00\x01\x00\x00\x07\x08\x00\x04\x52\xe7\xeb\x89"
 
+let test_dumb_message name content =
+  print_endline (print_value (value_of_dumb_dns_message (parse_dumb_dns_message (input_of_string name content))))
+
+let test_smart_message name content =
+  print_endline (print_value (value_of_smart_dns_message (parse_smart_dns_message (input_of_string name content))))
 
 let _ =
   try
     print_endline "DUMB VERSION\n";
-    print_endline (print_dumb_dns_message (parse_dumb_dns_message (input_of_string "dns_query" dns_query)));
-    print_endline (print_dumb_dns_message (parse_dumb_dns_message (input_of_string "dns_answer" dns_answer)));
+    test_dumb_message "dns_query" dns_query;
+    test_dumb_message "dns_answer" dns_answer;
 
     print_newline ();
     print_endline "SMART VERSION\n";
-    print_endline (print_smart_dns_message (parse_smart_dns_message (input_of_string "dns_query" dns_query)));
-    print_endline (print_smart_dns_message (parse_smart_dns_message (input_of_string "dns_answer" dns_answer)));
+    test_smart_message "dns_query" dns_query;
+    test_smart_message "dns_answer" dns_answer;
   with
   | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
   | e -> prerr_endline (Printexc.to_string e); exit 1

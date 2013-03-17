@@ -16,15 +16,15 @@ let string_of_ipv4 s =
   let elts = [s.[0]; s.[1]; s.[2]; s.[3]] in
   String.concat "." (List.map (fun e -> string_of_int (int_of_char e)) elts)
 
-let print_ipv4 ?indent:(indent="") ?name:(name="ipv4") s =
-  let res = string_of_ipv4 s in
-  Printf.sprintf "%s%s: %s\n" indent name res
-
 let get_ipv4 = trivial_get dump_ipv4 string_of_ipv4
 
 let value_of_ipv4 s =
   let elts = [s.[0]; s.[1]; s.[2]; s.[3]] in
-  VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts)
+  VRecord [
+    "@name", VString ("ipv4", false);
+    "@string_of", VString (string_of_ipv4 s, false);
+    "address", VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts)
+  ]
 
 
 type ipv6 = string
@@ -44,10 +44,6 @@ let string_of_ipv6 s =
   done;
   res
 
-let print_ipv6 ?indent:(indent="") ?name:(name="ipv6") s =
-  let res = string_of_ipv6 s in
-  Printf.sprintf "%s%s: %s\n" indent name res
-
 let get_ipv6 = trivial_get dump_ipv6 string_of_ipv6
 
 let value_of_ipv6 s =
@@ -55,8 +51,11 @@ let value_of_ipv6 s =
 	      s.[4]; s.[5]; s.[6]; s.[7];
 	      s.[8]; s.[9]; s.[10]; s.[11];
 	      s.[12]; s.[13]; s.[14]; s.[15]] in
-  VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts)
-
+  VRecord [ 
+    "@name", VString ("ipv6", false);
+    "@string_of", VString (string_of_ipv6 s, false);
+    "address", VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts)
+  ]
 
 
 (* Magic *)
@@ -78,8 +77,6 @@ let lwt_parse_magic magic_expected input =
 let dump_magic s = s
 
 let string_of_magic s = hexdump s
-let print_magic ?indent:(indent="") ?name:(name="magic") s =
-  print_binstring ~indent:indent ~name:name s
 
 let get_magic = trivial_get dump_magic string_of_magic
 

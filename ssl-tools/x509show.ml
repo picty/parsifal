@@ -82,8 +82,8 @@ let pretty_print_certificate cert =
     Printf.sprintf "    Not after: %s" (string_of_der_time tbs.validity.notAfter);
     Printf.sprintf "Subject: %s" (string_of_distinguishedName tbs.subject);
   ]@
-    (Str.split (Str.regexp_string "\n") (print_subjectPublicKeyInfo
-			                   tbs.subjectPublicKeyInfo))
+    (Str.split (Str.regexp_string "\n") (print_value
+	      (value_of_subjectPublicKeyInfo tbs.subjectPublicKeyInfo)))
   @[
   ]
 
@@ -114,7 +114,7 @@ let handle_input input =
       in [result]
     | BinDump -> [dump_certificate certificate]
     | Dump -> [hexdump (dump_certificate certificate)]
-    | Text -> Str.split (Str.regexp_string "\n") (print_certificate certificate)
+    | Text -> Str.split (Str.regexp_string "\n") (print_value (value_of_certificate certificate))
     | PrettyPrint -> pretty_print_certificate certificate
     | Get ->
       match get get_certificate certificate !path_str with

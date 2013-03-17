@@ -322,7 +322,7 @@ let get_mrt mrt_msg =
 
 let handle_input input =
   match !action with
-    | PrettyPrint -> map_mrt (fun m -> print_endline (print_mrt_message m)) input
+    | PrettyPrint -> map_mrt (fun m -> print_endline (print_value (value_of_mrt_message m))) input
     | ObsDump -> map_mrt obsdump input
     | JustParse -> map_mrt ignore input
     | Get -> map_mrt get_mrt input

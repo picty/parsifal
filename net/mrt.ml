@@ -45,22 +45,33 @@ let string_of_ip_prefix ip_prefix =
       string_of_ipv6 (s ^ (String.make (16 - l) '\x00')), prefix_length
   in Printf.sprintf "%s/%d" a len
 
-let print_ip_prefix ?indent:(indent="") ?name:(n="ip_prefix") ip_prefix =
-  Printf.sprintf "%s%s: %s\n" indent n (string_of_ip_prefix ip_prefix)
-
 let get_ip_prefix = trivial_get dump_ip_prefix string_of_ip_prefix
 
-let value_of_ip_prefix ip_prefix =
-  let a_name, a, len = match ip_prefix with
-    | IPv4Prefix (s, prefix_length) ->
-      let l = (prefix_length + 7) / 8 in
-      "ipv4_prefix", value_of_ipv4 (s ^ (String.make (4 - l) '\x00')), prefix_length
-    | IPv6Prefix (s, prefix_length) ->
-      let l = (prefix_length + 7) / 8 in
-      "ipv6_prefix", value_of_ipv6 (s ^ (String.make (16 - l) '\x00')), prefix_length
-  in
-  (* TODO: add a "@string_of" field to take into account the specifity of ip_prefix? *)
-  VRecord [a_name, a; "prefix_len", VSimpleInt len]
+let value_of_ip_prefix = function
+  | IPv4Prefix (initial_s, prefix_len) ->
+    let l = (prefix_len + 7) / 8 in
+    let s = initial_s ^ (String.make (4 - l) '\x00') in
+    let elts = [s.[0]; s.[1]; s.[2]; s.[3]] in
+    VRecord [
+      "@name", VString ("ipv4_prefix", false);
+      "@string_of", VString ((string_of_ipv4 s) ^ "/" ^ (string_of_int prefix_len), false);
+      "prefix", VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts);
+      "prefix_len", VSimpleInt prefix_len
+    ]
+  | IPv6Prefix (initial_s, prefix_len) ->
+    let l = (prefix_len + 7) / 8 in
+    let s = initial_s ^ (String.make (16 - l) '\x00') in
+    let elts = [s.[0]; s.[1]; s.[2]; s.[3];
+		s.[4]; s.[5]; s.[6]; s.[7];
+		s.[8]; s.[9]; s.[10]; s.[11];
+		s.[12]; s.[13]; s.[14]; s.[15]] in
+    VRecord [
+      "@name", VString ("ipv6_prefix", false);
+      "@string_of", VString ((string_of_ipv6 s) ^ "/" ^ (string_of_int prefix_len), false);
+      "prefix", VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts);
+      "prefix_len", VSimpleInt prefix_len
+    ]
+
 
 
 (* BGP messages *)
@@ -83,10 +94,6 @@ let dump_bgp_attribute_len (extended, v) =
   then dump_uint16 v
   else dump_uint8 v
 let string_of_bgp_attribute_len (_, v) = string_of_int v
-let print_bgp_attribute_len ?indent:(indent="") ?name:(name="bgp_attribute_len") (extended, v) =
-  if extended
-  then print_uint16 ~indent:indent ~name:name v
-  else print_uint8 ~indent:indent ~name:name v
 let get_bgp_attribute_len = trivial_get dump_bgp_attribute_len string_of_bgp_attribute_len
 let value_of_bgp_attribute_len (extended, v) =
   if extended

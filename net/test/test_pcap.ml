@@ -23,7 +23,7 @@ let rec handle_one_file input =
   lwt_try_parse lwt_parse_pcap_file input >>= function
     | None -> return ()
     | Some pcap ->
-      print_string (print_pcap_file pcap);
+      print_string (print_value (value_of_pcap_file pcap));
       return ()
 
 

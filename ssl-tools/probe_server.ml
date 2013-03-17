@@ -125,9 +125,11 @@ let catch_eof = function
   | End_of_file -> return EndOfFile
   | e -> fail e
 
+let global_hs_msg = ref []
 
 let print_hs ctx hs =
-  print_endline (print_handshake_msg ~name:"Handshake (S->C)" hs);
+  print_endline (print_value ~name:"Handshake (S->C)" (value_of_handshake_msg hs));
+  global_hs_msg := hs::(!global_hs_msg);
   match hs.handshake_type, hs.handshake_content with
   | HT_ServerHelloDone, _ -> Result ()
   | _, ServerHello { ciphersuite = cs } ->
@@ -156,7 +158,7 @@ let stop_on_fatal_alert alert =
   else NothingSoFar
 
 let print_alert alert =
-  print_endline (print_tls_alert ~name:"Alert (S->C)" alert);
+  print_endline (print_value ~name:"Alert (S->C)" (value_of_tls_alert alert));
   if alert.alert_level = AL_Fatal
   then FatalAlert (string_of_tls_alert_type alert.alert_type)
   else NothingSoFar
@@ -169,7 +171,7 @@ let _send_and_receive hs_fun alert_fun =
   LwtUtil.client_socket ~timeout:(Some !timeout) !host !port >>= fun s ->
   if !verbose then Printf.fprintf Pervasives.stderr "Connected to %s:%d\n" !host !port;
   let ch = mk_client_hello None in
-  if !verbose then prerr_endline (print_tls_record ~name:"Sending Handshake (C->S)" ch);
+  if !verbose then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));
   send_plain_record s ch >>= fun () ->
   input_of_fd "Server" s >>=
   handle_answer hs_fun alert_fun
