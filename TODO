@@ -1,5 +1,4 @@
 v0.2 (apr. 2013)
- - Replace VThunk by VLazy?
  - Add @dump in VRecord when an option is present in struct?
  - Design the language to explore values (functions like hex / dump / substring and conditionnal expressions...)
  - Factor some code (lwt_parse_file filename lwt_parse_fun; the more common options (enrich, verbose, input handling); get machinery)

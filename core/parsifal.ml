@@ -117,8 +117,7 @@ type value =
   | VRecord of (string * value) list
   | VOption of value option
   | VError of string
-  (* TODO: Use lazy ? *)
-  | VThunk of (unit -> value)
+  | VLazy of value Lazy.t
 
 
 
@@ -531,11 +530,11 @@ let rec string_of_value = function
   | VOption None -> "()"
   | VOption (Some v) -> string_of_value v
   | VError s -> "Error: " ^ s
-  | VThunk realise -> string_of_value (realise ())
+  | VLazy v -> string_of_value (Lazy.force v)
 
 
 let rec realise_value = function
-  | VThunk f -> realise_value (f ())
+  | VLazy v -> realise_value (Lazy.force v)
   | v -> v
 
 let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="value") = function
@@ -587,7 +586,7 @@ let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="va
   | VOption (Some v) -> print_value ~verbose:verbose ~indent:indent ~name:name v
 
   | VError err -> "%s%s: ERROR (%s)\n"
-  | VThunk realise -> print_value ~verbose:verbose ~indent:indent ~name:name (realise ())
+  | VLazy v -> print_value ~verbose:verbose ~indent:indent ~name:name (Lazy.force v)
 
 
 let rec get_value path v = match (realise_value v, path) with
@@ -639,7 +638,7 @@ let rec get_value path v = match (realise_value v, path) with
   end
 
   | VError _, _ -> v
-  | VThunk realise, _ -> get_value path (realise ())
+  | VLazy v, _ -> get_value path (Lazy.force v)
 
   | _, _ -> VError ("Path not fully interpreted (" ^ (String.concat "." path) ^ ")")
 

@@ -202,5 +202,5 @@ let value_of_ssl2_record record =
     "is_escape", VBool record.ssl2_is_escape;
     "padding_len", VSimpleInt record.ssl2_padding_length;
     "total_len", VSimpleInt record.ssl2_total_length;
-    "record_content", VThunk (fun () -> value_of_ssl2_content record.ssl2_content)
+    "record_content", VLazy (lazy (value_of_ssl2_content record.ssl2_content))
   ]

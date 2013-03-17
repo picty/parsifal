@@ -679,7 +679,7 @@ let mk_value_of_fun _loc c =
       let field_name = if attr = ParseField then "@" ^ n else n in
       let raw_f = value_of_fun_of_ptype _loc t in
       let f = if attr = Optional then <:expr< Parsifal.try_value_of $raw_f$ >> else raw_f in
-      <:expr< ($str:field_name$, Parsifal.VThunk (fun () -> $f$ $lid:c.name$.$lid:n$)) >>
+      <:expr< ($str:field_name$, Parsifal.VLazy (lazy ($f$ $lid:c.name$.$lid:n$))) >>
     in
     let name_field = <:expr< ("@name", Parsifal.VString ($str:c.name$, False)) >> in
     let fields_expr = exp_of_list _loc (List.map value_of_one_field (List.filter keep_built_fields fields)) in
