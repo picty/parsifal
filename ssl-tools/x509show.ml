@@ -117,9 +117,9 @@ let handle_input input =
     | Text -> Str.split (Str.regexp_string "\n") (print_value (value_of_certificate certificate))
     | PrettyPrint -> pretty_print_certificate certificate
     | Get ->
-      match get get_certificate certificate !path_str with
-      | None -> []
-      | Some s -> [s]
+      match get (value_of_certificate certificate) !path_str with
+      | Left _ -> []
+      | Right s -> [s]
   in
   match !print_names with
     | Default -> lwt_not_implemented "handle_input can not determine wether filenames should be printed"

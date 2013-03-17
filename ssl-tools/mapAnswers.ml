@@ -307,11 +307,12 @@ let rec handle_answer answer =
       | Get ->
         let records, _, _ = parse_all_records !enrich_style answer in
 	let get_one_path p = 
-	  match get (get_list get_tls_record) records p with
-	  | None -> if !verbose then prerr_endline (ip ^ ": " ^ p); []
-	  | Some s -> [s]
+	  match get (VList (List.map value_of_tls_record records)) p with
+	  | Left err -> if !verbose then prerr_endline (ip ^ ": " ^ err); []
+	  | Right s -> [s]
 	in
-	Printf.printf "%s: %s\n" ip (String.concat ", " (List.flatten (List.map get_one_path !path)))
+	let results = List.flatten (List.map get_one_path !path) in
+        if results <> [] then Printf.printf "%s: %s\n" ip (String.concat ", " results)
   end;
   return again
 

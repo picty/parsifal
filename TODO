@@ -1,5 +1,9 @@
 v0.2 (apr. 2013)
  - Replace VThunk by VLazy?
+ - Remove old get_funs and syntax get_ generation
+ - Remove old to_string_funs and syntax to_string generation
+ - Add @dump in VRecord when an option is present in struct?
+ - Design the language to explore values (functions like hex / dump / substring and conditionnal expressions...)
  - Factor some code (lwt_parse_file filename lwt_parse_fun; the more common options (enrich, verbose, input handling); get machinery)
  - Improve value_of for atv/rdn/dn
  - X509
@@ -15,8 +19,6 @@ v0.2 (apr. 2013)
        2.16.840.1.113719.1.9.4.1 (securityAttributes [Novell])
        1.3.6.1.4.1.3029.3.1.5 (keyFeatures)
  - Work on the Makefile to merge core / core_nolwt. It will need to fake-implement all the functions.
- - Rewrite to_string/get using value_of (use @dump in VRecord when an option is present in struct?)
- - Design the language to explore values (functions like hex / dump / substring and conditionnal expressions...)
  - Use modules to aggregate the functions for some top-level objects (parse/dump/value_of)
  - Finalize the Makefile (make install)
  - Write json_of using value_of

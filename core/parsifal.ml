@@ -99,7 +99,7 @@ let quote_string s =
 (***************)
 
 (* TODO: value_of should be used when efficiency is not needed *)
-(*       -> string_of, print, json_of, get                     *)
+(*       -> string_of, json_of                                 *)
 
 type size = int
 type endianness = LittleEndian | BigEndian
@@ -440,12 +440,6 @@ let get_wrapper dump print get v = function
 
 let trivial_get dump print = get_wrapper dump print default_get
 
-let get get_fun obj path_str =
-  let path = string_split '.' path_str in
-  match get_fun obj path with
-  | Left s -> None
-  | Right s -> Some (flatten s)
-
 
 (************************)
 (* Construction helpers *)
@@ -625,8 +619,82 @@ let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="va
 	(Printf.sprintf "%s}\n" indent)
     end
   end
-  | VOption None -> ""
+  | VOption None -> Printf.sprintf "%s%s\n" indent name
   | VOption (Some v) -> print_value ~verbose:verbose ~indent:indent ~name:name v
 
   | VError err -> "%s%s: ERROR (%s)\n"
   | VThunk realise -> print_value ~verbose:verbose ~indent:indent ~name:name (realise ())
+
+
+let rec get_value path v = match (realise_value v, path) with
+  | v, [] -> v
+
+  | VSimpleInt i, "@hex"::r ->
+    get_value r (VString (Printf.sprintf "0x%x" i, false))
+  | VInt (i, sz, _), "@hex"::r ->
+    let n_chars = sz / 4 in
+    get_value r (VString (Printf.sprintf "0x%*.*x" n_chars n_chars i, false))
+  | VEnum (_, i, sz, _), "@hex"::r ->
+    let n_chars = sz / 4 in
+    get_value r (VString (Printf.sprintf "0x%*.*x" n_chars n_chars i, false))
+
+  | VInt (_, sz, _), ("@len" | "@size")::r -> get_value r (VSimpleInt ((sz + 7) / 8))
+  | VBigInt (s, _), ("@len" | "@size")::r -> get_value r (VSimpleInt (String.length s))
+  | VEnum (_, _, sz, _), ("@len" | "@size")::r -> get_value r (VSimpleInt ((sz + 7) / 8))
+
+  | VList l, ("@len" | "@size" | "@count")::r -> get_value r (VSimpleInt (List.length l))
+  | VList l, "*"::r -> VList (List.map (get_value r) l)
+  | VList l, p::ps ->
+    let len = String.length p in
+    if len > 2 && p.[0] = '[' && p.[len - 1] = ']'
+    then begin
+      try
+	let index = int_of_string (String.sub p 1 (len - 2)) in
+	get_value ps (List.nth l index)
+      with Failure _ -> VError ("Wrong index or index out of bounds (" ^ p ^ ")")
+    end else VError ("List index expected (" ^ p ^ ")")
+
+  | VRecord l, "@index"::r ->
+    get_value r (VList (List.map (fun (n, _) -> VString (n, false)) l))
+
+  | VRecord l, "@fields"::r ->
+    let add_field accu (n, v) =
+      if String.length n > 1 && n.[0] <> '@'
+      then v::accu
+      else accu
+    in
+    get_value r (VList (List.rev (List.fold_left add_field [] l)))
+
+  | VRecord l, "@all_fields"::r ->
+    get_value r (VList (List.map snd l))
+
+  | VRecord l, field_name::r -> begin
+    try get_value r (List.assoc field_name l)
+    with Not_found -> VError ("Unknwon field (" ^ field_name ^ ")")
+  end
+
+  | VError _, _ -> v
+  | VThunk realise, _ -> get_value path (realise ())
+
+  | _, _ -> VError ("Path not fully interpreted (" ^ (String.concat "." path) ^ ")")
+
+
+
+let rec string_of_get_value = function
+  | VError e -> Left e
+  | VList l ->
+    let rec aux error accu l = match error, accu, l with
+      | Some e, [], [] -> Left e
+      | _, res, [] -> Right ("[" ^ (String.concat ", " (List.rev res)) ^ "]")
+      | _, _, v::r ->
+	match error, string_of_get_value v with
+	| None, Left e -> aux (Some e) accu r
+	| _, Left _ -> aux error accu r
+	| _, Right s -> aux error (s::accu) r
+    in
+    aux None [] l
+  | v -> Right (string_of_value v)
+
+let get value path_str =
+  let path = string_split '.' path_str in
+  string_of_get_value (get_value path value)
