@@ -248,6 +248,12 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "nsCertType" -> NSCertType of der_enumerated_bitstring[nsCertType_values]
   | "nsComment" -> NSComment of der_ia5string(NoConstraint)
 
+(* Sordid hack. TODO: auto-generate that with an option laxist? *)
+let parse_extnValue t input =
+  match try_parse (parse_extnValue t) input with
+  | None -> parse_extnValue "" input
+  | Some res -> res
+
 
 struct extension_content = {
   extnID : der_oid;
