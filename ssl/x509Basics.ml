@@ -65,7 +65,7 @@ let string_of_atv_value = function
   | UnparsedAV _ -> "NON-STRING-VALUE"
 
 let string_of_atv atv =
-  "/" ^ (Asn1PTypes.short_string_of_oid atv.attributeType) ^ "=" ^ (string_of_atv_value atv.attributeValue)
+  "/" ^ (short_string_of_oid atv.attributeType) ^ "=" ^ (string_of_atv_value atv.attributeValue)
 
 (* TODO: Add constraints on set of [min, max] *)
 asn1_alias rdn = set_of atv  (* min = 1 *)
@@ -75,11 +75,29 @@ let string_of_distinguishedName dn =
   String.concat "" (List.map string_of_atv (List.flatten dn))
 
 let value_of_distinguishedName dn =
-  VRecord [
-    "@string_of", VString (string_of_distinguishedName dn, false);
-    (* TODO: add stuff to get C= / CN= directly *)
-    "raw_content", VList (List.map value_of_rdn dn)
-  ]
+  let update h k v =
+    try Hashtbl.replace h k (v::(Hashtbl.find h k))
+    with Not_found -> Hashtbl.replace h k [v]
+  in
+  let add_atv h atv =
+    let oid = atv.attributeType
+    and v = VString (string_of_atv_value atv.attributeValue, false) in
+    let n1 = short_string_of_oid oid
+    and n2 = raw_string_of_oid oid in
+    update h n1 v;
+    if n1 <> n2 then update h n2 v
+  in
+  let mk_shortcut n vs accu = match vs with
+    | v::_ -> ("@all_" ^ n, VList vs)::("@" ^ n, v )::accu
+    | [] -> ("@all_" ^ n, VUnit)::accu
+  in
+  let h = Hashtbl.create 10 in
+  List.iter (add_atv h) (List.flatten dn);
+
+  let shortcuts = Hashtbl.fold mk_shortcut h []
+  and string_of_entry = "@string_of", VString (string_of_distinguishedName dn, false)
+  and raw_content_entry = "raw_content", VList (List.map value_of_rdn dn) in
+  VRecord (string_of_entry::raw_content_entry::shortcuts)
 
 
 (***********************)
