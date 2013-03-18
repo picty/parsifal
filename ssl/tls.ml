@@ -150,7 +150,7 @@ union _distinguishedName [exhaustive] (UnparsedDN) =
   | () -> ParsedDN of X509Basics.distinguishedName
 
 struct certificate_request = {
-  certificate_types : client_certificate_type;
+  certificate_types : list[uint8] of client_certificate_type;
   supported_signature_algorithms : list[uint16] of signature_and_hash_algorithm;
   certificate_authorities : list[uint16] of container[uint16] of _distinguishedName(())
 }
