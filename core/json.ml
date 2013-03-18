@@ -12,7 +12,7 @@ let rec json_of_value ?verbose:(verbose=false) ?indent:(indent="") = function
     let new_indent = indent ^ "  " in
     let handle_elt v = json_of_value ~verbose:verbose ~indent:new_indent v in
     Printf.sprintf "[\n%s%s\n%s]" new_indent
-      (String.concat ("\n" ^ new_indent) (List.map handle_elt l))
+      (String.concat (",\n" ^ new_indent) (List.map handle_elt l))
       indent
 
   | VRecord l -> begin
@@ -33,7 +33,7 @@ let rec json_of_value ?verbose:(verbose=false) ?indent:(indent="") = function
 	  else accu
       in
       Printf.sprintf "{\n%s%s\n%s}" new_indent
-	(String.concat ("\n" ^ new_indent) (List.rev (List.fold_left handle_field [] l)))
+	(String.concat (",\n" ^ new_indent) (List.rev (List.fold_left handle_field [] l)))
 	indent
     end
   end
