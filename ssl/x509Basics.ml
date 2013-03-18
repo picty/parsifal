@@ -1,7 +1,7 @@
 open Parsifal
 open PTypes
-open Asn1PTypes
 open Asn1Engine
+open Asn1PTypes
 
 
 (******************)
@@ -39,6 +39,12 @@ union attributeValue [enrich] (UnparsedAV of der_object) =
   | AVT_PrintableString len_cons -> AV_PrintableString of der_printablestring (len_cons)
   | AVT_DirectoryString len_cons -> AV_DirectoryString of directoryString (len_cons)
 
+(* Sordid hack. TODO: auto-generate that with an option laxist? *)
+let parse_attributeValue t input =
+  match try_parse (parse_attributeValue t) input with
+  | None -> parse_attributeValue AVT_Anything input
+  | Some res -> res
+
 struct atv_content = {
   attributeType : der_oid;
   attributeValue : attributeValue(hash_get attributeValueType_directory attributeType AVT_Anything)
@@ -47,12 +53,16 @@ asn1_alias atv
 
 (* TODO: Rewrite this once to_string is generated automatically, at least for scalar types? *)
 let string_of_atv_value = function
-  | UnparsedAV { Asn1PTypes.a_content = String (s, _)}
+  | UnparsedAV { a_content = String (s, false) }
+  | AV_DirectoryString (UnparsedDirectoryString { a_content = String (s, false) })
   | AV_PrintableString s
   | AV_DirectoryString (DS_T61String s|DS_PrintableString s|
       DS_UniversalString s|DS_UTF8String s|DS_BMPString s)
   | AV_IA5String s -> s  (* TODO: Was a quote_string here... *)
-  | _ -> "NON-STRING-VALUE"
+  | UnparsedAV { a_content = String (s, true) } -> hexdump s
+
+  | AV_DirectoryString (UnparsedDirectoryString _)
+  | UnparsedAV _ -> "NON-STRING-VALUE"
 
 let string_of_atv atv =
   "/" ^ (Asn1PTypes.short_string_of_oid atv.attributeType) ^ "=" ^ (string_of_atv_value atv.attributeValue)
