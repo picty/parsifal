@@ -290,10 +290,13 @@ let eos input =
 let check_empty_input fatal input =
   if not (eos input) then emit_parsing_exception fatal UnexpectedTrailingBytes input
 
-let try_parse parse_fun input =
+let try_parse ?exact:(exact=false) parse_fun input =
   if eos input then None else begin
     let saved_offset = input.cur_offset in
-    try Some (parse_fun input)
+    try
+      let res = Some (parse_fun input) in
+      if exact then check_empty_input true input;
+      res
     with ParsingException _ ->
       input.cur_offset <- saved_offset;
       None

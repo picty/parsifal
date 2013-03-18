@@ -250,7 +250,8 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
 
 (* Sordid hack. TODO: auto-generate that with an option laxist? *)
 let parse_extnValue t input =
-  match try_parse (parse_extnValue t) input with
+  (* We need the exact=true to avoid failing in the octetstring_container *) 
+  match try_parse ~exact:true (parse_extnValue t) input with
   | None -> parse_extnValue "" input
   | Some res -> res
 
