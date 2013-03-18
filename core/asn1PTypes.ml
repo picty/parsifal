@@ -598,7 +598,7 @@ let dump_bitstring_container dump_fun o =
 let parse_octetstring_container parse_fun input =
   let content = parse_der_octetstring input in
   let new_input = {
-    (input_of_string "subjectPublicKey_content" content) with
+    (input_of_string "octetstring_container" content) with
       history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history;
       enrich = input.enrich;
       err_fun = input.err_fun
