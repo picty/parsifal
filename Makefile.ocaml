@@ -109,7 +109,7 @@ ifdef USE_CAMLP4
 else
 	$(OCAMLDEP) $(OCAMLOPTS_CC) -native $^ > $@
 endif
-	sed -i -e "s+^\(.*\.cm.\):+$(BUILD_DIR)/\1:+" -e "s+ \([^/ ]*\.cm.\)+ $(BUILD_DIR)/\1+g" $(BUILD_DIR)/.depends
+	sed -i -e "s+^\(.*\.cm. *\):+$(BUILD_DIR)/\1:+" -e "s+ \([^/ ]*\.cm.\)+ $(BUILD_DIR)/\1+g" $(BUILD_DIR)/.depends
 
 builddir: $(BUILD_DIR)
 
