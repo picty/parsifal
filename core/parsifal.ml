@@ -605,6 +605,8 @@ let rec get_value path v = match (realise_value v, path) with
   | VBigInt (s, _), ("@len" | "@size")::r -> get_value r (VSimpleInt (String.length s))
   | VEnum (_, _, sz, _), ("@len" | "@size")::r -> get_value r (VSimpleInt ((sz + 7) / 8))
 
+  | VString (s, _), ("@len" | "@size")::r -> get_value r (VSimpleInt (String.length s))
+
   | VList l, ("@len" | "@size" | "@count")::r -> get_value r (VSimpleInt (List.length l))
   | VList [], "+"::r -> VError "Empty list"
   | VList l, ("+" | "*")::r -> VList (List.map (get_value r) l)
