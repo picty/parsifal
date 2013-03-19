@@ -40,6 +40,6 @@ let rec json_of_value ?verbose:(verbose=false) ?indent:(indent="") = function
 
   | VOption None -> "null"
   | VOption (Some v) -> json_of_value v
-  | VError s -> failwith "json_of_value encountered an error in the value"
+  | VError _ -> failwith "json_of_value encountered an error in the value"
   | VLazy v -> json_of_value (Lazy.force v)
   | VUnparsed v -> json_of_value v

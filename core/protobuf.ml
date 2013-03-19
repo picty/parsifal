@@ -180,7 +180,7 @@ let lwt_parse_rec_protobuf lwt_input =
   with e -> fail e
 
 
-let rec print_rec_protobuf ?indent:(indent="") ?name:(name="rec_protobuf") (num, value) =
+let rec print_rec_protobuf ?indent:(indent="") (num, value) =
   let default_fun t v =
     Printf.sprintf "%s%s_%s: %s\n" indent t (string_of_int num) (string_of_value (value_of_protobuf_value v))
   in

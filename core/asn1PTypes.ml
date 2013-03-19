@@ -270,12 +270,12 @@ let extract_bit_list s =
   extract_from_str [] 0
 
 let parse_der_enumerated_bitstring_content description input =
-  let (nBits, content) = parse_der_bitstring_content input in
+  let (_, content) = parse_der_bitstring_content input in
   let values = extract_bit_list content in
   let n = Array.length description in
   let rec aux i = function
     | [] -> []
-    | true::r when i >= n ->
+    | true::_ when i >= n ->
       warning (BitStringNotInNormalForm "Trailing bits in an enumerated bit string should be null") input;
       []
     | true::r -> (i)::(aux (i+1) r)

@@ -141,7 +141,7 @@ let update_enrich = function
     if n <= 1
     then NeverEnrich
     else EnrichLevel (n-1)
-  | e -> e
+  | (AlwaysEnrich | DefaultEnrich | NeverEnrich) as e -> e
 
 type string_input = {
   str : string;
@@ -446,7 +446,7 @@ let should_enrich global_ref local_arg =
   match !global_ref, local_arg with
   | true, DefaultEnrich -> true
   | _, (AlwaysEnrich | EnrichLevel _) -> true
-  | _ -> false
+  | _, (DefaultEnrich | NeverEnrich) -> false
 
 
 
@@ -591,7 +591,7 @@ let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="va
   | VOption None -> Printf.sprintf "%s%s\n" indent name
   | VOption (Some v) -> print_value ~verbose:verbose ~indent:indent ~name:name v
 
-  | VError err -> "%s%s: ERROR (%s)\n"
+  | VError err -> Printf.sprintf "%s%s: ERROR (%s)\n" indent name err
   | VLazy v -> print_value ~verbose:verbose ~indent:indent ~name:name (Lazy.force v)
   | VUnparsed v -> print_value ~verbose:verbose ~indent:indent ~name:("[Unparsed]_" ^ name) v
 
@@ -615,7 +615,7 @@ let rec get_value path v = match (realise_value v, path) with
   | VString (s, _), ("@len" | "@size")::r -> get_value r (VSimpleInt (String.length s))
 
   | VList l, ("@len" | "@size" | "@count")::r -> get_value r (VSimpleInt (List.length l))
-  | VList [], "+"::r -> VError "Empty list"
+  | VList [], "+"::_ -> VError "Empty list"
   | VList l, ("+" | "*")::r -> VList (List.map (get_value r) l)
   | VList l, p::ps ->
     let len = String.length p in

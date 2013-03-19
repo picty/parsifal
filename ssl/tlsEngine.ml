@@ -90,7 +90,7 @@ let send_plain_record out record =
   Lwt_list.iter_s (write_record out) recs
 
 (* TODO: compress/mac/encrypt the records *)
-let send_record ctx out record =
+let send_record _ctx _out _record =
   fail (ParsingException (NotImplemented "send_record", []))
 
 

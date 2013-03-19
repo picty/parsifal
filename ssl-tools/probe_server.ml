@@ -209,7 +209,7 @@ let ssl_scan_versions () =
   let versions = [V_SSLv3; V_TLSv1; V_TLSv1_1; V_TLSv1_2; V_Unknown 0x3ff] in
   let rec mk_versions ext int = match ext, int with
     | [], _ -> []
-    | e::r, [] -> mk_versions r versions
+    | _::r, [] -> mk_versions r versions
     | e::_, i::s -> (e, i)::(mk_versions ext s)
   in
   let all_cases = mk_versions versions versions in

@@ -149,7 +149,7 @@ let rec dump_raw_domain = function
 
 let dump_domain = function
   | RawDomain d -> dump_raw_domain d
-  | UnfoldedDomain d -> failwith "NotImplemented: dump_unfolded_domain"
+  | UnfoldedDomain _ -> failwith "NotImplemented: dump_unfolded_domain"
 
 let value_of_domain d =
   let content = match d with

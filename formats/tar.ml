@@ -55,7 +55,7 @@ struct ustar_header = {
   filename_prefix : string(155)
 }
 
-let parse_last_entry name input =
+let parse_last_entry name _input =
   if name.[0] = '\x00'
   then raise ParsingStop
 

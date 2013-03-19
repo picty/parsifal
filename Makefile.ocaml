@@ -17,7 +17,7 @@ OCAMLOPTS_CC = $(GEN_INCLUDES) $(EXTRA_OCAMLOPT_CC_FLAGS) -I $(BUILD_DIR)
 OCAMLOPTS_LD = $(GEN_INCLUDES) $(GEN_LIBS) $(EXTRA_OCAMLOPT_LD_FLAGS)
 OCAMLC_CC = $(GEN_BYTE_INCLUDES) $(EXTRA_OCAMLC_CC_FLAGS)
 OCAMLC_LD = $(GEN_BYTE_INCLUDES) $(GEN_BYTE_LIBS) $(EXTRA_OCAMLC_LD_FLAGS)
-
+OCAML_COMPILER_OPTIONS = -w +a-4-6-9 -warn-error +a-4-6-9
 
 # generic rules
 all: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(META_TO_BUILD)
@@ -81,14 +81,14 @@ $(BUILD_DIR)/%.cmi: %.mli
 
 $(BUILD_DIR)/%.cmx: %.ml
 ifdef USE_CAMLP4
-	$(OCAMLFIND) $(OCAMLOPT) -o $@ -c -g $(OCAMLOPTS_CC) -syntax camlp4o $<
+	$(OCAMLFIND) $(OCAMLOPT) -o $@ -c -g $(OCAMLOPTS_CC) $(OCAML_COMPILER_OPTIONS) -syntax camlp4o $<
 else
 	$(OCAMLOPT) -o $@ -c -g $(OCAMLOPTS_CC) $<
 endif
 
 $(BUILD_DIR)/%.cmo: %.ml
 ifdef USE_CAMLP4
-	$(OCAMLFIND) $(OCAMLC) -o $@ -c -g $(OCAMLOPTS_CC) -syntax camlp4o $<
+	$(OCAMLFIND) $(OCAMLC) -o $@ -c -g $(OCAMLOPTS_CC) $(OCAML_COMPILER_OPTIONS) -syntax camlp4o $<
 else
 	$(OCAMLC) -o $@ -c -g $(OCAMLOPTS_CC) $<
 endif

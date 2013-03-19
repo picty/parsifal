@@ -3,15 +3,12 @@ open Parsifal
 open Pe
 open Getopt
 
-let filename = ref ""
-
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
-  mkopt (Some 'f') "file" (StringVal filename) "input file"
 ]
 
 let getopt_params = {
-  default_progname = "test.exe";
+  default_progname = "test_pe";
   options = options;
   postprocess_funs = [];
 }
@@ -24,8 +21,10 @@ let parse_file filename =
 let main =
   try
     let args = parse_args getopt_params Sys.argv in
-    let t = parse_file !filename in
-    Lwt_unix.run t;
+    let t = match args with
+      | [filename] -> parse_file filename
+      | _ -> usage "test_pe" options (Some "Please provide exactly one filename.")
+    in Lwt_unix.run t;
   with
   | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
   | e -> prerr_endline (Printexc.to_string e); exit 1

@@ -63,7 +63,7 @@ let add_asn_file fn =
     ActionDone
   with
     | End_of_file -> ActionDone
-    | e -> ShowUsage (Some "Error while reading the list of ASN to watch")
+    | _ -> ShowUsage (Some "Error while reading the list of ASN to watch")
 
 (* Get options *)
 let path = ref ""
@@ -125,7 +125,7 @@ let rec list_until l n = match l, n with
 (** Merge AS_PATH and AS4_PATH.
     The methodology is described in RFC 4893, page 5. *)
 let merge_as_path attr_lst =
-  let internal attr_lst ap a4p =
+  let internal ap a4p =
     let rec _get_asn = function
       | { path_segment_type = (AS_SET|AS_SEQUENCE);
 	  path_segment_value = e } -> List.map int_of_asn e
@@ -144,7 +144,7 @@ let merge_as_path attr_lst =
     if ap_len < a4p_len then a4p
     else begin
       match a4p.attr_content with
-	| BAC_ASPath asp ->
+	| BAC_ASPath _ ->
 	  let new_path = (list_until ap_list (ap_len-a4p_len))@a4p_list in
 	  (* TODO: CHECK THIS *)
 	  let new_as_set = { path_segment_type = AS_SEQUENCE; (* ?? SET ?? *)
@@ -162,7 +162,7 @@ let merge_as_path attr_lst =
       | 0,0 -> []
       | 1,0 -> ap
       | 0,1 -> a4p
-      | 1,1 -> [internal attr_lst (List.hd ap) (List.hd a4p)]
+      | 1,1 -> [internal (List.hd ap) (List.hd a4p)]
       | a,b -> failwith (Printf.sprintf "merge_as_path: can't handle these set of AS*_PATH (%i %i) !\n" a b)
 
 
@@ -283,9 +283,11 @@ let test_filter m =
   match !filter with
   | None  -> true
   | Some f ->
-    let [path; value] = string_split '=' f in
-    let v = get_value (string_split '.' path) (value_of_mrt_message m) in
-    find_value value v
+    match string_split '=' f with
+    | [path; value] ->
+	let v = get_value (string_split '.' path) (value_of_mrt_message m) in
+	find_value value v
+    | _ -> failwith "Invalid filter"
 
 let rec map_mrt f input =
   lwt_parse_mrt_message input >>= fun mrt_msg ->
@@ -341,6 +343,6 @@ let _ =
   in
   try Lwt_unix.run t;
   with
-    | ParsingException (OutOfBounds _, _) -> ()
+    | ParsingException (OutOfBounds, _) -> ()
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h)
     | e -> prerr_endline (Printexc.to_string e)

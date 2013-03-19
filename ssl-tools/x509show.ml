@@ -156,7 +156,7 @@ let _ =
     | [] ->
       if !print_names = Default then print_names := DoNotPrintName;
       input_of_channel "(stdin)" Lwt_io.stdin >>= handle_input
-    | [a] ->
+    | [_] ->
       if !print_names = Default then print_names := DoNotPrintName;
       iter_on_names args
     | _ ->
