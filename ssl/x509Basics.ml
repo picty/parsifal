@@ -189,6 +189,19 @@ asn1_union der_time [enrich; exhaustive] (UnparsedTime) =
   | (C_Universal, false, T_UTCTime) -> UTCTime of der_utc_time_content
   | (C_Universal, false, T_GeneralizedTime) -> GeneralizedTime of der_generalized_time_content
 
+(* Sordid hack. TODO: auto-generate that with an option laxist? *)
+let parse_der_time input =
+  match try_parse parse_der_time input with
+  | Some res -> res
+  | None ->
+    let (c, isC, t) = extract_der_header input in
+    let len = extract_der_length input in
+    let new_input = get_in input (print_header (c, isC, t)) len in
+    let content = UnparsedDER (isC, BasePTypes.parse_rem_string new_input) in
+    get_out input new_input;
+    UnparsedTime (mk_object c t content)
+
+
 struct validity_content = {
   notBefore : der_time;
   notAfter : der_time
