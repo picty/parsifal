@@ -62,6 +62,7 @@ let string_of_atv_value = function
   | UnparsedAV { a_content = String (s, true) } -> hexdump s
 
   | AV_DirectoryString (UnparsedDirectoryString _)
+  | UnparsedAV { a_content = UnparsedDER _ } -> "[Unparsed]"
   | UnparsedAV _ -> "NON-STRING-VALUE"
 
 let string_of_atv atv =

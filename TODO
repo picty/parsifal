@@ -1,8 +1,7 @@
 v0.2 (apr. 2013)
  - Add a proper way to be flexible while parsing ATV/Extensions/Times... because that is where the parsing fails (and it should by default!)
- - Add a way to remember that a field was not fully parsed (VUnparsed of value?)
  - Add @dump in VRecord when an option is present in struct?
- - Design the language to explore values (functions like hex / dump / substring and conditionnal expressions...)
+ - Design the language to explore values (functions like hex / dump / substring / asn1parse / M.parse one day and conditionnal expressions...)
  - Factor some code (lwt_parse_file filename lwt_parse_fun; the more common options (enrich, verbose, input handling); get machinery)
  - X509
    * add popular extensions

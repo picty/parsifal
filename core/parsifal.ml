@@ -118,6 +118,7 @@ type value =
   | VOption of value option
   | VError of string
   | VLazy of value Lazy.t
+  | VUnparsed of value
 
 
 
@@ -534,11 +535,13 @@ let rec string_of_value = function
   | VOption (Some v) -> string_of_value v
   | VError s -> "Error: " ^ s
   | VLazy v -> string_of_value (Lazy.force v)
+  | VUnparsed v -> "[Unparsed]_" ^ string_of_value v
 
 
 let rec realise_value = function
   | VLazy v -> realise_value (Lazy.force v)
   | v -> v
+
 
 let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="value") = function
   | VUnit ->  Printf.sprintf "%s%s\n" indent name
@@ -590,6 +593,7 @@ let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="va
 
   | VError err -> "%s%s: ERROR (%s)\n"
   | VLazy v -> print_value ~verbose:verbose ~indent:indent ~name:name (Lazy.force v)
+  | VUnparsed v -> print_value ~verbose:verbose ~indent:indent ~name:("[Unparsed]_" ^ name) v
 
 
 let rec get_value path v = match (realise_value v, path) with
@@ -644,6 +648,7 @@ let rec get_value path v = match (realise_value v, path) with
 
   | VError _, _ -> v
   | VLazy v, _ -> get_value path (Lazy.force v)
+  | VUnparsed v, _ -> get_value path v
 
   | _, _ -> VError ("Path not fully interpreted (" ^ (String.concat "." path) ^ ")")
 

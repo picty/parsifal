@@ -554,11 +554,12 @@ let string_of_der_object _ = "der_object"
 let rec value_of_der_object o =
   let value_of_content = value_of_der_object_content o.a_content in
   VRecord [
-    "header", VString (print_header (o.a_class, isConstructed o, o.a_tag), false);
-    "class", value_of_asn1_class o.a_class;
-    "isConstructed", VBool (isConstructed o);
-    "tag", value_of_asn1_tag o.a_tag;
-    "content", value_of_content
+    "@name", VString ("asn1_object", false);
+    "asn1_header", VString (print_header (o.a_class, isConstructed o, o.a_tag), false);
+    "@class", value_of_asn1_class o.a_class;
+    "@isConstructed", VBool (isConstructed o);
+    "@tag", value_of_asn1_tag o.a_tag;
+    "asn1_content", value_of_content
   ]
 and value_of_der_object_content = function
   | Boolean b -> value_of_der_boolean_content b

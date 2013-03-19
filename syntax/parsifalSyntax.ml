@@ -696,7 +696,7 @@ let mk_value_of_fun _loc c =
     in
     let last_case =
       <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
-      $ <:expr< $value_of_fun_of_ptype _loc union.unparsed_type$ x >> $ >>
+      $ <:expr< Parsifal.VUnparsed ($value_of_fun_of_ptype _loc union.unparsed_type$ x) >> $ >>
     in
     let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
     <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >>
