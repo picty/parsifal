@@ -1,5 +1,5 @@
 # configurable section
-TARGETS = mapAnswers asn1parse x509show probe_server serveranswer sslproxy
+TARGETS = mapAnswers asn1parse x509show probe_server serveranswer sslproxy disturber
 	# check_sslclient check_sslserver
 
 mapAnswers_SRCS := mapAnswers.ml
@@ -8,6 +8,7 @@ x509show_SRCS := x509show.ml
 probe_server_SRCS := probe_server.ml
 serveranswer_SRCS := serveranswer.ml
 sslproxy_SRCS := sslproxy.ml
+disturber_SRCS := disturber.ml
 # check_sslclient_SRCS := check_sslclient.ml
 # check_sslserver_SRCS := check_sslserver.ml
 
@@ -30,3 +31,4 @@ BUILD_DIR = build
 
 
 include ../Makefile.ocaml
+
