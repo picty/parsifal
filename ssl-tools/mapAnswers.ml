@@ -64,12 +64,6 @@ let options = [
   mkopt None "filter-ip" (StringVal filter_ip) "only print info regarding this ip"
 ]
 
-let getopt_params = {
-  default_progname = "test_answerDump";
-  options = options;
-  postprocess_funs = [];
-}
-
 
 let handle_exn f x =
   try Some (f x)
@@ -325,7 +319,7 @@ let rec handle_one_file input =
 
 let _ =
   try
-    let args = parse_args getopt_params Sys.argv in
+    let args = parse_args ~progname:"test_answerDump" options Sys.argv in
     if !action = Pcap
     then print_string (Pcap.std_pcap_hdr_str);
     let open_files = function

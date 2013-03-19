@@ -33,13 +33,6 @@ let options = [
   mkopt None "enrich-level" (IntFun set_enrich_level) "enrich the structure parsed up to a certain level";
 ]
 
-let getopt_params = {
-  default_progname = "test_protobuf";
-  options = options;
-  postprocess_funs = [];
-}
-
-
 
 
 let examples = [
@@ -65,7 +58,7 @@ let handle_one_file input =
 
 let _ =
   try
-    let args = parse_args getopt_params Sys.argv in
+    let args = parse_args ~progname:"test_protobuf" options Sys.argv in
     match !action with
     | Examples -> List.iter test_one_buf examples
     | Print ->

@@ -24,12 +24,12 @@ let retry = ref 3
 let clear_suites () = suites := []
 let add_suite s =
   try
-    suites := (ciphersuite_of_string s)::(!suites);
+    suites := (!suites)@[ciphersuite_of_string s];
     ActionDone
   with _ -> ShowUsage (Some "Invalid ciphersuite")
 let all_suites () =
   let rec aux accu = function
-    | 0x10000 -> accu
+    | 0x10000 -> List.rev accu
     | n -> begin
       match ciphersuite_of_int n with
 	| TLS_UnknownSuite _ -> aux accu (n+1)
@@ -37,7 +37,6 @@ let all_suites () =
     end
   in
   suites := aux [] 0
-let rev_suites () = suites := List.rev (!suites)
 
 let clear_compressions () = compressions := []
 let add_compression s =
@@ -92,12 +91,6 @@ let options = [
 
   mkopt None "deep-parse" (TrivialFun deep_parse) "activate deep parsing for certificates/DNs";
 ]
-
-let getopt_params = {
-  default_progname = "probe_server";
-  options = options;
-  postprocess_funs = [rev_suites];
-}
 
 
 
@@ -243,7 +236,7 @@ let print_result print_fun = function
 
 
 let _ =
-  let args = parse_args getopt_params Sys.argv in
+  let args = parse_args ~progname:"probe_server" options Sys.argv in
   match args with
     | ["scan-suites"] -> print_result print_list (Lwt_unix.run (ssl_scan get_cs string_of_ciphersuite (remove_from_list suites)))
     | ["scan-compressions"] -> print_result print_list (Lwt_unix.run (ssl_scan get_cm string_of_compression_method (remove_from_list compressions)))

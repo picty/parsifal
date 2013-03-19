@@ -31,12 +31,6 @@ let options = [
   mkopt None "resolve-oids" (Set resolve_oids) "show OID names";
 ]
 
-let getopt_params = {
-  default_progname = "asn1parse";
-  options = options;
-  postprocess_funs = [];
-}
-
  
 (* TODO: Should some of this code be factored in asn1Engine? *)
 
@@ -163,7 +157,7 @@ let rec iter_on_names parse_fun = function
 
 
 let _ =
-  let args = parse_args getopt_params Sys.argv in
+  let args = parse_args ~progname:"asn1parse" options Sys.argv in
   let parse_fun =
     if !base64
     then lwt_parse_base64_container !base64_header (parse 0 0)

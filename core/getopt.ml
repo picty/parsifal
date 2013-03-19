@@ -24,12 +24,6 @@ type option_desc = {
   description : string;
 }
 
-type getopt_params = {
-  default_progname : string;
-  options : option_desc list;
-  postprocess_funs : (unit -> unit) list
-}
-
 let mkopt s l a d = {
   short_opt = s;
   long_opt = l;
@@ -123,19 +117,19 @@ let reverse_list = function
   | _ -> ()
 
 
-let parse_args gop args =
+let parse_args ?progname:(progname="program") options args =
   let arg_len = Array.length args in
   let progname, arg_list =
     if arg_len > 0
     then args.(0), Array.to_list (Array.sub args 1 (arg_len - 1))
-    else gop.default_progname, []
+    else progname, []
   in
 
   let rec handle_option_with_param opt p arguments r = 
     match act_on_option opt (Some p) with
     | ActionDone -> handle_next_option arguments r
-    | ShowUsage s -> usage progname gop.options s
-    | ParameterExpected -> usage progname gop.options (Some "Internal unexpected error")
+    | ShowUsage s -> usage progname options s
+    | ParameterExpected -> usage progname options (Some "Internal unexpected error")
 
   and handle_next_option arguments = function
     | [] -> List.rev arguments
@@ -145,23 +139,23 @@ let parse_args gop args =
       if str_len = 0
       then handle_next_option (a::arguments) r
       else if a.[0] = '-' then begin
-	if str_len = 1 then usage progname gop.options (Some "Invalid option: \"-\"");
+	if str_len = 1 then usage progname options (Some "Invalid option: \"-\"");
 	if a.[1] = '-' then begin
-	  match find_by_longopt (String.sub a 2 (str_len - 2)) gop.options with
+	  match find_by_longopt (String.sub a 2 (str_len - 2)) options with
 	  | None -> begin
 	    try
 	      let equal_pos = String.index_from a 2 '=' in
-	      match find_by_longopt (String.sub a 2 (equal_pos - 2)) gop.options with
-	      | None -> usage progname gop.options (Some ("Unknown option \"" ^ a ^ "\""))
+	      match find_by_longopt (String.sub a 2 (equal_pos - 2)) options with
+	      | None -> usage progname options (Some ("Unknown option \"" ^ a ^ "\""))
 	      | Some opt -> handle_option_with_param opt (String.sub a (equal_pos + 1) (str_len - equal_pos - 1)) arguments r
-	    with Not_found -> usage progname gop.options (Some ("Unknown option \"" ^ a ^ "\""))
+	    with Not_found -> usage progname options (Some ("Unknown option \"" ^ a ^ "\""))
 	  end
 	  | Some opt ->
 	    match (act_on_option opt None), r with
 	    | ActionDone, _ -> handle_next_option arguments r
-	    | ShowUsage s, _ -> usage progname gop.options s
+	    | ShowUsage s, _ -> usage progname options s
 	    | ParameterExpected, [] -> 
-	      usage progname gop.options (Some ("Option \"" ^ opt.long_opt ^ "\" expects a parameter"))
+	      usage progname options (Some ("Option \"" ^ opt.long_opt ^ "\" expects a parameter"))
 	    | ParameterExpected, p::new_r -> handle_option_with_param opt p arguments new_r
 	end else handle_short_options a 1 str_len arguments r
       end else handle_next_option (a::arguments) r
@@ -171,16 +165,16 @@ let parse_args gop args =
     then handle_next_option arguments r
     else begin
       let c = current.[i] in
-      match find_by_shortopt c gop.options with
-      | None -> usage progname gop.options (Some ("Unknown option \"-" ^ (String.make 1 c) ^ "\""))
+      match find_by_shortopt c options with
+      | None -> usage progname options (Some ("Unknown option \"-" ^ (String.make 1 c) ^ "\""))
       | Some opt ->
 	match act_on_option opt None with
 	| ActionDone -> handle_short_options current (i+1) n arguments r
-	| ShowUsage s -> usage progname gop.options s
+	| ShowUsage s -> usage progname options s
 	| ParameterExpected ->
 	  let p, new_r = match n-(i+1), r with
 	    | 0, [] -> 
-	      usage progname gop.options (Some ("Option \"-" ^ (String.make 1 c) ^ "\" expects a parameter"))
+	      usage progname options (Some ("Option \"-" ^ (String.make 1 c) ^ "\" expects a parameter"))
 	    | 0, p::new_r -> p, new_r
 	    | _ -> String.sub current (i+1) (n-(i+1)), r
 	  in handle_option_with_param opt p arguments new_r
@@ -188,7 +182,6 @@ let parse_args gop args =
 
   in
   let res = handle_next_option [] arg_list in
-  List.iter reverse_list gop.options;
-  List.iter (fun f -> f ()) gop.postprocess_funs;
+  List.iter reverse_list options;
   res
 				 

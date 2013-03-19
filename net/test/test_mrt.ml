@@ -92,16 +92,9 @@ let options = [
   mkopt (Some 'g') "get" (StringFun do_get_action) "obsdump mode";
 ]
 
-let getopt_params = {
-  default_progname = "test_mrt";
-  options = options;
-  postprocess_funs = [];
-}
-
 
 
 (* ObsDump *)
-
 
 let peers = ref []
 
@@ -335,7 +328,7 @@ let handle_input input =
       
 
 let _ =
-  let args = parse_args getopt_params Sys.argv in
+  let args = parse_args ~progname:"test_mrt" options Sys.argv in
   let t = match args with
     | [] -> input_of_channel ~verbose:(!verbose) ~enrich:(!enrich_style) "(stdin)" Lwt_io.stdin >>= handle_input
     | [filename] -> input_of_filename filename >>= handle_input

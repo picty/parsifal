@@ -60,12 +60,6 @@ let options = [
   mkopt None "dont-parse-algo-params" (Clear X509Basics.enrich_algorithmParams) "do not try and enrich algorithm params";
 ]
 
-let getopt_params = {
-  default_progname = "x509show";
-  options = options;
-  postprocess_funs = [];
-}
-
 
 let pretty_print_certificate cert =
   let tbs = cert.tbsCertificate in
@@ -151,7 +145,7 @@ let rec iter_on_names = function
 
 
 let _ =
-  let args = parse_args getopt_params Sys.argv in
+  let args = parse_args ~progname:"x509show" options Sys.argv in
   let t = match args with
     | [] ->
       if !print_names = Default then print_names := DoNotPrintName;

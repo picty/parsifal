@@ -8,12 +8,6 @@ let options = [
   mkopt (Some 'h') "help" Usage "show this help";
 ]
 
-let getopt_params = {
-  default_progname = "test_pcap";
-  options = options;
-  postprocess_funs = [];
-}
-
 
 let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
@@ -29,7 +23,7 @@ let rec handle_one_file input =
 
 let _ =
   try
-    let args = parse_args getopt_params Sys.argv in
+    let args = parse_args ~progname:"test_pcap" options Sys.argv in
     let open_files = function
       | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= fun x -> return [x]
       | _ -> Lwt_list.map_s input_of_filename args

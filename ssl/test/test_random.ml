@@ -23,12 +23,6 @@ let options = [
   mkopt (Some 'S') "string" (IntFun print_random_string) "print a random string of n characters";
 ]
 
-let getopt_params = {
-  default_progname = "test_random";
-  options = options;
-  postprocess_funs = [];
-}
-
 
 let _ =
-  ignore (parse_args getopt_params Sys.argv);
+  ignore (parse_args ~progname:"test_random" options Sys.argv);

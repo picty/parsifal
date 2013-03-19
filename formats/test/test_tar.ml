@@ -21,12 +21,6 @@ let options = [
   mkopt (Some 'f') "file" (StringVal archive) "name of the archive to consider"
 ]
 
-let getopt_params = {
-  default_progname = "test_tar";
-  options = options;
-  postprocess_funs = [];
-}
-
 
 let string_of_file_type = function
   | SymbolicLink -> 'l'
@@ -81,7 +75,7 @@ let check_archive filename =
 
 let _ =
   try
-    let args = parse_args getopt_params Sys.argv in
+    let args = parse_args ~progname:"test_tar" options Sys.argv in
     let t =
       if !archive == ""
       then fail (Failure "Please specify an archive name (--file)")

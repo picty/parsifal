@@ -17,12 +17,6 @@ let options = [
   mkopt (Some 'p') "port" (IntVal port) "port to probe";
 ]
 
-let getopt_params = {
-  default_progname = "sslproxy";
-  options = options;
-  postprocess_funs = [];
-}
-
 
 
 (* TODO: Handle exceptions in lwt code, and add timers *)
@@ -96,6 +90,6 @@ let rec accept sock =
   accept sock
 
 let _ =
-  let _ = parse_args getopt_params Sys.argv in
+  let _ = parse_args ~progname:"sslproxy" options Sys.argv in
   let socket = LwtUtil.server_socket 8080 in
   Lwt_unix.run (accept socket)

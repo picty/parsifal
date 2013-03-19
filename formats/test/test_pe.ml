@@ -7,11 +7,6 @@ let options = [
   mkopt (Some 'h') "help" Usage "show this help";
 ]
 
-let getopt_params = {
-  default_progname = "test_pe";
-  options = options;
-  postprocess_funs = [];
-}
 
 let parse_file filename =
   input_of_filename filename >>= lwt_parse_pe_file >>= fun pe_file ->
@@ -20,7 +15,7 @@ let parse_file filename =
 
 let main =
   try
-    let args = parse_args getopt_params Sys.argv in
+    let args = parse_args ~progname:"test_pe" options Sys.argv in
     let t = match args with
       | [filename] -> parse_file filename
       | _ -> usage "test_pe" options (Some "Please provide exactly one filename.")
