@@ -1,8 +1,6 @@
 open Lwt
 open Parsifal
-open BasePTypes
 open PTypes
-open Asn1PTypes
 open AnswerDump
 open TlsEnums
 open Tls
@@ -149,7 +147,7 @@ let dump_extract s =
   Printf.sprintf "%s (%s)" hex_s printable_s
 
 
-let rec handle_answer answer =
+let handle_answer answer =
   let ip = string_of_ipv4 answer.ip in
   let this_one, again =
     if !filter_ip = ""

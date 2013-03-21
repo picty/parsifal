@@ -1,12 +1,10 @@
 # configurable section
-TARGETS = test_pkcs1 test_random test_rsa_private_key test_ssl2 test_tls_record test_ocsp
+TARGETS = test_random test_rsa_private_key test_ssl2 test_tls_record
 
-test_pkcs1_SRCS := test_pkcs1.ml
 test_random_SRCS := test_random.ml
 test_rsa_private_key_SRCS := test_rsa_private_key.ml
 test_ssl2_SRCS := test_ssl2.ml
 test_tls_record_SRCS := test_tls_record.ml
-test_ocsp_SRCS := test_ocsp.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes

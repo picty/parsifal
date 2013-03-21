@@ -1,5 +1,4 @@
 open Unix
-open Sys
 open Parsifal
 open RSAKey
 

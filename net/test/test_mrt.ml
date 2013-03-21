@@ -119,7 +119,7 @@ let rec list_until l n = match l, n with
     The methodology is described in RFC 4893, page 5. *)
 let merge_as_path attr_lst =
   let internal ap a4p =
-    let rec _get_asn = function
+    let _get_asn = function
       | { path_segment_type = (AS_SET|AS_SEQUENCE);
 	  path_segment_value = e } -> List.map int_of_asn e
       | _ -> failwith "Invalid ASPath attribute"

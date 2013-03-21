@@ -137,7 +137,7 @@ let extract_der_length input =
   then first
   else begin
     let accu = ref 0 in
-    for i = 1 to (first land 0x7f) do
+    for _i = 1 to (first land 0x7f) do
       accu := (!accu lsl 8) lor (parse_byte input);
     done;
     !accu

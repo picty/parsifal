@@ -1,8 +1,6 @@
 open Lwt
 open Lwt_unix
-open Sys
 open Parsifal
-open TlsEnums
 open Tls
 
 let do_stg () =

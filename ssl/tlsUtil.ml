@@ -1,5 +1,4 @@
 open Parsifal
-open Asn1Engine
 open Tls
 
 let merge_records ?context:(ctx=None) ?verbose:(verbose=true) ?enrich:(enrich=AlwaysEnrich) recs =

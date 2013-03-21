@@ -1,6 +1,5 @@
 open Lwt
 open Parsifal
-open PTypes
 open Pcap
 open Getopt
 
@@ -13,7 +12,7 @@ let input_of_filename filename =
   Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
   input_of_fd filename fd
 
-let rec handle_one_file input =
+let handle_one_file input =
   lwt_try_parse lwt_parse_pcap_file input >>= function
     | None -> return ()
     | Some pcap ->

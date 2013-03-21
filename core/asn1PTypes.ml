@@ -288,7 +288,7 @@ let parse_der_enumerated_bitstring_content description input =
   List.map (fun v -> description.(v)) res
 
 let dump_der_enumerated_bitstring_content description l =
-  let rec next_val v = ((v lsr 1) lor (v lsl 7)) land 0xff in
+  let next_val v = ((v lsr 1) lor (v lsl 7)) land 0xff in
   let n = Array.length description in
   let rec enumerate_bits bitval accu i = function
     | [] -> List.rev accu
