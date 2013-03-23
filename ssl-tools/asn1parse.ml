@@ -78,12 +78,13 @@ let rec lwt_parse input =
   then return ()
   else begin
     let offset = input.lwt_offset in
-    lwt_extract_der_header input >>= fun (c, isC, t) ->
+    try_bind (fun () -> lwt_extract_der_header input)
+      (fun h -> return h) (fun _ -> fail End_of_file) >>= fun (c, isC, t) ->
     lwt_extract_der_length input >>= fun len ->
     let hlen = input.lwt_offset - offset in
     print_line offset 0 hlen len isC c t;
     lwt_get_in input (print_header (c, isC, t)) len >>= fun new_input ->
-    parse_content (offset + hlen) 0 (c, isC, t) new_input;  
+    parse_content (offset + hlen) 0 (c, isC, t) new_input;
     lwt_get_out input new_input >>= fun () ->
     lwt_parse input
   end
@@ -167,10 +168,9 @@ let _ =
     | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= parse_fun
     | _  -> iter_on_names parse_fun args
   in
-  try
-    Lwt_unix.run t;
-    exit 0
+  try Lwt_unix.run t;
   with
+    | End_of_file -> ()
     | ParsingException (e, h) ->
       flush stdout; prerr_endline (string_of_exception e h); exit 1
     | e ->
