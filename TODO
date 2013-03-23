@@ -1,7 +1,7 @@
 v0.2 (apr. 2013)
  - Add .mli for all files!
  - Implement * for records (clearly not very efficient)
- - Implement $ (the first one matching) for records and lists
+ - Implement ? (the first one matching) for records and lists
  - Implement **?
  - Add a proper way to be flexible while parsing ATV/Extensions/Times (flexible option + laxist option in input)... because that is where the parsing fails (and it should by default!)
  - Add @dump in VRecord when an option is present in struct?
