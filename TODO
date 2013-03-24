@@ -1,4 +1,5 @@
 v0.2 (apr. 2013)
+ - rewrite test_pcap in ssl-tools to extract SSL sessions.
  - Add .mli for all files!
  - Implement * for records (clearly not very efficient)
  - Implement ? (the first one matching) for records and lists

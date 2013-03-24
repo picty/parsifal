@@ -1,11 +1,57 @@
 open Lwt
 open Parsifal
+open PTypes
 open Pcap
 open Getopt
 
+let show_tcp_only = ref false
+
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
+  mkopt (Some 'T') "tcp" (Set show_tcp_only) "TCP";
 ]
+
+
+let show_one_packet packet = match packet.data with
+  | EthernetContent {
+    ether_payload = IPLayer {
+      ip_payload = TCPLayer {
+	tcp_payload = ""
+      }
+    }
+  }    
+  | IPContent {
+    ip_payload = TCPLayer {
+      tcp_payload = ""
+    }
+  } -> ()
+  | EthernetContent {
+    ether_payload = IPLayer {
+      source_ip = src_ip;
+      dest_ip = dst_ip;
+      ip_payload = TCPLayer {
+	source_port = src_port;
+	dest_port = dst_port;
+	tcp_payload = payload
+      }
+    }
+  }    
+  | IPContent {
+    source_ip = src_ip;
+    dest_ip = dst_ip;
+    ip_payload = TCPLayer {
+      source_port = src_port;
+      dest_port = dst_port;
+      tcp_payload = payload
+    }
+  } ->
+    Printf.printf "%s:%d -> %s:%d { %s }\n"
+      (string_of_ipv4 src_ip) src_port
+      (string_of_ipv4 dst_ip) dst_port (hexdump payload)
+  | _ -> ()
+
+let show_packets pcap =
+  List.iter show_one_packet pcap.packets
 
 
 let input_of_filename filename =
@@ -13,11 +59,11 @@ let input_of_filename filename =
   input_of_fd filename fd
 
 let handle_one_file input =
-  lwt_try_parse lwt_parse_pcap_file input >>= function
-    | None -> return ()
-    | Some pcap ->
-      print_string (print_value (value_of_pcap_file pcap));
-      return ()
+  lwt_parse_pcap_file input >>= fun pcap ->
+  if !show_tcp_only
+  then show_packets pcap
+  else print_string (print_value (value_of_pcap_file pcap));
+  return ()
 
 
 let _ =
@@ -29,6 +75,5 @@ let _ =
     in
     Lwt_unix.run (open_files args >>= Lwt_list.iter_s handle_one_file);
   with
-    | End_of_file -> ()
-    | e -> print_endline (Printexc.to_string e)
-
+    | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
+    | e -> print_endline (Printexc.to_string e); exit 1
