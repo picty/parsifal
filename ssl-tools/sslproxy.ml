@@ -78,12 +78,16 @@ let catcher = function
 
 
 let rec accept sock =
-  Lwt_unix.accept sock >>= fun (inp, _) ->
+  Lwt_unix.accept sock >>= fun (inp, remote_s) ->
+  let p = match remote_s with
+    | ADDR_INET (_, p) -> p
+    | _ -> 0
+  in
   LwtUtil.client_socket !host !port >>= fun out ->
   input_of_fd "Client socket" inp >>= fun i ->
   input_of_fd "Server socket" out >>= fun o ->
-  let io = forward (empty_state "C->S") i out in
-  let oi = forward (empty_state "S->C") o inp in
+  let io = forward (empty_state (Printf.sprintf "%4.4x C->S" p)) i out in
+  let oi = forward (empty_state (Printf.sprintf "%4.4x S->C" p)) o inp in
   catch (fun () -> pick [io; oi]) catcher >>= fun () ->
   ignore (Lwt_unix.close out);
   ignore (Lwt_unix.close inp);
