@@ -39,7 +39,7 @@ struct ip_layer = {
   ip_checksum : uint16;
   source_ip : ipv4;
   dest_ip : ipv4;
-  ip_payload : ip_payload(protocol)
+  ip_payload : container(total_length - 20) of ip_payload(protocol)
 }
 
 
@@ -58,7 +58,8 @@ struct ethernet_layer = {
   source_mac : binstring(6);
   destination_mac : binstring(6);
   ether_type : ether_type;
-  ether_payload : ether_payload (ether_type)
+  ether_payload : ether_payload (ether_type);
+  trailing_bits : binstring
 }
 
 
