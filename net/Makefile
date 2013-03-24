@@ -1,6 +1,7 @@
 # configurable section
 TARGETS =
 MLLIBS = parsifal_net
+LIBNAME = parsifal_net
 
 parsifal_net_SRCS := dns.ml pcap.ml mrt.ml
 

@@ -1,6 +1,7 @@
 # configurable section
 TARGETS =
 MLLIBS = parsifal_formats
+LIBNAME = parsifal_formats
 
 parsifal_formats_SRCS := pe.ml tar.ml
 		# png.ml dex.ml

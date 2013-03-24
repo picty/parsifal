@@ -19,6 +19,10 @@ OCAMLC_CC = $(GEN_BYTE_INCLUDES) $(EXTRA_OCAMLC_CC_FLAGS)
 OCAMLC_LD = $(GEN_BYTE_INCLUDES) $(GEN_BYTE_LIBS) $(EXTRA_OCAMLC_LD_FLAGS)
 OCAML_COMPILER_OPTIONS = -w +a-4-6-9-31-32 -warn-error +a-4-6-9-31-32-33
 
+# install options
+LIBDIR ?= /usr/local/lib/ocaml
+BINDIR ?= /usr/local/bin
+
 # TARGET handling (native, byte and toplevel)
 
 define TARGET_template
@@ -43,6 +47,7 @@ $(foreach prog,$(TARGETS),$(eval $(call TARGET_template,$(prog))))
 
 define MLLIB_template
  $(1)_OBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmx)
+ $(1)_CMIS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmi)
  $(BUILD_DIR)/$(1).cmxa: $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -a -o $$@ $$^
 
  $(1)_BOBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmo)
@@ -51,6 +56,7 @@ define MLLIB_template
  META_TO_BUILD = $(BUILD_DIR)/META
  ALL_INCS   += $$($(1)_INCS)
  ALL_SRCS   += $$($(1)_SRCS)
+ ALL_CMIS   += $$($(1)_CMIS)
  ALL_OBJS   += $$($(1)_OBJS)
 endef
 
@@ -62,6 +68,17 @@ $(foreach lib,$(MLLIBS),$(eval $(call MLLIB_template,$(lib))))
 all: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(META_TO_BUILD)
 
 byte: builddir depends $(TARGETS:%=%.byte) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(META_TO_BUILD)
+
+# TODO: Improve this rule
+install: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(MLLIBS:%=$(BUILD_DIR)/%.a) $(TARGETS:%=%.byte) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(ALL_CMIS) $(META_TO_BUILD)
+	 @for f in $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(MLLIBS:%=$(BUILD_DIR)/%.a) $(ALL_CMIS) $(META_TO_BUILD); do \
+	   echo "Installing $$(basename $$f) -> $(LIBDIR)/$(LIBNAME)/$$(basename $$f)"; \
+	   install -D -m 0644 "$$f" "$(LIBDIR)/$(LIBNAME)/$$(basename $$f)"; \
+	 done
+	 @for f in $(TARGETS) $(TARGETS:%=%.byte); do \
+	   echo "Installing $$(basename $$f) -> $(BINDIR)/$$(basename $$f)"; \
+	   install -D -m 0755 "$$f" "$(BINDIR)/$$(basename $$f)"; \
+	 done
 
 top:
 	$(MAKE) $(TARGETS:%=%.top)

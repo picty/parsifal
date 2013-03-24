@@ -10,6 +10,18 @@ all:
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl/test all byte check
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl-tools all byte
 
+install::
+	$(MAKE) -C syntax install
+	$(MAKE) -C core install
+	$(MAKE) -C core/test install
+	$(MAKE) -C net install
+	$(MAKE) -C net/test install
+	$(MAKE) -C formats install
+	$(MAKE) -C formats/test install
+	$(MAKE) -C ssl install
+	$(MAKE) -C ssl/test install
+	$(MAKE) -C ssl-tools install
+
 clean:
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl-tools clean
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl/test clean
