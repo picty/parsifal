@@ -14,16 +14,13 @@ v0.2 (apr. 2013)
      + update the state
      + return what to do next?
    * add another generic function with hooks for after each message / alert / appdata / ccs / heartbeat
-   * Move test_answerDump.split_record in TlsUtil?
+   * Move mapAnswers.split_record in TlsUtil?
    * Clean up code in Tls and TlsEngine
    * [?] add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
    * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
    * put 'a result_type and handle_answer logic from probe_server into TlsEngine
 
  - Add .mli for all files!
- - Implement * for records (clearly not very efficient)
- - Implement ? (the first one matching) for records and lists
- - Implement **?
  - Add a proper way to be flexible while parsing ATV/Extensions/Times (flexible option + laxist option in input)... because that is where the parsing fails (and it should by default!)
  - Add @dump in VRecord when an option is present in struct?
  - Design the language to explore values (functions like hex / dump / substring / asn1parse / M.parse one day and conditionnal expressions...)

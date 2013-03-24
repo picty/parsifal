@@ -542,6 +542,18 @@ let rec realise_value = function
   | VLazy v -> realise_value (Lazy.force v)
   | v -> v
 
+let real_value = function
+  | VError _ -> false
+  | _ -> true
+
+let list_of_fields l =
+  let add_field accu (n, v) =
+    if String.length n > 1 && n.[0] <> '@'
+    then v::accu
+    else accu
+  in
+  List.rev (List.fold_left add_field [] l)
+
 
 let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="value") = function
   | VUnit ->  Printf.sprintf "%s%s\n" indent name
@@ -614,9 +626,22 @@ let rec get_value path v = match (realise_value v, path) with
 
   | VString (s, _), ("@len" | "@size")::r -> get_value r (VSimpleInt (String.length s))
 
+
   | VList l, ("@len" | "@size" | "@count")::r -> get_value r (VSimpleInt (List.length l))
+
   | VList [], "+"::_ -> VError "Empty list"
-  | VList l, ("+" | "*")::r -> VList (List.map (get_value r) l)
+  | VList l, "*"::r -> VList (List.map (get_value r) l)
+  | VList l, "+"::r -> begin
+    match List.filter real_value (List.map (get_value r) l) with
+    | [] -> VError "Empty list"
+    | res -> VList res
+  end
+  | VList l, "?"::r -> begin
+    match List.filter real_value (List.map (get_value r) l) with
+    | [] -> VError "Empty list"
+    | res::_ -> res
+  end
+
   | VList l, p::ps ->
     let len = String.length p in
     if len > 2 && p.[0] = '[' && p.[len - 1] = ']'
@@ -627,19 +652,16 @@ let rec get_value path v = match (realise_value v, path) with
       with Failure _ -> VError ("Wrong index or index out of bounds (" ^ p ^ ")")
     end else VError ("List index expected (" ^ p ^ ")")
 
+
   | VRecord l, "@index"::r ->
     get_value r (VList (List.map (fun (n, _) -> VString (n, false)) l))
-
   | VRecord l, "@fields"::r ->
-    let add_field accu (n, v) =
-      if String.length n > 1 && n.[0] <> '@'
-      then v::accu
-      else accu
-    in
-    get_value r (VList (List.rev (List.fold_left add_field [] l)))
-
+    get_value r (VList (list_of_fields l))
   | VRecord l, "@all_fields"::r ->
     get_value r (VList (List.map snd l))
+
+  | VRecord l, ("?" | "+" | "*")::_ ->
+    get_value path (VList (list_of_fields l))
 
   | VRecord l, field_name::r -> begin
     try get_value r (List.assoc field_name l)
