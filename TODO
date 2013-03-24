@@ -1,4 +1,25 @@
 v0.2 (apr. 2013)
+ - Misc
+   * Factor som code (verbose option, file handling, action handling) in getopt
+   * getopt tuning (help usage messages [principal and details], multiline descriptions)
+   * getopt tuning (add constraint on the number of args?)
+   * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
+ - TlsEngine (work needed to factor code in mapAnswers and extractSessions properly)
+   * work on TlsEngine.update* functions
+   * write the automata (client, server, transparent proxy, normalizing proxy)
+   * add a automaton_state field in context
+   * add a check_consistency field in context
+   * add a generic update function relying on the context and the message received to
+     + check the consistency if necessary
+     + update the state
+     + return what to do next?
+   * add another generic function with hooks for after each message / alert / appdata / ccs / heartbeat
+   * Move test_answerDump.split_record in TlsUtil?
+   * Clean up code in Tls and TlsEngine
+   * [?] add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
+   * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
+   * put 'a result_type and handle_answer logic from probe_server into TlsEngine
+
  - Add .mli for all files!
  - Implement * for records (clearly not very efficient)
  - Implement ? (the first one matching) for records and lists
@@ -26,6 +47,8 @@ v0.2 (apr. 2013)
      + https://github.com/jaked/deriving
      + http://www.lexifi.com/blog/syntax-extensions-without-camlp4
      + http://code.google.com/p/bitstring/
+     + Lex/Bison and Haskell's Parsec
+     + Haskell's Binary?
    * Write a tutorial
      + Installation
      + First use (x509 / dns)
@@ -34,21 +57,6 @@ v0.2 (apr. 2013)
  - General
    * have a redmine to put all this stuff
    * clean up TODOs in ml files.
- - TlsEngine
-   * work on TlsEngine.update* functions
-   * write the automata (client, server, transparent proxy, normalizing proxy)
-   * add a automaton_state field in context
-   * add a check_consistency field in context
-   * add a generic update function relying on the context and the message received to
-     + check the consistency if necessary
-     + update the state
-     + return what to do next?
-   * add another generic function with hooks for after each message / alert / appdata / ccs / heartbeat
-   * Move test_answerDump.split_record in TlsUtil?
-   * Clean up code in Tls and TlsEngine
-   * [?] add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
-   * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
-   * put 'a result_type and handle_answer logic from probe_server into TlsEngine
  - X509
    * Code construct_chains/check_chains in caml
      + add decoration directly to the certificate object (origin[s], trust)?
@@ -143,10 +151,6 @@ v0.2 (apr. 2013)
    * certificates with extensions containing images
    * certificates signing each other (A <-> B)
  - PKCS#11 client (prospective)
- - Misc
-   * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
-   * getopt tuning (help usage messages [principal and details], multiline descriptions)
-   * getopt tuning (add constraint on the number of args?)
 
 
 v0.3 (jun. 2013)
@@ -161,7 +165,7 @@ v0.3 (jun. 2013)
    * s_server
  - PKCS#11 ressource (prospective)
  - Parsifal
-   * Add options to skip dump/print/parse generation with structures
+   * Add options to skip parse/dump/value_of generation with structures
 
 
 v1.0 (oct 2013)
