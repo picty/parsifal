@@ -19,19 +19,6 @@ OCAMLC_CC = $(GEN_BYTE_INCLUDES) $(EXTRA_OCAMLC_CC_FLAGS)
 OCAMLC_LD = $(GEN_BYTE_INCLUDES) $(GEN_BYTE_LIBS) $(EXTRA_OCAMLC_LD_FLAGS)
 OCAML_COMPILER_OPTIONS = -w +a-4-6-9-31-32 -warn-error +a-4-6-9-31-32-33
 
-# generic rules
-all: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(META_TO_BUILD)
-
-top:
-	$(MAKE) $(TARGETS:%=%.top)
-
-byte:
-	$(MAKE) $(TARGETS:%=%.byte) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(META_TO_BUILD)
-
-test:
-	echo $(OCAMLFIND) query -format "%o" -predicates byte -recursive $(OCAML_LIBS)
-
-
 # TARGET handling (native, byte and toplevel)
 
 define TARGET_template
@@ -71,10 +58,24 @@ $(foreach lib,$(MLLIBS),$(eval $(call MLLIB_template,$(lib))))
 
 
 
+# generic rules
+all: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(META_TO_BUILD)
+
+byte: builddir depends $(TARGETS:%=%.byte) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(META_TO_BUILD)
+
+top:
+	$(MAKE) $(TARGETS:%=%.top)
+
+test:
+	echo $(OCAMLFIND) query -format "%o" -predicates byte -recursive $(OCAML_LIBS)
+
+
+
+
 # Simple compilation rules and dependencies
 
 $(BUILD_DIR)/META: META
-	cp $< $@
+	cp "$<" "$@"
 
 $(BUILD_DIR)/%.cmi: %.mli
 	$(OCAMLC) -c $<
