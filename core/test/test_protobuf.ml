@@ -47,10 +47,6 @@ let test_one_buf b =
 
 
 
-let input_of_filename filename =
-  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  input_of_fd ~enrich:(!enrich_style) ~verbose:(!verbose) filename fd
-
 let handle_one_file input =
   lwt_parse_rec_protobuf input >>= function protobuf ->
     print_endline (print_rec_protobuf protobuf);

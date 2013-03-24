@@ -261,11 +261,6 @@ let obsdump mrt = match mrt.mrt_type, mrt.mrt_subtype, mrt.mrt_message with
   | _ -> ()
 
 
-let input_of_filename filename =
-  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  input_of_fd ~verbose:(!verbose) ~enrich:(!enrich_style) filename fd
-
-
 let rec find_value needle = function
   | VError _ -> false
   | VString (s, false) -> s = needle

@@ -54,10 +54,6 @@ let show_packets pcap =
   List.iter show_one_packet pcap.packets
 
 
-let input_of_filename filename =
-  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  input_of_fd filename fd
-
 let handle_one_file input =
   lwt_parse_pcap_file input >>= fun pcap ->
   if !show_tcp_only

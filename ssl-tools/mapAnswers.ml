@@ -74,10 +74,6 @@ let handle_exn f x =
     None
 
 
-let input_of_filename filename =
-  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  input_of_fd ~verbose:(!verbose) filename fd
-
 let parse_all_records enrich answer =
   let rec read_records accu i =
     if not (eos i)
