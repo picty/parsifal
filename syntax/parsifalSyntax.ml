@@ -1,4 +1,3 @@
-open Camlp4
 open Camlp4.PreCast
 open Camlp4.PreCast.Ast
 open Syntax
