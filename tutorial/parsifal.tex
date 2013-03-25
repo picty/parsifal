@@ -167,6 +167,17 @@
   \tableofcontents[currentsection]
 \end{frame}
 
+\begin{frame}{Démos}
+  \vspace{12mm}
+
+  \begin{itemize}
+  \item \texttt{asn1parse}
+  \item \texttt{x509show}
+  \item \texttt{mapAnswers}\\[.5cm]
+  \item Capture HTTPS + get sur PCAP + déchiffrement?\\[.5cm]
+  \item Truc graphique à base de JSON?
+  \end{itemize}
+\end{frame}
 
 
 
@@ -178,6 +189,74 @@
   \tableofcontents[currentsection]
 \end{frame}
 
+\begin{frame}{Installation d'OCaml}
+  \vspace{18mm}
+
+  \begin{block}
+    \begin{tabular}{>{\tt}l}
+      apt-get install ocaml ocaml-findlib \\
+      apt-get install liblwt-ocaml-dev \\
+      apt-get install libcryptokit-ocaml-dev \\
+    \end{tabular}
+  \end{block}
+\end{frame}
+
+\begin{frame}{Installation de Parsifal}
+  \vspace{18mm}
+
+  \begin{block}
+    \begin{tabular}{>{\tt}l}
+      \verb+wget http://paperstreet.picty.org/parsifal/parsifal-0.2-rc.tar.gz+ \\
+      tar xvzf parsifal-0.2-rc.tar.gz \\
+      cd parsifal \\
+      make \\
+      LIBDIR=\$HOME/.ocamlpath BINDIR=\$HOME/bin make install \\
+      export OCAMLPATH=\$HOME/.ocamlpath \\
+      PATH=\$HOME/bin:\$PATH \\
+    \end{tabular}
+  \end{block}
+\end{frame}
+
+\begin{frame}{Installation d'OCaml}
+  \vspace{12mm}
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Constructions }
+
+\begin{frame}{Table des matières}
+  \vspace{12mm}
+  \tableofcontents[currentsection]
+\end{frame}
+
+% Exemples simples avec des formats existants (donner toutes les
+% différentes nouvelles structures)
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Pas-à-pas}
+
+\begin{frame}{Table des matières}
+  \vspace{12mm}
+  \tableofcontents[currentsection]
+\end{frame}
+
+% Ecriture pas-à-pas d'un novueau format (TAR ou PCAP)
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Perspectives}
+
+\begin{frame}{Table des matières}
+  \vspace{12mm}
+  \tableofcontents[currentsection]
+\end{frame}
+
+% Feuille de route (TODO) / Desideratas pour la suite
 
 
 
