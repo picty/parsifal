@@ -1,5 +1,5 @@
 all:
-	$(MAKE) -C syntax
+	$(MAKE) -C syntax all byte
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core all byte
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/test all byte check
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net all byte

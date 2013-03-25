@@ -270,7 +270,7 @@ let mk_decls _loc c =
   match c.construction with
   | Enum {unknown_behaviour = Exception e} ->
     [ <:str_item< exception  $typ:<:ctyp< $uid:e$ >>$  >> ]
-  | Union union | ASN1Union union ->
+  | Union _ | ASN1Union _ ->
     let enrich_bool = c <.> EnrichByDefault in
     let bool_name = <:patt< $lid:"enrich_" ^ c.name$ >>
     and bool_val = <:expr< ref $exp_bool _loc enrich_bool$ >> in
@@ -426,7 +426,7 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
     | PT_Container (VarLen int_t, subtype) ->
       <:expr< $mkf "varlen_container"$ $str:name$ $mkf int_t$
               $parse_fun_of_ptype false _loc name subtype$ >>
-    | PT_Container (Remaining, subtype) ->
+    | PT_Container (Remaining, _) ->
       Loc.raise _loc (Failure "Container without length spec are not allowed")      
 
     | PT_CustomContainer (m, n, e, _, subtype) ->
@@ -602,7 +602,7 @@ let mk_dump_fun _loc c =
     let mk_case = function
       | _loc, cons, (_, PT_Empty) ->
 	<:match_case< $ <:patt< $uid:cons$ >> $ -> "" >>
-      | _loc, cons, (n, t) ->
+      | _loc, cons, (_, t) ->
 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
         $ <:expr< $dump_fun_of_ptype _loc t$ x >> $ >>
     and last_case =
@@ -690,7 +690,7 @@ let mk_value_of_fun _loc c =
     let mk_case = function
       | _loc, cons, (_, PT_Empty) ->
 	<:match_case< $ <:patt< $uid:cons$ >> $ -> Parsifal.VUnit >>
-      | (_loc, cons, (n, t)) ->
+      | (_loc, cons, (_, t)) ->
 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
 	$ <:expr< $value_of_fun_of_ptype _loc t$ x >> $ >>
     in

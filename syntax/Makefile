@@ -1,24 +1,26 @@
-LIBDIR ?= /usr/local/lib/ocaml
+# configurable section
+TARGETS =
+MLLIBS = parsifal_syntax
 LIBNAME = parsifal_syntax
 
-all: _build/parsifal_syntax.cma _build/META
+parsifal_syntax_SRCS := parsifalHelpers.ml parsifalSyntax.ml
 
-_build/parsifal_syntax.cma: parsifal_syntax.mllib parsifalHelpers.ml parsifalSyntax.ml _build
-	ocamlbuild -pp "camlp4o pa_extend.cmo q_MLast.cmo" -cflags -I,+camlp4 -lflags -I,+camlp4 parsifal_syntax.cma
+# comment this line if not using camlp4
+USE_CAMLP4 = yes
 
-_build:
-	mkdir -p _build
+CC = gcc
 
-_build/META: META _build
-	cp $< $@
+# use the following lines to guess .cmxa files from libs names.
+# remember, libs are always lowercase
+OCAML_LIBS = unix lwt lwt.unix str parsifal_syntax
 
-install: _build/parsifal_syntax.cma _build/META
-	 @for f in _build/parsifal_syntax.cma _build/META; do \
-	   echo "Installing $$(basename $$f) -> $(LIBDIR)/$(LIBNAME)/$$(basename $$f)"; \
-	   install -D -m 0644 "$$f" "$(LIBDIR)/$(LIBNAME)$(DESTDIR)/$$(basename $$f)"; \
-	 done
+# use the following variables to add extra flags (not guessed by ocamlfind)
+EXTRA_OCAMLOPT_CC_FLAGS = -package camlp4.extend -package camlp4.quotations.r
+EXTRA_OCAMLOPT_LD_FLAGS =
+EXTRA_OCAMLC_CC_FLAGS = -package camlp4.extend -package camlp4.quotations.r
+EXTRA_OCAMLC_LD_FLAGS =
+
+BUILD_DIR = build
 
 
-clean:
-	ocamlbuild -clean
-	rm -f _build
+include ../Makefile.ocaml
