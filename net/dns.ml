@@ -202,7 +202,7 @@ struct rr [param dns_context] = {
 }
 
 
-struct dns_message [param dns_context] = {
+struct raw_dns_message [param dns_context] = {
   id : uint16;
   unparsedStuff : uint16;
   qdcount : uint16;
@@ -215,10 +215,4 @@ struct dns_message [param dns_context] = {
   additional_records : list(arcount) of rr(dns_context)
 }
 
-(* TODO: Automagically compress this struct (only one field!) *)
-struct smart_dns_message = {
-  parse_checkpoint init_offset : save_offset;
-  msg : dns_message(Some (mk_dns_context init_offset))
-}
-
-alias dumb_dns_message = dns_message(None)
+alias dns_message = raw_dns_message(Some (mk_dns_context input.cur_base))
