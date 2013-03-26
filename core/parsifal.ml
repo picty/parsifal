@@ -542,9 +542,17 @@ let rec realise_value = function
   | VLazy v -> realise_value (Lazy.force v)
   | v -> v
 
-let real_value = function
-  | VError _ -> false
-  | _ -> true
+let cleanup_result init l =
+  let _cleanup_result accu next = match accu, next with
+    | Left _, VError _ -> accu
+    | Left _, v -> Right [v]
+    | Right [], VError _ -> Left next
+    | Right vs, VError _ -> Right vs
+    | Right vs, v -> Right (v::vs)
+  in
+  match List.fold_left _cleanup_result init l with
+  | Left verr -> verr
+  | Right vs -> VList (List.rev vs)
 
 let list_of_fields l =
   let add_field accu (n, v) =
@@ -611,6 +619,8 @@ let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="va
 let rec get_value path v = match (realise_value v, path) with
   | v, [] -> v
 
+  (* TODO: add [] pour une chaîne de caractères? *)
+
   | VSimpleInt i, "@hex"::r ->
     get_value r (VString (Printf.sprintf "0x%x" i, false))
   | VInt (i, sz, _), "@hex"::r ->
@@ -629,18 +639,24 @@ let rec get_value path v = match (realise_value v, path) with
 
   | VList l, ("@len" | "@size" | "@count")::r -> get_value r (VSimpleInt (List.length l))
 
-  | VList [], "+"::_ -> VError "Empty list"
-  | VList l, "*"::r -> VList (List.map (get_value r) l)
+  | VList l, "*"::r ->
+    cleanup_result (Right []) (List.map (get_value r) l)
   | VList l, "+"::r -> begin
-    match List.filter real_value (List.map (get_value r) l) with
-    | [] -> VError "Empty list"
-    | res -> VList res
+    cleanup_result (Left (VError "Empty list")) (List.map (get_value r) l)
   end
   | VList l, "?"::r -> begin
-    match List.filter real_value (List.map (get_value r) l) with
-    | [] -> VError "Empty list"
-    | res::_ -> res
+    match cleanup_result (Right []) (List.map (get_value r) l) with
+    | VList (res::_) -> res
+    | _ -> VError "Empty list"
   end
+  | VList l, "**"::r ->
+    let sub_res item = match get_value path item with
+      | VList l -> l
+      | v -> [v]
+    in
+    let direct = List.map (get_value r) l
+    and indirect = List.flatten (List.map sub_res l) in
+    cleanup_result (Right []) (direct@indirect)
 
   | VList l, p::ps ->
     let len = String.length p in
@@ -660,7 +676,7 @@ let rec get_value path v = match (realise_value v, path) with
   | VRecord l, "@all_fields"::r ->
     get_value r (VList (List.map snd l))
 
-  | VRecord l, ("?" | "+" | "*")::_ ->
+  | VRecord l, ("?" | "+" | "*" | "**")::_ ->
     get_value path (VList (list_of_fields l))
 
   | VRecord l, field_name::r -> begin
