@@ -1,5 +1,20 @@
 open BasePTypes
 open PTypes
+open Dns
+
+
+(* TODO: ICMP *)
+union udp_service [enrich] (UnparsedProtocol) =
+  | 53, _
+  | _, 53 -> DNS of dns_message
+
+struct udp_layer = {
+  udp_source_port : uint16;
+  udp_dest_port : uint16;
+  udp_len : uint16;
+  udp_checksum : uint16;
+  udp_payload : container(udp_len - 8) of udp_service(udp_source_port, udp_dest_port)
+}
 
 
 struct tcp_layer = {
@@ -16,12 +31,14 @@ struct tcp_layer = {
 }
 
 
-(* TODO: ICMP/UDP *)
+(* TODO: ICMP *)
 enum protocol (8, UnknownVal UnknownProtocol) =
   | 6 -> ProtocolTCP
+  | 17 -> ProtocolUDP
 
 union ip_payload [enrich] (UnparsedProtocol) =
   | ProtocolTCP -> TCPLayer of tcp_layer
+  | ProtocolUDP -> UDPLayer of udp_layer
 
 let parse_ip_payload protocol input =
   match Parsifal.try_parse (parse_ip_payload protocol) input with

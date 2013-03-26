@@ -4,11 +4,11 @@ open PTypes
 open Pcap
 open Getopt
 
-let show_tcp_only = ref false
+let show_transport_only = ref false
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
-  mkopt (Some 'T') "tcp" (Set show_tcp_only) "TCP";
+  mkopt (Some 'T') "transport layer only" (Set show_transport_only) "TCP/UDP content";
 ]
 
 
@@ -48,6 +48,30 @@ let show_one_packet packet = match packet.data with
     Printf.printf "%s:%d -> %s:%d { %s }\n"
       (string_of_ipv4 src_ip) src_port
       (string_of_ipv4 dst_ip) dst_port (hexdump payload)
+
+  | EthernetContent {
+    ether_payload = IPLayer {
+      source_ip = src_ip;
+      dest_ip = dst_ip;
+      ip_payload = UDPLayer {
+	udp_source_port = src_port;
+	udp_dest_port = dst_port;
+	udp_payload = payload
+      }
+    }
+  }
+  | IPContent {
+    source_ip = src_ip;
+    dest_ip = dst_ip;
+    ip_payload = UDPLayer {
+      udp_source_port = src_port;
+      udp_dest_port = dst_port;
+      udp_payload = payload
+    }
+  } ->
+    Printf.printf "%s:%d -> %s:%d { %s }\n"
+      (string_of_ipv4 src_ip) src_port
+      (string_of_ipv4 dst_ip) dst_port (print_value (value_of_udp_service payload))
   | _ -> ()
 
 let show_packets pcap =
@@ -56,7 +80,7 @@ let show_packets pcap =
 
 let handle_one_file input =
   lwt_parse_pcap_file input >>= fun pcap ->
-  if !show_tcp_only
+  if !show_transport_only
   then show_packets pcap
   else print_string (print_value (value_of_pcap_file pcap));
   return ()
