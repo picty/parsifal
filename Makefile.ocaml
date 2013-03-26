@@ -23,6 +23,10 @@ OCAML_COMPILER_OPTIONS = -w +a-4-6-9-31-32 -warn-error +a-4-6-9-31-32-33
 LIBDIR ?= /usr/local/lib/ocaml
 BINDIR ?= /usr/local/bin
 
+
+all: real_all
+
+
 # TARGET handling (native, byte and toplevel)
 
 define TARGET_template
@@ -65,7 +69,7 @@ $(foreach lib,$(MLLIBS),$(eval $(call MLLIB_template,$(lib))))
 
 
 # generic rules
-all: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(META_TO_BUILD)
+real_all: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(META_TO_BUILD)
 
 byte: builddir depends $(TARGETS:%=%.byte) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(META_TO_BUILD)
 
@@ -134,7 +138,7 @@ builddir: $(BUILD_DIR)
 $(BUILD_DIR):
 	mkdir $(BUILD_DIR)
 
-.PHONY: all builddir clean depends byte top
+.PHONY: real_all all builddir clean depends byte top
 
 
 
