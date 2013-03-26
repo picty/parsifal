@@ -1,4 +1,5 @@
 v0.2 (apr. 2013)
+ - Write a parse_value (string_input/lwt_input -> value) which would keep the context (offset/len)
  - Misc
    * Factor som code (verbose option, file handling, action handling) in getopt
    * getopt tuning (help usage messages [principal and details], multiline descriptions)
@@ -87,10 +88,10 @@ v0.2 (apr. 2013)
    * Create simple PKI tools to create a RSA key, sign, verify, encrypt, decrypt, handle a simple PKI (rsa tool)
    * Write acu (AceSL Cert Util) to read certs / pubkeys / privkeys and manipulate them
    * Passive TLS_Proxy
+   * picodig (using a special sr function (send/receive)?)
 
  - General
    * Think about the exception system (fatal or not) => merge all in ParsifalException
-   * add a field "handle_non_lethal_exceptions" to *_input (a function that could be raise or prerr_endline)
  - Software Engineering
    * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
  - Camlp4/Language
@@ -103,7 +104,6 @@ v0.2 (apr. 2013)
    * add hex_container / gzip_container as custom containers
    * improve get_wrapper (raw, gzip, base64, etc.)
    * add {,} to get path language (x.{y,z}.{t,a})
-   * improve get on asn1_alias (for example, it does not add the outter sequence of a certificate)
    * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
    * Add a "flexible" decorator in structures
        -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)
