@@ -111,7 +111,12 @@ let extension_types = [
   [85;29;37], "extendedKeyUsage";
   [43;6;1;5;5;7;1;1], "authorityInfoAccess";
   [96;840;1;113730;1;1], "nsCertType";
-  [96;840;1;113730;1;13], "nsComment"
+  [96;840;1;113730;1;2], "nsBaseURL";
+  [96;840;1;113730;1;3], "nsRevocationURL";
+  [96;840;1;113730;1;4], "nsCARevocationURL";
+  [96;840;1;113730;1;7], "nsRenewalURL";
+  [96;840;1;113730;1;12], "nsSSLServerName";
+  [96;840;1;113730;1;13], "nsComment";
 ]
 
 

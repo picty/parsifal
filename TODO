@@ -1,5 +1,5 @@
 v0.2 (apr. 2013)
- - Write a parse_value (string_input/lwt_input -> value) which would keep the context (offset/len)
+ - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
  - Misc
    * Factor som code (verbose option, file handling, action handling) in getopt
    * getopt tuning (help usage messages [principal and details], multiline descriptions)
@@ -30,12 +30,7 @@ v0.2 (apr. 2013)
    * add popular extensions
        1.2.840.113549.1.9.15 (sMIMECapabilities)
        1.3.6.1.5.5.7.1.12 (logoType)
-       2.16.840.1.113730.1.4 (nsCARevocationURL of ia5string)
        2.16.840.1.113730.1.8 (nsCAPolicyURL)
-       2.16.840.1.113730.1.3 (nsRevocationURL of ia5string)
-       2.16.840.1.113730.1.12 (nsSSLServerName of ia5string)
-       2.16.840.1.113730.1.7 (nsRenewalURL of ia5string)
-       2.16.840.1.113730.1.2 (nsBaseURL of ia5string)
        2.16.840.1.113719.1.9.4.1 (securityAttributes [Novell])
        1.3.6.1.4.1.3029.3.1.5 (keyFeatures)
  - Use modules to aggregate the functions for some top-level objects (parse/dump/value_of)

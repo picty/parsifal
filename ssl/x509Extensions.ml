@@ -246,6 +246,11 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "extendedKeyUsage" -> ExtendedKeyUsage of extendedKeyUsage
   | "authorityInfoAccess" -> AuthorityInfoAccess of authorityInfoAccess
   | "nsCertType" -> NSCertType of der_enumerated_bitstring[nsCertType_values]
+  | "nsBaseURL" -> NSBaseURL of der_ia5string(NoConstraint)
+  | "nsRevocationURL" -> NSRevocationURL of der_ia5string(NoConstraint)
+  | "nsCARevocationURL" -> NSCARevocationURL of der_ia5string(NoConstraint)
+  | "nsRenewalURL" -> NSRenewalURL of der_ia5string(NoConstraint)
+  | "nsSSLServerName" -> NSSSLServerName of der_ia5string(NoConstraint)
   | "nsComment" -> NSComment of der_ia5string(NoConstraint)
 
 (* Sordid hack. TODO: auto-generate that with an option laxist? *)
