@@ -84,21 +84,82 @@ union _certificate [exhaustive] (UnparsedCertificate) =
 
 alias certificates = list[uint24] of container[uint24] of _certificate(())
 
+
+(* DHE *)
 struct server_dh_params = {
   dh_p : binstring[uint16];
   dh_g : binstring[uint16];
   dh_Ys: binstring[uint16]
 }
 
-(* TODO: signature? *)
 struct ske_dhe_params = {
   params : server_dh_params;
-  signature : binstring
+  signature : binstring (* TODO? *)
+}
+
+
+(* ECDHE *)
+struct ec_curve = {
+  ecc_a : binstring[uint8];
+  ecc_b : binstring[uint8]
+}
+
+alias ec_point = binstring[uint8]
+
+struct ec_explicit_prime_params = {
+  ecpp_prime_p : binstring[uint8];
+  ecpp_curve : ec_curve;
+  ecpp_base : ec_point;
+  ecpp_order : binstring[uint8];
+  ecpp_cofactor : binstring[uint8]
+}
+
+(* TODO (from RFC4492):
+   enum { ec_basis_trinomial, ec_basis_pentanomial } ECBasisType;
+   ECBasisType basis;
+
+   select (basis) {
+       case ec_trinomial:
+         opaque  k <1..2^8-1>;
+       case ec_pentanomial:
+         opaque  k1 <1..2^8-1>;
+         opaque  k2 <1..2^8-1>;
+         opaque  k3 <1..2^8-1>;
+     };
+
+struct ec_explicit_char2_params = {
+   ecp2_m : uint16;
+   ecp2_basis : ec_basis_type; (* TODO *)
+   ecp2_ks : ec_basis_type_definition(ec_basic_type); (* TODO *)
+   ecp2_curve : ec_curve;
+   ecp2_base : ec_point;
+   ecp2_order : binstring[uint8];
+   ecp2_cofactor : binstring[uint8];
+} *)
+
+union ec_curve_params [enrich] (UnknownECCurveParams) =
+  | ECCT_ExplicitPrime -> ECP_ExplicitPrime of ec_explicit_prime_params
+(*  | ECCT_ExplicitChar2 -> TODO? *)
+  | ECCT_NamedCurve -> ECP_NamedCurve of ec_named_curve
+
+(* Here, we took some liberty with RFC4492 and merged
+   ServerECDHParams and ECParameters structures *)
+struct server_ecdh_params = {
+  ecdh_type : ec_curve_type;
+  ecdh_params : ec_curve_params (ecdh_type);
+  ecdh_public : ec_point
+}
+
+(* TODO: Clean up this stupid prefix once field desambiguation is mainstream... *)
+struct ske_ecdhe_params = {
+  ecdhe_params : server_ecdh_params;
+  ecdhe_signature : binstring (* TODO? *)
 }
 
 
 union server_key_exchange [enrich] (Unparsed_SKEContent) =
   | KX_DHE -> SKE_DHE of ske_dhe_params
+  | KX_ECDHE -> SKE_ECDHE of ske_ecdhe_params
 
 
 

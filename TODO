@@ -160,6 +160,8 @@ v0.3 (jun. 2013)
 
 
 v1.0 (oct 2013)
+ - Rewrite the type names/field names to be uniform (we must choose between camel case and underscores)
+ - Cross-reference where each RFC is implemented (annotate the RFC and the code)
  - Software Engineering
    * Document everything (ocamldoc or doxygen)
    * unit tests for everything
