@@ -1,4 +1,7 @@
 v0.2 (apr. 2013)
+ - Clean up Exception in parsifal_syntax (to launch a ParsifalException of "?)
+ - Add a SoftException / Exception for unions / enums
+ - Use SoftException / Exception for content_type / alert_level ?
  - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
  - Misc
    * Factor som code (verbose option, file handling, action handling) in getopt

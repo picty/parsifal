@@ -8,6 +8,7 @@ enum tls_version [with_lwt] (16, UnknownVal V_Unknown) =
 
 (* http://www.iana.org/assignments/tls-parameters/tls-parameters.xml *)
 
+(* TODO: Should be Exception (or SoftException, once exception do not shut the program down *)
 enum tls_content_type [with_lwt] (8, UnknownVal CT_Unknown) =
   | 0x14 -> CT_ChangeCipherSpec, "ChangeCipherSpec"
   | 0x15 -> CT_Alert, "Alert"
@@ -16,6 +17,7 @@ enum tls_content_type [with_lwt] (8, UnknownVal CT_Unknown) =
   | 0x18 -> CT_Heartbeat, "Heartbeat"
 
 
+(* TODO: Should be Exception, once exception do not shut the program down *)
 enum tls_alert_level (8, UnknownVal AL_Unknown) =
   | 1 -> AL_Warning, "Warning"
   | 2 -> AL_Fatal, "Fatal"
@@ -383,8 +385,28 @@ enum compression_method (8, UnknownVal CM_UnknownVal) =
   | 0 -> CM_Null, "Null"
   | 1 -> CM_Defalte, "Deflate"
 
+
+
+(* TLS Extensions *)
+
 enum name_type (8, UnknownVal UnknownNameType) =
   | 0 -> NT_HostName, "HostName"
+
+enum max_fragment_length (8, UnknownVal UnknownMaxFragmentLength) =
+  | 1 -> MFL_512
+  | 2 -> MFL_1024
+  | 3 -> MFL_2048
+  | 4 -> MFL_4096
+
+enum cert_chain_type (8, UnknownVal UnknownCertChainType) =
+  | 0 -> CCT_IndividualCerts
+  | 1 -> CCT_PKIPath
+
+enum identifier_type (8, UnknownVal UnknownIdentifierType) =
+  | 0 -> IT_PreAgreed
+  | 1 -> IT_KeySha1Hash
+  | 2 -> IT_X509Name
+  | 3 -> IT_CertSha1Hash
 
 enum client_certificate_type (8, UnknownVal CCT_Unknown) =
   | 1 -> CCT_RSASign, "RSASign"
@@ -477,7 +499,6 @@ enum heartbeat_mode (8, UnknownVal HM_Unknown) =
 
 
 (* http://www.iana.org/assignments/tls-extensiontype-values *)
-
 enum extension_type (16, UnknownVal HE_Unknown) =
   | 0 -> HE_ServerName, "ServerName"
   | 1 -> HE_MaxFragmentLength, "MaxFragmentLength"
@@ -501,6 +522,7 @@ enum extension_type (16, UnknownVal HE_Unknown) =
 enum tls_certificate_type (8, UnknownVal TCT_Unknown) =
   | 0 -> TCT_X509, "X.509"
   | 1 -> TCT_OpenPGP, "OpenPGP"
+
 
 
 (* Internal types *)

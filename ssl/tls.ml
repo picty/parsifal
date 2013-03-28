@@ -1,6 +1,7 @@
 open TlsEnums
 
 
+
 (* Simple TLS records *)
 
 struct tls_alert = {
@@ -14,7 +15,7 @@ struct change_cipher_spec = {
 
 
 
-(* Handshake records and choices *)
+(* Handshake extensions records and choices *)
 
 (* Explicit ("name_type") *)
 union sni_name [enrich] (Unparsed_SNIName) =
@@ -29,12 +30,35 @@ union server_name_content [enrich; exhaustive] (Unparsed_ServerNameContent) =
   | ClientToServer -> ClientServerName of (list[uint16] of server_name)
   | ServerToClient -> ServerServerName
 
+struct url_and_hash = {
+  url : string[uint16];
+  padding : PTypes.magic ("\x01");   (* RFC 6066 states this for backward compatibility *)
+  sha1_hash : binstring(20)
+}
+
+struct certificate_url = {
+  cert_chain_type : cert_chain_type;
+  url_and_hash_list : list[uint16] of url_and_hash
+}
+
+union identifier [enrich] (Unparsed_Identifier) =
+  | IT_PreAgreed -> PreAgreed
+  | IT_KeySha1Hash -> KeySha1Hash of binstring(20)
+  | IT_X509Name -> X509Name of X509Basics.distinguishedName
+  | IT_CertSha1Hash -> CertSha1Hash of binstring(20)
+
+struct trusted_authority = {
+  identifier_type : identifier_type;
+  identifier : identifier (identifier_type)
+}
+
+
 (* TODO: Implement the commented extensions *)
 union hello_extension_content [enrich; param direction] (Unparsed_HelloExtension) =
   | HE_ServerName -> ServerName of server_name_content(direction)
-  | HE_MaxFragmentLength -> MaxFragmentLength of uint8
+  | HE_MaxFragmentLength -> MaxFragmentLength of max_fragment_length
   | HE_ClientCertificateURL -> ClientCertificateURL
-  (* | HE_TrustedCAKeys -> TrustedCAKeys of ? *)
+  | HE_TrustedCAKeys -> TrustedCAKeys of list[uint16] of trusted_authority
   | HE_TruncatedMAC -> TruncatedMAC
   (* | HE_StatusRequest -> StatusRequest of ? *)
   (* | HE_UserMapping -> UserMapping of ? *)
@@ -47,8 +71,12 @@ union hello_extension_content [enrich; param direction] (Unparsed_HelloExtension
   (* | HE_SignatureAlgorithms -> SignatureAlgorithms of ? *)
   (* | HE_UseSRTP -> UseSRTP of ? *)
   | HE_Heartbeat -> HeartbeatExtension of heartbeat_mode
-  (* | HE_SessionTicket -> SessionTicket of ? *)
-  (* | HE_RenegotiationInfo -> RenegotiationInfo of ? *)
+  | HE_SessionTicket -> SessionTicket of binstring
+  | HE_RenegotiationInfo -> RenegotiationInfo of binstring
+
+
+
+(* Handshake messages *)
 
 struct hello_extension [param direction] = {
   extension_type : extension_type;
@@ -201,7 +229,6 @@ type tls_context = {
 }
 
 
-
 struct signature_and_hash_algorithm = {
   hash_algorithm : hash_algorithm;
   signature_algorithm : signature_algorithm
@@ -216,15 +243,24 @@ struct certificate_request = {
   certificate_authorities : list[uint16] of container[uint16] of _distinguishedName(())
 }
 
+
 union handshake_content [enrich; param context] (Unparsed_HSContent) =
   | HT_HelloRequest -> HelloRequest
   | HT_ClientHello -> ClientHello of client_hello
   | HT_ServerHello -> ServerHello of server_hello
+ (* | HT_HelloVerifyRequest -> HelloVerifyRequest of *)
   | HT_NewSessionTicket -> NewSessionTicket of new_session_ticket
   | HT_Certificate -> Certificate of certificates
   | HT_ServerKeyExchange -> ServerKeyExchange of server_key_exchange(match context with None -> KX_Unknown | Some ctx -> ctx.future.s_ciphersuite.kx)
   | HT_CertificateRequest -> CertificateRequest of certificate_request
   | HT_ServerHelloDone -> ServerHelloDone
+ (* | HT_CertificateVerify -> CertificateVerify of *)
+ (* | HT_ClientKeyExchange -> ClientKeyExchange of *)
+ (* | HT_Finished -> Finished of *)
+  | HT_CertificateURL -> CertificateURL of certificate_url
+ (* | HT_CertificateStatus -> CertificateStatus of *)
+  | HT_SupplementalData -> SupplementalData of binstring[uint24]
+
 
 struct handshake_msg [param context] = {
   handshake_type : hs_message_type;
