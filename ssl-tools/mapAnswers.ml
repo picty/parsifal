@@ -179,7 +179,7 @@ let handle_answer answer =
           let records, _, error = parse_all_ssl2_records !enrich_style answer in
           List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_ssl2_record r))) records;
           if error then print_endline "  ERROR"
-	end
+        end
       | Suite ->
         let _, ctx, _ = parse_all_records !enrich_style answer in
         let cs = match ctx with
@@ -209,38 +209,38 @@ let handle_answer answer =
       | ServerRandom ->
         let records, _, _ = parse_all_records !enrich_style answer in
         begin
-	  match records with
+          match records with
           | { content_type = CT_Handshake;
               record_content = Handshake {
                 handshake_type = HT_ServerHello;
                 handshake_content = ServerHello {server_random = r} }}::_
-	    -> Printf.printf "%s: %s\n" ip (hexdump r)
+            -> Printf.printf "%s: %s\n" ip (hexdump r)
           | _ -> ()
         end;
       | Scapy ->
-	let records, _, _ = parse_all_records !enrich_style answer in
-	let rec convert_to_scapy (len, ps) = function
-	  | [] -> List.rev ps
-	  | r::rs ->
-	    let dump = dump_tls_record r in
-	    let new_p =
-	      Printf.sprintf "IP(src=\"%s\")/TCP(sport=%d,dport=12345,seq=%d,flags=\"\")/(\"%s\".decode(\"hex\"))"
-		ip answer.port len (hexdump dump)
-	    in
-	    convert_to_scapy (len + (String.length dump), new_p::ps) rs
-	in
-	Printf.printf "ps = [%s]\n" (String.concat ",\n  " (convert_to_scapy (0, []) records))
+        let records, _, _ = parse_all_records !enrich_style answer in
+        let rec convert_to_scapy (len, ps) = function
+          | [] -> List.rev ps
+          | r::rs ->
+            let dump = dump_tls_record r in
+            let new_p =
+              Printf.sprintf "IP(src=\"%s\")/TCP(sport=%d,dport=12345,seq=%d,flags=\"\")/(\"%s\".decode(\"hex\"))"
+                ip answer.port len (hexdump dump)
+            in
+            convert_to_scapy (len + (String.length dump), new_p::ps) rs
+        in
+        Printf.printf "ps = [%s]\n" (String.concat ",\n  " (convert_to_scapy (0, []) records))
       | Pcap ->
-	let records, _, _ = parse_all_records !enrich_style answer in
-	let rec convert_to_pcap len ps = function
-	  | [] -> ()
-	  | r::rs ->
-	    let dump = dump_tls_record r in
-	    let new_p = Pcap.mk_packet answer.ip answer.port dump len in
-	    print_string (Pcap.dump_packet new_p);
-	    convert_to_pcap (len + (String.length dump)) (new_p::ps) rs
-	in
-	convert_to_pcap 0 [] records
+        let records, _, _ = parse_all_records !enrich_style answer in
+        let rec convert_to_pcap len ps = function
+          | [] -> ()
+          | r::rs ->
+            let dump = dump_tls_record r in
+            let new_p = Pcap.mk_packet answer.ip answer.port dump len in
+            print_string (Pcap.dump_packet new_p);
+            convert_to_pcap (len + (String.length dump)) (new_p::ps) rs
+        in
+        convert_to_pcap 0 [] records
       | AnswerType ->
         let records =
           let tls_records, _, _ = parse_all_records !enrich_style answer in
@@ -298,19 +298,19 @@ let handle_answer answer =
         end;
       | RecordTypes ->
         let records, _, err = parse_all_records !enrich_style answer in
-	let rec get_type = function
-	  | [], false -> []
-	  | [], true -> ["ERROR"]
-	  | { content_type = CT_Alert; record_content = Alert a }::r, err ->
-	    let al = int_of_tls_alert_level a.alert_level
-	    and at = int_of_tls_alert_type  a.alert_type in
-	    (Printf.sprintf "Alert(%d,%d)" al at)::(get_type (r, err))
-	  | { content_type = CT_Handshake ; record_content = Handshake h }::r, err ->
-	    (string_of_hs_message_type h.handshake_type)::(get_type (r, err))
-	  | _::r, err -> "UNKNOWN"::(get_type (r, err))
-	in
-	let res = String.concat " " (get_type (records, err)) in
-	Printf.printf "%s\t%s\n" ip res
+        let rec get_type = function
+          | [], false -> []
+          | [], true -> ["ERROR"]
+          | { content_type = CT_Alert; record_content = Alert a }::r, err ->
+            let al = int_of_tls_alert_level a.alert_level
+            and at = int_of_tls_alert_type  a.alert_type in
+            (Printf.sprintf "Alert(%d,%d)" al at)::(get_type (r, err))
+          | { content_type = CT_Handshake ; record_content = Handshake h }::r, err ->
+            (string_of_hs_message_type h.handshake_type)::(get_type (r, err))
+          | _::r, err -> "UNKNOWN"::(get_type (r, err))
+        in
+        let res = String.concat " " (get_type (records, err)) in
+        Printf.printf "%s\t%s\n" ip res
       | Subject ->
         let records, _, _ = parse_all_records !enrich_style answer in
         let rec extractSubjectOfFirstCert = function
@@ -339,12 +339,12 @@ let handle_answer answer =
         end;
       | Get ->
         let records, _, _ = parse_all_records !enrich_style answer in
-	let get_one_path p = 
-	  match get (VList (List.map value_of_tls_record records)) p with
-	  | Left err -> if !verbose then prerr_endline (ip ^ ": " ^ err); []
-	  | Right s -> [s]
-	in
-	let results = List.flatten (List.map get_one_path !path) in
+        let get_one_path p = 
+          match get (VList (List.map value_of_tls_record records)) p with
+          | Left err -> if !verbose then prerr_endline (ip ^ ": " ^ err); []
+          | Right s -> [s]
+        in
+        let results = List.flatten (List.map get_one_path !path) in
         if results <> [] then Printf.printf "%s: %s\n" ip (String.concat ", " results)
   end;
   return again
