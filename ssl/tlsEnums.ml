@@ -8,8 +8,8 @@ enum tls_version [with_lwt] (16, UnknownVal V_Unknown) =
 
 (* http://www.iana.org/assignments/tls-parameters/tls-parameters.xml *)
 
-(* TODO: Should be Exception (or SoftException, once exception do not shut the program down *)
-enum tls_content_type [with_lwt] (8, UnknownVal CT_Unknown) =
+(* TODO: Should be a SoftException? *)
+enum tls_content_type [with_lwt] (8, Exception) =
   | 0x14 -> CT_ChangeCipherSpec, "ChangeCipherSpec"
   | 0x15 -> CT_Alert, "Alert"
   | 0x16 -> CT_Handshake, "Handshake"
@@ -17,8 +17,7 @@ enum tls_content_type [with_lwt] (8, UnknownVal CT_Unknown) =
   | 0x18 -> CT_Heartbeat, "Heartbeat"
 
 
-(* TODO: Should be Exception, once exception do not shut the program down *)
-enum tls_alert_level (8, UnknownVal AL_Unknown) =
+enum tls_alert_level (8, Exception) =
   | 1 -> AL_Warning, "Warning"
   | 2 -> AL_Fatal, "Fatal"
 

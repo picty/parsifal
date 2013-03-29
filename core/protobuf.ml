@@ -56,7 +56,7 @@ let value_of_varint i = VSimpleInt i
 
 (* Protobuf key *)
 
-enum wire_type (3, Exception UnknownWireType) =
+enum wire_type (3, Exception) =
   | 0 -> WT_Varint, "Varint"
   | 1 -> WT_Fixed64bit, "Fixed64bit"
   | 2 -> WT_LengthDelimited, "LengthDelimited"

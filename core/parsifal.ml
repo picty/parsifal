@@ -183,6 +183,7 @@ type parsing_exception =
   | UnableToRewind
   | InvalidBase64String of string
   | CustomException of string
+  | ValueNotInEnum of string
   | NotImplemented of string
   | TooFewObjects of int * int
   | TooManyObjects of int * int
@@ -195,6 +196,7 @@ let print_parsing_exception = function
   | UnableToRewind -> "UnableToRewind"
   | InvalidBase64String e -> "Invalid base64 string (" ^ e ^ ")"
   | CustomException e -> e
+  | ValueNotInEnum e -> "Invalid " ^ e
   | NotImplemented feat -> "Not implemented (" ^ feat ^ ")"
   | TooFewObjects (x, exp_x) ->
     Printf.sprintf "Too few objects (%d instead of %d)" x exp_x
@@ -204,8 +206,10 @@ let print_parsing_exception = function
 exception ParsingException of parsing_exception * history
 exception ParsingStop
 
-let not_implemented s = raise (ParsingException (NotImplemented s, []))
-let lwt_not_implemented s = fail (ParsingException (NotImplemented s, []))
+let value_not_in_enum s h = raise (ParsingException (ValueNotInEnum (String.copy s), h))
+
+let not_implemented s = raise (ParsingException (NotImplemented (String.copy s), []))
+let lwt_not_implemented s = fail (ParsingException (NotImplemented (String.copy s), []))
 
 let string_of_exception e h = (print_parsing_exception e) ^ (print_history h)
 

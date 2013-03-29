@@ -1,7 +1,7 @@
 open Lwt
 open Parsifal
 
-enum asn1_class (2, Exception UnknownAsn1Class) =
+enum asn1_class (2, Exception) =
   | 0 -> C_Universal, "Universal"
   | 1 -> C_Application, "Application"
   | 2 -> C_ContextSpecific, "Context Specific"

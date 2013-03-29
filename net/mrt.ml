@@ -5,11 +5,11 @@ open PTypes
 
 (* Generic useful types and functions *)
 
-enum address_family_identifier [with_lwt] (16, Exception InvalidAddressFamilyIdentifier) =
+enum address_family_identifier [with_lwt] (16, Exception) =
   | 1 -> AFI_IPv4
   | 2 -> AFI_IPv6
 
-enum subsequent_address_family_identifier (8, Exception InvalidSubsequentAddressFamilyIdentifier) =
+enum subsequent_address_family_identifier (8, Exception) =
   | 1 -> SAFI_Unicast
   | 2 -> SAFI_Multicast
 
@@ -260,7 +260,7 @@ enum table_dump_v2_subtype [with_lwt] (16, UnknownVal UnknownTableDumpV2SubType)
   | 5 -> RIB_IPV6_MULTICAST
   | 6 -> RIB_GENERIC
 
-enum peer_type (8, Exception InvalidPeerType) =
+enum peer_type (8, Exception) =
   | 0 -> PT_AS16_IPv4
   | 1 -> PT_AS16_IPv6
   | 2 -> PT_AS32_IPv4

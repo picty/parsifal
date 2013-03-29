@@ -26,7 +26,7 @@ type 'a choice = Loc.t * string * 'a   (* loc, constructor name *)
 (* Enums *)
 type enum_unknown_behaviour =
   | UnknownVal of string
-  | Exception of string
+  | Exception
 
 type enum_description = {
   size : int;
@@ -267,8 +267,6 @@ let split_header _loc (hdr, isC) =
 
 let mk_decls _loc c =
   match c.construction with
-  | Enum {unknown_behaviour = Exception e} ->
-    [ <:str_item< exception  $typ:<:ctyp< $uid:e$ >>$  >> ]
   | Union _ | ASN1Union _ ->
     let enrich_bool = c <.> EnrichByDefault in
     let bool_name = <:patt< $lid:"enrich_" ^ c.name$ >>
@@ -323,13 +321,11 @@ let mk_type _loc c =
 let mk_specific_funs _loc c =
   match c.construction with
   | Enum enum ->
-    let mk_pm_fun (fname, cases) =
+    let mk_pm_fun (fname, argnames, optargnames, cases) =
       let mk_case (p, e) = <:match_case< $p$ -> $e$ >> in
       let cases = List.map mk_case cases in
-      let body = <:expr< fun [ $list:cases$ ] >>
-      and fun_name = <:patt< $lid:fname$ >> in
-      let bindings = <:binding< $pat:fun_name$ = $exp:body$ >> in
-      <:str_item< value $bindings$ >>
+      let body = <:expr< fun [ $list:cases$ ] >> in
+      mk_multiple_args_fun _loc fname argnames ~optargs:optargnames body
     in
 
     let mk_string_of_enum =
@@ -342,7 +338,7 @@ let mk_specific_funs _loc c =
 	  in _cases@[p, e]
 	| _ -> _cases
       and fname = "string_of_" ^ c.name in
-      (fname, cases)
+      (fname, [], [], cases)
 
     and mk_int_of_enum =
       let mk_case (_loc, n, (v, _)) = <:patt< $uid:n$ >>, <:expr< $int:v$ >> in
@@ -354,21 +350,24 @@ let mk_specific_funs _loc c =
 	  in _cases@[p, e]
 	| _ -> _cases
       and fname = "int_of_" ^ c.name in
-      (fname, cases)
+      (fname, [], [], cases)
 
     and mk_enum_of_int =
       let mk_case (_loc, n, (v, _)) = <:patt< $int:v$ >>, <:expr< $uid:n$ >> in
       let _cases = List.map mk_case enum.echoices in
-      let last_p, last_e = match enum.unknown_behaviour with
+      let last_p, last_e, optargs = match enum.unknown_behaviour with
 	| UnknownVal v ->
 	  <:patt< $lid:"i"$ >>,
-	  <:expr< $ <:expr< $uid:v$ >> $ $ <:expr< $lid:"i"$ >> $ >>
-	| Exception e ->
-	  <:patt< _ >>, <:expr< raise $uid:e$ >>
+	  <:expr< $ <:expr< $uid:v$ >> $ $ <:expr< $lid:"i"$ >> $ >>,
+	  []
+	| Exception ->
+	  <:patt< _ >>,
+	  <:expr< Parsifal.value_not_in_enum $str:c.name$ $lid:"history"$ >>,
+	  ["history", <:expr< $uid:"[]"$ >> ]
       in
       let cases = _cases@[last_p, last_e]
       and fname = c.name ^ "_of_int" in
-      (fname, cases)
+      (fname, [], optargs, cases)
 
     and mk_enum_of_string =
       let mk_case (_loc, n, (_, d)) = <:patt< $str:d$ >>, <:expr< $uid:n$ >> in
@@ -378,7 +377,7 @@ let mk_specific_funs _loc c =
       let last_e = <:expr< $eoi$  (int_of_string s) >> in
       let cases = _cases@[last_p, last_e]
       and fname = c.name ^ "_of_string" in
-      (fname, cases)
+      (fname, [], [], cases)
     in
 
     let fns = [mk_int_of_enum; mk_string_of_enum;
@@ -783,7 +782,7 @@ EXTEND Gram
   ]];
 
   enum_unknown_behaviour: [[
-    "Exception"; x = ident -> Exception (uid_of_ident x)
+    "Exception" -> Exception
   | "UnknownVal"; x = ident -> UnknownVal (uid_of_ident x)
   ]];
 
