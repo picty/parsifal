@@ -32,20 +32,21 @@ let dump_ssl2_cipher_spec = function
   | UnparsedSSL2CipherSpec s -> s
 
 
-enum ssl2_certificate_type (8, UnknownVal UnknownSSL2CertficateType) =
+(* TODO: Should it be SoftExceptions if they are ever implemented? *)
+(* It would allow to forge invalid packets, at least... *)
+enum ssl2_certificate_type (8, Exception) =
   | 0x01 -> SSL2_CT_X509_CERTIFICATE
 
-enum ssl2_authentifcation_type (8, UnknownVal UnknownSSL2AuthenticationType) =
+enum ssl2_authentifcation_type (8, Exception) =
   | 0x01 -> SSL2_AT_MD5_WITH_RSA_ENCRYPTION
 
-enum ssl2_error (16, UnknownVal UnknownSSL2Error) =
-  | 0x0001 -> SSL2_ERR_NO_CIPHER			
-  | 0x0002 -> SSL2_ERR_NO_CERTIFICATE			
-  | 0x0004 -> SSL2_ERR_BAD_CERTIFICATE			
-  | 0x0006 -> SSL2_ERR_UNSUPPORTED_CERTIFICATE_TYPE	
+enum ssl2_error (16, Exception) =
+  | 0x0001 -> SSL2_ERR_NO_CIPHER
+  | 0x0002 -> SSL2_ERR_NO_CERTIFICATE
+  | 0x0004 -> SSL2_ERR_BAD_CERTIFICATE
+  | 0x0006 -> SSL2_ERR_UNSUPPORTED_CERTIFICATE_TYPE
 
-
-enum ssl2_handshake_type (8, UnknownVal UnknownSSL2HandshakeType) =
+enum ssl2_handshake_type (8, Exception) =
   | 0 -> SSL2_HT_ERROR
   | 1 -> SSL2_HT_CLIENT_HELLO
   | 2 -> SSL2_HT_CLIENT_MASTER_KEY
@@ -102,7 +103,7 @@ struct ssl2_client_certificate = {
 }
 
 
-union ssl2_handshake_content [enrich] (UnparsedSSL2HandshakeContent) =
+union ssl2_handshake_content [enrich; exhaustive] (UnparsedSSL2HandshakeContent) =
   | SSL2_HT_ERROR -> SSL2Error of ssl2_error
   | SSL2_HT_CLIENT_HELLO -> SSL2ClientHello of ssl2_client_hello
   | SSL2_HT_CLIENT_MASTER_KEY -> SSL2ClientMasterKey of ssl2_client_master_key

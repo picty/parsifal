@@ -4,6 +4,7 @@ open PTypes
 open AnswerDump
 open TlsEnums
 open Tls
+open Ssl2
 open Getopt
 open X509Basics
 open X509
@@ -123,6 +124,20 @@ let parse_all_records enrich answer =
   then raw_recs, None, err
   else split_records [] None None (TlsUtil.merge_records ~verbose:(!verbose) ~enrich:NeverEnrich raw_recs) err
 
+let parse_all_ssl2_records enrich answer =
+  let rec read_ssl2_records accu i =
+    if not (eos i)
+    then begin
+      match handle_exn (parse_ssl2_record { cleartext = true }) i with
+      | Some next -> read_ssl2_records (next::accu) i
+      | None -> List.rev accu, true
+    end else List.rev accu, false
+  in
+  let answer_input = input_of_string ~enrich:enrich ~verbose:(!verbose) (string_of_ipv4 answer.ip) answer.content in
+  enrich_record_content := false;
+  let raw_recs, err = read_ssl2_records [] answer_input in
+  raw_recs, None, err
+
 
 
 let dump_extract s =
@@ -157,10 +172,14 @@ let handle_answer answer =
       | IP -> print_endline ip
       | Dump -> print_string (dump_answer_dump answer)
       | All ->
-        let records, _, error = parse_all_records !enrich_style answer in
         print_endline ip;
+        let records, _, error = parse_all_records !enrich_style answer in
         List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_tls_record r))) records;
-        if error then print_endline "  ERROR"
+        if error then begin
+          let records, _, error = parse_all_ssl2_records !enrich_style answer in
+          List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_ssl2_record r))) records;
+          if error then print_endline "  ERROR"
+	end
       | Suite ->
         let _, ctx, _ = parse_all_records !enrich_style answer in
         let cs = match ctx with
