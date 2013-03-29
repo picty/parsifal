@@ -242,31 +242,57 @@ let handle_answer answer =
 	in
 	convert_to_pcap 0 [] records
       | AnswerType ->
-        let records, _, _ = parse_all_records !enrich_style answer in
+        let records =
+          let tls_records, _, _ = parse_all_records !enrich_style answer in
+          if tls_records <> []
+          then Right tls_records
+          else begin
+            let ssl2_records, _, _ = parse_all_ssl2_records !enrich_style answer in
+            Left ssl2_records
+          end
+        in
         begin
-	  match records, answer.content with
-	  | _, "" ->
-	    Printf.printf "%s\tE\n" ip
-          | [{ content_type = CT_Alert;
+          match records, answer.content with
+          | _, "" ->
+            Printf.printf "%s\tE\n" ip
+          | Right [{ content_type = CT_Alert;
               record_content = Alert a }], _ ->
-	    Printf.printf "%s\tA\t%s\t%s\n" ip (string_of_tls_alert_level a.alert_level) (string_of_tls_alert_type a.alert_type)
+            Printf.printf "%s\tA\t%s\t%s\n" ip (string_of_tls_alert_level a.alert_level) (string_of_tls_alert_type a.alert_type)
 
-	  | { content_type = CT_Handshake;
-              record_content = Handshake {
-                handshake_type = HT_ServerHello;
-                handshake_content = ServerHello {server_version = v; ciphersuite = c} }}::
-	    { content_type = CT_Handshake;
-	      record_content = Handshake {
-                handshake_type = HT_Certificate;
-                handshake_content = Certificate ((ParsedCertificate cert)::_) }}::_, _
-	    -> Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
-              (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
+          | Left [{ ssl2_content = SSL2Handshake {
+                      ssl2_handshake_type = SSL2_HT_ERROR;
+                      ssl2_handshake_content = SSL2Error e }}], _ ->
+            Printf.printf "%s\tA\tSSLv2_ALERT\t%s\n" ip (string_of_ssl2_error e)
 
-	  | { content_type = CT_Handshake;
-              record_content = Handshake {
-                handshake_type = HT_ServerHello;
-                handshake_content = ServerHello {server_version = v; ciphersuite = c} }}::_, _
-	    -> Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
+          | Right ({ content_type = CT_Handshake;
+(*        TODO:             record_version = ext_v; *)
+                     record_content = Handshake {
+                       handshake_type = HT_ServerHello;
+                       handshake_content = ServerHello {server_version = v; ciphersuite = c} }}::
+                  { content_type = CT_Handshake;
+                    record_content = Handshake {
+                      handshake_type = HT_Certificate;
+                      handshake_content = Certificate ((ParsedCertificate cert)::_) }}::_), _
+            -> Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
+            (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
+
+          | Left ({ ssl2_content = SSL2Handshake {
+              ssl2_handshake_type = SSL2_HT_SERVER_HELLO;
+              ssl2_handshake_content = SSL2ServerHello {
+                ssl2_server_version = v;
+                ssl2_server_certificate = ParsedCertificate cert;
+                ssl2_server_cipher_specs = cs
+              }
+            }}::_), _
+            -> Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v)
+            (String.concat "," (List.map (fun c -> string_of_value (value_of_ssl2_cipher_spec c)) cs))
+            (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
+
+          | Right ({ content_type = CT_Handshake;
+                     record_content = Handshake {
+                       handshake_type = HT_ServerHello;
+                       handshake_content = ServerHello {server_version = v; ciphersuite = c} }}::_), _
+            -> Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
 
           | _, s -> Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
         end;

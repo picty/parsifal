@@ -1,4 +1,8 @@
 v0.2 (apr. 2013)
+ - Add record_version to A/H answer types?
+ - Add support for client_hello_sent in mapAnswers/answer_type?
+ - Merge tls_context and ssl2_context?
+ - Add SSLv2 support in mapAnswers (all options) / probe_server and other programs
  - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
  - Misc
    * Factor som code (verbose option, file handling, action handling) in getopt
@@ -113,7 +117,6 @@ v0.2 (apr. 2013)
      + enums should offer bitparse and bitdump funs
  - Tls
    * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
-   * Add SSLv2 support in probe_server and other programs
    * Implement every extension/PK present in ssl-data
  - X509
    * relax constraints to allow parsing
