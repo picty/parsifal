@@ -294,7 +294,25 @@ let handle_answer answer =
                        handshake_content = ServerHello {server_version = v; ciphersuite = c} }}::_), _
             -> Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
 
-          | _, s -> Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
+          | Right ({ content_type = CT_Handshake;
+                     record_content = Handshake {
+                       handshake_type = HT_ClientHello;
+                       handshake_content = ClientHello _ }}::_), _
+            -> Printf.printf "%s\tJ\tClientHello\n" ip
+
+          | _, s ->
+	    if (String.length s >= 7) && (String.sub s 0 7 = "\x15\x03\x01\x00\x02\xff\xff")
+	    then Printf.printf "%s\tJ\tAlert-FF-FF\n" ip
+	    else if String.length s >= 5 then begin
+	      match (String.sub s 0 5) with
+	      | "SSH-1" -> Printf.printf "%s\tJ\tSSH-1\n" ip
+	      | "SSH-2" -> Printf.printf "%s\tJ\tSSH-2\n" ip
+	      | "HTTP/"
+	      | "<!DOC" -> Printf.printf "%s\tJ\tHTTP\n" ip (* Do better ? *)
+		(* qui contient "<!DOCTYPE html" ou "<html>" ou "<HTML>" ou "404 Not Found" *)
+	      (* Handle SMTP? "220 main2 ESMTP." *)
+	      | _ -> Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
+	    end else Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
         end;
       | RecordTypes ->
         let records, _, err = parse_all_records !enrich_style answer in
