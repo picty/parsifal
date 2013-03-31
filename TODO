@@ -1,8 +1,11 @@
 v0.2 (apr. 2013)
+ - Investigate some oddities:
+   * mapAnswers --answer-type on 002-60/003-211/005-211 are considered binary files
+   * in 009-129, 129.79.24.188 was J(15030000120228dcbcea4df63e3abfbe) and became A(Fatal,HandshakeFailure)
  - Add record_version to A/H answer types?
  - Add support for client_hello_sent in mapAnswers/answer_type?
  - Merge tls_context and ssl2_context?
- - Add SSLv2 support in mapAnswers (all options) / probe_server and other programs
+ - Add SSLv2 support in mapAnswers (especially -g) / probe_server and other programs
  - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
  - Misc
    * Factor som code (verbose option, file handling, action handling) in getopt
@@ -45,6 +48,7 @@ v0.2 (apr. 2013)
      + http://code.google.com/p/bitstring/
      + Lex/Bison and Haskell's Parsec
      + Haskell's Binary?
+     + Haskell's Templates?
    * Write a tutorial
      + Installation
      + First use (x509 / dns)
