@@ -274,7 +274,7 @@ let handle_answer answer =
                       handshake_type = HT_Certificate;
                       handshake_content = Certificate ((ParsedCertificate cert)::_) }}::_), _
             -> Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
-            (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
+            (quote_string (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject))))
 
           | Left ({ ssl2_content = SSL2Handshake {
               ssl2_handshake_type = SSL2_HT_SERVER_HELLO;
@@ -286,7 +286,7 @@ let handle_answer answer =
             }}::_), _
             -> Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v)
             (String.concat "," (List.map (fun c -> string_of_value (value_of_ssl2_cipher_spec c)) cs))
-            (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
+            (quote_string (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject))))
 
           | Right ({ content_type = CT_Handshake;
                      record_content = Handshake {

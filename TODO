@@ -1,6 +1,6 @@
 v0.2 (apr. 2013)
+ - non-regression test on answer-type/ncerts
  - Investigate some oddities:
-   * mapAnswers --answer-type on 002-60/003-211/005-211 are considered binary files
    * in 009-129, 129.79.24.188 was J(15030000120228dcbcea4df63e3abfbe) and became A(Fatal,HandshakeFailure)
  - Add record_version to A/H answer types?
  - Add support for client_hello_sent in mapAnswers/answer_type?
