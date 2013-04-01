@@ -99,11 +99,17 @@ v0.2 (apr. 2013)
    * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
  - Camlp4/Language
    * rethink parse_params / dump_params (for now, the latter is only use for enumerated_bitstring)
-   * rethink the exhaustive/enrich options for unions/asn1_unions
-     + *dont_enrich* (enrich_ var) / enrich (enrich_ var) / force_enrich
-     + <standard> / force_exhaustive (exhaustive + fail_hard) -> force_enrich / exhaustive / fail_soft (fail_on_enrich var + emit warning) 
-   * Add Exception as an acceptable behaviour for unions
-   * Add SoftExceptions for unions/enums (could be useful for content_type / alert_level)
+   * rethink the exhaustive/enrich options for unions/asn1_unions. The params are
+     + Enrich status : always-enrich, enrich_by_default, dont_enrich_by_default (the last two add an enrich bool ref)
+     + Exhaustive status : true or false
+     + Fail status when enriching has failed : exception, unparsed_constructor
+   * the possibilities should be:
+     + "closed" => always-enrich, exception on "_" case
+     + "closed" + "exhaustive" => do not add the "_" case
+     + (default) => dont_enrich_by_default, exhaustive = false, on fail => let the exception go
+     + options "enrich", "exhaustive", "soft_fail" to change the default
+     + option "unparsed_type" to specify the type and remove the mandatory name?
+   * Add SoftExceptions for enums (could be useful for content_type / alert_level)
    * add control commands in struct (check / seek / stop)
    * be more cautious about int32 types...
    * add hex_container / gzip_container as custom containers
