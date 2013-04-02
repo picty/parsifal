@@ -740,8 +740,6 @@ certains des champs de l'en-tête ne sont pas pertinents et devront
 \end{table}
 
 
-TODOTODOTODO
-
 \subsection{Une première implémentation}
 
 Afin d'utiliser \Parsifal pour décrire les fichiers au format TAR,
@@ -749,7 +747,7 @@ commençons par décrire les valeurs du champ «~Indicateur de lien/Type
 de fichier~». Il s'agit d'une énumération sur 8~bits qui s'écrit
 logiquement avec le nouveau mot-clé \texttt{enum}:
 \begin{lstlisting}
-enum file_type (8, UnknownVal UnknownFileType, []) =
+enum file_type (8, UnknownVal UnknownFileType) =
   | 0 -> NormalFile
   | 0x30 -> NormalFile
   | 0x31 -> HardLink
@@ -782,7 +780,7 @@ struct tar_header =
   device_major : string(8);
   device_minor : string(8);
   filename_prefix : string(155);
-  hdr_padding : binstring(12);
+  hdr_padding : binstring(12)
 }
 \end{lstlisting}
 
@@ -802,7 +800,7 @@ let int_of_tarstring octal_value =
   then 0
   else begin
     let real_octal_value = String.sub octal_value 0 (len -1) in
-    int_of_string ("0o" ^ octal_value)
+    int_of_string ("0o" ^ real_octal_value)
   end
 \end{lstlisting}
 
@@ -813,10 +811,10 @@ struct tar_entry =
 {
   header : tar_header;
   file_content : binstring(int_of_tarstring header.file_size);
-  file_padding : binstring(512 - ((int_of_tarstring header.file_size) % 512))
+  file_padding : binstring(512 - ((int_of_tarstring header.file_size) mod 512))
 }
 
-alias tar_file [with_lwt] = list of tar_entry;
+alias tar_file = list of tar_entry
 \end{lstlisting}
 
 Une fois ces quelques dizaines de lignes écrites, on dispose d'une
@@ -824,20 +822,23 @@ implémentation fonctionnelle pour disséquer, produire et afficher des
 fichiers TAR. Il est par exemple possible d'utiliser les fonctions
 générées par le pré-processeur pour lister le nom des fichiers
 contenus dans une archive TAR. On utilise pour cela la fonction
-\texttt{lwt\_parse\_tar\_file}:
+\texttt{lwt\_parse\_tar\_file}\footnote{Pour que cette fonction soit
+  générée, il faut auparavant ajouter l'option \texttt{with\_lwt} sur
+  l'ensemble des types générés.}:
 \begin{lstlisting}
-let handle_filename filename =
-  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd
-  lwt_parse_tar_file (input_of_fd filename fd) >>= fun tar_file
-  let print_filename entry = print_string entry.file_name in
-  List.iter print_filename tar_file;
-  return ()
+let rec handle_entry input =
+  lwt_parse_tar_entry input >>= fun entry ->
+  print_endline (print_value (value_of_tar_header entry.header));
+  handle_entry input
 
 let _ =
-  Lwt_unix.run (handle_filename "test.tar");
+  Lwt_unix.run (input_of_filename "test.tar" >>= handle_entry)
 \end{lstlisting}
 
 % TODO: décrire la compilation
+
+TODOTODOTODO
+
 
 Une fois ce programme compilé avec le pré-processeur \texttt{camlp4}
 et lié avec les bibliothèques décrivant les fonctions de base, on peut
