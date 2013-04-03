@@ -153,7 +153,27 @@
 \begin{frame}{Quelques chiffres}
   \vspace{12mm}
 
-  TODO
+  \begin{center}
+    \begin{tabular}{|l|c|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Module} & \bf LOCs \\
+      \hline
+      \hline
+      Extension syntaxique & 1~000 \\
+      \hline
+      Base & 3~000 \\
+      \hline
+      TAR & 100 \\
+      PE & 200 \\
+      DNS & 200 \\
+      MRT & 400 \\
+      PCAP + IP + TCP + UDP & 150 \\
+      \hline
+      X.509 & 900 \\
+      SSLv2 / TLS & 1700 \\
+      \hline
+    \end{tabular}
+  \end{center}
 
 \end{frame}
 
@@ -193,7 +213,8 @@
   \vspace{18mm}
 
   \begin{block}
-    \begin{tabular}{>{\tt}l}
+    \tt
+    \begin{tabular}{l}
       apt-get install ocaml ocaml-findlib \\
       apt-get install liblwt-ocaml-dev \\
       apt-get install libcryptokit-ocaml-dev \\
@@ -205,8 +226,9 @@
   \vspace{18mm}
 
   \begin{block}
-    \begin{tabular}{>{\tt}l}
-      \verb+wget http://paperstreet.picty.org/parsifal/parsifal-0.2-rc.tar.gz+ \\
+    \tt
+    \begin{tabular}{l}
+      wget http://paperstreet.picty.org/parsifal/parsifal-0.2-rc.tar.gz \\
       tar xvzf parsifal-0.2-rc.tar.gz \\
       cd parsifal \\
       make \\
@@ -215,10 +237,6 @@
       PATH=\$HOME/bin:\$PATH \\
     \end{tabular}
   \end{block}
-\end{frame}
-
-\begin{frame}{Installation d'OCaml}
-  \vspace{12mm}
 \end{frame}
 
 
@@ -231,34 +249,9 @@
   \tableofcontents[currentsection]
 \end{frame}
 
-% Exemples simples avec des formats existants (donner toutes les
-% différentes nouvelles structures)
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Pas-à-pas}
-
-\begin{frame}{Table des matières}
-  \vspace{12mm}
-  \tableofcontents[currentsection]
-\end{frame}
-
-% Ecriture pas-à-pas d'un novueau format (TAR ou PCAP)
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Perspectives}
-
-\begin{frame}{Table des matières}
-  \vspace{12mm}
-  \tableofcontents[currentsection]
-\end{frame}
-
-% Feuille de route (TODO) / Desideratas pour la suite
-
-
+% tutorial.tgz
+%   enum.ml
+%   Makefile
 
 
 % \begin{frame}{Principe}
@@ -398,6 +391,39 @@
 % asn1_alias distinguishedName = seq_of rdn
 % \end{lstlisting}
 % }
+
+
+% Donner le Makefile
+% Exemples simples avec des formats existants (donner toutes les
+% différentes nouvelles structures)
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Pas-à-pas}
+
+\begin{frame}{Table des matières}
+  \vspace{12mm}
+  \tableofcontents[currentsection]
+\end{frame}
+
+% Ecriture pas-à-pas d'un novueau format (TAR ou PCAP)
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Perspectives}
+
+\begin{frame}{Table des matières}
+  \vspace{12mm}
+  \tableofcontents[currentsection]
+\end{frame}
+
+% Feuille de route (TODO) / Desideratas pour la suite
+
+
+
+
 
 % \end{frame}
 
