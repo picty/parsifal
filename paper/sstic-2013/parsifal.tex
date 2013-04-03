@@ -691,9 +691,9 @@ certains des champs de l'en-tête ne sont pas pertinents et devront
       \hline
       157 & 100 & \multicolumn{2}{l|}{Nom du fichier pointé par le lien} \\
       \hline
-      257 &   6	& \multicolumn{1}{c|}{-} & Indicateur \texttt{"ustar"} \\
+      257 &   5	& \multicolumn{1}{c|}{-} & Indicateur \texttt{"ustar"} \\
       \hline
-      263 &   2	& \multicolumn{1}{c|}{-} & Version \texttt{ustar} ("00") \\
+      262 &   3	& \multicolumn{1}{c|}{-} & \emph{Padding} \\
       \hline
       265 &  32 & \multicolumn{1}{c|}{-} & Propriétaire \\
       \hline
@@ -774,7 +774,8 @@ struct tar_header =
   checksum  : string(8);
   file_type : file_type;
   linked_file : string(100);
-  ustar_magic : magic("ustar\x0000");
+  ustar_magic : magic("ustar");
+  ustar_magic_padding : binstring(3);
   owner_user : string(32);
   owner_group : string(32);
   device_major : string(8);
@@ -835,15 +836,13 @@ let _ =
   Lwt_unix.run (input_of_filename "test.tar" >>= handle_entry)
 \end{lstlisting}
 
-% TODO: décrire la compilation
-
-TODOTODOTODO
+% ocamlopt -o tar -pp "camlp4o /home/yeye/.ocamlpath/parsifal_syntax/parsifal_syntax.cma" -I /usr/lib/ocaml/lwt -I /home/yeye/.ocamlpath/parsifal_core unix.cmxa lwt.cmxa bigarray.cmxa lwt-unix.cmxa parsifal_core.cmxa tar1.ml
 
 
 Une fois ce programme compilé avec le pré-processeur \texttt{camlp4}
 et lié avec les bibliothèques décrivant les fonctions de base, on peut
 lancer le programme pour décrire le contenu de l'archive
-\texttt{test.tar}.
+\texttt{tar1}.
 
 
 \subsection{Traitement des vieilles archives}
@@ -863,12 +862,13 @@ optionnel. Pour cela, on remplace les déclarations de
 \begin{lstlisting}
 struct ustar_header =
 {
-  ustar_magic : magic("ustar\x0000");
+  ustar_magic : magic("ustar");
+  ustar_magic_padding : binstring(3);
   owner_user : string(32);
   owner_group : string(32);
   device_major : string(8);
   device_minor : string(8);
-  filename_prefix : string(155);
+  filename_prefix : string(155)
 }
 \end{lstlisting}
 
@@ -885,7 +885,7 @@ struct tar_header =
   file_type : file_type;
   linked_file : string(100);
   optional ustar_header : ustar_header;
-  hdr_padding : binstring;
+  hdr_padding : binstring
 }
 \end{lstlisting}
 
@@ -894,7 +894,7 @@ struct tar_entry =
 {
   header : container(512) of tar_header;
   file_content : binstring(int_of_tarstring header.file_size);
-  file_padding : binstring(512 - ((int_of_tarstring header.file_size) % 512))
+  file_padding : binstring(512 - ((int_of_tarstring header.file_size) mod 512))
 }
 \end{lstlisting}
 
@@ -930,10 +930,9 @@ let parse_tar_numstring len input =
   int_of_string ("0o" ^ octal_value)
 
 let dump_tar_numstring len v =
-  Printf.printf "%*.*o\x00" len len v
+  Printf.sprintf "%*.*o\x00" len len v
 
-let print_tar_numstring ?indent:(indent="") ?name:(name="numstring") v =
-  Printf.sprintf "%s%s: %d (%o)\n" indent name v v
+let value_of_tar_numstring i = VSimpleInt i
 \end{lstlisting}
 
 Une fois ce nouveau \PType défini, on peut modifier les champs
@@ -955,6 +954,8 @@ struct tar_entry =
 \end{lstlisting}
 
 
+
+TODODODODODODO
 
 \section{Quelques résultats}
 \label{sec:resultats}
