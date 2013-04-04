@@ -28,4 +28,4 @@ EXTRA_OCAMLC_LD_FLAGS =
 BUILD_DIR = build
 
 
-include ../../../Makefile.ocaml
+include ../../Makefile.ocaml
