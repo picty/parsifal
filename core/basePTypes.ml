@@ -321,8 +321,16 @@ let parse_rem_list parse_fun input =
     if eos input
     then List.rev accu
     else begin
-      let x = parse_fun input in
-      aux (x::accu)
+      let saved_offset = input.cur_offset in
+      let next_elt =
+	try Some (parse_fun input)
+	with ParsingStop -> None
+      in
+      match next_elt with
+      | None ->
+	input.cur_offset <- saved_offset;
+	List.rev accu
+      | Some x -> aux (x::accu)
     end
   in aux []
 
@@ -334,7 +342,12 @@ let lwt_parse_rem_list lwt_parse_fun input =
       let saved_offset = input.lwt_offset in
       let finalize_ok x = aux (x::accu)
       and finalize_nok = function
-	| ParsingStop -> return (List.rev accu)
+	| ParsingStop ->
+	  if input.lwt_rewindable then begin
+	    Lwt_io.set_position input.lwt_ch (Int64.of_int saved_offset) >>= fun () ->
+	    input.lwt_offset <- saved_offset;
+	    return (List.rev accu)
+	  end else return (List.rev accu)
 	| (ParsingException _) as e ->
 	    if input.lwt_offset = saved_offset
 	    then return (List.rev accu)
