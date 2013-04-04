@@ -810,6 +810,12 @@ EXTEND Gram
     | None -> (_loc, lid_of_ident name, field, NoFieldAttr)
   ]];
 
+  struct_fields: [[
+    f = struct_field; ";"; fs = struct_fields -> f::fs
+  | f = struct_field -> [f]
+  | -> []
+  ]];
+
   union_choice: [[
     "|"; discr_val = patt; "->"; constructor = ident; "of"; t = ptype ->
       (_loc, uid_of_ident constructor, (discr_val, t))
@@ -841,7 +847,7 @@ EXTEND Gram
     mk_parsifal_construction _loc name raw_opts enum_descr
       
   | "struct"; name = ident; raw_opts = option_list; "=";
-    "{"; fields = LIST1 struct_field SEP ";"; "}" ->
+    "{"; fields = struct_fields; "}" ->
     mk_parsifal_construction _loc name raw_opts (Struct fields)
 
   | "union"; name = ident; raw_opts = option_list;
