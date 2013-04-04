@@ -1,3 +1,4 @@
+open Lwt
 open Parsifal
 open BasePTypes
 open PTypes
@@ -67,9 +68,13 @@ struct ustar_header [param file_type] =
   filename_prefix : azt_string[155]
 }
 
+let parse_stop_if condition _input =
+  if condition then raise ParsingStop
+
 struct tar_header =
 {
   file_name : azt_string[100];
+  parse_checkpoint _last_entry : stop_if(file_name = "");
   file_mode : tar_numstring[8];
   owner_uid : tar_numstring[8];
   owner_gid : tar_numstring[8];
@@ -83,19 +88,25 @@ struct tar_header =
 }
 
 
-struct tar_entry =
+struct tar_entry [with_lwt] =
 {
   header : container(512) of tar_header;
   file_content : binstring(header.file_size);
   file_padding : binstring(512 - (header.file_size mod 512))
 }
 
+alias tar_file [with_lwt] = list of tar_entry
 
-let rec handle_entry input =
-  let entry = parse_tar_entry input in
-  print_endline (print_value (value_of_tar_header entry.header));
-  handle_entry input
+
+let handle_file input =
+  lwt_parse_tar_file input >>= fun entries ->
+  let print_entry entry = print_endline (print_value (value_of_tar_header entry.header)) in
+  List.iter print_entry entries;
+  return ()
 
 let _ =
-  let input = string_input_of_filename "test.tar" in
-  handle_entry input
+  try
+    Lwt_unix.run (input_of_filename "test.tar" >>= handle_file)
+  with
+  | ParsingException (e, h) -> prerr_endline (string_of_exception e h)
+  | e -> prerr_endline (Printexc.to_string e)

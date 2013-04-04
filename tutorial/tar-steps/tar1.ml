@@ -1,9 +1,8 @@
-open Lwt
 open Parsifal
 open PTypes
 
 
-enum file_type [with_lwt] (8, UnknownVal UnknownFileType) =
+enum file_type (8, UnknownVal UnknownFileType) =
   | 0 -> NormalFile
   | 0x30 -> NormalFile
   | 0x31 -> HardLink
@@ -14,7 +13,7 @@ enum file_type [with_lwt] (8, UnknownVal UnknownFileType) =
   | 0x36 -> FIFO
   | 0x37 -> ContiguousFile
 
-struct tar_header [with_lwt] =
+struct tar_header =
 {
   file_name : string(100);
   file_mode : string(8);
@@ -45,20 +44,19 @@ let int_of_tarstring octal_value =
   end
 
 
-struct tar_entry [with_lwt] =
+struct tar_entry =
 {
   header : tar_header;
   file_content : binstring(int_of_tarstring header.file_size);
   file_padding : binstring(512 - ((int_of_tarstring header.file_size) mod 512))
 }
 
-alias tar_file [with_lwt] = list of tar_entry
-
 
 let rec handle_entry input =
-  lwt_parse_tar_entry input >>= fun entry ->
+  let entry = parse_tar_entry input in
   print_endline (print_value (value_of_tar_header entry.header));
   handle_entry input
 
 let _ =
-  Lwt_unix.run (input_of_filename "test.tar" >>= handle_entry)
+  let input = string_input_of_filename "test.tar" in
+  handle_entry input

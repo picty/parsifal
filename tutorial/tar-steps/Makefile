@@ -1,5 +1,5 @@
 # configurable section
-TARGETS = tar1 tar2 tar3 tar4 tar5 tar6 tar7 tar8
+TARGETS = tar1 tar2 tar3 tar4 tar5 tar6 tar7 tar8 tar9
 
 tar1_SRCS := tar1.ml
 tar2_SRCS := tar2.ml
@@ -9,6 +9,7 @@ tar5_SRCS := tar5.ml
 tar6_SRCS := tar6.ml
 tar7_SRCS := tar7.ml
 tar8_SRCS := tar8.ml
+tar9_SRCS := tar9.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes

@@ -1,4 +1,3 @@
-open Lwt
 open Parsifal
 open BasePTypes
 open PTypes
@@ -88,26 +87,22 @@ struct tar_header =
 }
 
 
-struct tar_entry [with_lwt] =
+struct tar_entry =
 {
   header : container(512) of tar_header;
   file_content : binstring(header.file_size);
   file_padding : binstring(512 - (header.file_size mod 512))
 }
 
-alias tar_file [with_lwt] = list of tar_entry
+alias tar_file = list of tar_entry
 
-
-let rec handle_file input =
-  lwt_parse_tar_file input >>= fun entries ->
-  let print_entry entry = print_endline (print_value (value_of_tar_header entry.header)) in
-  List.iter print_entry entries;
-  return ()
 
 let _ =
   try
-    Lwt_unix.run (input_of_filename "test.tar" >>= handle_file)
+    let input = string_input_of_filename "test.tar" in
+    let entries = parse_tar_file input in
+    let print_entry entry = print_endline (print_value (value_of_tar_header entry.header)) in
+    List.iter print_entry entries
   with
   | ParsingException (e, h) -> prerr_endline (string_of_exception e h)
   | e -> prerr_endline (Printexc.to_string e)
-
