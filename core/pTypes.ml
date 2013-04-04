@@ -77,6 +77,31 @@ let string_of_magic s = hexdump s
 let value_of_magic s = VString (s, true)
 
 
+(* Null Terminated Strings *)
+
+type nt_string = string
+
+let parse_nt_string len input =
+  let saved_offset = input.cur_offset in
+  let s = parse_string len input in
+  try
+    let index = String.index s '\x00' in
+
+    if String.sub s index (len - index) <> String.make (len - index) '\x00'
+    then emit_parsing_exception false (CustomException "Unclean Null Terminated String")
+      { input with cur_offset = saved_offset };
+
+    String.sub s 0 index;
+  with Not_found -> s
+
+let dump_nt_string len s =
+  let missing_len = len - (String.length s) in
+  s ^ (String.make missing_len '\x00')
+
+let value_of_nt_string s = VString (s, false)
+
+
+
 (* Containers *)
 
 type length_constraint =
@@ -153,3 +178,8 @@ let value_of_raw_value = function
 
 (* Ignore trailing bytes *)
 let parse_ignore = drop_rem_bytes
+
+
+(* ParsingStop raiser on condition *)
+let parse_stop_if condition _input =
+  if condition then raise ParsingStop

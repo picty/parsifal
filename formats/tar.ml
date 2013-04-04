@@ -30,38 +30,24 @@ let dump_tar_numstring len v =
 let value_of_tar_numstring i = VSimpleInt i
 
 
-type optional_tar_numstring = int option
+union optional_tar_numstring [both_param len; enrich] (UnparsedNum of binstring(len)) =
+  | CharacterSpecial -> Num of tar_numstring[len]
+  | BlockSpecial -> Num of tar_numstring[len]
 
-let parse_optional_tar_numstring len input =
-  match try_parse (parse_tar_numstring len) input with
-  | None ->
-    drop_bytes len input;
-    None
-  | x -> x
 
-let dump_optional_tar_numstring len = function
-  | None -> String.make len '\x00'
-  | Some v -> dump_tar_numstring len v
-
-let value_of_optional_tar_numstring v = try_value_of value_of_tar_numstring v
-
-struct ustar_header = {
+struct ustar_header [param file_type] = {
   ustar_magic : magic("ustar");
   _ustar_magic_padding : binstring(3);
-  owner_user : string(32);
-  owner_group : string(32);
-  device_major : optional_tar_numstring[8];
-  device_minor : optional_tar_numstring[8];
-  filename_prefix : string(155)
+  owner_user : nt_string[32];
+  owner_group : nt_string[32];
+  device_major : optional_tar_numstring[8](file_type);
+  device_minor : optional_tar_numstring[8](file_type);
+  filename_prefix : nt_string[155]
 }
 
-let parse_last_entry name _input =
-  if name.[0] = '\x00'
-  then raise ParsingStop
-
 struct tar_header = {
-  file_name : string(100);
-  parse_checkpoint _last_entry : last_entry(file_name);
+  file_name : nt_string[100];
+  parse_checkpoint _last_entry : stop_if(file_name = "");
   file_mode : tar_numstring[8];
   owner_uid : tar_numstring[8];
   owner_gid : tar_numstring[8];
@@ -69,17 +55,21 @@ struct tar_header = {
   timestamp : tar_numstring[12];
   checksum  : string(8);
   file_type : file_type;
-  linked_file : string(100);
-  optional ustar_header : ustar_header;
-  hdr_padding : binstring
+  linked_file : nt_string[100];
+  optional ustar_header : ustar_header(file_type);
+  _hdr_padding : binstring
 }
 
+
 (* let check_crc32 _hdr _content _padding = () *)
+
+let padding_size file_size =
+  (512 - (file_size mod 512)) mod 512
 
 struct tar_entry [with_lwt] = {
   header : container(512) of tar_header;
   file_content : binstring(header.file_size);
-  file_padding : binstring(512 - (header.file_size mod 512))
+  file_padding : binstring(padding_size header.file_size)
   (* checksum_verification : check of check_crc32 (header, *)
   (*                                   file_content, file_padding); *)
 }
