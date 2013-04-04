@@ -714,3 +714,24 @@ let rec string_of_get_value = function
 let get value path_str =
   let path = string_split '.' path_str in
   string_of_get_value (get_value path value)
+
+
+
+(* Useful high-level helpers *)
+(* TODO: move this code elsewhere? *)
+
+let get_file_content filename =
+  let fd = open_in_bin filename in
+  try
+    let len = in_channel_length fd in
+    let res = String.make len '\x00' in
+    really_input fd res 0 len;
+    close_in fd;
+    res
+  with e ->
+    close_in fd;
+    raise e
+
+let string_input_of_filename filename =
+  let content = get_file_content filename in
+  input_of_string filename content
