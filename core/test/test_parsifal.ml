@@ -19,7 +19,7 @@ struct st [top] = {
   x : uint8;
   y : string(x);
   len : uint8;
-  l : list(len) of uint16
+  l : list(len) of uint16;
 }
 
 struct st2 [top] = {
