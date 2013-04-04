@@ -1,0 +1,297 @@
+\documentclass{article}
+\usepackage[hscale=0.8, vscale=0.8]{geometry}
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+
+\usepackage{url}
+\usepackage{array}
+\usepackage{listings}
+\lstset{language=Caml, basicstyle=\footnotesize,
+  morekeywords={
+    % Structure names
+    enum, alias, struct, union, asn1_alias, asn1_union,
+    % Options
+    with_lwt, with_exact, top, enrich, exhaustive,
+    parse_param, param, dump_param, both_param, little_endian,
+    % enum stuff
+    UnknownVal, Exception
+    % struct stuff
+    optional, parse_checkpoint, parse_field,
+    % asn1_alias stuff
+    primitive, constructed, constructed_of, sequence_of,
+    sequence, seq_of, set_of, set
+  }}
+\usepackage{xspace}
+\newcommand{\Parsifal}{Parsifal\xspace}
+\newcommand{\PTypes}{PTypes\xspace}
+\newcommand{\PType}{PType\xspace}
+
+
+\title{\Parsifal: écriture rapide de \emph{parsers} robustes et efficaces}
+\author{Olivier Levillain}
+\date{}
+%\institution{ANSSI / Télécom SudParis}
+
+
+
+\begin{document}
+
+\maketitle
+
+
+
+\section*{Résumé}
+
+Dans le cadre de ses activités d'expertise, le laboratoire sécurité
+des réseaux et protocoles (LRP) de l'ANSSI est amené à étudier divers
+protocoles de communication. L'étude fine de ces protocoles passe par
+l'utilisation de \emph{parsers}, ou dissecteurs, de confiance
+permettant d'analyser les messages échangés lors d'une exécution du
+protocole.
+
+L'expérience a montré qu'il était nécessaire de disposer
+d'implémentations indépendantes et robustes pour étudier et comprendre
+les comportements d'un protocole donné, en particulier pour détecter
+et caractériser les anomalies. En effet, pour un protocole donné, les
+implémentations disponibles de clients, serveurs ou dissecteurs sont
+parfois limitées (refus de certaines options), laxistes (acceptation
+silencieuse de paramètres erronés) ou fragiles (terminaison brutale du
+programme pour des valeurs inattendues, qu'elles soient licites ou
+non).
+
+Ce constat a conduit au développement d'outils, l'objectif étant de
+développer \emph{rapidement} des dissecteurs \emph{robustes} et
+\emph{efficaces}. Pour cela, plusieurs langages de programmation ont
+été successivement utilisés (C, C++, python, OCaml). L'objet de ce
+document est de présenter l'une de ces implémentations, reposant sur
+le pré-processeur \texttt{camlp4} d'OCaml. La
+section~\ref{sec:historique} présente l'historique du projet et une
+application concernant TLS. La section~\ref{sec:exemples} donne
+quelques exemples de code.
+
+\medskip
+
+Si cette proposition est retenue, la présentation rappellera
+brièvement l'historique du projet, puis les avantages et inconvénients
+des différents langages utilisés pour l'écriture de
+\emph{parsers}. Enfin, je terminerai par une démonstration de l'outil,
+qui sera publié sous licence libre CeCILL A.
+
+
+
+\section*{Historique du projet}
+\label{sec:historique}
+
+
+\subsection*{Motivation initiale: analyser de nombreuses réponses TLS}
+
+Le point de départ de ces travaux était l'analyse d'une quantité
+importante (180~Go) de données récoltées concernant le protocole
+SSL/TLS. Afin de pouvoir interpréter correctement les différents types
+de réponses, il est nécessaire de comprendre les différentes versions
+du protocole, qui apportent chacune des subtilités dans les messages
+échangés. Parmi les messages pertinents pour ce type d'étude, le
+message \texttt{Certificate} contient la chaîne de certification
+permettant l'authentification du serveur. Elle est composée de
+certificats X.509~\cite{rfc5280}, ce qui apporte une complexité
+supplémentaire pour la dissection des messages.
+
+Le laboratoire sécurité des réseaux et protocoles a mené des travaux
+sur de nombreuses traces HTTPS depuis deux ans. Les données utilisées
+proviennent de résultats mis à dispositions par l'Electronic Frontier
+Foundation~\cite{eff-observatory, eckersley-obs1, eckersley-obs2} en
+2010 et de collectes effectuées en 2011~\cite{ACSAC2012}. Les traces
+analysées contiennent une très grande diversité de réponses, parfois
+incohérentes ou non conformes. Face à cet imposant corpus, il était
+difficile d'utiliser des outils existants pour extraire de manière
+fiable l'information pertinente pour les analyses.
+
+Des outils spécifiques, maîtrisés par le laboratoire, ont donc été
+développés pour analyser ce grand volume de données.
+
+
+\subsection*{Démarche de développement des outils}
+
+Le premier \emph{parser} réalisé pour cette tâche a été écrit en
+Python. Nous avons ainsi obtenu rapidement un prototype pour extraire
+les premiers éléments des données. Cependant, ce premier programme
+s'est révélé trop lent face au volume à traiter.
+
+Une seconde implémentation a donc vu le jour, en C++. Celle-ci
+reposait sur les \emph{templates} et la programmation objet, et
+permettait d'obtenir un dissecteur flexible et efficace, mais au prix
+d'une grande quantité de code à écrire et d'erreurs de programmation
+parfois difficiles à diagnostiquer (fuites mémoire, erreurs de
+segmentation).
+
+Pour pallier ce manque de robustesse, le développement d'une troisième
+version des outils a été entreprise, en OCaml. Afin de conserver la
+flexibilité imaginée pour le second prototype, un langage spécifique a
+été développé pour décrire les structures à disséquer. Les outils
+résultants étaient expressifs, efficaces et plus fiables que la
+version précédente. Malheureusement, à l'usage, si l'extensibilité
+était réelle, elle nécessitait des développements fastidieux.
+
+Finalement, une nouvelle implémentation en OCaml a été réalisée pour
+réunir l'ensemble des qualités recherchées pour le développement de
+\emph{parsers}. Cette quatrième mouture, baptisée \Parsifal, résulte
+de la fusion entre le langage spécifique de description des objets
+analysés et le langage de programmation: on utilise directement le
+langage OCaml pour les deux usages. Pour cela, le préprocesseur
+\texttt{camlp4} est employé pour générer automatiquement des types et
+des fonctions à partir de descriptions brèves des structures à
+disséquer.
+
+\medskip
+
+Pour résumer, les propriétés qui semblent souhaitables pour un
+\emph{parser} sont les suivantes: l'expressivité du langage utilisé,
+la robustesse de l'outil obtenu et l'efficacité du code produit.
+Parmi les \emph{parsers} présentés ci-dessus, seul \Parsifal présente
+de bonnes caractéristiques dans tous les domaines.
+
+
+
+\section*{Quelques exemples}
+\label{sec:exemples}
+
+\Parsifal fournit les \PTypes suivants: les types scalaires de base
+(entiers, chaînes de caractères), les types liste et conteneur,
+quelques types utiles (\texttt{magic}, \texttt{ipv4}, etc.) et de quoi
+écrire des grammaires ASN.1. Pour cela, l'implémentation repose sur
+\begin{itemize}
+\item des pré-processeurs \texttt{camlp4}, qui comportent environ
+  1000~lignes de code;
+\item des bibliothèques annexes pour implémenter les types de base,
+  l'ASN.1 et toute les rouages internes, sur 3000~lignes de code.
+\end{itemize}
+
+
+Plusieurs formats et protocoles suivants ont été implémentés à partir
+de ces briques de base:
+\begin{itemize}
+\item les certificats X.509 avec leurs nombreuses extensions (900~lignes);
+\item les messages du protocole TLS (1000~lignes);
+\item les messages du protocole MRT (300~lignes);
+\item le format TAR, proposé comme exemple pour un tutoriel (moins de
+  100~lignes);
+\item une première version du format PE;
+\item un support rudimentaire de PCAP, IP, TCP, UDP et DNS.
+\end{itemize}
+
+\medskip
+
+Pour donner une idée de la manière d'écrire du code avec \Parsifal, le
+listing ci-dessous reproduit des extraits d'une implémentation
+simpliste du format TAR:
+
+{\footnotesize
+\begin{minipage}[t]{0.45\linewidth}
+\begin{lstlisting}
+enum file_type =
+  | 0 -> NormalFile
+  | 0x30 -> NormalFile
+  | 0x31 -> HardLink
+  | 0x32 -> SymbolicLink
+  | 0x33 -> CharacterSpecial
+  | 0x34 -> BlockSpecial
+  | 0x35 -> Directory
+  | 0x36 -> FIFO
+  | 0x37 -> ContiguousFile
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}[t]{0.45\linewidth}
+\begin{lstlisting}
+struct tar_header = {
+  file_name : string(100);
+  file_mode : string(8);
+  [...]
+  file_type : file_type;
+  linked_file : string(100);
+  ustar_magic : magic("ustar");
+  [...]
+}
+\end{lstlisting}
+\end{minipage}
+}
+
+Les mots-clés \texttt{enum} et \texttt{struct}\footnote{\Parsifal
+  offre d'autres constructions telles que les \texttt{union}, les
+  \texttt{alias} et les constructeurs spécifiques à ASN.1.} permettent
+d'écrire des descriptions à partir desquelles \Parsifal génère
+automatiquement les types OCaml concrets \texttt{t} et un ensemble de
+fonctions: \texttt{parse\_t} pour construire un objet à partir d'une
+chaîne de caractères, \texttt{dump\_t} pour produire une version
+binaire à partir d'un objet, et \texttt{value\_of\_t} pour obtenir une
+représentation abstraite de l'objet, que l'on peut ensuite afficher de
+manière simple ou explorer.
+
+Par exemple, l'outil \texttt{x509show}, qui utilise directement les
+types et fonctions générées par les descriptions X.509, permet les
+manipulations suivantes:
+{\footnotesize
+\begin{verbatim}
+% x509show /etc/ssl/AC_RACINE_NEW.pem -g "tbsCertificate.subject.@CN"
+"AC RACINE"
+% x509show /etc/ssl/AC_RACINE_NEW.pem -g "tbsCertificate.subject.@C" 
+"FR"
+% x509show /etc/ssl/AC_RACINE_NEW.pem -g "tbsCertificate.extensions.*.extnID"
+["basicConstraints (2.5.29.19)", "authorityKeyIdentifier (2.5.29.35)",
+ "subjectKeyIdentifier (2.5.29.14)", "keyUsage (2.5.29.15)"]
+\end{verbatim}
+}
+
+
+\section*{Conclusion et perspectives}
+\label{sec:conclusion}
+
+\Parsifal est en projet en cours de développement, qui a déjà fait ses
+preuves pour analyser certains protocoles réseau ou formats de
+fichier. \Parsifal permet de générer des dissecteurs réunissant toutes
+les propriétés recherchées (rapidité de développement, robustesse et
+efficacité des programmes).
+
+Deux projets écrits en Python présentent des similarités avec les
+travaux exposés ici:
+\begin{itemize}
+\item \texttt{scapy}~\cite{scapy}, une boîte à outils pour manipuler les paquets
+  réseau; ce projet permet également de définir rapidement de nouveaux
+  protocoles réseau pour étendre la boîte à outils;
+\item \texttt{hachoir}~\cite{hachoir}, une bibliothèque pour écrire rapidement des
+  dissecteurs pour des formats de fichiers.
+\end{itemize}
+
+\Parsifal est aujourd'hui suffisamment mûr pour être partagé avec une
+communauté. Même si le coeur du moteur est stable et suffisant pour de
+nombreux usages, les développements du socle de \Parsifal continuent
+pour gérer toujours plus de cas:
+\begin{itemize}
+\item gestion simple des champs de bits;
+\item gestion des types binaires récursifs (tels que PKCS\#7);
+\item intégration d'un véritable langage de description et d'analyse interactive.
+\end{itemize}
+
+L'autre axe de développement est l'ajout ou l'amélioration du support
+de nouveaux formats de fichiers et protocoles: DNS, OCSP, etc.
+
+Enfin, \Parsifal sert aussi de base à des outils d'analyse de
+certificats et de connexions TLS, qui font aussi l'objet d'un
+développement actif.
+
+
+\section*{Remerciements}
+
+\Parsifal n'aurait pas vu le jour sans le soutien et les conseils de
+d'Eric, Pierre, Guillaume et Arnaud (E), ainsi que les boutades de
+Vincent, Benjamin, Loïc et Arnaud (F).
+
+
+
+\bibliographystyle{unsrt}
+\bibliography{biblio,rfc}
+
+
+
+\end{document}
+
