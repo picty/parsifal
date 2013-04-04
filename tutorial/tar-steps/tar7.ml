@@ -4,7 +4,7 @@ open BasePTypes
 open PTypes
 
 
-enum file_type [with_lwt] (8, UnknownVal UnknownFileType) =
+enum file_type (8, UnknownVal UnknownFileType) =
   | 0 -> NormalFile
   | 0x30 -> NormalFile
   | 0x31 -> HardLink
