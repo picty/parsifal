@@ -3,8 +3,8 @@ TARGETS =
 MLLIBS = parsifal_formats
 LIBNAME = parsifal_formats
 
-parsifal_formats_SRCS := pe.ml tar.ml
-		# png.ml dex.ml
+parsifal_formats_SRCS := pe.ml tar.ml png.ml
+		# dex.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
