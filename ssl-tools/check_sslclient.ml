@@ -2,6 +2,8 @@
 
 Check the version proposed?
 
+Record checks: same as check_sslserver
+
 [...]
 
 Check the different versions to write 0 in DHE

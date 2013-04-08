@@ -51,7 +51,7 @@ Record protocol
  - one Handshake message spanning over several records
  - several Handshake messages inside one record
  - messages split in 10-byte records, in (2^14 + 1)-byte records
- - tolerance to empty records (HS, CCS, Alert, App)
+ - tolerance to empty records (HS, CCS, Alert, App): zero-length HS/A/CCS records should be forbidden
  - tolerance to 1-byte records (HS, Alert, App)
  - tolerance to a warning Alert between two Handhake messages
  - tolerance to a warning Alert in the middle of a Handhake message
