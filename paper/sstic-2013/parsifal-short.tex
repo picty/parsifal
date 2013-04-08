@@ -1,5 +1,5 @@
 \documentclass{article}
-\usepackage[hscale=0.8, vscale=0.8]{geometry}
+\usepackage[hscale=0.85, vscale=0.85]{geometry}
 \usepackage[latin1]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[french]{babel}
@@ -65,18 +65,7 @@ développer \emph{rapidement} des dissecteurs \emph{robustes} et
 \emph{efficaces}. Pour cela, plusieurs langages de programmation ont
 été successivement utilisés (C, C++, python, OCaml). L'objet de ce
 document est de présenter l'une de ces implémentations, reposant sur
-le pré-processeur \texttt{camlp4} d'OCaml. La
-section~\ref{sec:historique} présente l'historique du projet et une
-application concernant TLS. La section~\ref{sec:exemples} donne
-quelques exemples de code.
-
-\medskip
-
-Si cette proposition est retenue, la présentation rappellera
-brièvement l'historique du projet, puis les avantages et inconvénients
-des différents langages utilisés pour l'écriture de
-\emph{parsers}. Enfin, je terminerai par une démonstration de l'outil,
-qui sera publié sous licence libre CeCILL A.
+le pré-processeur \texttt{camlp4} d'OCaml.
 
 
 
@@ -101,11 +90,12 @@ Le laboratoire sécurité des réseaux et protocoles a mené des travaux
 sur de nombreuses traces HTTPS depuis deux ans. Les données utilisées
 proviennent de résultats mis à dispositions par l'Electronic Frontier
 Foundation~\cite{eff-observatory, eckersley-obs1, eckersley-obs2} en
-2010 et de collectes effectuées en 2011~\cite{ACSAC2012}. Les traces
-analysées contiennent une très grande diversité de réponses, parfois
-incohérentes ou non conformes. Face à cet imposant corpus, il était
-difficile d'utiliser des outils existants pour extraire de manière
-fiable l'information pertinente pour les analyses.
+2010 et de collectes effectuées en 2011 dans le cadre du projet
+européen VIS-SENSE~\cite{ACSAC2012}. Les traces analysées contiennent
+une très grande diversité de réponses, parfois incohérentes ou non
+conformes. Face à cet imposant corpus, il était difficile d'utiliser
+des outils existants pour extraire de manière fiable l'information
+pertinente pour les analyses.
 
 Des outils spécifiques, maîtrisés par le laboratoire, ont donc été
 développés pour analyser ce grand volume de données.
@@ -113,10 +103,10 @@ développés pour analyser ce grand volume de données.
 
 \subsection*{Démarche de développement des outils}
 
-Le premier \emph{parser} réalisé pour cette tâche a été écrit en
-Python. Nous avons ainsi obtenu rapidement un prototype pour extraire
-les premiers éléments des données. Cependant, ce premier programme
-s'est révélé trop lent face au volume à traiter.
+Le premier \emph{parser} a été écrit en Python. Nous avons ainsi
+obtenu rapidement un prototype pour extraire les premiers éléments des
+données. Cependant, ce premier programme s'est révélé trop lent face
+au volume à traiter.
 
 Une seconde implémentation a donc vu le jour, en C++. Celle-ci
 reposait sur les \emph{templates} et la programmation objet, et
@@ -143,8 +133,6 @@ langage OCaml pour les deux usages. Pour cela, le préprocesseur
 des fonctions à partir de descriptions brèves des structures à
 disséquer.
 
-\medskip
-
 Pour résumer, les propriétés qui semblent souhaitables pour un
 \emph{parser} sont les suivantes: l'expressivité du langage utilisé,
 la robustesse de l'outil obtenu et l'efficacité du code produit.
@@ -156,29 +144,20 @@ de bonnes caractéristiques dans tous les domaines.
 \section*{Quelques exemples}
 \label{sec:exemples}
 
-\Parsifal fournit les \PTypes suivants: les types scalaires de base
-(entiers, chaînes de caractères), les types liste et conteneur,
-quelques types utiles (\texttt{magic}, \texttt{ipv4}, etc.) et de quoi
-écrire des grammaires ASN.1. Pour cela, l'implémentation repose sur
-\begin{itemize}
-\item des pré-processeurs \texttt{camlp4}, qui comportent environ
-  1000~lignes de code;
-\item des bibliothèques annexes pour implémenter les types de base,
-  l'ASN.1 et toute les rouages internes, sur 3000~lignes de code.
-\end{itemize}
-
+\Parsifal fournit les types suivants: les types scalaires de base
+(entiers, chaînes de caractères), les listes et conteneurs, quelques
+types utiles (\texttt{magic}, \texttt{ipv4}, etc.) et de quoi écrire
+des grammaires ASN.1. Pour cela, l'implémentation repose sur des
+pré-processeurs \texttt{camlp4}, qui comportent environ 1000~lignes de
+code et des bibliothèques annexes pour implémenter les types de base,
+l'ASN.1 et toute les rouages internes, sur 3000~lignes de code.
 
 Plusieurs formats et protocoles suivants ont été implémentés à partir
-de ces briques de base:
-\begin{itemize}
-\item les certificats X.509 avec leurs nombreuses extensions (900~lignes);
-\item les messages du protocole TLS (1000~lignes);
-\item les messages du protocole MRT (300~lignes);
-\item le format TAR, proposé comme exemple pour un tutoriel (moins de
-  100~lignes);
-\item une première version du format PE;
-\item un support rudimentaire de PCAP, IP, TCP, UDP et DNS.
-\end{itemize}
+de ces briques de base: les certificats X.509 avec leurs nombreuses
+extensions (900~lignes), les messages du protocole TLS (1000~lignes),
+les messages du protocole MRT (300~lignes), le format TAR (moins de
+100~lignes), une première version du format PE et un support
+rudimentaire de PCAP, IP, TCP, UDP et DNS.
 
 \medskip
 
@@ -253,24 +232,17 @@ les propriétés recherchées (rapidité de développement, robustesse et
 efficacité des programmes).
 
 Deux projets écrits en Python présentent des similarités avec les
-travaux exposés ici:
-\begin{itemize}
-\item \texttt{scapy}~\cite{scapy}, une boîte à outils pour manipuler les paquets
-  réseau; ce projet permet également de définir rapidement de nouveaux
-  protocoles réseau pour étendre la boîte à outils;
-\item \texttt{hachoir}~\cite{hachoir}, une bibliothèque pour écrire rapidement des
-  dissecteurs pour des formats de fichiers.
-\end{itemize}
+travaux exposés ici: \texttt{scapy}~\cite{scapy}, une boîte à outils
+pour manipuler les paquets réseau et \texttt{hachoir}~\cite{hachoir},
+une bibliothèque pour écrire rapidement des dissecteurs pour des
+formats de fichiers.
 
 \Parsifal est aujourd'hui suffisamment mûr pour être partagé avec une
-communauté. Même si le coeur du moteur est stable et suffisant pour de
-nombreux usages, les développements du socle de \Parsifal continuent
-pour gérer toujours plus de cas:
-\begin{itemize}
-\item gestion simple des champs de bits;
-\item gestion des types binaires récursifs (tels que PKCS\#7);
-\item intégration d'un véritable langage de description et d'analyse interactive.
-\end{itemize}
+communauté. Même si le coeur du moteur est suffisant pour de nombreux
+usages, les développements du socle de \Parsifal continuent pour gérer
+toujours plus de cas: gestion simple des champs de bits, gestion des
+types binaires récursifs (tels que PKCS\#7) ou encore intégration d'un
+véritable langage de description et d'analyse interactive.
 
 L'autre axe de développement est l'ajout ou l'amélioration du support
 de nouveaux formats de fichiers et protocoles: DNS, OCSP, etc. Enfin,
@@ -289,6 +261,13 @@ Vincent, Benjamin, Loïc et Arnaud (F).
 \bibliographystyle{unsrt}
 \bibliography{biblio,rfc}
 
+
+\section*{Remarque à l'attention du comité de programme}
+
+Si cette proposition est retenue, la présentation rappellera
+brièvement l'historique du projet, puis les avantages et inconvénients
+des différents langages utilisés pour l'écriture de
+\emph{parsers}. Enfin, je terminerai par une démonstration de l'outil.
 
 
 \end{document}
