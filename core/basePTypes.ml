@@ -109,7 +109,7 @@ let value_of_uint24 i = VInt (i, 24, BigEndian)
 
 
 let parse_uint32 input =
-  if input.cur_offset + 2 <= input.cur_length then begin
+  if input.cur_offset + 4 <= input.cur_length then begin
     let res =
       (int_of_char (input.str.[input.cur_base + input.cur_offset]) lsl 24) lor
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 1]) lsl 16) lor
@@ -143,7 +143,7 @@ let value_of_uint32 i = VInt (i, 32, BigEndian)
 type uint32le = int
 
 let parse_uint32le input =
-  if input.cur_offset + 2 <= input.cur_length then begin
+  if input.cur_offset + 4 <= input.cur_length then begin
     let res =
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 3]) lsl 24) lor
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 2]) lsl 16) lor
@@ -227,7 +227,7 @@ let value_of_uint64 i = VBigInt (dump_uint64 i, BigEndian)
 type uint64le = Int64.t
 
 let parse_uint64le input =
-  if input.cur_offset + 2 <= input.cur_length then begin
+  if input.cur_offset + 8 <= input.cur_length then begin
     let res1 =
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 3]) lsl 24) lor
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 2]) lsl 16) lor
