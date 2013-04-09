@@ -1,0 +1,1199 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html dir="ltr" xml:lang="en" xmlns="http://www.w3.org/1999/xhtml" lang="en"><head>
+
+	
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<meta name="keywords" content="Abstract Syntax Tree,Camlp4,OCaml">
+<link rel="shortcut icon" href="http://brion.inria.fr/favicon.ico">
+		<title>Abstract Syntax Tree - Gallium</title>
+		<style type="text/css" media="screen,projection">/*<![CDATA[*/ @import "/gallium/skins/gallium/main.css?7"; /*]]>*/</style>
+		<link rel="stylesheet" type="text/css" media="print" href="AST_files/commonPrint.css">
+		<!--[if lt IE 5.5000]><style type="text/css">@import "/gallium/skins/gallium/IE50Fixes.css";</style><![endif]-->
+		<!--[if IE 5.5000]><style type="text/css">@import "/gallium/skins/gallium/IE55Fixes.css";</style><![endif]-->
+		<!--[if IE 6]><style type="text/css">@import "/gallium/skins/gallium/IE60Fixes.css";</style><![endif]-->
+		<!--[if IE 7]><style type="text/css">@import "/gallium/skins/gallium/IE70Fixes.css?1";</style><![endif]-->
+		<!--[if lt IE 7]><script type="text/javascript" src="/gallium/skins/common/IEFixes.js"></script>
+		<meta http-equiv="imagetoolbar" content="no" /><![endif]-->
+		<script type="text/javascript">var skin = 'gallium';var stylepath = '/gallium/skins';</script>
+		<script type="text/javascript" src="AST_files/wikibits.js"><!-- wikibits js --></script>
+		<script type="text/javascript" src="AST_files/index.php"><!-- site js --></script>
+		<style type="text/css">/*<![CDATA[*/
+@import "/gallium/index.php?title=MediaWiki:Common.css&action=raw&ctype=text/css&smaxage=18000";
+@import "/gallium/index.php?title=MediaWiki:Gallium.css&action=raw&ctype=text/css&smaxage=18000";
+@import "/gallium/index.php?title=-&action=raw&gen=css&maxage=18000";
+/*]]>*/</style>
+		<!-- Head Scripts -->
+			</head><body class="ns-0 ltr">
+	<div id="globalWrapper">
+		<div id="column-content">
+	<div id="content">
+		<a name="top" id="top"></a>
+				<h1 class="firstHeading">Abstract Syntax Tree</h1>
+		<div id="bodyContent">
+			<h3 id="siteSub">From Gallium</h3>
+			<div id="contentSub">(Redirected from <a href="http://brion.inria.fr/gallium/index.php?title=AST&amp;redirect=no" title="AST">AST</a>)</div>
+									<div id="jump-to-nav">Jump to: <a href="#column-one">navigation</a>, <a href="#searchInput">search</a></div>			<!-- start content -->
+			<p>Here is the <a href="http://brion.inria.fr/gallium/index.php/Camlp4" title="Camlp4">Camlp4</a> syntactic and abstract representation of <a href="http://brion.inria.fr/gallium/index.php/OCaml" title="OCaml">OCaml</a> programs:
+</p>
+<table id="toc" class="toc" summary="Contents"><tbody><tr><td><div id="toctitle"><h2>Contents</h2></div>
+<ul>
+<li class="toclevel-1"><a href="#Identifiers"><span class="tocnumber">1</span> <span class="toctext">Identifiers</span></a></li>
+<li class="toclevel-1"><a href="#Types"><span class="tocnumber">2</span> <span class="toctext">Types</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Notes"><span class="tocnumber">2.1</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Patterns"><span class="tocnumber">3</span> <span class="toctext">Patterns</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Notes_2"><span class="tocnumber">3.1</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Expressions"><span class="tocnumber">4</span> <span class="toctext">Expressions</span></a></li>
+<li class="toclevel-1"><a href="#Module_types"><span class="tocnumber">5</span> <span class="toctext">Module types</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Notes_3"><span class="tocnumber">5.1</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Signature_items"><span class="tocnumber">6</span> <span class="toctext">Signature items</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Syntactic_Sugar"><span class="tocnumber">6.1</span> <span class="toctext">Syntactic Sugar</span></a></li>
+<li class="toclevel-2"><a href="#Notes_4"><span class="tocnumber">6.2</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#With_constraints"><span class="tocnumber">7</span> <span class="toctext">With constraints</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Notes_5"><span class="tocnumber">7.1</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Bindings"><span class="tocnumber">8</span> <span class="toctext">Bindings</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Syntactic_Sugar_2"><span class="tocnumber">8.1</span> <span class="toctext">Syntactic Sugar</span></a></li>
+<li class="toclevel-2"><a href="#Notes_6"><span class="tocnumber">8.2</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Record_bindings"><span class="tocnumber">9</span> <span class="toctext">Record bindings</span></a></li>
+<li class="toclevel-1"><a href="#Recursive_module_bindings"><span class="tocnumber">10</span> <span class="toctext">Recursive module bindings</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Notes_7"><span class="tocnumber">10.1</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Match_cases"><span class="tocnumber">11</span> <span class="toctext">Match cases</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Notes_8"><span class="tocnumber">11.1</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Module_expressions"><span class="tocnumber">12</span> <span class="toctext">Module expressions</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Notes_9"><span class="tocnumber">12.1</span> <span class="toctext">Notes</span></a></li>
+<li class="toclevel-2"><a href="#Syntactic_Sugar_3"><span class="tocnumber">12.2</span> <span class="toctext">Syntactic Sugar</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Structure_items"><span class="tocnumber">13</span> <span class="toctext">Structure items</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Syntactic_Sugar_4"><span class="tocnumber">13.1</span> <span class="toctext">Syntactic Sugar</span></a></li>
+<li class="toclevel-2"><a href="#Notes_10"><span class="tocnumber">13.2</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Class_types"><span class="tocnumber">14</span> <span class="toctext">Class types</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Syntactic_Sugar_5"><span class="tocnumber">14.1</span> <span class="toctext">Syntactic Sugar</span></a></li>
+<li class="toclevel-2"><a href="#Notes_11"><span class="tocnumber">14.2</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Class_signature_items"><span class="tocnumber">15</span> <span class="toctext">Class signature items</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Syntactic_Sugar_6"><span class="tocnumber">15.1</span> <span class="toctext">Syntactic Sugar</span></a></li>
+<li class="toclevel-2"><a href="#Notes_12"><span class="tocnumber">15.2</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Class_expressions"><span class="tocnumber">16</span> <span class="toctext">Class expressions</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Syntactic_Sugar_7"><span class="tocnumber">16.1</span> <span class="toctext">Syntactic Sugar</span></a></li>
+<li class="toclevel-2"><a href="#Notes_13"><span class="tocnumber">16.2</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Class_structure_items"><span class="tocnumber">17</span> <span class="toctext">Class structure items</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Syntactic_Sugar_8"><span class="tocnumber">17.1</span> <span class="toctext">Syntactic Sugar</span></a></li>
+<li class="toclevel-2"><a href="#Notes_14"><span class="tocnumber">17.2</span> <span class="toctext">Notes</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Compilation_units"><span class="tocnumber">18</span> <span class="toctext">Compilation units</span></a></li>
+</ul>
+</td></tr></tbody></table><script type="text/javascript"> if (window.showTocToggle) { var tocShowText = "show"; var tocHideText = "hide"; showTocToggle(); } </script>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=1" title="Edit section: Identifiers">edit</a>]</div><a name="Identifiers"></a><h2> Identifiers </h2>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:ident&lt; a . b &gt;&gt;</td><td>Access in module</td><td>IdAcc of Loc.t and ident and ident</td></tr>
+  <tr><td>&lt;:ident&lt; a b &gt;&gt;</td><td>Application</td><td>IdApp of Loc.t and ident and ident</td></tr>
+  <tr><td>&lt;:ident&lt; $lid:i$ &gt;&gt;</td><td>Lowercase identifier</td><td>IdLid of Loc.t and string</td></tr>
+  <tr><td>&lt;:ident&lt; $uid:i$ &gt;&gt;</td><td>Uppercase identifier</td><td>IdUid of Loc.t and string</td></tr>
+  <tr><td>&lt;:ident&lt; $anti:s$ &gt;&gt;</td><td>Antiquotation</td><td>IdAnt of Loc.t and string</td></tr>
+  <tr><td>&lt;:ident&lt; $list:x$ &gt;&gt;</td><td>list of accesses</td><td>Ast.idAcc_of_list x</td></tr>
+</tbody></table>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=2" title="Edit section: Types">edit</a>]</div><a name="Types"></a><h2> Types </h2>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:ctyp&lt; &gt;&gt;</td><td>Empty type</td><td>TyNil of Loc.t</td></tr>
+  <tr><td>&lt;:ctyp&lt; t as t &gt;&gt;</td><td>Type aliasing</td><td>TyAli of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; _ &gt;&gt;</td><td>Wildcard (anonymous type variable)</td><td>TyAny of Loc.t</td></tr>
+  <tr><td>&lt;:ctyp&lt; t t &gt;&gt;</td><td>Application</td><td>TyApp of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; t -&gt; t &gt;&gt;</td><td>Arrow</td><td>TyArr of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; #i &gt;&gt;</td><td>Class type</td><td>TyCls of Loc.t and ident</td></tr>
+  <tr><td>&lt;:ctyp&lt; ~ label&nbsp;: ctyp &gt;&gt;</td><td>Labeled argument type</td><td>TyLab of Loc.t and string and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; $id:i$ &gt;&gt;</td><td>Type identifier</td><td>TyId of Loc.t and ident</td></tr>
+  <tr><td>&lt;:ctyp&lt; $lid:i$ &gt;&gt;</td><td></td><td>TyId (_, IdLid (_, i))</td></tr>
+  <tr><td>&lt;:ctyp&lt; $uid:i$ &gt;&gt;</td><td></td><td>TyId (_, IdUid (_, i))</td></tr>
+  <tr><td>&lt;:ctyp&lt; t == t &gt;&gt;</td><td>Type manifest</td><td>TyMan of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; type t 'a 'b 'c = t constraint t = t constraint t = t &gt;&gt;</td><td>Type declaration</td><td>TyDcl of Loc.t and string and list ctyp and ctyp and list (ctyp * ctyp)</td></tr>
+  <tr><td>&lt;:ctyp&lt; &lt; (t)? (..)? &gt; &gt;&gt;</td><td>Object type</td><td>TyObj of Loc.t and ctyp and row_var_flag</td></tr>
+  <tr><td>&lt;:ctyp&lt;&nbsp;? label&nbsp;: ctyp &gt;&gt;</td><td>Optional label type (for function arguments)</td><td>TyOlb of Loc.t and string and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt;&nbsp;! t . t &gt;&gt;</td><td>Polymorphic type</td><td>TyPol of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; 's &gt;&gt;</td><td>type parameter (invariant or as type expression)</td><td>TyQuo of Loc.t and string</td></tr>
+  <tr><td>&lt;:ctyp&lt; +'s &gt;&gt;</td><td>positive type parameter</td><td>TyQuP of Loc.t and string</td></tr>
+  <tr><td>&lt;:ctyp&lt; -'s &gt;&gt;</td><td>negative type parameter</td><td>TyQuM of Loc.t and string</td></tr>
+  <tr><td>&lt;:ctyp&lt; `s &gt;&gt;</td><td>constant Polymorphic variant</td><td>TyVrn of Loc.t and string</td></tr>
+  <tr><td>&lt;:ctyp&lt; { t } &gt;&gt;</td><td>Record</td><td>TyRec of Loc.t and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; t&nbsp;: t &gt;&gt;</td><td>Field declaration</td><td>TyCol of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; t; t &gt;&gt;</td><td>Semicolon-separated type list</td><td>TySem of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; t, t &gt;&gt;</td><td>Comma-separated type list (class parameter list)</td><td>TyCom of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; [ t ] &gt;&gt;</td><td>Sum (variant) type</td><td>TySum of Loc.t and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; t of t &gt;&gt;</td><td>constructor declaration</td><td>TyOf of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; t and t &gt;&gt;</td><td>Constructor argument list</td><td>TyAnd of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; t | t &gt;&gt;</td><td>"Or" pattern between types (variant constructor list)</td><td>TyOr of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; private t &gt;&gt;</td><td>Private type</td><td>TyPrv of Loc.t and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; mutable t &gt;&gt;</td><td>Mutable type</td><td>TyMut of Loc.t and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; ( t ) &gt;&gt; or &lt;:ctyp&lt; $tup:t$ &gt;&gt;</td><td>Tuple</td><td>TyTup of Loc.t and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; t * t &gt;&gt;</td><td>list inside tuples</td><td>TySta of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; [ = t ] &gt;&gt;</td><td>exact polymorphic variant type</td><td>TyVrnEq of Loc.t and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; [ &gt; t ] &gt;&gt;</td>
+      <td>open polymorphic variant type</td>
+      <td>TyVrnSup of Loc.t and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; [ &lt; t ] &gt;&gt;</td>
+      <td>closed polymorphic variant type with no known tags</td>
+      <td>TyVrnInf of Loc.t and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; [ &lt; t &gt; t ] &gt;&gt;</td>
+      <td>closed polymorphic variant type with some known tags</td>
+      <td>TyVrnInfSup of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; t &amp; t &gt;&gt;</td>
+      <td>conjuntive type in polymorphic variants</td>
+      <td>TyAmp of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; $t1$ of &amp; $t2$ &gt;&gt;</td>
+      <td>Special (impossible) constructor (t1) that has both no arguments and arguments compatible with t2 at the same time. </td>
+      <td>TyOfAmp of Loc.t and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:ctyp&lt; ( module $mtyp:<a href="#Module_types" title="">mod_type</a>$ ) &gt;&gt;</td>
+    <td>module package type</td>
+    <td>TyPkg of Loc.t and <a href="#Module_types" title="">module_type</a></td></tr>
+  <tr><td>&lt;:ctyp&lt; $anti:s$ &gt;&gt;</td><td>Antiquotation</td><td>TyAnt of Loc.t and string</td></tr>
+  <tr><td>&lt;:ctyp&lt; $list:x$ &gt;&gt;</td><td>list of accumulated ctyps</td><td>depending
+on context, Ast.tyAnd_of_list, Ast.tySem_of_list, Ast.tySta_of_list,
+Ast.tyOr_of_list, Ast.tyCom_of_list, Ast.tyAmp_of_list</td></tr>
+</tbody></table>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=3" title="Edit section: Notes">edit</a>]</div><a name="Notes"></a><h4> Notes </h4>
+<ul><li> In a closed variant type &lt;:ctyp&lt; [ &lt; $t1$ &gt; $t2$ ]
+&gt;&gt; the type t2 must not be the empty type; use a TyVrnInf node in
+this case.
+</li><li> Type conjuctions are stored in a TyAmp tree, use
+Camlp4Ast.list_of_ctyp and Camlp4Ast.tyAmp_of_list to convert from and
+to a list of types.
+</li><li> Variant constructors with arguments and polymorphic variant
+constructors with arguments are both represented with a TyOf node. For
+variant types the first TyOf type is an uppercase identifier (TyId),
+for polymorphic variant types it is an TyVrn node.
+</li><li> Constant variant constructors are simply represented as
+uppercase identifiers (TyId). Constant polymorphic variant constructors
+take a TyVrn node.
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=4" title="Edit section: Patterns">edit</a>]</div><a name="Patterns"></a><h2> Patterns </h2>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:patt&lt; &gt;&gt;</td><td>Empty pattern</td><td>PaNil of Loc.t</td></tr>
+  <tr><td>&lt;:patt&lt; $id:i$ &gt;&gt;</td><td>Identifier</td><td>PaId of Loc.t and ident</td></tr>
+  <tr><td>&lt;:patt&lt; $lid:i$ &gt;&gt;</td><td></td><td>PaId (_, IdLid (_, i))</td></tr>
+  <tr><td>&lt;:patt&lt; $uid:i$ &gt;&gt;</td><td></td><td>PaId (_, IdUid (_, i))</td></tr>
+  <tr><td>&lt;:patt&lt; ( p as p ) &gt;&gt;</td><td>Alias</td><td>PaAli of Loc.t and patt and patt</td></tr>
+  <tr><td>&lt;:patt&lt; $anti:s$ &gt;&gt;</td><td>Antiquotation</td><td>PaAnt of Loc.t and string</td></tr>
+  <tr><td>&lt;:patt&lt; _ &gt;&gt;</td><td>Wildcard</td><td>PaAny of Loc.t</td></tr>
+  <tr><td>&lt;:patt&lt; p p &gt;&gt;</td><td>Application</td><td>PaApp of Loc.t and patt and patt</td></tr>
+  <tr><td>&lt;:patt&lt; [| p |] &gt;&gt;</td><td>Array</td><td>PaArr of Loc.t and patt</td></tr>
+  <tr><td>&lt;:patt&lt; p, p &gt;&gt;</td><td>Comma-separated pattern list</td><td>PaCom of Loc.t and patt and patt</td></tr>
+  <tr><td>&lt;:patt&lt; p; p &gt;&gt;</td><td>Semicolon-separated pattern list</td><td>PaSem of Loc.t and patt and patt</td></tr>
+  <tr><td>&lt;:patt&lt; $chr:c$ &gt;&gt;</td><td>Character</td><td>PaChr of Loc.t and string</td></tr>
+  <tr><td>&lt;:patt&lt; $int:i$ &gt;&gt;</td><td>Integer</td><td>PaInt of Loc.t and string</td></tr>
+  <tr><td>&lt;:patt&lt; $int32:i$ &gt;&gt;</td><td>Int32</td><td>PaInt32 of Loc.t and string</td></tr>
+  <tr><td>&lt;:patt&lt; $int64:i$ &gt;&gt;</td><td>Int64</td><td>PaInt64 of Loc.t and string</td></tr>
+  <tr><td>&lt;:patt&lt; $nativeint:i$ &gt;&gt;</td><td>NativeInt</td><td>PaNativeInt of Loc.t and string</td></tr>
+  <tr><td>&lt;:patt&lt; $flo:f$ &gt;&gt;</td><td>Float</td><td>PaFlo of Loc.t and string</td></tr>
+  <tr><td>&lt;:patt&lt; ~s &gt;&gt; &lt;:patt&lt; ~s:p &gt;&gt;</td><td>Label</td><td>PaLab of Loc.t and string and patt</td></tr>
+  <tr><td>&lt;:patt&lt;&nbsp;?s &gt;&gt; &lt;:patt&lt;&nbsp;?s:(p) &gt;&gt;</td><td>Optional label</td><td>PaOlb of Loc.t and string and patt</td></tr>
+  <tr><td>&lt;:patt&lt;&nbsp;?s:(p = e) &gt;&gt; &lt;:patt&lt;&nbsp;?(p = e) &gt;&gt;</td><td>Optional label with default value</td><td>PaOlbi of Loc.t and string and patt and expr</td></tr>
+  <tr><td>&lt;:patt&lt; p | p &gt;&gt;</td><td>Or</td><td>PaOrp of Loc.t and patt and patt</td></tr>
+  <tr><td>&lt;:patt&lt; p .. p &gt;&gt;</td><td>Pattern range</td><td>PaRng of Loc.t and patt and patt</td></tr>
+  <tr><td>&lt;:patt&lt; { p } &gt;&gt;</td><td>Record</td><td>PaRec of Loc.t and patt</td></tr>
+  <tr><td>&lt;:patt&lt; i = p &gt;&gt;</td><td>Equality</td><td>PaEq of Loc.t and ident and patt</td></tr>
+  <tr><td>&lt;:patt&lt; $str:s$ &gt;&gt;</td><td>String</td><td>PaStr of Loc.t and string</td></tr>
+  <tr><td>&lt;:patt&lt; ( $tup:p$ ) &gt;&gt;</td><td>Tuple</td><td>PaTup of Loc.t and patt</td></tr>
+  <tr><td>&lt;:patt&lt; (p&nbsp;: t) &gt;&gt;</td><td>Type constraint</td><td>PaTyc of Loc.t and patt and ctyp</td></tr>
+  <tr><td>&lt;:patt&lt; #i &gt;&gt;</td><td>variant abbreviation</td><td>PaTyp of Loc.t and ident</td></tr>
+  <tr><td>&lt;:patt&lt; `s &gt;&gt;</td><td>Polymorphic variant</td><td>PaVrn of Loc.t and string</td></tr>
+  <tr><td>&lt;:patt&lt; $list:x$ &gt;&gt;</td><td>list of accumulated patts</td><td>depending on context, Ast.paCom_of_list, Ast.paSem_of_list</td></tr>
+  <tr><td>&lt;:patt&lt; lazy p &gt;&gt;</td><td>lazy pattern</td><td>PaLaz of Loc.t and patt</td></tr>
+  <tr><td>&lt;:patt&lt; (module m) &gt;&gt;</td><td>package pattern</td><td>PaMod of Loc.t and string</td></tr>
+</tbody></table>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=5" title="Edit section: Notes">edit</a>]</div><a name="Notes_2"></a><h4> Notes </h4>
+<ul><li> Tuple elements are wrapped in a PaCom tree. The utility
+functions Camlp4Ast.paCom_of_list and Camlp4Ast.list_of_patt convert
+from and to a list of tuple elements.
+</li><li> The pattern (module m&nbsp;: pkg_typ) is syntactic sugar for a package pattern wrapped in PaTyc node.
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=6" title="Edit section: Expressions">edit</a>]</div><a name="Expressions"></a><h2> Expressions </h2>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:expr&lt; &gt;&gt;</td><td>Empty expression</td><td>ExNil of Loc.t</td></tr>
+  <tr><td>&lt;:expr&lt; $id:i$ &gt;&gt;</td><td>Identifier</td><td>ExId of Loc.t and ident</td></tr>
+  <tr><td>&lt;:expr&lt; $lid:i$ &gt;&gt;</td><td></td><td>ExId (_, IdLid (_, i))</td></tr>
+  <tr><td>&lt;:expr&lt; $uid:i$ &gt;&gt;</td><td></td><td>ExId (_, IdUid (_, i))</td></tr>
+  <tr><td>&lt;:expr&lt; $e$.$e$ &gt;&gt;</td><td>Access in module</td><td>ExAcc of Loc.t and expr and expr</td></tr>
+  <tr><td>&lt;:expr&lt; $anti:s$ &gt;&gt;</td><td>Antiquotation</td><td>ExAnt of Loc.t and string</td></tr>
+  <tr><td>&lt;:expr&lt; $e1$ $e2$ &gt;&gt;</td><td>Application</td><td>ExApp of Loc.t and expr and expr</td></tr>
+  <tr><td>&lt;:expr&lt; $e1$.($e2$) &gt;&gt;</td><td>Array access</td><td>ExAre of Loc.t and expr and expr</td></tr>
+  <tr><td>&lt;:expr&lt; [| $e$ |] &gt;&gt;</td><td>Array declaration</td><td>ExArr of Loc.t and expr</td></tr>
+  <tr><td>&lt;:expr&lt; $e1$; $e2$ &gt;&gt;</td><td>Semicolon-separated expression list</td><td>ExSem of Loc.t and expr and expr</td></tr>
+  <tr><td>&lt;:expr&lt; assert False &gt;&gt;</td><td>assert False</td><td>ExAsf of Loc.t</td></tr>
+  <tr><td>&lt;:expr&lt; assert $e$ &gt;&gt;</td><td>assert e</td><td>ExAsr of Loc.t and expr</td></tr>
+  <tr><td>&lt;:expr&lt; $e1$&nbsp;:= $e2$ &gt;&gt;</td><td>Assignment</td><td>ExAss of Loc.t and expr and expr</td></tr>
+  <tr><td>&lt;:expr&lt; $chr:c$ &gt;&gt;</td><td>Character</td><td>ExChr of Loc.t and string</td></tr>
+  <tr><td>&lt;:expr&lt; $`chr:c$ &gt;&gt;</td><td></td><td>ExChr (_, Char.escaped c)</td></tr>
+  <tr><td>&lt;:expr&lt; ($e$&nbsp;: $t$) &gt;&gt; &lt;:expr&lt; ($e$&nbsp;: $t1$&nbsp;:&gt; $t2$) &gt;&gt;</td><td>Coercion</td><td>ExCoe of Loc.t and expr and ctyp and ctyp</td></tr>
+  <tr><td>&lt;:expr&lt; $flo:f$ &gt;&gt;</td><td>Float</td><td>ExFlo of Loc.t and string</td></tr>
+  <tr><td>&lt;:expr&lt; $`flo:f$ &gt;&gt;</td><td></td><td>ExFlo (_, string_of_float f)</td></tr>
+  <tr><td>&lt;:expr&lt; for $s$ = $e1$ to/downto $e2$ do { $e$ } &gt;&gt;</td><td>For loop</td><td>ExFor of Loc.t and string and expr and expr and meta_bool and expr</td></tr>
+  <tr><td>&lt;:expr&lt; fun [ $a$ ] &gt;&gt;</td><td>Function with match case</td><td>ExFun of Loc.t and match_case</td></tr>
+  <tr><td>&lt;:expr&lt; if $e1$ then $e2$ else $e3$ &gt;&gt;</td><td>if/then/else</td><td>ExIfe of Loc.t and expr and expr and expr</td></tr>
+  <tr><td>&lt;:expr&lt; $int:i$ &gt;&gt;</td><td>Int</td><td>ExInt of Loc.t and string</td></tr>
+  <tr><td>&lt;:expr&lt; $`int:i$ &gt;&gt;</td><td></td><td>ExInt (_, string_of_int i)</td></tr>
+  <tr><td>&lt;:expr&lt; $int32:i$ &gt;&gt;</td><td>Int32</td><td>ExInt32 of Loc.t and string</td></tr>
+  <tr><td>&lt;:expr&lt; $`int32:i$ &gt;&gt;</td><td></td><td>ExInt32 (_, Int32.to_string i)</td></tr>
+  <tr><td>&lt;:expr&lt; $int64:i$ &gt;&gt;</td><td>Int64</td><td>ExInt64 of Loc.t and string</td></tr>
+  <tr><td>&lt;:expr&lt; $`int64:i$ &gt;&gt;</td><td></td><td>ExInt64 (_, Int64.to_string i)</td></tr>
+  <tr><td>&lt;:expr&lt; $nativeint:i$ &gt;&gt;</td><td>NativeInt</td><td>ExNativeInt of Loc.t and string</td></tr>
+  <tr><td>&lt;:expr&lt; $`nativeint:i$ &gt;&gt;</td><td></td><td>ExNativeInt (_, NativeInt.to_string i)</td></tr>
+  <tr><td>&lt;:expr&lt; ~ $s$ &gt;&gt; &lt;:expr&lt; ~ $s$&nbsp;: $e$ &gt;&gt;</td><td>Label argument with/without expression</td><td>ExLab of Loc.t and string and expr</td></tr>
+  <tr><td>&lt;:expr&lt; lazy $e$ &gt;&gt;</td><td>Lazy evaluation</td><td>ExLaz of Loc.t and expr</td></tr>
+  <tr><td>&lt;:expr&lt; let $b$ in $e$ &gt;&gt; &lt;:expr&lt; let rec $b$ in $e$ &gt;&gt;</td><td>Let statement with/without recursion</td><td>ExLet of Loc.t and meta_bool and binding and expr</td></tr>
+  <tr><td>&lt;:expr&lt; let module $s$ = $me$ in $e$ &gt;&gt;</td><td>"Let module in" construct</td><td>ExLmd of Loc.t and string and module_expr and expr</td></tr>
+  <tr><td>&lt;:expr&lt; match $e$ with [ $a$ ] &gt;&gt;</td><td>Match case</td><td>ExMat of Loc.t and expr and match_case</td></tr>
+  <tr><td>&lt;:expr&lt; new $id:i$ &gt;&gt;</td><td>New object</td><td>ExNew of Loc.t and ident</td></tr>
+  <tr><td>&lt;:expr&lt; object (($p$))? ($cst$)? end &gt;&gt;</td><td>Object declaration</td><td>ExObj of Loc.t and patt and class_str_item</td></tr>
+  <tr><td>&lt;:expr&lt;&nbsp;? $s$ &gt;&gt; &lt;:expr&lt;&nbsp;? $s$: $e$ &gt;&gt;</td><td>Optional label</td><td>ExOlb of Loc.t and string and expr</td></tr>
+  <tr><td>&lt;:expr&lt; {&lt; $b$ &gt;} &gt;&gt;</td><td>Overloading</td><td>ExOvr of Loc.t and rec_binding</td></tr>
+  <tr><td>&lt;:expr&lt; { $b$ } &gt;&gt; &lt;:expr&lt; { ($e$) with $b$ } &gt;&gt;</td><td>Record</td><td>ExRec of Loc.t and rec_binding and expr</td></tr>
+  <tr><td>&lt;:expr&lt; do { $e$ } &gt;&gt; or &lt;:expr&lt; $seq:e$ &gt;&gt;</td><td>Sequence with "do" statement</td><td>ExSeq of Loc.t and expr</td></tr>
+  <tr><td>&lt;:expr&lt; $e$ # $s$ &gt;&gt;</td><td>Method call</td><td>ExSnd of Loc.t and expr and string</td></tr>
+  <tr><td>&lt;:expr&lt; $e$.[ $e$ ] &gt;&gt;</td><td>String access</td><td>ExSte of Loc.t and expr and expr</td></tr>
+  <tr><td>&lt;:expr&lt; $str:s$ &gt;&gt;</td><td>String</td><td>ExStr of Loc.t and string</td></tr>
+  <tr><td>&lt;:expr&lt; $`str:s$ &gt;&gt;</td><td></td><td>ExStr (_, Ast.safe_string_escaped s)</td></tr>
+  <tr><td>&lt;:expr&lt; try $e$ with [ $a$ ] &gt;&gt;</td><td>"Try .. with" construct</td><td>ExTry of Loc.t and expr and match_case</td></tr>
+  <tr><td>&lt;:expr&lt; ( $tup:e$ ) &gt;&gt;</td><td>Tuple</td><td>ExTup of Loc.t and expr</td></tr>
+  <tr><td>&lt;:expr&lt; $e$, $e$ &gt;&gt;</td><td>Comma-separated expression list</td><td>ExCom of Loc.t and expr and expr</td></tr>
+  <tr><td>&lt;:expr&lt; ($e$&nbsp;: $t$) &gt;&gt;</td><td>Type constraint</td><td>ExTyc of Loc.t and expr and ctyp</td></tr>
+  <tr><td>&lt;:expr&lt; ` $s$ &gt;&gt;</td><td>Polymorphic variant</td><td>ExVrn of Loc.t and string</td></tr>
+  <tr><td>&lt;:expr&lt; while $e1$ do { $e2$ } &gt;&gt;</td><td>"While .. do" constraint</td><td>ExWhi of Loc.t and expr and expr</td></tr>
+  <tr><td>&lt;:expr&lt; $`bool:b$ &gt;&gt;</td><td>bool</td><td>ExId (_, (IdUid (_, (if x then "True" else "False"))))</td></tr>
+  <tr><td>&lt;:expr&lt; $list:x$ &gt;&gt;</td><td>list of accumulated exprs</td><td>depending on context, Ast.exCom_of_list, Ast.exSem_of_list</td></tr>
+</tbody></table>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=7" title="Edit section: Module types">edit</a>]</div><a name="Module_types"></a><h2> Module types </h2>
+<pre> module_type, mt&nbsp;::=
+   | (* empty *)
+   | ident
+   | functor (s&nbsp;: mt) -&gt; mt
+   | 's
+   | sig sg end
+   | mt with wc
+   | $s$
+</pre>
+<p><br>
+</p>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:module_type&lt; $id:<a href="#Identifiers" title="">ident</a>$ &gt;&gt;</td>
+    <td>named module type</td>
+    <td>MtId of Loc.t and ident</td></tr>
+  <tr><td>&lt;:module_type&lt; functor ( $uid:id$&nbsp;: $mtyp:mta$ ) -&gt; $mtyp:mtr$ &gt;&gt;</td>
+    <td>functor type</td>
+    <td>MtFun of Loc.t and id and mta and mtr</td></tr>
+  <tr><td>&lt;:module_type&lt; $mtyp:mt$ with $with_constr:<a href="#With_constraints" title="">with_contr</a>$ &gt;&gt;</td>
+    <td>with constraint</td>
+    <td>MtWit of Loc.t and mt and with_constr</td></tr>
+  <tr><td>&lt;:module_type&lt; sig $sigi:<a href="#Signature_items" title="">sig_items</a>$ end &gt;&gt;</td>
+    <td>signature</td>
+    <td>MtSig of Loc.t and sig_items</td></tr>
+  <tr><td>&lt;:module_type&lt; module type of $mexp:<a href="#Module_expressions" title="">mexp</a> &gt;&gt;</td>
+    <td>module type of structure</td>
+    <td>MtOf of Loc.t and <a href="#Module_expressions" title="">module_expression</a></td></tr>
+  <tr><td>&lt;:module_type&lt; ' $id$ &gt;&gt;</td>
+    <td>abstract module type (revised only)</td>
+    <td>MtQuo of Loc.t and string</td></tr>
+  <tr><td>&lt;:module_type&lt; &gt;&gt;</td>
+    <td>empty module type</td>
+    <td>MtNil of Loc.t</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=8" title="Edit section: Notes">edit</a>]</div><a name="Notes_3"></a><h4> Notes </h4>
+<ul><li> Several with-constraints are stored in an WcAnd tree. Use
+Ast.wcAnd_of_list and Ast.list_of_with_constr to convert from and to a
+list of with-constraints.
+</li><li> Several signature items are stored in an SgSem tree. Use
+Ast.sgSem_of_list and Ast.list_of_sig_item to convert from and to a
+list of signature items.
+</li><li> Abstract module types (in signatures) have apparently
+different representations. When parsing original syntax the empty
+module type is used, the revised parser uses a type variable 'a (node
+MtQuo).
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=9" title="Edit section: Signature items">edit</a>]</div><a name="Signature_items"></a><h2> Signature items </h2>
+<pre> sig_item, sg&nbsp;::=
+   | (* empty *)
+   | class cict
+   | class type cict
+   | sg&nbsp;; sg
+   | #s
+   | #s e
+   | exception t
+   | external s&nbsp;: t = s ... s
+   | include mt
+   | module s&nbsp;: mt
+   | module rec mb
+   | module type s = mt
+   | open i
+   | type t
+   | value s&nbsp;: t
+   | $s$
+</pre>
+<p><br>
+</p>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:sig_item&lt; exception $typ:<a href="#Types" title="">type</a>$ &gt;&gt;</td>
+    <td>exception declaration</td>
+    <td>SgExc of Loc.t and type</td></tr>
+  <tr><td>&lt;:sig_item&lt; external $lid:id$&nbsp;: $typ:<a href="#Types" title="">type</a>$ = $str_list:string_list$ &gt;&gt;</td>
+    <td>external declaration</td>
+    <td>SgExt of Loc.t and id and type and string_list</td></tr>
+  <tr><td>&lt;:sig_item&lt; module $uid:id$&nbsp;: $mtyp:<a href="#Module_types" title="">mod_type</a>$ &gt;&gt;</td>
+    <td>module/functor decl</td>
+    <td>SgMod of Loc.t and id and mod_type</td></tr>
+  <tr><td>&lt;:sig_item&lt; module rec $module_binding:<a href="#Recursive_module_bindings" title="">module_binding</a>$ &gt;&gt;</td>
+    <td>recursive module decl</td>
+    <td>SgRecMod of Loc.t and <a href="#Recursive_module_bindings" title="">module_binding</a></td></tr>
+  <tr><td>&lt;:sig_item&lt; module type $uid:id$ = $mtyp:<a href="#Module_types" title="">mod_type</a>$ &gt;&gt;</td>
+    <td>module type declaration</td>
+    <td>SgMty of Loc.t and id and mod_type</td></tr>
+  <tr><td>&lt;:sig_item&lt; type $typ:<a href="#Types" title="">type</a>$&gt;&gt;</td>
+    <td>type declaration</td>
+    <td>SgTyp of Loc.t and type</td></tr>
+  <tr><td>&lt;:sig_item&lt; type $lid:id$ $p1$ ... $pn$ = $t$
+  constraint $c1l$ = $c1r$ ... constraint $cnl$ = $cnr$ &gt;&gt;</td>
+    <td>type declaration</td>
+    <td>SgTyp of Loc.t and (TyDcl of Loc.t and id and [p1;...;pn] and t and [(c1l, c1r); ... (cnl, cnr)]) </td></tr>
+  <tr><td>&lt;:sig_item&lt; value $lid:id$&nbsp;: $typ:<a href="#Types" title="">type</a>$ &gt;&gt;</td>
+    <td>value/function declaration</td>
+    <td>SgVal of Loc.t and id and type</td></tr>
+  <tr><td>&lt;:sig_item&lt; class $typ:<a href="#Class_types" title="">class_type</a>$ &gt;&gt;</td>
+    <td>class declaration</td>
+    <td>SgCls of Loc.t and class_type</td></tr>
+  <tr><td>&lt;:sig_item&lt; class type $typ:<a href="#Class_types" title="">class_type</a>$ &gt;&gt;</td>
+    <td>class type declaration</td>
+    <td>SgClt of Loc.t and class_type</td></tr>
+  <tr><td>&lt;:sig_item&lt; open $id:ident$ &gt;&gt;</td>
+    <td>open module</td>
+    <td>SgOpn of Loc.t and <a href="#Identifiers" title="">ident</a></td></tr>
+  <tr><td>&lt;:sig_item&lt; include $mtyp:<a href="#Module_types" title="">mtyp</a>$ &gt;&gt;</td>
+    <td>include signature</td>
+    <td>SgInc of Loc.t and <a href="#Module_types" title="">mod_type</a></td></tr>
+  <tr><td>&lt;:sig_item&lt; $_$&nbsp;; $_$ &gt;&gt;</td>
+    <td>signature item list</td>
+    <td>SgSem of Loc.t and sig_item and sig_item</td></tr>
+  <tr><td>&lt;:sig_item&lt; &gt;&gt;</td>
+    <td>empty signature</td>
+    <td>SgNil of Loc.t</td></tr>
+  <tr><td>&lt;:sig_item&lt; # $lid:_$ $exp:_$ &gt;&gt;</td>
+    <td>top level directive</td>
+    <td>SgDir of Loc.t and string and <a href="#Expressions" title="">expr</a></td></tr>
+  <tr><td>&lt;:sig_item&lt; $anti:anti$ &gt;&gt;</td>
+    <td>anti quotation</td>
+    <td>SgAnt of Loc.t and string</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=10" title="Edit section: Syntactic Sugar">edit</a>]</div><a name="Syntactic_Sugar"></a><h4> Syntactic Sugar </h4>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>Expansion</th></tr>
+  <tr><td>&lt;:sig_item&lt; module $uid:mid$ ( $uid:arg$&nbsp;: $mtyp:<a href="#Module_types" title="">arg_type</a>$ )&nbsp;: $mtyp:<a href="#Module_types" title="">res_type</a>$ &gt;&gt;</td>
+    <td>functor declaration</td>
+    <td>&lt;:sig_item&lt; module $uid:mid$&nbsp;: functor ( $uid:arg$&nbsp;: $mtyp:<a href="#Module_types" title="">arg_type</a>$ ) -&gt; $mtyp:<a href="#Module_types" title="">res_type</a>$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:sig_item&lt; module type $uid:id$ &gt;&gt;</td>
+    <td>abstract module type</td>
+    <td>&lt;:sig_item&lt; module type $uid:id$ = $mtyp:&lt;:module_type&lt; &gt;&gt;$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:sig_item&lt; # $id$ &gt;&gt;</td>
+    <td>directive without arguments</td>
+    <td>&lt;:sig_item&lt; # $id$ $exp:&lt;:expr&lt; &gt;&gt;$ &gt;&gt;</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=11" title="Edit section: Notes">edit</a>]</div><a name="Notes_4"></a><h4> Notes </h4>
+<ul><li> An exception is treated like a single type constructor. For
+exception declarations the type should be either a type identifier
+(TyId) or a type constructor (TyOf).
+</li><li> Abstract module type declarations (i.e., module type declarations without equation) are represented with the empty module type.
+</li><li> Mutually recursive type declarations (separated by and) are
+stored in a TyAnd tree. Use Ast.list_of_ctyp and Ast.tyAnd_of_list to
+convert to and from a list of type declarations.
+</li><li> The quotation parser for types (&lt;:ctyp&lt; ... &gt;&gt;)
+does not parse type declarations. Type declarations must therefore be
+embedded in a sig_item or str_item quotation.
+</li><li> There seems to be no antiquotation syntax for a list of type
+parameters and a list of constraints inside a type declaration. The
+existing form can only be used for a fixed number of type parameters
+and constraints.
+</li><li> Complete class and class type declarations (including name and type parameters) are stored as <a href="#Class_types" title="">class types</a>.
+</li><li> Several "and" separated class or class type declarations are
+stored in a CtAnd tree, use Ast.list_of_class_type and
+Ast.ctAnd_of_list to convert to and from a list of class types.
+</li><li> Directives without arguments have an empty expression in their expression slot.
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=12" title="Edit section: With constraints">edit</a>]</div><a name="With_constraints"></a><h2> With constraints </h2>
+<pre> with_constraint, with_constr, wc&nbsp;::=
+   | wc and wc
+   | type t = t
+   | module i = i
+</pre>
+<p><br>
+</p>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:with_constr&lt; $with_constr:wc1$ and $with_constr:wc2$ &gt;&gt;</td>
+    <td>constraint list</td>
+    <td>WcAnd of Loc.t and wc1 and wc2</td></tr>
+  <tr><td>&lt;:with_constr&lt; type $typ:<a href="#Types" title="">type_1</a>$ = $typ:<a href="#Types" title="">type_2</a>$ &gt;&gt;</td>
+    <td>type constraint</td>
+    <td>WcTyp of Loc.t and type_1 and type_2</td></tr>
+  <tr><td>&lt;:with_constr&lt; module $id:<a href="#Identifiers" title="">ident_1</a>$ = $id:<a href="#Identifiers" title="">ident_2</a>$ &gt;&gt;</td>
+    <td>module constraint</td>
+    <td>WcMod of Loc.t and ident_1 and ident_2</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=13" title="Edit section: Notes">edit</a>]</div><a name="Notes_5"></a><h4> Notes </h4>
+<ul><li> Several with-constraints are stored in an WcAnd tree. Use
+Ast.wcAnd_of_list and Ast.list_of_with_constr to convert from and to a
+list of with-constraints.
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=14" title="Edit section: Bindings">edit</a>]</div><a name="Bindings"></a><h2> Bindings </h2>
+<pre> binding, bi&nbsp;::=
+   | bi and bi
+   | p = e
+</pre>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:binding&lt; $b1$ and $b2$ &gt;&gt;</td>
+    <td>simultaneous binding</td>
+    <td>BiAnd of Loc.t and b1 and b2 </td></tr>
+  <tr><td>&lt;:binding&lt; $pat:<a href="#Patterns" title="">pattern$</a> = $exp:<a href="#Expressions" title="">expression$</a> &gt;&gt;</td>
+    <td>value binding</td>
+    <td>BiEq of Loc.t and pattern and expression </td></tr>
+</tbody></table>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=15" title="Edit section: Syntactic Sugar">edit</a>]</div><a name="Syntactic_Sugar_2"></a><h4> Syntactic Sugar </h4>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>Expansion</th></tr>
+  <tr><td>&lt;:binding&lt; $pat:f$ $pat:x$ = $exp:ex$ &gt;&gt;</td>
+    <td>simple function binding</td>
+    <td>&lt;:binding&lt; $pat:f$ = fun $pat:x$ -&gt; $exp:ex$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:binding&lt; $pat:p$&nbsp;: $typ:<a href="#Types" title="">type</a>$ = $exp:ex$ &gt;&gt;</td>
+    <td>typed binding</td>
+    <td>&lt;:binding&lt; $pat:p$ = ( $exp:ex$&nbsp;: $typ:type$ ) &gt;&gt;</td></tr>
+  <tr><td>&lt;:binding&lt; $pat:p$&nbsp;:&gt; $typ:<a href="#Types" title="">type</a>$ = $exp:ex$ &gt;&gt;</td>
+    <td>coercion binding</td>
+    <td>&lt;:binding&lt; $pat:p$ = ( $exp:ex$&nbsp;:&gt; $typ:type$ ) &gt;&gt;</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=16" title="Edit section: Notes">edit</a>]</div><a name="Notes_6"></a><h4> Notes </h4>
+<ul><li> The utility functions Camlp4Ast.biAnd_of_list and
+Camlp4Ast.list_of_bindings convert between the BiAnd tree of parallel
+bindings and a list of bindings.
+</li><li> The utility functions Camlp4Ast.binding_of_pel and
+pel_of_binding convert between the BiAnd tree and a pattern *
+expression list.
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=17" title="Edit section: Record bindings">edit</a>]</div><a name="Record_bindings"></a><h2> Record bindings </h2>
+<pre> record_binding, rec_binding, rb&nbsp;::=
+   | rb&nbsp;; rb
+   | x = e
+ 
+</pre>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=18" title="Edit section: Recursive module bindings">edit</a>]</div><a name="Recursive_module_bindings"></a><h2> Recursive module bindings </h2>
+<pre> module_binding, mb&nbsp;::=
+   | (* empty *)
+   | mb and mb
+   | s&nbsp;: mt = me
+   | s&nbsp;: mt
+   | $s$
+</pre>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:module_binding&lt; &gt;&gt;</td>
+    <td>empty recursive binding</td>
+    <td>MbNil of Loc.t</td></tr>
+  <tr><td>&lt;:module_binding&lt; $module_binding:_$ and $module_binding:_$ &gt;&gt;</td>
+    <td>recursive module sequence</td>
+    <td>MbAnd of Loc.t and module_binding_1 and module_binding_2</td></tr>
+  <tr><td>&lt;:module_binding&lt; $name$&nbsp;: $mtyp:<a href="#Module_types" title="">mtyp</a>$ = $mexp:<a href="#Module_expressions" title="">mexp</a>$ &gt;&gt;</td>
+    <td>recursive module definition</td>
+    <td>MbColEq of Loc.t and string and <a href="#Module_types" title="">mod_type</a> and <a href="#Module_expressions" title="">mod_ex</a></td></tr>
+  <tr><td>&lt;:module_binding&lt; $name$&nbsp;: $mtyp:<a href="#Module_types" title="">mtyp</a>$ &gt;&gt;</td>
+    <td>recursive module specification</td>
+    <td>MbCol of Loc.t and string and <a href="#Module_type" title="">mod_type</a></td></tr>
+  <tr><td>&lt;:module_binding&lt; $anti:_$ &gt;&gt;</td>
+    <td>Antiquotation</td>
+    <td>MbAnt of Loc.t and string</td></tr>
+</tbody></table>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=19" title="Edit section: Notes">edit</a>]</div><a name="Notes_7"></a><h4> Notes </h4>
+<ul><li> This type is used for both recursive module definitions and
+recursive module specifications. Probably, MbColEq nodes are only valid
+in definitions while MbCol nodes are only valid in specifications.
+</li><li> Several recursive module definitions or module
+specifications are stored in an MbAnd tree. Use
+Camlp4Ast.list_of_module_binding and Camlp4Ast.mbAnd_of_list to convert
+to and from lists.
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=20" title="Edit section: Match cases">edit</a>]</div><a name="Match_cases"></a><h2> Match cases </h2>
+<pre> match_case, mc&nbsp;::=
+   | (* empty *)
+   | mc | mc
+   | p when e -&gt; e
+   | p -&gt; e           (* a sugar for &lt;&lt; p when e1 -&gt; e2 &gt;&gt; where e1 is the empty expression *)
+</pre>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:match_case&lt; &gt;&gt;</td>
+    <td>Empty match case</td>
+    <td>McNil of Loc.t</td></tr>
+  <tr><td>&lt;:match_case&lt; $mc1$ | $mc2$ &gt;&gt;</td>
+    <td>Or-separated match cases</td>
+    <td>McOr of Loc.t and match_case and match_case</td></tr>
+  <tr><td>&lt;:match_case&lt; $p$ -&gt; $e$ &gt;&gt; or &lt;:match_case&lt; $p$ when $e1$ or $e2$ &gt;&gt;</td>
+    <td>Match case</td>
+    <td>McArr of Loc.t and patt and expr and expr</td></tr>
+  <tr><td>&lt;:match_case&lt; $anti:mc$ &gt;&gt;</td>
+    <td>Antiquotation</td>
+    <td>McAnt of Loc.t and string</td></tr>
+  <tr><td>&lt;:match_case&lt; $list:mcs$ &gt;&gt;</td>
+    <td>list of or-separated match cases</td>
+    <td>Ast.mcOr_of_list</td></tr>
+</tbody></table>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=21" title="Edit section: Notes">edit</a>]</div><a name="Notes_8"></a><h4> Notes </h4>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=22" title="Edit section: Module expressions">edit</a>]</div><a name="Module_expressions"></a><h2> Module expressions </h2>
+<pre> module_expression, module_expr, me&nbsp;::=
+   | (* empty *)
+   | ident
+   | me me
+   | functor (s&nbsp;: mt) -&gt; me
+   | struct st end
+   | (me&nbsp;: mt)
+   | $s$
+   | (value pexpr&nbsp;: ptype)
+</pre>
+<p><br>
+</p>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:module_expr&lt; $id:<a href="#Identifiers" title="">mod_ident</a>$ &gt;&gt;</td>
+    <td>functor application / submodule path</td>
+    <td>MeId of Loc.t and mod_ident</td></tr>
+  <tr><td>&lt;:module_expr&lt; $mexp:me1$ $mexp:me2$ &gt;&gt;</td>
+    <td>functor application</td>
+    <td>MeApp of Loc.t and me1 and me2</td></tr>
+  <tr><td>&lt;:module_expr&lt; functor ( $uid:id$&nbsp;: $mtyp:<a href="#Module_types" title="">mod_type</a>$ ) -&gt; $mexp:me$ &gt;&gt;</td>
+    <td>functor abstraction</td>
+    <td>MeFun of Loc.t and id and mod_type and me</td></tr>
+  <tr><td>&lt;:module_expr&lt; struct $stri:<a href="#Structure_items" title="">str_item</a>$ end &gt;&gt;</td>
+    <td>structure</td>
+    <td>MeStr of Loc.t and str_item</td></tr>
+  <tr><td>&lt;:module_expr&lt; ( $mexp:me$&nbsp;: $mtyp:<a href="#Module_types" title="">mod_type</a>$ ) &gt;&gt;</td>
+    <td>signature constraint</td>
+    <td>MeTyc of Loc.t and me and mod_type</td></tr>
+  <tr><td>&lt;:module_expr&lt; ( value $exp:<a href="#Expressions" title="">expression</a>$ ) &gt;&gt;</td>
+    <td>module extraction</td>
+    <td>MePkg of Loc.t and expression</td></tr>
+  <tr><td>&lt;:module_expr&lt; $anti:string$ &gt;&gt;</td>
+    <td>antiquotation</td>
+    <td>MeAnt of Loc.t and string</td></tr>
+  <tr><td>&lt;:module_expr&lt; &gt;&gt;</td>
+    <td>empty module expression</td>
+    <td>MeNil of Loc.t</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=23" title="Edit section: Notes">edit</a>]</div><a name="Notes_9"></a><h4> Notes </h4>
+<ul><li> Inside a structure several structure items are packed into a
+StSem tree. Use Camlp4Ast.stSem_of_list and Camlp4Ast.list_of_str_item
+to convert from and to a list of structure items.
+</li><li> The expression in a module extraction (MePkg) must be a type
+constraint with a package type. Internally the syntactic class of
+module types is used for package types.
+</li></ul>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=24" title="Edit section: Syntactic Sugar">edit</a>]</div><a name="Syntactic_Sugar_3"></a><h4> Syntactic Sugar </h4>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>Expansion</th></tr>
+  <tr><td>&lt;:module_expr&lt; ( value $exp:expression$&nbsp;: $mtyp:mod_type$ ) &gt;&gt;</td>
+    <td>module extraction with type</td>
+    <td>&lt;:module_expr&lt; ( value $exp: &lt;:expr&lt; ($exp:expression$&nbsp;: (module $mtyp:mod_type$ ) ) &gt;&gt; $ ) &gt;&gt;</td></tr>
+</tbody></table>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=25" title="Edit section: Structure items">edit</a>]</div><a name="Structure_items"></a><h2> Structure items </h2>
+<pre> structure_item, str_item, st&nbsp;::=
+   | (* empty *)
+   | class cice
+   | class type cict
+   | st&nbsp;; st
+   | #s
+   | #s e
+   | exception t or exception t = i
+   | e
+   | external s&nbsp;: t = s ... s
+   | include me
+   | module s = me
+   | module rec mb
+   | module type s = mt
+   | open i
+   | type t
+   | value b or value rec bi
+   | $s$
+</pre>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:str_item&lt; value $rec:r$ $<a href="#Bindings" title="">binding</a>$ &gt;&gt;</td><td>general
+   top level binding</td><td>StVal of Loc.t and r and binding</td></tr>
+  <tr><td>&lt;:str_item&lt; value rec $<a href="#Bindings" title="">binding</a>$ &gt;&gt;</td><td>recursive
+   top level binding</td><td>StVal of Loc.t and true and binding</td></tr>
+  <tr><td>&lt;:str_item&lt; value $<a href="#Bindings" title="">binding</a>$ &gt;&gt;</td><td>non-recursive
+   top level binding</td><td>StVal of Loc.t and false and binding</td></tr>
+  <tr><td>&lt;:str_item&lt; exception $typ:<a href="#Types" title="">type</a>$ &gt;&gt;</td>
+   <td>Exception definition</td>
+   <td>StExc of Loc.t and type and None</td></tr>
+  <tr><td>&lt;:str_item&lt; exception $typ:<a href="#Types" title="">type</a>$ = $id:ident$&gt;&gt;</td>
+   <td>Exception alias</td>
+   <td>StExc of Loc.t and type and Some ident</td></tr>
+  <tr><td>&lt;:str_item&lt; external $lid:id$&nbsp;: $typ:<a href="#Types" title="">type</a>$ =
+  $str_list:string_list$ &gt;&gt;</td>
+   <td>external declaration</td>
+   <td>StExt of Loc.t and id and string_list</td></tr>
+  <tr><td>&lt;:str_item&lt; module $uid:id$ = $mexp:<a href="#Module_expressions" title="">mod_expr</a>$ &gt;&gt;</td>
+   <td>module definition</td>
+   <td>StMod of Loc.t and id and mod_expr</td></tr>
+  <tr><td>&lt;:str_item&lt; module type $uid:id$ = $mtyp:<a href="#Module_types" title="">mod_type</a>$ &gt;&gt;</td>
+   <td>module type definition</td>
+   <td>StMty of Loc.t and id and mod_type</td></tr>
+  <tr><td>&lt;:str_item&lt; type $typ:<a href="#Types" title="">type</a>$&gt;&gt;</td>
+    <td>type definition</td>
+    <td>StTyp of Loc.t and type</td></tr>
+  <tr><td>&lt;:str_item&lt; type $lid:id$ $p1$ ... $pn$ = $t$
+  constraint $c1l$ = $c1r$ ... constraint $cnl$ = $cnr$ &gt;&gt;</td>
+    <td>type definition</td>
+    <td>StTyp of Loc.t and (TyDcl of Loc.t and id and [p1;...;pn] and t and [(c1l, c1r); ... (cnl, cnr)]) </td></tr>
+  <tr><td>&lt;:str_item&lt; class type $typ:<a href="#Class_types" title="">class_type</a>$ &gt;&gt;</td>
+    <td>class type definition</td>
+    <td>StClt of Loc.t and class_type</td></tr>
+  <tr><td>&lt;:str_item&lt; class $cdcl:<a href="#Class_expressions" title="">class_expr</a>$ &gt;&gt;</td>
+    <td>class definition</td>
+    <td>StCls of Loc.t and class_expr</td></tr>
+  <tr><td>&lt;:str_item&lt; $anti:anti$ &gt;&gt;</td>
+    <td>antiquotation</td>
+    <td>StAnt of Loc.t and string</td></tr>
+  <tr><td>&lt;:str_item&lt; open $id:<a href="#Identifiers" title="">ident</a>$ &gt;&gt;</td>
+    <td>open</td>
+    <td>StOpn of Loc.t and <a href="#Identifiers" title="">ident</a></td></tr>
+  <tr><td>&lt;:str_item&lt; module rec $module_binding:<a href="#Recursive_module_bindings" title="">module_binding</a>$ &gt;&gt;</td>
+    <td>recursive modules</td>
+    <td>StRecMod of Loc.t and <a href="#Recursive_module_bindings" title="">module_binding</a></td></tr>
+  <tr><td>&lt;:str_item&lt; include $mexp:<a href="#Module_expressions" title="">mod_expr</a>$ &gt;&gt;</td>
+    <td>include</td>
+    <td>StInc of Loc.t and <a href="#Module_expressions" title="">mod_expr</a></td></tr>
+  <tr><td>&lt;:str_item&lt; $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>toplevel expression</td>
+    <td>StExp of Loc.t and <a href="#Expressions" title="">expr</a></td></tr>
+  <tr><td>&lt;:str_item&lt; # $string$ $<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>directive</td>
+    <td>StDir of Loc.t and string and <a href="#Expressions" title="">expr</a></td></tr>
+  <tr><td>&lt;:str_item&lt; $str_item_1$&nbsp;; $str_item_2$ &gt;&gt;</td>
+    <td>structure item sequence</td>
+    <td>StSem of Loc.t and str_item_1 and str_item_2</td></tr>
+  <tr><td>&lt;:str_item&lt; &gt;&gt;</td>
+    <td>empty item</td>
+    <td>StNil of Loc.t</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=26" title="Edit section: Syntactic Sugar">edit</a>]</div><a name="Syntactic_Sugar_4"></a><h4> Syntactic Sugar </h4>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>Expansion</th></tr>
+  <tr><td>&lt;:str_item&lt; module $uid:id$ ( $uid:p$&nbsp;: $mtyp:<a href="#Module_types" title="">mod_type</a>$ ) = $mexp:<a href="#Module_expressions" title="">mod_expr</a>$ &gt;&gt;</td>
+    <td>functor definition</td>
+    <td>&lt;:str_item&lt; module $uid:id$ = functor ( $uid:p$&nbsp;: $mtyp:<a href="#Module_types" title="">mod_type</a>$ ) -&gt; $mexp:<a href="#Module_expressions" title="">mod_expr</a>$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:str_item&lt; module $uid:id$&nbsp;: $mtyp:<a href="#Module_types" title="">mod_type</a> = $mexp:<a href="#Module_expressions" title="">mod_expr</a>$ &gt;&gt;</td>
+    <td>signature constraint</td>
+    <td>&lt;:str_item&lt; module $uid:id$ = ($mexp:<a href="#Module_expressions" title="">mod_expr</a>$&nbsp;: $mtyp:<a href="#Module_types" title="">mod_type</a> ) &gt;&gt;</td></tr>
+  <tr><td>&lt;:str_item&lt; type t &gt;&gt;</td>
+    <td>abstract type</td>
+    <td>&lt;:str_item&lt; type t = $&lt;:ctyp&lt; &gt;&gt;$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:str_item&lt; # $id$ &gt;&gt;</td>
+    <td>directive without arguments</td>
+    <td>&lt;:str_item&lt; # $a$ $&lt;:expr&lt; &gt;&gt;$ &gt;&gt;</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=27" title="Edit section: Notes">edit</a>]</div><a name="Notes_10"></a><h4> Notes </h4>
+<ul><li> A whole compilation unit or the contents of a structure is given as <i>one</i>
+structure item in the form of a StSem tree. The utility functions
+Camlp4Ast.stSem_of_list and Camlp4Ast.list_of_str_item convert from and
+to a list of structure items.
+</li><li> An exception is treated like a single type constructor. For
+exception definitions the type should be either a type identifier
+(TyId) or a type constructor (TyOf). For execption aliases it should
+only be a type identifier (TyId).
+</li><li> Abstract types are represented with the empty type.
+</li><li> Mutually recursive type definitions (separated by and) are
+stored in a TyAnd tree. Use Ast.list_of_ctyp and Ast.tyAnd_of_list to
+convert to and from a list of type definitions.
+</li><li> The quotation parser for types (&lt;:ctyp&lt; ... &gt;&gt;)
+does not parse type declarations. Type definitions must therefore be
+embedded in a sig_item or str_item quotation.
+</li><li> There seems to be no antiquotation syntax for a list of type
+parameters and a list of constraints inside a type definition. The
+existing form can only be used for a fixed number of type parameters
+and constraints.
+</li><li> Complete class type definitions (including name and type parameters) are stored as class types.
+</li><li> Several "and" separated class type definitions are stored in
+a CtAnd tree, use Ast.list_of_class_type and Ast.ctAnd_of_list to
+convert to and from a list of class types.
+</li><li> Several "and" separated classes are stored in a CeAnd tree,
+use Ast.list_of_class_expr and Ast.ceAnd_of_list to convert to and from
+a list of class expressions.
+</li><li> Several "and" separated recursive modules are stored in a
+MbAnd tree, use Ast.list_of_module_binding and Ast.mbAnd_of_list to
+convert to and from a list of module bindings.
+</li><li> Directives without argument are represented with the empty expression argument.
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=28" title="Edit section: Class types">edit</a>]</div><a name="Class_types"></a><h2> Class types </h2>
+<p>Besides class types, ast nodes of this type are used to describe
+class type definitions (in structures and signatures) and class
+declarations (in signatures).
+</p>
+<pre> class_type, ct&nbsp;::=
+   | (* empty *)
+   | (virtual)? i ([ t ])?
+   | [t] -&gt; ct
+   | object (t) csg end
+   | ct and ct
+   | ct&nbsp;: ct
+   | ct = ct
+   | $s$
+</pre>
+<p><br>
+</p>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:class_type&lt; $decl$&nbsp;: $ctyp:ct$ &gt;&gt;</td>
+    <td>class declaration as in "class c&nbsp;: object .. end" in a signature</td>
+    <td>CtCol of Loc.t and decl and ct</td></tr>
+  <tr><td>&lt;:class_type&lt; $decl$ = $ctyp:ct$ &gt;&gt;</td>
+    <td>class type declaration/definition as in "class type c = object .. end"</td>
+    <td>CtEq of Loc.t and decl and ct</td></tr>
+  <tr><td>&lt;:class_type&lt; $ct1$ and $ct2$ &gt;&gt;</td>
+    <td>mutually recursive class types</td>
+    <td>CtAnd of Loc.t and ct1 and ct2</td></tr>
+  <tr><td>&lt;:class_type&lt; $virtual:v$ $id:<a href="#Identifiers" title="">ident</a>$ [ $list:p$ ] &gt;&gt;</td>
+    <td>instanciated class type / left hand side of a class
+  declaration or class type definition/declaration</td>
+    <td>CtCon of Loc.t and v and ident and p</td></tr>
+  <tr><td>&lt;:class_type&lt; [ $typ:<a href="#Types" title="">type</a>$ ] -&gt; $ctyp:ct$ &gt;&gt;</td>
+    <td>class type valued function</td>
+    <td>CtFun of Loc.t and type and ct</td></tr>
+  <tr><td>&lt;:class_type&lt; object ($typ:<a href="#Types" title="">self_type</a>$) $csg:<a href="#Class_signature_items" title="">class_sig_item</a>$ end &gt;&gt;</td>
+    <td>class body type</td>
+    <td>CtSig of Loc.t and self_type and class_sig_item</td></tr>
+</tbody></table>
+<p><br>
+</p><p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=29" title="Edit section: Syntactic Sugar">edit</a>]</div><a name="Syntactic_Sugar_5"></a><h4> Syntactic Sugar </h4>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>Expansion</th></tr>
+  <tr><td>&lt;:class_type&lt; $id:i$ [ $list:p$] &gt;&gt;</td>
+    <td>instanciated class type / non-virtual class declaration</td>
+    <td>&lt;:class_type&lt; $virtual:Ast.BFalse$ $id:i$ [ $list:p$] &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_type&lt; $virtual:v$ $id:i$ &gt;&gt;</td>
+    <td>missing parameters/arguments</td>
+    <td>&lt;:class_type&lt; $virtual:v$ $id:i$ [ $&lt;:ctyp&lt; &gt;&gt;$ ] &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_type&lt; object $x$ end &gt;&gt;</td>
+    <td>class body type without self binding</td>
+    <td>&lt;:class_type&lt; object ($&lt;:ctyp&lt; &gt;&gt;$) $x$ end &gt;&gt;</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=30" title="Edit section: Notes">edit</a>]</div><a name="Notes_11"></a><h4> Notes </h4>
+<ul><li> CtCon is used for possibly instanciated/parametrized class
+type identifiers. They appear on the left hand side of class
+declaration and class definitions or as reference to existing class
+types. In the latter case the virtual flag is probably irrelevant.
+</li><li> Several type parameters/arguments are stored in a TyCom
+tree, use Ast.list_of_ctyp and Ast.tyCom to convert to and from list of
+parameters/arguments.
+</li><li> An empty type parameter list and an empty type argument is represented with the empty type.
+</li><li> The self binding in class body types is represented by a type
+expression. If the self binding is absent, the empty type expression
+(&lt;:ctype&lt; &gt;&gt;) is used. </li><li> Several class signature items are stored in a CgSem tree,
+use Ast.list_of_class_sig_item and Ast.cgSem_of_list to convert to and
+from a list of class signature items.
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=31" title="Edit section: Class signature items">edit</a>]</div><a name="Class_signature_items"></a><h2> Class signature items </h2>
+<pre> class_signature_item, class_sig_item, csg&nbsp;::=
+   | (* empty *)
+   | type t = t
+   | csg&nbsp;; csg
+   | inherit ct
+   | method s&nbsp;: t or method private s&nbsp;: t
+   | value (virtual)? (mutable)? s&nbsp;: t
+   | method virtual (mutable)? s&nbsp;: t
+   | $s$
+</pre>
+<p><br>
+</p>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:class_sig_item&lt; &gt;&gt;</td>
+    <td>empty</td>
+    <td>CgNil of Loc.t</td></tr>
+  <tr><td>&lt;:class_sig_item&lt; constraint $typ:<a href="#Types" title="">type_1</a>$ = $typ:<a href="#Types" title="">type_2</a>$ &gt;&gt;</td>
+    <td>type constraint</td>
+    <td>CgCtr of Loc.t and type_1 and type_2</td></tr>
+  <tr><td>&lt;:class_sig_item&lt; $csg:i1$&nbsp;; $csg:i2$ &gt;&gt;</td>
+    <td>sequence</td>
+    <td>CgSem of Loc.t and i1 and i2</td></tr>
+  <tr><td>&lt;:class_sig_item&lt; inherit $ctyp:<a href="#Class_types" title="">class_type</a>$ &gt;&gt;</td>
+    <td>inheritance</td>
+    <td>CgInh of Loc.t and class_type</td></tr>
+  <tr><td>&lt;:class_sig_item&lt; method $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">type</a>$ &gt;&gt;</td>
+    <td>non-virtual method</td>
+    <td>CgMeth of Loc.t and id and pf and type</td></tr>
+  <tr><td>&lt;:class_sig_item&lt; value $mutable:mf$ $virtual:vf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">type</a>$ &gt;&gt;</td>
+    <td>value</td>
+    <td>CgVal of Loc.t and id and mf and vf and type</td></tr>
+  <tr><td>&lt;:class_sig_item&lt; method virtual $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">type</a>$ &gt;&gt;</td>
+    <td>virtual method</td>
+    <td>CgVir of Loc.t and id and pf and type</td></tr>
+  <tr><td>&lt;:class_sig_item&lt; $anti:a$ &gt;&gt;</td>
+    <td>Antiquotation?</td>
+    <td>CgAnt of Loc.t and a</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=32" title="Edit section: Syntactic Sugar">edit</a>]</div><a name="Syntactic_Sugar_6"></a><h4> Syntactic Sugar </h4>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>Expansion</th></tr>
+  <tr><td>&lt;:class_sig_item&lt; type $typ:<a href="#Types" title="">type_1</a>$ = $typ:<a href="#Types" title="">type_2</a>$ &gt;&gt;</td>
+    <td>type constraint</td>
+    <td>&lt;:class_sig_item&lt; constraint $typ:<a href="#Types" title="">type_1</a>$ = $typ:<a href="#Types" title="">type_2</a>$ &gt;&gt;</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=33" title="Edit section: Notes">edit</a>]</div><a name="Notes_12"></a><h4> Notes </h4>
+<ul><li> The empty class signature item is used as a placeholder in empty class body types (class type e = object end).
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=34" title="Edit section: Class expressions">edit</a>]</div><a name="Class_expressions"></a><h2> Class expressions </h2>
+<p>Ast nodes of this type are additionally used to describe whole
+(mutually recursive) class definitions.
+</p>
+<pre> class_expression, class_expr, ce&nbsp;::=
+   | (* empty *)
+   | ce e
+   | (virtual)? i ([ t ])?
+   | fun p -&gt; ce
+   | let (rec)? bi in ce
+   | object (p) (cst) end
+   | ce&nbsp;: ct
+   | ce and ce
+   | ce = ce
+   | $s$
+</pre>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:class_expr&lt; &gt;&gt;</td>
+    <td>empty class expression</td>
+    <td>CeNil of Loc.t</td></tr>
+  <tr><td>&lt;:class_expr&lt; $cexp:ce$ $exp:<a href="#Expressions" title="">exp</a>$ &gt;&gt;</td>
+    <td>application</td>
+    <td>CeApp of Loc.t and ce and exp</td></tr>
+  <tr><td>&lt;:class_expr&lt; $virtual:vf$ $id:<a href="#Identifiers" title="">ident</a>$ [ $typ:<a href="#Types" title="">type_param</a>$ ] &gt;&gt;</td>
+    <td>instanciated class / left hand side of class definitions</td>
+    <td>CeCon of Loc.t and vf and ident and type_parem</td></tr>
+  <tr><td>&lt;:class_expr&lt; fun $pat:<a href="#Patterns" title="">pattern</a>$ -&gt; $cexp:ce$ &gt;&gt;</td>
+    <td>class valued function</td>
+    <td>CeFun of Loc.t and pattern and ce</td></tr>
+  <tr><td>&lt;:class_expr&lt; let $rec:rf$ $binding:<a href="#Bindings" title="">binding</a>$ in $cexp:ce$ &gt;&gt;</td>
+    <td>class let binding</td>
+    <td>CeLet of Loc.t and rf and binding and ce</td></tr>
+  <tr><td>&lt;:class_expr&lt; object ( $pat:<a href="#Patterns" title="">self_binding</a>$ ) $cst:<a href="#Class_structure_items" title="">class_str_items</a>$ end &gt;&gt;</td>
+    <td>class structure</td>
+    <td>CeStr of Loc.t and self_binding and class_str_items</td></tr>
+  <tr><td>&lt;:class_expr&lt; ($cexp:ce$&nbsp;: $ctyp:<a href="#Class_types" title="">class_type</a>$) &gt;&gt;</td>
+    <td>type constraint</td>
+    <td>CeTyc of Loc.t and ce and class_type</td></tr>
+  <tr><td>&lt;:class_expr&lt; $cexp:c1$ and $cexp:c2$ &gt;&gt;</td>
+    <td>mutually recursive class definitions</td>
+    <td>CeAnd of Loc.t and c1 and c2</td></tr>
+  <tr><td>&lt;:class_expr&lt; $ci$ = $cexp:ce$ &gt;&gt;</td>
+    <td>class definition as in class c = object .. end</td>
+    <td>CeEq of Loc.t and ci and ce</td></tr>
+  <tr><td>&lt;:class_expr&lt; $anti:a$ &gt;&gt;</td>
+    <td>Antiquotation?</td>
+    <td>CeAnt of Loc.t and a</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=35" title="Edit section: Syntactic Sugar">edit</a>]</div><a name="Syntactic_Sugar_7"></a><h4> Syntactic Sugar </h4>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>Expansion</th></tr>
+  <tr><td>&lt;:class_expr&lt; $id:id$ [ $tp$ ] &gt;&gt;</td>
+    <td>non-virtual class / instanciated class</td>
+    <td>&lt;:class_expr&lt; $virtual:Ast.BFalse$ $id:id$ [ $tp$ ] &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_expr&lt; $virtual:vf$ $id:id$ &gt;&gt;</td>
+    <td>no type parameters/argument </td>
+    <td>&lt;:class_expr&lt; $virtual:vf$ $id:id$ [ $&lt;:ctyp&lt; &gt;&gt;$ ] &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_expr&lt; fun $pat:p1$ $pat:p2$ -&gt; $cexp:ce$ &gt;&gt;</td>
+    <td>several arguments</td>
+    <td>&lt;:class_expr&lt; fun $pat:p1$ -&gt; fun $pat:p2$ -&gt; $cexp:ce$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_expr&lt; let $binding:bi$ in $cexp:ce$ &gt;&gt;</td>
+    <td>non recursive binding</td>
+    <td>&lt;:class_expr&lt; let $rec:Ast.BFalse$ $binding:bi$ in $cexp:ce$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_expr&lt; object $cst:cst$ end &gt;&gt;</td>
+    <td>missing self binding</td>
+    <td>&lt;:class_expr&lt; object ( $&lt;:patt&lt; &gt;&gt;$ ) $cst:cst$ end &gt;&gt;</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=36" title="Edit section: Notes">edit</a>]</div><a name="Notes_13"></a><h4> Notes </h4>
+<ul><li> No type parameters or arguments in an instanciated class (CeCon) are represented with the empty type (TyNil).
+</li><li> Several type parameters or arguments in an instanciated class
+(CeCon) are stored in a TyCom tree. Use Ast.list_of_ctyp and
+Ast.tyCom_of_list convert to and from a list of type parameters.
+</li><li> There are three common cases for the self binding in a class structure:
+<ol><li> An absent self binding is represented by the empty pattern (PaNil).
+</li><li> An identifier (PaId) binds the object.
+</li><li> A typed pattern (PaTyc) consisting of an identifier and a type variable binds the object and the self type.
+</li></ol>
+</li><li> More than one class structure item are stored in a CrSem
+tree. Use Ast.list_of_class_str_item and Ast.crSem_of_list to convert
+to and from a list of class items.
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=37" title="Edit section: Class structure items">edit</a>]</div><a name="Class_structure_items"></a><h2> Class structure items </h2>
+<pre> class_structure_item, class_str_item, cst&nbsp;::=
+   | (* empty *)
+   | cst&nbsp;; cst
+   | type t = t
+   | inherit(!)? ce (as s)?
+   | initializer e
+   | method(!)? (private)? s&nbsp;: t = e or method (private)? s = e
+   | value(!)? (mutable)? s = e
+   | method virtual (private)? s&nbsp;: t
+   | value virtual (private)? s&nbsp;: t
+   | $s$
+</pre>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>AST</th></tr>
+  <tr><td>&lt;:class_str_item&lt; &gt;&gt;</td>
+    <td>empty item</td>
+    <td>CrNil of Loc.t</td></tr>
+  <tr><td>&lt;:class_str_item&lt; $i1$&nbsp;; $i2$ &gt;&gt;</td>
+    <td>sequence</td>
+    <td>CrSem of Loc.t and i1 and i2</td></tr>
+  <tr><td>&lt;:class_str_item&lt; constraint $typ:<a href="#Types" title="">type_1</a>$ = $typ:<a href="#Types" title="">type_2</a>$ &gt;&gt;</td>
+    <td>type constraint</td>
+    <td>CrCtr of Loc.t and type_1 and type_2</td></tr>
+  <tr><td>&lt;:class_str_item&lt; inherit $!:override$ $cexp:<a href="#Class_expressions" title="">class_exp</a>$ as $lid:id$ &gt;&gt;</td>
+    <td>inheritance</td>
+    <td>CrInh of Loc.t and override_flag and class_exp and id</td></tr>
+  <tr><td>&lt;:class_str_item&lt; initializer $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>initializer</td>
+    <td>CrIni of Loc.t and expr</td></tr>
+  <tr><td>&lt;:class_str_item&lt; method $!:override$ $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>method (possibly polymorphic)</td>
+    <td>CrMth of Loc.t and string and override_flag and private_flag and poly_type</td></tr>
+  <tr><td>&lt;:class_str_item&lt; value $!:override$ $mutable:mf$ $lid:id$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>instance variable</td>
+    <td>CrVal of Loc.t and string and override_flag and mutable_flag and expr</td></tr>
+  <tr><td>&lt;:class_str_item&lt; method virtual $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ &gt;&gt;</td>
+    <td>virtual method</td>
+    <td>CrVir of Loc.t and id and private_flag and poly_type</td></tr>
+  <tr><td>&lt;:class_str_item&lt; value virtual $mutable:mf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">type</a>$ &gt;&gt;</td>
+    <td>virtual instance variable</td>
+    <td>CrVvr of Loc.t and id and mutable_flag and type</td></tr>
+  <tr><td>&lt;:class_str_item&lt; $anti:a$ &gt;&gt;</td>
+    <td>antiquotation?</td>
+    <td>CrAnt of Loc.t and a</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=38" title="Edit section: Syntactic Sugar">edit</a>]</div><a name="Syntactic_Sugar_8"></a><h4> Syntactic Sugar </h4>
+<table align="center" border="1" cellpadding="2" cellspacing="0">
+  <tbody><tr><th>Quotation</th><th>Signification</th><th>Expansion</th></tr>
+  <tr><td>&lt;:class_str_item&lt; constraint $typ:<a href="#Types" title="">type_1</a>$ = $typ:<a href="#Types" title="">type_2</a>$ &gt;&gt;</td>
+    <td>type constraint</td>
+    <td>&lt;:class_str_item&lt; type $typ:<a href="#Types" title="">type_1</a>$ = $typ:<a href="#Types" title="">type_2</a>$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; inherit $!:override$ $cexp:<a href="#Class_expressions" title="">class_exp</a>$ &gt;&gt;</td>
+    <td>superclass without binding</td>
+    <td>&lt;:class_str_item&lt; inherit $!:override$ $cexp:<a href="#Class_expressions" title="">class_exp</a>$ as $lid:""$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; inherit $cexp:<a href="#Class_expressions" title="">class_exp</a>$ as $lid:lid$ &gt;&gt;</td>
+    <td>superclass without override</td>
+    <td>&lt;:class_str_item&lt; inherit $!:Ast.OvNil$ $cexp:<a href="#Class_expressions" title="">class_exp</a>$ as $lid:lid$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; method $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>non-overriding method</td>
+    <td>&lt;:class_str_item&lt; method $!:Ast.OvNil$ $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; method $private:pf$ $lid:id$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>monomorphic method</td>
+    <td>&lt;:class_str_item&lt; method $private:pf$ $lid:id$&nbsp;: $typ:&lt;:ctyp&lt; &gt;&gt;$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; method $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>public method</td>
+    <td>&lt;:class_str_item&lt; method $private:Ast.PrNil$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; method $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ $pat:<a href="#Patterns" title="">pattern</a>$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>method arguments</td>
+    <td>&lt;:class_str_item&lt; method $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ = fun $pat:<a href="#Patterns" title="">pattern</a>$ -&gt; $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; method $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$&nbsp;: $typ:<a href="#Types" title="">res_type</a>$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>return type constraint</td>
+    <td>&lt;:class_str_item&lt; method $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ = ($exp:<a href="#Expressions" title="">expr</a>$&nbsp;: $typ:<a href="#Types" title="">res_type</a>$) &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; method $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$&nbsp;:&gt; $typ:<a href="#Types" title="">res_type</a>$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>return type coercion</td>
+    <td>&lt;:class_str_item&lt; method $private:pf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ = ($exp:<a href="#Expressions" title="">expr</a>$&nbsp;:&gt; $typ:<a href="#Types" title="">res_type</a>$ ) &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; value $mutable:mu$ $lid:id$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>non-overriding instance variable</td>
+    <td>&lt;:class_str_item&lt; value $!:Ast.OvNil$ $mutable:mf$ $lid:id$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; value $!:override$ $lid:id$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>immutable instance variable</td>
+    <td>&lt;:class_str_item&lt; value $!:override$ $mutable:Ast.MuNil$ $lid:id$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; value $!:override$ $mutable:mf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">res_type</a>$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>type restriction</td>
+    <td>&lt;:class_str_item&lt; value $!:override$ $mutable:mf$ $lid:id$ = ($exp:<a href="#Expressions" title="">expr</a>$&nbsp;: $typ:<a href="#Types" title="">res_type</a>$) &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; value $!:override$ $mutable:mf$ $lid:id$&nbsp;:&gt; $typ:<a href="#Types" title="">res_type</a>$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>simple value coercion</td>
+    <td>&lt;:class_str_item&lt; value $!:override$ $mutable:mf$ $lid:id$ = ($exp:<a href="#Expressions" title="">expr</a>$&nbsp;:&gt; $typ:<a href="#Types" title="">res_type</a>$) &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; value $!:override$ $mutable:mf$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">expr_type</a>$&nbsp;:&gt; $typ:<a href="#Types" title="">res_type</a>$ = $exp:<a href="#Expressions" title="">expr</a>$ &gt;&gt;</td>
+    <td>complete value coercion</td>
+    <td>&lt;:class_str_item&lt; value $!:override$ $mutable:mf$ $lid:id$ = ($exp:<a href="#Expressions" title="">expr</a>$&nbsp;: $typ:<a href="#Types" title="">expr_type</a>$&nbsp;:&gt; $typ:<a href="#Types" title="">res_type</a>$) &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; method virtual $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ &gt;&gt;</td>
+    <td>public virtual method</td>
+    <td>&lt;:class_str_item&lt; method $private:Ast.PrNil$ virtual $lid:id$&nbsp;: $typ:<a href="#Types" title="">poly_type</a>$ &gt;&gt;</td></tr>
+  <tr><td>&lt;:class_str_item&lt; value $!:override$ virtual $lid:id$&nbsp;: $typ:<a href="#Types" title="">type</a>$ &gt;&gt;</td>
+    <td>immutable virtual value</td>
+    <td>&lt;:class_str_item&lt; value $!:override$ virtual $mutable:Ast.MuNil$ $lid:id$&nbsp;: $typ:<a href="#Types" title="">type</a>$ &gt;&gt;</td></tr>
+</tbody></table>
+<p><br>
+</p>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=39" title="Edit section: Notes">edit</a>]</div><a name="Notes_14"></a><h4> Notes </h4>
+<ul><li> A missing superclass binding is represented with the empty string as identifier.
+</li><li> Normal methods and explicitly polymophically typed methods
+are represented with the same ast node (CrMth). For a normal method the
+poly_type field holds the empty type (TyNil).
+</li></ul>
+<div class="editsection" style="float: right; margin-left: 5px;">[<a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit&amp;section=40" title="Edit section: Compilation units">edit</a>]</div><a name="Compilation_units"></a><h2> Compilation units </h2>
+<p>An implementation of a compilation unit (read a .ml file) is
+given as <i>one</i> <a href="#Structure_items" title="">structure item</a>. An
+interface of a compilation unit (read a .mli file) is given as
+<i>one</i> <a href="#Signature_items" title="">signature item</a>.
+</p>
+<!-- Saved in parser cache with key wikigallium:pcache:idhash:1428-0!1!0!0!!en!2 and timestamp 20130109105407 -->
+<div class="printfooter">
+Retrieved from "<a href="http://brion.inria.fr/gallium/index.php/Abstract_Syntax_Tree">http://brion.inria.fr/gallium/index.php/Abstract_Syntax_Tree</a>"</div>
+			<div id="catlinks"><p class="catlinks"><a href="http://brion.inria.fr/gallium/index.php?title=Special:Categories&amp;article=Abstract_Syntax_Tree" title="Special:Categories">Categories</a>: <span dir="ltr"><a href="http://brion.inria.fr/gallium/index.php/Category:Documentation" title="Category:Documentation">Documentation</a></span> | <span dir="ltr"><a href="http://brion.inria.fr/gallium/index.php/Category:Camlp4" title="Category:Camlp4">Camlp4</a></span></p></div>			<!-- end content -->
+			<div class="visualClear"></div>
+		</div>
+	</div>
+		</div>
+		<div id="column-one">
+	<div id="p-cactions" class="portlet">
+		<h5>Views</h5>
+		<ul>
+				 <li id="ca-nstab-main" class="selected"><a href="http://brion.inria.fr/gallium/index.php/Abstract_Syntax_Tree">Article</a></li>
+				 <li id="ca-talk" class="new"><a href="http://brion.inria.fr/gallium/index.php?title=Talk:Abstract_Syntax_Tree&amp;action=edit">Discussion</a></li>
+				 <li id="ca-edit"><a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=edit">Edit</a></li>
+				 <li id="ca-history"><a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;action=history">History</a></li>
+		</ul>
+	</div>
+	<div class="portlet" id="p-personal">
+		<h5>Personal tools</h5>
+		<div class="pBody">
+			<ul>
+				<li id="pt-login"><a href="http://brion.inria.fr/gallium/index.php?title=Special:Userlogin&amp;returnto=Abstract_Syntax_Tree">Log in / create account</a></li>
+			</ul>
+		</div>
+	</div>
+	<div class="portlet" id="p-logo">
+		<a style="background-image: url(/gallium/skins/common/images/gallium.png);" href="http://brion.inria.fr/gallium/index.php/Gallium" title="Gallium"></a>
+	</div>
+	<script type="text/javascript"> if (window.isMSIE55) fixalpha(); </script>
+		<div class="portlet" id="p-navigation">
+		<h5>Navigation</h5>
+		<div class="pBody">
+			<ul>
+				<li id="n-mainpage"><a href="http://brion.inria.fr/gallium/index.php/Gallium">Gallium</a></li>
+				<li id="n-Objective-Caml"><a href="http://brion.inria.fr/gallium/index.php/Objective_Caml">Objective Caml</a></li>
+				<li id="n-Camlp4"><a href="http://brion.inria.fr/gallium/index.php/Camlp4">Camlp4</a></li>
+				<li id="n-Ocamlbuild"><a href="http://brion.inria.fr/gallium/index.php/Ocamlbuild">Ocamlbuild</a></li>
+				<li id="n-recentchanges"><a href="http://brion.inria.fr/gallium/index.php/Special:Recentchanges">Recent changes</a></li>
+			</ul>
+		</div>
+	</div>
+		<div class="portlet" id="p-Espace privé">
+		<h5>Espace privé</h5>
+		<div class="pBody">
+			<ul>
+				<li id="n-Gallium"><a href="http://brion.inria.fr/gallium/index.php/Gallium_Private:Main">Gallium</a></li>
+				<li id="n-Help"><a href="http://brion.inria.fr/gallium/index.php/Gallium_Private:Help">Help</a></li>
+			</ul>
+		</div>
+	</div>
+		<div id="p-search" class="portlet">
+		<h5><label for="searchInput">Search</label></h5>
+		<div id="searchBody" class="pBody">
+			<form action="/gallium/index.php/Special:Search" id="searchform"><div>
+				<input id="searchInput" name="search" accesskey="f" type="text">
+				<input name="go" class="searchButton" id="searchGoButton" value="Go" type="submit">&nbsp;
+				<input name="fulltext" class="searchButton" value="Search" type="submit">
+			</div></form>
+		</div>
+	</div>
+	<div class="portlet" id="p-tb">
+		<h5>Toolbox</h5>
+		<div class="pBody">
+			<ul>
+				<li id="t-whatlinkshere"><a href="http://brion.inria.fr/gallium/index.php/Special:Whatlinkshere/Abstract_Syntax_Tree">What links here</a></li>
+				<li id="t-recentchangeslinked"><a href="http://brion.inria.fr/gallium/index.php/Special:Recentchangeslinked/Abstract_Syntax_Tree">Related changes</a></li>
+<li id="t-specialpages"><a href="http://brion.inria.fr/gallium/index.php/Special:Specialpages">Special pages</a></li>
+				<li id="t-print"><a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;printable=yes">Printable version</a></li>				<li id="t-permalink"><a href="http://brion.inria.fr/gallium/index.php?title=Abstract_Syntax_Tree&amp;oldid=2141">Permanent link</a></li>			</ul>
+		</div>
+	</div>
+		</div><!-- end of the left (by default at least) column -->
+			<div class="visualClear"></div>
+			<div id="footer">
+				<div id="f-poweredbyico"><a href="http://www.mediawiki.org/"><img src="AST_files/poweredby_mediawiki_88x31.png" alt="MediaWiki"></a></div>
+			<ul id="f-list">
+				<li id="lastmod"> This page was last modified 20:12, 16 September 2012.</li>
+				<li id="viewcount">This page has been accessed 49,147 times.</li>
+			</ul>
+		</div>
+	<script type="text/javascript"> if (window.runOnloadHook) runOnloadHook();</script>
+</div>
+<!-- Served by brion in 0.47 secs. -->
+</body></html>
