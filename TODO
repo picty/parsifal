@@ -31,6 +31,7 @@ v0.2 (apr. 2013)
    * clean up TODOs in ml files.
  - Tools
    * Write a cool passive TLS_Proxy
+   * Add direct hex input to asn1parse and other programs
    * check_sslserver (see check_sslserver.ml for a complete TODO)
    * picodig (using a special sr function (send/receive)?)
    * rewrite server-answer with the following options
