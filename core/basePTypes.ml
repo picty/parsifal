@@ -173,6 +173,56 @@ let dump_uint32le v =
 let value_of_uint32le i = VInt (i, 32, LittleEndian)
 
 
+(* TODO: Should this be rewritten with a little more elegance? *)
+type uint64 = Int64.t
+
+let parse_uint64 input =
+  if input.cur_offset + 8 <= input.cur_length then begin
+    let res1 =
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 4]) lsl 24) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 5]) lsl 16) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 6]) lsl 8) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 7]))
+    in
+    let res2 =
+      (int_of_char (input.str.[input.cur_base + input.cur_offset]) lsl 24) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 1]) lsl 16) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 2]) lsl 8) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 3]))
+    in
+    input.cur_offset <- input.cur_offset + 8;
+    Int64.logor (Int64.shift_left (Int64.of_int res2) 32) (Int64.of_int res1)
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
+
+let lwt_parse_uint64 input =
+  lwt_really_read input 8 >>= fun s ->
+    let r1 = (((int_of_char s.[4]) lsl 24) lor ((int_of_char s.[5]) lsl 16)
+      lor ((int_of_char s.[6]) lsl 8) lor (int_of_char s.[7])) in
+    let r2 = (((int_of_char s.[0]) lsl 24) lor ((int_of_char s.[1]) lsl 16)
+      lor ((int_of_char s.[2]) lsl 8) lor (int_of_char s.[3])) in
+    let r = Int64.logor (Int64.shift_left (Int64.of_int r2) 32) (Int64.of_int r1) in
+    return r
+
+let dump_uint64 v =
+  let open Int64 in
+  let ff = of_int 0xff in
+  let c0 = char_of_int (to_int (logand (shift_right v 56) ff))
+  and c1 = char_of_int (to_int (logand (shift_right v 48) ff))
+  and c2 = char_of_int (to_int (logand (shift_right v 40) ff))
+  and c3 = char_of_int (to_int (logand (shift_right v 32) ff))
+  and c4 = char_of_int (to_int (logand (shift_right v 24) ff))
+  and c5 = char_of_int (to_int (logand (shift_right v 16) ff))
+  and c6 = char_of_int (to_int (logand (shift_right v 8) ff))
+  and c7 = char_of_int (to_int (logand v ff)) in
+  let res = String.make 8 c0 in
+  res.[1] <- c1; res.[2] <- c2; res.[3] <- c3;
+  res.[4] <- c4; res.[5] <- c5; res.[6] <- c6;
+  res.[7] <- c7;
+  res
+
+let value_of_uint64 i = VBigInt (dump_uint64 i, BigEndian)
+
+
 
 type uint64le = Int64.t
 
@@ -182,13 +232,13 @@ let parse_uint64le input =
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 3]) lsl 24) lor
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 2]) lsl 16) lor
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 1]) lsl 8) lor
-	(int_of_char (input.str.[input.cur_base + input.cur_offset]))
+      (int_of_char (input.str.[input.cur_base + input.cur_offset]))
     in
     let res2 =
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 7]) lsl 24) lor
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 6]) lsl 16) lor
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 5]) lsl 8) lor
-	(int_of_char (input.str.[input.cur_base + input.cur_offset + 4]))
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 4]))
     in
     input.cur_offset <- input.cur_offset + 8;
     Int64.logor (Int64.shift_left (Int64.of_int res2) 32) (Int64.of_int res1)
@@ -215,16 +265,12 @@ let dump_uint64le v =
   and c1 = char_of_int (to_int (logand (shift_right v 8) ff))
   and c0 = char_of_int (to_int (logand v ff)) in
   let res = String.make 8 c0 in
-  res.[1] <- c1;
-  res.[2] <- c2;
-  res.[3] <- c3;
-  res.[4] <- c4;
-  res.[5] <- c5;
-  res.[6] <- c6;
+  res.[1] <- c1; res.[2] <- c2; res.[3] <- c3;
+  res.[4] <- c4; res.[5] <- c5; res.[6] <- c6;
   res.[7] <- c7;
   res
 
-let value_of_uint64le i = VBigInt (dump_uint64le i, LittleEndian)
+let value_of_uint64le i = VBigInt (dump_uint64 i, LittleEndian)
 
 
 
