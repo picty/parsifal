@@ -1,13 +1,8 @@
 v0.2 (apr. 2013)
+ - Write asn1_struct (struct + asn1_alias)
  - Software Engineering
    * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
    * non-regression test on answer-type/ncerts
- - Investigate some oddities:
-   * in 009-129, 129.79.24.188 was J(15030000120228dcbcea4df63e3abfbe) and became A(Fatal,HandshakeFailure)
-   => Can an alert be split on two records? Two alerts grouped in one record?
-   => OpenSSL says it must be 2 bytes long
-   => GNUTLS says it must be at least 2 bytes long, and ignore the remaining bytes
-   => Choose how to treat it in --answer-type
  - Merge tls_context and ssl2_context?
  - Misc
    * Factor som code (verbose option, file handling, action handling) in getopt
