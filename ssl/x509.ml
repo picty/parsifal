@@ -96,6 +96,17 @@ let signature_types = [
   [96;840;1;101;3;4;3;2], "dsaWithSha256", APT_Null, (fun _ -> ST_DSA);
 ]
 
+let capability_types = [
+  [42;840;113549;3;2], "rc2-cbc", CT_Int;
+  [42;840;113549;3;4], "rc4", CT_Int;
+  [42;840;113549;3;7], "des-ede3-cbc", CT_Null;
+  [43;14;3;2;7], "desCBC", CT_Null;
+  [96;840;1;101;3;4;1;42], "aes256-CBC", CT_Null;
+  [96;840;1;101;3;4;1;45], "id-aes256-wrap", CT_Null;
+  [96;840;1;101;3;4;1;2], "aes128-CBC", CT_Null;
+  [96;840;1;101;3;4;1;5], "id-aes128-wrap", CT_Null;
+]
+
 let extension_types = [
   [85;29;1], "authorityKeyIdentifier"; (* Deprecated *)
   [85;29;14], "subjectKeyIdentifier";
@@ -117,6 +128,7 @@ let extension_types = [
   [96;840;1;113730;1;7], "nsRenewalURL";
   [96;840;1;113730;1;12], "nsSSLServerName";
   [96;840;1;113730;1;13], "nsComment";
+  [42;840;113549;1;9;15], "sMIMECapabilities";
 ]
 
 
@@ -147,7 +159,8 @@ let other_oids = [
 
 
 let _ =
-  List.iter (populate_atv_directory) attribute_value_types;
+  List.iter populate_atv_directory attribute_value_types;
+  List.iter populate_cap_directory capability_types;
   List.iter (fun (id, name) -> register_oid id name) extension_types;
   List.iter (fun (id, name) -> register_oid id name) other_oids;
   List.iter (populate_alg_directory subjectPublicKeyType_directory) public_key_types;

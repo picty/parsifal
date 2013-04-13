@@ -231,6 +231,32 @@ let nsCertType_values = [|
 |]
 
 
+(***********************)
+(* S/MIME Capabilities *)
+(***********************)
+
+type capabilityType =
+  | CT_Int
+  | CT_Null
+  | CT_Unknown
+
+let capabilityType_directory : (int list, capabilityType) Hashtbl.t = Hashtbl.create 10
+
+let populate_cap_directory (id, name, value) =
+  register_oid id name;
+  Hashtbl.replace capabilityType_directory id value;
+
+union capabilityParam [enrich] (UnparsedCapabilityParam of der_object) =
+  | CT_Int -> CapabilityLength of der_smallint
+  | CT_Null -> CapabilityNull of der_null
+
+struct sMIMECapability_content = {
+  capability : der_oid;
+  optional parameters : capabilityParam(hash_get capabilityType_directory capability CT_Unknown)
+}
+asn1_alias sMIMECapability
+asn1_alias sMIMECapabilities = seq_of sMIMECapability
+
 
 union extnValue [enrich] (UnparsedExtension of binstring) =
   | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authorityKeyIdentifier
@@ -252,6 +278,7 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "nsRenewalURL" -> NSRenewalURL of der_ia5string(NoConstraint)
   | "nsSSLServerName" -> NSSSLServerName of der_ia5string(NoConstraint)
   | "nsComment" -> NSComment of der_ia5string(NoConstraint)
+  | "sMIMECapabilities" -> SMIMECapabilities of sMIMECapabilities
 
 (* Sordid hack. TODO: auto-generate that with an option laxist? *)
 let parse_extnValue t input =
