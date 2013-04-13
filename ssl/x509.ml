@@ -121,6 +121,7 @@ let extension_types = [
   [85;29;35], "authorityKeyIdentifier";
   [85;29;37], "extendedKeyUsage";
   [43;6;1;5;5;7;1;1], "authorityInfoAccess";
+  [43;6;1;5;5;7;1;12], "logotype";
   [96;840;1;113730;1;1], "nsCertType";
   [96;840;1;113730;1;2], "nsBaseURL";
   [96;840;1;113730;1;3], "nsRevocationURL";
@@ -166,5 +167,3 @@ let _ =
   List.iter (populate_alg_directory subjectPublicKeyType_directory) public_key_types;
   List.iter (populate_alg_directory signatureType_directory) signature_types;  
   ()
-
-

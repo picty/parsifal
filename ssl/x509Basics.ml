@@ -129,6 +129,16 @@ struct algorithmIdentifier_content = {
 asn1_alias algorithmIdentifier
 
 
+(*******************)
+(* HashAlgAndValue *)
+(*******************)
+
+struct hashAlgAndValue_content = {
+  hash_function : algorithmIdentifier;
+  hash_digest : der_octetstring
+}
+asn1_alias hashAlgAndValue
+
 
 (************************)
 (* SubjectPublicKeyInfo *)

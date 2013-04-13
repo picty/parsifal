@@ -216,6 +216,89 @@ asn1_alias accessDescription
 asn1_alias authorityInfoAccess = seq_of accessDescription (* TODO: 1 .. MAX *)
 
 
+(************)
+(* Logotype *)
+(************)
+
+struct logotypeReference_content = {
+  refStructHash : asn1 [h_sequence] of list of hashAlgAndValue; (* [1..MAX] *)
+  refStructURI : asn1 [h_sequence] of list of der_ia5string(NoConstraint); (* [1..MAX] *)
+}
+asn1_alias logotypeReference
+
+struct logotypeAudioInfo_content = {
+  fileSize : der_smallint; (* Possible Integer overflow *)
+  playTime : der_smallint; (* Possible Integer overflow *)
+  channels : der_smallint;
+  optional sampleRate : asn1 [(C_ContextSpecific, false, T_Unknown 3)] of der_smallint;
+  optional language : asn1 [(C_ContextSpecific, false, T_Unknown 4)] of der_printable_octetstring_content (no_constraint) (* IA5 *)
+}
+asn1_alias logotypeAudioInfo
+
+asn1_union logotypeImageResolution [enrich; exhaustive] (UnparsedLogotypeImageResolution) =
+  | C_ContextSpecific, false, T_Unknown 1 -> LIR_NumBits of der_smallint
+  | C_ContextSpecific, false, T_Unknown 2 -> LIR_TableSize of der_smallint
+
+enum logotypeImageType (8, UnknownVal LIT_Unknown) =
+  | 0 -> LIT_GrayScale, "grayScale"
+  | 1 -> LIT_Color, "color"
+
+struct logotypeImageInfo_content = {
+  optional lii_type : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of logotypeImageType;
+  fileSize : der_smallint; (* Possible Integer overflow *)
+  xSize : der_smallint; (* Possible Integer overflow *)
+  ySize : der_smallint; (* Possible Integer overflow *)
+  optional resolution : logotypeImageResolution;
+  optional language : asn1 [(C_ContextSpecific, false, T_Unknown 4)] of der_printable_octetstring_content (no_constraint) (* IA5 *)
+}
+asn1_alias logotypeImageInfo
+
+struct logotypeDetails_content = {
+  media_type : der_ia5string(NoConstraint);
+  logotypeHash : asn1 [h_sequence] of list of hashAlgAndValue; (* [1..MAX] *)
+  logotypeURI : asn1 [h_sequence] of list of der_ia5string(NoConstraint); (* [1..MAX] *)
+}
+asn1_alias logotypeDetails
+
+struct logotypeAudio_content = {
+  audioDetails : logotypeDetails;
+  optional audioInfo : logotypeAudioInfo;
+}
+asn1_alias logotypeAudio
+
+struct logotypeImage_content = {
+  imageDetails : logotypeDetails;
+  optional imageInfo : logotypeImageInfo;
+}
+asn1_alias logotypeImage
+
+struct logotypeData_content = {
+  optional image : asn1 [h_sequence] of list of logotypeImage;
+  optional audio : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of list of logotypeAudio;
+}
+asn1_alias logotypeData
+
+asn1_union logotypeInfo [enrich; exhaustive] (UnparsedLogotypeInfo) =
+  | C_ContextSpecific, true, T_Unknown 0 -> LI_Direct of logotypeData_content
+  | C_ContextSpecific, true, T_Unknown 1 -> LI_Indirect of logotypeReference_content
+asn1_alias logotypeInfos = seq_of logotypeInfo
+
+struct otherLogotypeInfo_content = {
+  logotypeType : der_oid;
+  oli_info : logotypeInfo;
+}
+asn1_alias otherLogotypeInfo
+asn1_alias otherLogotypeInfos = seq_of otherLogotypeInfo
+
+struct logotype_content = {
+  optional communityLogos : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of logotypeInfos;
+  optional issuerLogo : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of logotypeInfo;
+  optional subjectLogo : asn1 [(C_ContextSpecific, true, T_Unknown 2)] of logotypeInfo;
+  optional otherLogos : asn1 [(C_ContextSpecific, true, T_Unknown 3)] of otherLogotypeInfos;
+}
+asn1_alias logotype
+
+
 (****************)
 (* NS Cert Type *)
 (****************)
@@ -271,6 +354,7 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "certificatePolicies" -> CertificatePolicies of certificatePolicies
   | "extendedKeyUsage" -> ExtendedKeyUsage of extendedKeyUsage
   | "authorityInfoAccess" -> AuthorityInfoAccess of authorityInfoAccess
+  | "logotype" -> Logotype of logotype
   | "nsCertType" -> NSCertType of der_enumerated_bitstring[nsCertType_values]
   | "nsBaseURL" -> NSBaseURL of der_ia5string(NoConstraint)
   | "nsRevocationURL" -> NSRevocationURL of der_ia5string(NoConstraint)

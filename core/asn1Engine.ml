@@ -38,6 +38,7 @@ enum asn1_tag (5, UnknownVal T_Unknown) =
   | 29 -> T_UnspecifiedCharacterString, "Unspecified Character String"
   | 30 -> T_BMPString, "BMP String"
 
+let h_sequence = (C_Universal, true, T_Sequence)
 
 
 let prim_or_cons = function false -> "prim" | true -> "cons"

@@ -108,24 +108,18 @@ let decrypt block_type expected_len ed n c =
   else raise PaddingError
 
 
-struct pkcs1_asn1_struct_content = {
-  hash_function : X509Basics.algorithmIdentifier;
-  hash_digest : der_octetstring
-}
-asn1_alias pkcs1_asn1_struct
-
 let raw_sign rnd_state typ hash msg n d =
   let oid, f = get_hash_fun_by_name hash in
   let digest = f msg in
   let asn1_struct = {
-    hash_function = {
+    X509Basics.hash_function = {
       X509Basics.algorithmId = oid;
       (* TODO: Clean that up: params should depend on the oid *)
       X509Basics.algorithmParams = Some (X509Basics.NoParams ())
     };
-    hash_digest = digest
+    X509Basics.hash_digest = digest
   } in
-  encrypt rnd_state typ (dump_pkcs1_asn1_struct asn1_struct) n d
+  encrypt rnd_state typ (X509Basics.dump_hashAlgAndValue asn1_struct) n d
 
 let raw_verify typ msg s n e =
   try

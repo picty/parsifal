@@ -16,7 +16,6 @@ v0.2 (apr. 2013)
    * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
  - X509
    * add popular extensions
-       1.3.6.1.5.5.7.1.12 (logoType)
        2.16.840.1.113730.1.8 (nsCAPolicyURL)
        2.16.840.1.113719.1.9.4.1 (securityAttributes [Novell])
        1.3.6.1.4.1.3029.3.1.5 (keyFeatures)
