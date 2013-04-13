@@ -360,6 +360,7 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "nsRevocationURL" -> NSRevocationURL of der_ia5string(NoConstraint)
   | "nsCARevocationURL" -> NSCARevocationURL of der_ia5string(NoConstraint)
   | "nsRenewalURL" -> NSRenewalURL of der_ia5string(NoConstraint)
+  | "nsCAPolicyURL" -> NSCAPolicyURL of der_ia5string(NoConstraint)
   | "nsSSLServerName" -> NSSSLServerName of der_ia5string(NoConstraint)
   | "nsComment" -> NSComment of der_ia5string(NoConstraint)
   | "sMIMECapabilities" -> SMIMECapabilities of sMIMECapabilities

@@ -127,6 +127,7 @@ let extension_types = [
   [96;840;1;113730;1;3], "nsRevocationURL";
   [96;840;1;113730;1;4], "nsCARevocationURL";
   [96;840;1;113730;1;7], "nsRenewalURL";
+  [96;840;1;113730;1;8], "nsCAPolicyURL";
   [96;840;1;113730;1;12], "nsSSLServerName";
   [96;840;1;113730;1;13], "nsComment";
   [42;840;113549;1;9;15], "sMIMECapabilities";
