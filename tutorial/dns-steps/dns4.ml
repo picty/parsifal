@@ -56,11 +56,12 @@ enum query_class [with_lwt] (16, UnknownVal UnknownQueryClass) =
   | 255 -> QC_ANYCLASS, "*"
 
 type domain =
-  | DomainLabel of string * domain
+  | DomainLabel of (int * string) * domain
   | DomainPointer of int
   | DomainEnd
 
-let rec parse_domain input =
+let rec parse_raw_domain input =
+  let o = input.cur_base + input.cur_offset
   let n = parse_uint8 input in
   match (n land 0xc0), (n land 0x3f) with
   | 0, 0 -> DomainEnd
@@ -71,45 +72,32 @@ let rec parse_domain input =
   | 0, len ->
     let label = parse_string len input in
     let rem = parse_domain input in
-    DomainLabel (s, rem)
+    DomainLabel (label, rem)
   | _ -> raise (ParsingException (CustomException "Invalid label length", _h_of_si input))
-  
 
 let parse_domain ctx input =
-  let rec aux () =
-    match parse_label input with
-    | false, None -> DomainEnd
-    | false, Some (Pointer offset) -> DomainPointer offset
-    | true, Some (Label
+  let rec resolve_labels base h = function
+    | DomainEnd -> DomainEnd
+    | (DomainPointer p) as d ->
+      hash_get h (p - base) d
+    | DomainLabel (l, rem) ->
+      let subd = resolve_labels h rem in
+      Hashtbl.replace h (input.
 
-    let 
-    let do_continue, label = parse_label input in
-    let new_accu = match label with
-      | None -> accu
-      | Some l -> l::accu
-    in
-    if do_continue
-    then aux new_accu
-    else List.rev new_accu
-  in
-  let tmp_res = aux [] in
-  match ctx with
-  | None -> tmp_res
-  | Some h ->
-    let rec resolve_label h = function
-      | [] -> []
-      | [Pointer p] as l ->
-	hash_get h p l
-      | 
+let rec string_of_domain = function
+  | DomainLabel (s, rem) -> s::(string_of_domain rem)
+  | DomainPointer p -> ["@" ^ (string_of_int p)]
+  | DomainEnd -> []
 
-let rec dump_domain = function
-  | [] -> dump_uint8 0
-  | [Pointer _ as l] -> dump_label l
-  | (Label _ as l)::r -> (dump_label l)^(dump_domain r)
-  | _ -> (* TODO *) failwith "Invalid domain"
+let rec dump_domain ctx = function
+  | DomainEnd -> dump_uint8 0
+  | DomainPointer p -> dump_uint16 (0xc000 land p)
+  | DomainLabel (l, r) ->
+    match ctx with 
+ (dump_varlen_string dump_uint8 l)^(dump_domain r)
 
 let value_of_domain d =
-  let content = List.map string_of_label d in
+  let content = string_of_domain d in
   VRecord [
     "@name", VString ("domain", false);
     "@string_of", VString (String.concat "." content, false);
@@ -157,13 +145,23 @@ struct rr [both_param ctx] = {
 }
 
 
-type dns_context = ((int, string) Hashtbl.t * (string, int) Hasthbl.t) option
+type dns_context = {
+  base_offset : int;
+  direct_resolver : (int, domain) Hashtbl.t;
+  reverse_resolver : (domain, int) Hashtbl.t;
+}
 
-let parse_dns_context _input =
-  Some (Hashtbl.create 10)
+type optional_dns_context = dns_context option
+
+let parse_optional_dns_context input =
+  Some {
+    base_offset = input.cur_base + input.cur_offset;
+    direct_resolver = Hashtbl.create 10;
+    reverse_resolver = Hashtbl.create 10
+  }
 
 struct dns_message = {
-  parse_field ctx : dns_context;
+  parse_field ctx : optional_dns_context;
   id : uint16;
   unparsedStuff : uint16;
   qdcount : uint16;
