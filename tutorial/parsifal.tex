@@ -308,7 +308,7 @@
   des éléments suivants:
   \begin{itemize}
   \item type OCaml \texttt{t}
-  \item fonction \texttt{parse\_t} (et \texttt{lwt\_parse\_t}
+  \item fonction \texttt{parse\_t} (et \texttt{lwt\_parse\_t})
   \item fonction \texttt{dump\_t}
   \item fonction \texttt{value\_of\_t}
   \end{itemize}
@@ -495,9 +495,9 @@ asn1_alias distinguishedName = seq_of rdn
       \hline
         0 & 512 & En-tête TAR, complété par des zéros \\
       \hline
-      512 & \multicolumn{1}{c}{\textit{«~Taille du fichier~»}} &
+      512 & \multicolumn{1}{c|}{\textit{«~Taille du fichier~»}} &
       Contenu du fichier, complété par des zéros \\
-      & \multicolumn{1}{c}{alignée à 512~octets} & \\
+      & \multicolumn{1}{c|}{alignée à 512~octets} & \\
       \hline
     \end{tabular}
   \end{center}
@@ -613,7 +613,7 @@ asn1_alias distinguishedName = seq_of rdn
   \item séparation de l'en-tête \texttt{ustar} dans une structure à
     part
   \item ajout de l'en-tête \texttt{ustar} comme un champ
-    \texttt{opitional} de la structure \texttt{tar\_header}
+    \texttt{optional} de la structure \texttt{tar\_header}
   \end{itemize}
 \end{frame}
 
@@ -895,69 +895,116 @@ asn1_alias distinguishedName = seq_of rdn
   \tableofcontents[currentsection]
 \end{frame}
 
-% Feuille de route (TODO) / Desideratas pour la suite
+
+\begin{frame}{Mais avant la conclusion, une page de pub}
+  \vspace{8mm}
+
+  \textit{Parsifal is good for you!}
+  \begin{itemize}
+  \item écriture incrémentale de parsers pour des formats divers
+  \item bon compromis entre flexibilité et rapidité
+    d'écriture
+  \item à partir de simples descriptions, de nombreuses fonctions sont
+    générées automatiquement:
+    \begin{itemize}
+    \item des \textit{parsers} bien évidemment
+    \item des fonctions d'affichage
+    \item des fonctions d'export (JSON)
+    \item un mécanisme de requête inspiré de celui de \texttt{tshark}
+    \end{itemize}
+  \item le tout avec des garanties fortes sur la robustesse du code
+    généré
+  \end{itemize}
+
+  \medskip
+
+  Les champs d'applications envisagés sont:
+  \begin{itemize}
+  \item outils d'analyse  (SSL, PE...)
+  \item outils de diagnostic (SSL, \textit{DNS}...)
+  \item outils fiables pour valider des formats binaires
+    (\textit{certificats} et \textit{CRLs} X.509, travaux sur des
+    \textit{formats d'image})
+  \item \textit{and many more?}
+  \end{itemize}
+
+\end{frame}
 
 
+\begin{frame}{Outils connexes}
+  \vspace{15mm}
+
+  \begin{itemize}
+  \item Scapy
+  \item Hachoir
+  \item Bibliothèque OCaml \texttt{bitstring}
+  \item NetZob
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Formats et protocoles décrits à ce jour}
+  \vspace{12mm}
+
+  \begin{itemize}
+  \item X.509
+  \item TLS
+  \item MRT+BGP
+  \item TAR
+  \item PCAP/IP/TCP/UDP (version rudimentaire)
+  \item DNS (travail en cours par Olivier)
+  \item PE (travail en cours par Pierre)
+  \item ExpROM (travail en cours par Pierre)
+  \item PNG (travail en cours par Anthony)
+  \end{itemize}
+
+\end{frame}
 
 
+\begin{frame}{Et après ?}
+  \vspace{12mm}
 
-% \end{frame}
+  Fonctionalités à venir:
+  \begin{itemize}
+  \item champs de bits
+  \item types récursifs
+  \item amélioration de la syntaxe
+  \item réflexions sur l'animation d'un protocole (problème dur)
+  \end{itemize}
 
+  \medskip
 
-% \begin{frame}{Démo}
-%   \vspace{12mm}
-
-%   Démo des exemples précédents.
-
-% \end{frame}
-
-% \TODO{Ajouter du binaire et un schéma joli, éventuellement auto-généré?}
-
-% \begin{frame}{Exemple complet: TAR}
-%   \vspace{12mm}
-
-%   Démo.
-
-% \end{frame}
-
-
-% \begin{frame}{Outils connexes}
-%   \vspace{8mm}
-
-%   \TODO{Scapy, Hachoir, Caml bitstring, autre truc cité par le mec des
-%     JFLA}
-% \end{frame}
-
-% \begin{frame}{Formats et protocoles décrits à ce jour}
-%   \vspace{12mm}
-
-%   \begin{itemize}
-%   \item X.509 (360~lignes)
-%   \item TLS (800~lignes)
-%   \item MRT+BGPg (360~lignes)
-%   \item TAR (90~lignes)
-%   \item PE (travail en cours par Pierre)
-%   \item ExpROM (travail en cours par Pierre)
-%   \item OCSP (travail en cours par Olivier)
-%   \end{itemize}
-
-% \end{frame}
+  Formats et protocoles à venir:
+  \begin{itemize}
+  \item CRL
+  \item Acid ?
+  \item AML ?
+  \item DEX ?
+  \item ELF ?
+  \end{itemize}
+\end{frame}
 
 
-% \begin{frame}{Formats et protocoles à venir}
-%   \vspace{12mm}
+\begin{frame}{Feuille de route}
+  \vspace{12mm}
 
-%   \begin{itemize}
-%   \item CRL
-%   \item DNS
-%   \item PCAP ?
-%   \item Acid ?
-%   \item AML ?
-%   \item DEX ?
-%   \item ELF ?
-%   \end{itemize}
+  \begin{itemize}
+  \item v0.1 stabilisée en mars 2013
+  \item soumission courte au SSTIC 2013
+  \item demande de publication du code en cours
+  \end{itemize}
 
-% \end{frame}
+  \medskip
+
+  \begin{itemize}
+  \item<2-> finalisation de quelques outils autour de SSL/X.509
+  \item<2-> animation propre du protocole SSL/TLS
+  \item<2-> amélioration et stabilisation de la syntaxe
+  \item<2-> documentation à mettre à jour et compléter (dont ce tutoriel)
+  \item<2-> conquête du monde grâce à OCaml et Parsifal
+  \item<2-> recrutement des contributeurs
+  \end{itemize}
+
+\end{frame}
 
 
 \begin{frame}{Questions ?}
