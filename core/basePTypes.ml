@@ -204,16 +204,14 @@ let lwt_parse_uint64 input =
     return r
 
 let dump_uint64 v =
-  let open Int64 in
-  let ff = of_int 0xff in
-  let c0 = char_of_int (to_int (logand (shift_right v 56) ff))
-  and c1 = char_of_int (to_int (logand (shift_right v 48) ff))
-  and c2 = char_of_int (to_int (logand (shift_right v 40) ff))
-  and c3 = char_of_int (to_int (logand (shift_right v 32) ff))
-  and c4 = char_of_int (to_int (logand (shift_right v 24) ff))
-  and c5 = char_of_int (to_int (logand (shift_right v 16) ff))
-  and c6 = char_of_int (to_int (logand (shift_right v 8) ff))
-  and c7 = char_of_int (to_int (logand v ff)) in
+  let ff = Int64.of_int 0xff in
+  let aux offset =
+    char_of_int (Int64.to_int (Int64.logand (Int64.shift_right v offset) ff))
+  in
+  let c0 = aux 56 and c1 = aux 48
+  and c2 = aux 40 and c3 = aux 32
+  and c4 = aux 24 and c5 = aux 16
+  and c6 = aux 8 and c7 = aux 0 in
   let res = String.make 8 c0 in
   res.[1] <- c1; res.[2] <- c2; res.[3] <- c3;
   res.[4] <- c4; res.[5] <- c5; res.[6] <- c6;
@@ -254,16 +252,14 @@ let lwt_parse_uint64le input =
     return r
 
 let dump_uint64le v =
-  let open Int64 in
-  let ff = of_int 0xff in
-  let c7 = char_of_int (to_int (logand (shift_right v 56) ff))
-  and c6 = char_of_int (to_int (logand (shift_right v 48) ff))
-  and c5 = char_of_int (to_int (logand (shift_right v 40) ff))
-  and c4 = char_of_int (to_int (logand (shift_right v 32) ff))
-  and c3 = char_of_int (to_int (logand (shift_right v 24) ff))
-  and c2 = char_of_int (to_int (logand (shift_right v 16) ff))
-  and c1 = char_of_int (to_int (logand (shift_right v 8) ff))
-  and c0 = char_of_int (to_int (logand v ff)) in
+  let ff = Int64.of_int 0xff in
+  let aux offset =
+    char_of_int (Int64.to_int (Int64.logand (Int64.shift_right v offset) ff))
+  in
+  let c7 = aux 56 and c6 = aux 48
+  and c5 = aux 40 and c4 = aux 32
+  and c3 = aux 24 and c2 = aux 16
+  and c1 = aux 8 and c0 = aux 0 in
   let res = String.make 8 c0 in
   res.[1] <- c1; res.[2] <- c2; res.[3] <- c3;
   res.[4] <- c4; res.[5] <- c5; res.[6] <- c6;
