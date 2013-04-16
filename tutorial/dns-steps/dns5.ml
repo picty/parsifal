@@ -75,6 +75,8 @@ let parse_dns_context input = {
   }
 
 
+let resolve_domains = ref true
+
 let rec parse_raw_domain input =
   let o = input.cur_base + input.cur_offset in
   let n = parse_uint8 input in
@@ -104,7 +106,7 @@ let parse_domain ctx input =
       new_d
   in
   let raw_res = parse_raw_domain input in
-  if input.enrich = NeverEnrich
+  if should_enrich resolve_domains input.enrich
   then raw_res
   else resolve_labels raw_res
 
@@ -192,19 +194,35 @@ struct dns_message = {
 }
 
 
+let mk_query name =
+  let rec domain_of_stringlist = function
+    | [] -> DomainEnd
+    | l::r -> DomainLabel ((0, l), domain_of_stringlist r)
+  in
+  let domain = domain_of_stringlist (string_split '.' name) in
+  {
+    id = 1234;
+    unparsedStuff = 0x0100;
+    qdcount = 1;
+    ancount = 0; nscount = 0; arcount = 0;
+    questions = [{qname = domain; qtype = QT_A; qclass = QC_IN}];
+    answers = []; authority_answers = []; additional_records = [];
+  }
 
-let dns_query = "\x32\x65\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x04\x79\x65\x79\x65\x02\x66\x72\x00\x00\x0f\x00\x01"
-
-let dns_answer = "\x32\x65\x81\x80\x00\x01\x00\x02\x00\x02\x00\x03\x04\x79\x65\x79\x65\x02\x66\x72\x00\x00\x0f\x00\x01\xc0\x0c\x00\x0f\x00\x01\x00\x00\x07\x08\x00\x10\x00\x0a\x0b\x70\x61\x70\x65\x72\x73\x74\x72\x65\x65\x74\xc0\x0c\xc0\x0c\x00\x0f\x00\x01\x00\x00\x07\x08\x00\x0d\x00\x0a\x08\x70\x69\x63\x74\x79\x62\x6f\x78\xc0\x0c\xc0\x0c\x00\x02\x00\x01\x00\x00\x07\x08\x00\x0b\x08\x67\x61\x72\x66\x69\x65\x6c\x64\xc0\x0c\xc0\x0c\x00\x02\x00\x01\x00\x00\x07\x08\x00\x02\xc0\x43\xc0\x43\x00\x01\x00\x01\x00\x00\x07\x08\x00\x04\xd5\xba\x39\x67\xc0\x27\x00\x01\x00\x01\x00\x00\x07\x08\x00\x04\x52\xe7\xeb\x89\xc0\x5a\x00\x01\x00\x01\x00\x00\x07\x08\x00\x04\x52\xe7\xeb\x89"
-
-
-let handle_entry input =
-  let dns_message = parse_dns_message input in
-  print_endline (print_value (value_of_dns_message dns_message))
+let ask host name =
+  let dns_query = mk_query name in
+  let dns_str = dump_dns_message dns_query in
+  let s = Unix.socket Unix.PF_INET Unix.SOCK_DGRAM 0 in
+  let host_entry = Unix.gethostbyname host in
+  let inet_addr = host_entry.Unix.h_addr_list.(0) in
+  let addr = Unix.ADDR_INET (inet_addr, 53) in
+  (* TODO: Check the length! *)
+  ignore (Unix.sendto s dns_str 0 (String.length dns_str) [] addr);
+  let res = String.make 65536 '\x00' in
+  (* TODO: Use the future lwt_wrapper? *)
+  let (l, _peer) = Unix.recvfrom s res 0 65536 [] in
+  let answer = String.sub res 0 l in
+  print_endline (print_value (value_of_dns_message (parse_dns_message (input_of_string "DNS Answer" answer))))
 
 let _ =
-  let inputs = [
-    input_of_string "DNS query" dns_query;
-    input_of_string "DNS answer" dns_answer;
-  ] in
-  List.iter handle_entry inputs
+  ask "8.8.8.8" Sys.argv.(1)
