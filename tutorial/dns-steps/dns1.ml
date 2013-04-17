@@ -19,7 +19,7 @@ enum rr_type (16, UnknownVal UnknownRRType) =
   | 14 -> RRT_MINFO, "MINFO"
   | 15 -> RRT_MX, "MX"
 
-enum query_type [with_lwt] (16, UnknownVal UnknownQueryType) =
+enum query_type (16, UnknownVal UnknownQueryType) =
   | 1 -> QT_A, "A"
   | 2 -> QT_NS, "NS"
   | 3 -> QT_MD, "MD"
@@ -41,13 +41,13 @@ enum query_type [with_lwt] (16, UnknownVal UnknownQueryType) =
   | 255 -> QT_ANYTYPE, "*"
 
 
-enum rr_class [with_lwt] (16, UnknownVal UnknownRRClass) =
+enum rr_class (16, UnknownVal UnknownRRClass) =
   | 1 -> RRC_IN, "Internet"
   | 2 -> RRC_CS, "CSNET"
   | 3 -> RRC_CH, "CHAOS"
   | 4 -> RRC_HS, "Hesiod"
 
-enum query_class [with_lwt] (16, UnknownVal UnknownQueryClass) =
+enum query_class (16, UnknownVal UnknownQueryClass) =
   | 1 -> QC_IN, "Internet"
   | 2 -> QC_CS, "CSNET"
   | 3 -> QC_CH, "CHAOS"
