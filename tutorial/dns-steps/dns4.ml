@@ -75,6 +75,8 @@ let parse_dns_context input = {
   }
 
 
+let resolve_domains = ref true
+
 let rec parse_raw_domain input =
   let o = input.cur_base + input.cur_offset in
   let n = parse_uint8 input in
@@ -104,9 +106,9 @@ let parse_domain ctx input =
       new_d
   in
   let raw_res = parse_raw_domain input in
-  if input.enrich = NeverEnrich
-  then raw_res
-  else resolve_labels raw_res
+  if should_enrich resolve_domains input.enrich
+  then resolve_labels raw_res
+  else raw_res
 
 let rec dump_domain = function
   | DomainEnd -> dump_uint8 0

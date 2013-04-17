@@ -1,12 +1,12 @@
 # configurable section
-TARGETS = dns1 dns2 dns3 dns4 dns5 # dns6 dns7 dns8 dns9
+TARGETS = dns1 dns2 dns3 dns4 dns5 dns6 # dns7 dns8 dns9
 
 dns1_SRCS := dns1.ml
 dns2_SRCS := dns2.ml
 dns3_SRCS := dns3.ml
 dns4_SRCS := dns4.ml
 dns5_SRCS := dns5.ml
-# dns6_SRCS := dns6.ml
+dns6_SRCS := dns6.ml
 # dns7_SRCS := dns7.ml
 # dns8_SRCS := dns8.ml
 # dns9_SRCS := dns9.ml

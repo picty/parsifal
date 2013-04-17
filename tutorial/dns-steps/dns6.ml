@@ -194,7 +194,7 @@ struct dns_message = {
 }
 
 
-let mk_query name =
+let mk_query name qtype =
   let rec domain_of_stringlist = function
     | [] -> DomainEnd
     | l::r -> DomainLabel ((0, l), domain_of_stringlist r)
@@ -205,12 +205,40 @@ let mk_query name =
     unparsedStuff = 0x0100;
     qdcount = 1;
     ancount = 0; nscount = 0; arcount = 0;
-    questions = [{qname = domain; qtype = QT_A; qclass = QC_IN}];
+    questions = [{qname = domain; qtype = qtype; qclass = QC_IN}];
     answers = []; authority_answers = []; additional_records = [];
   }
 
-let ask host name =
-  let dns_query = mk_query name in
+
+let display_question q =
+  Printf.printf "%-30s         %-10s %-10s\n"
+    (String.concat "." (string_of_domain q.qname))
+    (string_of_query_type q.qtype)
+    (string_of_query_class q.qclass)
+
+let display_rr rr =
+  Printf.printf "%-30s %-7d %-10s %-10s %s\n"
+    (String.concat "." (string_of_domain rr.rname)) rr.ttl
+    (string_of_rr_type rr.rtype)
+    (string_of_rr_class rr.rclass)
+    (string_of_value (value_of_rdata rr.rdata))
+
+let display_dns_message msg =
+  Printf.printf ";; id = %d\n" msg.id;
+  Printf.printf ";; unparsedStuff = %d\n" msg.unparsedStuff;
+  Printf.printf "\n;; QUESTION SECTION:\n";
+  List.iter display_question msg.questions;
+  Printf.printf "\n;; ANSWER SECTION:\n";
+  List.iter display_rr msg.answers;
+  Printf.printf "\n;; AUTHORITY SECTION:\n";
+  List.iter display_rr msg.authority_answers;
+  Printf.printf "\n;; ADDITIONAL SECTION:\n";
+  List.iter display_rr msg.additional_records
+
+
+
+let ask host name qtype =
+  let dns_query = mk_query name qtype in
   let dns_str = dump_dns_message dns_query in
   let s = Unix.socket Unix.PF_INET Unix.SOCK_DGRAM 0 in
   let host_entry = Unix.gethostbyname host in
@@ -222,7 +250,7 @@ let ask host name =
   (* TODO: Use the future lwt_wrapper? *)
   let (l, _peer) = Unix.recvfrom s res 0 65536 [] in
   let answer = String.sub res 0 l in
-  print_endline (print_value (value_of_dns_message (parse_dns_message (input_of_string "DNS Answer" answer))))
+  display_dns_message (parse_dns_message (input_of_string "DNS Answer" answer))
 
 let _ =
-  ask "8.8.8.8" Sys.argv.(1)
+  ask Sys.argv.(1) Sys.argv.(2) (query_type_of_string Sys.argv.(3))
