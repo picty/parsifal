@@ -31,31 +31,31 @@ let value_of_tar_numstring i = VSimpleInt i
 
 
 union optional_tar_numstring [both_param len; enrich] (UnparsedNum of binstring(len)) =
-  | CharacterSpecial -> Num of tar_numstring[len]
-  | BlockSpecial -> Num of tar_numstring[len]
+  | CharacterSpecial -> Num of tar_numstring(BOTH len)
+  | BlockSpecial -> Num of tar_numstring(BOTH len)
 
 
 struct ustar_header [param file_type] = {
   ustar_magic : magic("ustar");
   _ustar_magic_padding : binstring(3);
-  owner_user : nt_string[32];
-  owner_group : nt_string[32];
-  device_major : optional_tar_numstring[8](file_type);
-  device_minor : optional_tar_numstring[8](file_type);
-  filename_prefix : nt_string[155]
+  owner_user : nt_string(BOTH 32);
+  owner_group : nt_string(BOTH 32);
+  device_major : optional_tar_numstring(BOTH 8; file_type);
+  device_minor : optional_tar_numstring(BOTH 8; file_type);
+  filename_prefix : nt_string(BOTH 155)
 }
 
 struct tar_header = {
-  file_name : nt_string[100];
+  file_name : nt_string(BOTH 100);
   parse_checkpoint _last_entry : stop_if(file_name = "");
-  file_mode : tar_numstring[8];
-  owner_uid : tar_numstring[8];
-  owner_gid : tar_numstring[8];
-  file_size : tar_numstring[12];
-  timestamp : tar_numstring[12];
+  file_mode : tar_numstring(BOTH 8);
+  owner_uid : tar_numstring(BOTH 8);
+  owner_gid : tar_numstring(BOTH 8);
+  file_size : tar_numstring(BOTH 12);
+  timestamp : tar_numstring(BOTH 12);
   checksum  : string(8);
   file_type : file_type;
-  linked_file : nt_string[100];
+  linked_file : nt_string(BOTH 100);
   optional ustar_header : ustar_header(file_type);
   _hdr_padding : binstring
 }

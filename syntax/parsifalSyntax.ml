@@ -11,14 +11,15 @@ open ParsifalHelpers
 
 (* Common *)
 
+type param_type = ParseParam | DumpParam | BothParam
+
 type parsifal_option =
   | DoLwt
   | LittleEndian
   | ExactParser
   | EnrichByDefault
   | ExhaustiveChoices
-  | ParseParam of string list
-  | DumpParam of string list
+  | Param of (param_type * string) list
 
 type 'a choice = Loc.t * string * 'a   (* loc, constructor name *)
 
@@ -48,8 +49,8 @@ type ptype =
   | PT_Array of expr * ptype
   | PT_List of field_len * ptype
   | PT_Container of field_len * ptype  (* the string corresponds to the integer type for the field length *)
-  | PT_Custom of (string option) * string * expr list * expr list (* the expr lists are the args to give to parse / dump *)
-  | PT_CustomContainer of (string option) * string * expr list * expr list * ptype
+  | PT_Custom of (string option) * string * (param_type * expr) list
+  | PT_CustomContainer of (string option) * string * (param_type * expr) list * ptype
 
 
 (* Records *)
@@ -95,8 +96,7 @@ type parsifal_construction = {
   name : string;
   options : parsifal_option list;
   construction : construction_description;
-  parse_params : string list;
-  dump_params : string list
+  params : (param_type * string) list;
 }
 
 let (<.>) c o = List.mem o c.options
@@ -120,11 +120,12 @@ let opts_of_seq_expr expr =
     | <:expr< $lid:"enrich"$ >>     -> [_loc, EnrichByDefault]
     | <:expr< $lid:"exhaustive"$ >> -> [_loc, ExhaustiveChoices]
     | <:expr< $lid:"parse_param"$ $e$ >>
-    | <:expr< $lid:"param"$ $e$ >>  -> [_loc, ParseParam (List.map lid_of_expr (list_of_com_expr e))]
-    | <:expr< $lid:"dump_param"$ $e$ >>  -> [_loc, DumpParam (List.map lid_of_expr (list_of_com_expr e))]
+    | <:expr< $lid:"param"$ $e$ >>  ->
+      [_loc, Param (List.map (fun e -> ParseParam, e) (List.map lid_of_expr (list_of_com_expr e)))]
+    | <:expr< $lid:"dump_param"$ $e$ >>  ->
+      [_loc, Param (List.map (fun e -> DumpParam, e) (List.map lid_of_expr (list_of_com_expr e)))]
     | <:expr< $lid:"both_param"$ $e$ >>  ->
-      [_loc, ParseParam (List.map lid_of_expr (list_of_com_expr e));
-       _loc, DumpParam (List.map lid_of_expr (list_of_com_expr e))]
+      [_loc, Param (List.map (fun e -> BothParam, e) (List.map lid_of_expr (list_of_com_expr e)))]
     | <:expr< $lid:"little_endian"$ >>   -> [_loc, LittleEndian]
     | _ -> Loc.raise (loc_of_expr e) (Failure "unknown option")
   in
@@ -149,9 +150,16 @@ let rec choices_of_match_cases = function
 
 type decorator_type = (expr option) * (expr option)
 
-let expr_list_of_decorator = function
+let param_list_of_decorator default_type = function
   | None -> []
-  | Some e -> list_of_sem_expr e
+  | Some e ->
+    let extract_param_type = function
+      | <:expr< $uid:"DUMP"$ $e$ >> -> DumpParam, e
+      | <:expr< $uid:"BOTH"$ $e$ >> -> BothParam, e
+      | <:expr< $uid:"PARSE"$ $e$ >> -> ParseParam, e
+      | e -> default_type, e
+    in
+    List.map extract_param_type (list_of_sem_expr e)
 
 let ptype_of_ident name decorator subtype =
   match name, decorator, subtype with
@@ -189,17 +197,17 @@ let ptype_of_ident name decorator subtype =
     | <:ident< $lid:("string" | "binstring")$ >> as i, _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid string type")
 
-    | custom_identifier, (dec1, dec2), None ->
+    | custom_identifier, (both_dec, dec), None ->
       let module_name, name = qname_ident (custom_identifier)
-      and e1 = expr_list_of_decorator dec1
-      and e2 = expr_list_of_decorator dec2 in
-      PT_Custom (module_name, name, e1@e2, e1)
+      and p1 = param_list_of_decorator BothParam both_dec
+      and p2 = param_list_of_decorator ParseParam dec in
+      PT_Custom (module_name, name, p1@p2)
 
-    | custom_identifier, (dec1, dec2), Some t ->
+    | custom_identifier, (both_dec, dec), Some t ->
       let module_name, name = qname_ident (custom_identifier)
-      and e1 = expr_list_of_decorator dec1
-      and e2 = expr_list_of_decorator dec2 in
-      PT_CustomContainer (module_name, name, e1@e2, e1, t)
+      and p1 = param_list_of_decorator BothParam both_dec
+      and p2 = param_list_of_decorator ParseParam dec in
+      PT_CustomContainer (module_name, name, p1@p2, t)
 
 
 (* ASN1 Aliases *)
@@ -245,9 +253,9 @@ let rec ocaml_type_of_ptype _loc = function
   | PT_List (_, subtype) -> <:ctyp< list $ocaml_type_of_ptype _loc subtype$ >>
   | PT_Array (_, subtype) -> <:ctyp< array $ocaml_type_of_ptype _loc subtype$ >>
   | PT_Container (_, subtype)
-  | PT_CustomContainer (_, _, _, _, subtype) -> ocaml_type_of_ptype _loc subtype
-  | PT_Custom (None, n, _, _) -> <:ctyp< $lid:n$ >>
-  | PT_Custom (Some m, n, _, _) -> <:ctyp< $uid:m$.$lid:n$ >>
+  | PT_CustomContainer (_, _, _, subtype) -> ocaml_type_of_ptype _loc subtype
+  | PT_Custom (None, n, _) -> <:ctyp< $lid:n$ >>
+  | PT_Custom (Some m, n, _) -> <:ctyp< $uid:m$.$lid:n$ >>
 
 let ocaml_type_of_field_type _loc t opt =
   let real_t = ocaml_type_of_ptype _loc t in
@@ -261,6 +269,9 @@ let split_header _loc (hdr, isC) =
     | Universal t -> <:expr< Asn1Engine.C_Universal >>, <:expr< Asn1Engine.$uid:t$ >>
     | Header (c, t) -> <:expr< Asn1Engine.$uid:c$ >>, <:expr< Asn1Engine.T_Unknown $int:string_of_int t$ >>
   in <:expr< ( $_c$, $exp_bool _loc isC$, $_t$ ) >>
+
+let keep_parse_params ps = List.map snd (List.filter (fun (t, _) -> t <> DumpParam) ps)
+let keep_dump_params ps = List.map snd (List.filter (fun (t, _) -> t <> ParseParam) ps)
 
 
 (* Specific declarations for enums/unions *)
@@ -402,8 +413,8 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
     | PT_String (VarLen int_t, _) -> <:expr< $mkf "varlen_string"$ $str:name$ $mkf int_t$ >>
     | PT_String (Remaining, _) -> mkf "rem_string"
 
-    | PT_Custom (m, n, e, _) ->
-      apply_exprs _loc (exp_qname _loc m (prefix ^ n)) e
+    | PT_Custom (m, n, e) ->
+      apply_exprs _loc (exp_qname _loc m (prefix ^ n)) (keep_parse_params e)
 
     | PT_List (ExprLen e, subtype) ->
       <:expr< $mkf "list"$ $e$
@@ -427,9 +438,9 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
     | PT_Container (Remaining, _) ->
       Loc.raise _loc (Failure "Container without length spec are not allowed")      
 
-    | PT_CustomContainer (m, n, e, _, subtype) ->
+    | PT_CustomContainer (m, n, e, subtype) ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n))
-	(e@[parse_fun_of_ptype false _loc name subtype])
+	((keep_parse_params e)@[parse_fun_of_ptype false _loc name subtype])
 
 
 
@@ -531,14 +542,14 @@ let mk_parse_fun lwt_fun _loc c =
 
   in
   let res_name = prefix ^ "parse_" ^ c.name in
-  List.map (mk_multiple_args_fun _loc res_name (c.parse_params@["input"])) body
+  List.map (mk_multiple_args_fun _loc res_name ((keep_parse_params c.params)@["input"])) body
 
 
 
 let mk_exact_parse_fun _loc c =
   if c <.> ExactParser then begin
-    let partial_params = List.map (fun p -> <:expr< $lid:p$ >>) c.parse_params
-    and params = c.parse_params@["input"] in
+    let partial_params = List.map (fun p -> <:expr< $lid:p$ >>) (keep_parse_params c.params)
+    and params = (keep_parse_params c.params)@["input"] in
     let parse_fun = apply_exprs _loc (exp_qname _loc None ("parse_" ^ c.name)) partial_params in
     let body = <:expr< Parsifal.exact_parse $parse_fun$ input >> in
     [ mk_multiple_args_fun _loc ("exact_parse_" ^ c.name) params body ]
@@ -559,7 +570,8 @@ let rec dump_fun_of_ptype _loc t =
     | PT_String (VarLen int_t, _) -> <:expr< $mkf "varlen_string"$ $mkf int_t$ >>
     | PT_String (_, _) -> mkf "string"
 
-    | PT_Custom (m, n, _, e) -> apply_exprs _loc (exp_qname _loc m ("dump_" ^ n)) e
+    | PT_Custom (m, n, e) ->
+      apply_exprs _loc (exp_qname _loc m ("dump_" ^ n)) (keep_dump_params e)
 
     | PT_List (VarLen int_t, subtype) ->
       <:expr< $mkf "varlen_list"$ $mkf int_t$ $dump_fun_of_ptype _loc subtype$ >>
@@ -571,9 +583,9 @@ let rec dump_fun_of_ptype _loc t =
       <:expr< $mkf "container"$ $mkf int_t$ $dump_fun_of_ptype _loc subtype$ >>
     | PT_Container (_, subtype) -> dump_fun_of_ptype _loc subtype
 
-    | PT_CustomContainer (m, n, _, e, subtype) ->
+    | PT_CustomContainer (m, n, e, subtype) ->
       apply_exprs _loc (exp_qname _loc m ("dump_" ^ n))
-	(e@[dump_fun_of_ptype _loc subtype])
+	((keep_dump_params e)@[dump_fun_of_ptype _loc subtype])
 
 
 let mk_dump_fun _loc c =
@@ -629,7 +641,8 @@ let mk_dump_fun _loc c =
     let cases = (List.map mk_case union.uchoices)@[last_case] in
     [ <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >> ]
 
-  in List.map (mk_multiple_args_fun _loc ("dump_" ^ c.name) (c.dump_params@[c.name])) body
+  in
+  List.map (mk_multiple_args_fun _loc ("dump_" ^ c.name) ((keep_dump_params c.params)@[c.name])) body
 
 
 
@@ -650,12 +663,12 @@ let rec value_of_fun_of_ptype _loc t =
 (*      <:expr< $mkf "string"$ $exp_bool binary$ (const "") >> *)
     | PT_String (_, binary) -> <:expr< $mkf "string"$ $exp_bool _loc binary$ >>
 
-    | PT_Custom (m, n, _, _) -> exp_qname _loc m ("value_of_" ^ n)
+    | PT_Custom (m, n, _) -> exp_qname _loc m ("value_of_" ^ n)
 
     | PT_List (_, subtype) -> <:expr< $mkf "list"$ $value_of_fun_of_ptype _loc subtype$ >>
     | PT_Array (_, subtype) -> <:expr< $mkf "array"$ $value_of_fun_of_ptype _loc subtype$ >>
     | PT_Container (_, subtype)
-    | PT_CustomContainer (_, _, _, _, subtype) -> value_of_fun_of_ptype _loc subtype
+    | PT_CustomContainer (_, _, _, subtype) -> value_of_fun_of_ptype _loc subtype
 
 
 
@@ -720,16 +733,12 @@ let mk_value_of_fun _loc c =
 (* Useful functions *)
 let check_options construction options =
   let rec aux opts = match construction, opts with
-    | Enum _, (_loc, ParseParam _)::_
-    | Enum _, (_loc, DumpParam _)::_ ->
+    | Enum _, (_loc, Param _)::_ ->
       Loc.raise _loc (Failure "params are not allowed for an enum.")
 
-    | _, (_, ParseParam l)::r ->
-      let os, ps, ds = aux r in
-      os, l::ps, ds
-    | _, (_, DumpParam l)::r ->
-      let os, ps, ds = aux r in
-      os, ps, l::ds
+    | _, (_, Param l)::r ->
+      let os, ps = aux r in
+      os, l::ps
 
     | (Enum _|Struct _|Alias _|ASN1Alias _), (_loc, EnrichByDefault)::_ ->
       Loc.raise _loc (Failure "enrich is only allowed for unions.")
@@ -737,29 +746,28 @@ let check_options construction options =
       Loc.raise _loc (Failure "exhaustive is only allowed for unions.")
 
     | Enum _, (_, LittleEndian)::r ->
-      let os, ps, ds = aux r in
-      LittleEndian::os, ps, ds
+      let os, ps = aux r in
+      LittleEndian::os, ps
     | _, (_loc, LittleEndian)::_ ->
       Loc.raise _loc (Failure "little_endian is only allowed for enums.")
 
     | _, (_, o)::r ->
-      let os, ps, ds = aux r in
-      o::os, ps, ds
-    | _, [] -> [], [], []
+      let os, ps = aux r in
+      o::os, ps
+    | _, [] -> [], []
   in
-  let o, p, d = aux options in
-  o, List.concat p, List.concat d
+  let o, p = aux options in
+  o, List.concat p
 
 let mk_parsifal_construction _loc name raw_opts specific_descr =
-  let options, raw_parse_params, dump_params = check_options specific_descr raw_opts in
-  let parse_params = match specific_descr with
-    | Union _ -> raw_parse_params@["discriminator"]
-    | _ -> raw_parse_params
+  let options, raw_params = check_options specific_descr raw_opts in
+  let params = match specific_descr with
+    | Union _ -> raw_params@[ParseParam, "discriminator"]
+    | _ -> raw_params
   in
   let pc = { name = lid_of_ident name;
 	     options = options;
-	     parse_params = parse_params;
-	     dump_params = dump_params;
+	     params = params;
 	     construction = specific_descr }
   and funs = [ mk_decls; mk_type; mk_specific_funs;
 	       mk_parse_fun false; mk_parse_fun true; mk_exact_parse_fun;
@@ -880,7 +888,7 @@ EXTEND Gram
     let aa_descr = ASN1Alias {
       aalist = false;
       aaheader = (Universal "T_Sequence", true);
-      aatype = (PT_Custom (None, real_name ^ "_content", [], []))
+      aatype = (PT_Custom (None, real_name ^ "_content", []))
     } in
     mk_parsifal_construction _loc name raw_opts aa_descr      
 
@@ -890,7 +898,7 @@ EXTEND Gram
     let asn1_union_descr = ASN1Union {
       uchoices = choices;
       unparsed_constr = uid_of_ident u_c;
-      unparsed_type = PT_Custom (Some "Asn1PTypes", "der_object", [], []);
+      unparsed_type = PT_Custom (Some "Asn1PTypes", "der_object", []);
     } in
     mk_parsifal_construction _loc name raw_opts asn1_union_descr
 

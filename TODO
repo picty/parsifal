@@ -168,10 +168,7 @@ v0.3 (may 2013)
 
 
 v0.4 (jun. 2013)
- - Have a cool way to handle parse/dump params using a new syntax
-   * for now, dump_params are only use for enumerated_bitstring and in tar
-   * a cool way would be (parse_param; Parse parse_param; Dump dump_params; Both both_params) => we could handle the order correctly
-   * add dump_checkpoints
+ - Add dump_checkpoints
  - Rewrite dump to work on buffers and not strings
  - Write a wrapper, dump : (Buffer.t -> 'a -> unit) -> string
  - Maybe add a lwt_dump_* function?
