@@ -43,13 +43,13 @@ enum query_type (16, UnknownVal UnknownQueryType) =
 
 
 enum rr_class (16, UnknownVal UnknownRRClass) =
-  | 1 -> RRC_IN, "Internet"
+  | 1 -> RRC_IN, "IN"
   | 2 -> RRC_CS, "CSNET"
   | 3 -> RRC_CH, "CHAOS"
   | 4 -> RRC_HS, "Hesiod"
 
 enum query_class (16, UnknownVal UnknownQueryClass) =
-  | 1 -> QC_IN, "Internet"
+  | 1 -> QC_IN, "IN"
   | 2 -> QC_CS, "CSNET"
   | 3 -> QC_CH, "CHAOS"
   | 4 -> QC_HS, "Hesiod"
@@ -74,10 +74,12 @@ let rec parse_domain input =
     DomainLabel (label, rem)
   | _ -> raise (ParsingException (CustomException "Invalid label length", _h_of_si input))
 
-let rec dump_domain = function
-  | DomainEnd -> dump_uint8 0
-  | DomainPointer p -> dump_uint16 (0xc000 land p)
-  | DomainLabel (l, r) -> (dump_varlen_string dump_uint8 l)^(dump_domain r)
+let rec dump_domain buf = function
+  | DomainEnd -> dump_uint8 buf 0
+  | DomainPointer p -> dump_uint16 buf (0xc000 land p)
+  | DomainLabel (l, r) ->
+    dump_varlen_string dump_uint8 buf l;
+    dump_domain buf r
 
 let rec string_of_domain = function
   | DomainLabel (s, rem) -> s::(string_of_domain rem)

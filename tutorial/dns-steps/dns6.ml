@@ -43,13 +43,13 @@ enum query_type (16, UnknownVal UnknownQueryType) =
 
 
 enum rr_class (16, UnknownVal UnknownRRClass) =
-  | 1 -> RRC_IN, "Internet"
+  | 1 -> RRC_IN, "IN"
   | 2 -> RRC_CS, "CSNET"
   | 3 -> RRC_CH, "CHAOS"
   | 4 -> RRC_HS, "Hesiod"
 
 enum query_class (16, UnknownVal UnknownQueryClass) =
-  | 1 -> QC_IN, "Internet"
+  | 1 -> QC_IN, "IN"
   | 2 -> QC_CS, "CSNET"
   | 3 -> QC_CH, "CHAOS"
   | 4 -> QC_HS, "Hesiod"
@@ -57,7 +57,7 @@ enum query_class (16, UnknownVal UnknownQueryClass) =
 
 
 type domain =
-  | DomainLabel of (int * string) * domain
+  | DomainLabel of string * domain
   | DomainPointer of int
   | DomainEnd
 
@@ -65,19 +65,17 @@ type domain =
 type dns_context = {
   base_offset : int;
   direct_resolver : (int, domain) Hashtbl.t;
-  reverse_resolver : (domain, int) Hashtbl.t;
 }
 
 let parse_dns_context input = {
     base_offset = input.cur_base + input.cur_offset;
     direct_resolver = Hashtbl.create 10;
-    reverse_resolver = Hashtbl.create 10
   }
 
 
 let resolve_domains = ref true
 
-let rec parse_raw_domain input =
+let rec parse_domain ctx input =
   let o = input.cur_base + input.cur_offset in
   let n = parse_uint8 input in
   match (n land 0xc0), (n land 0x3f) with
@@ -85,39 +83,28 @@ let rec parse_raw_domain input =
   | 0xc0, hi_offset ->
     let lo_offset = parse_uint8 input in
     let offset = (hi_offset lsl 8) lor lo_offset in
-    DomainPointer offset
+    let d = DomainPointer offset in
+    if should_enrich resolve_domains input.enrich
+    then hash_get ctx.direct_resolver offset d
+    else d
   | 0, len ->
     let label = parse_string len input in
-    let rem = parse_raw_domain input in
-    DomainLabel ((o, label), rem)
+    let rem = parse_domain ctx input in
+    let d = DomainLabel (label, rem) in
+    if should_enrich resolve_domains input.enrich
+    then Hashtbl.replace ctx.direct_resolver (o - ctx.base_offset) d;
+    d
   | _ -> raise (ParsingException (CustomException "Invalid label length", _h_of_si input))
 
-let parse_domain ctx input =
-  let rec resolve_labels = function
-    | DomainEnd -> DomainEnd
-    | (DomainPointer p) as d ->
-      hash_get ctx.direct_resolver (p - ctx.base_offset) d
-    | DomainLabel ((o, l), rem) ->
-      let real_o = o - ctx.base_offset in
-      let subd = resolve_labels rem in
-      let new_d = DomainLabel ((real_o, l), subd) in
-      Hashtbl.replace ctx.direct_resolver o new_d;
-      Hashtbl.replace ctx.reverse_resolver new_d o;
-      new_d
-  in
-  let raw_res = parse_raw_domain input in
-  if should_enrich resolve_domains input.enrich
-  then resolve_labels raw_res
-  else raw_res
-
-let rec dump_domain = function
-  | DomainEnd -> dump_uint8 0
-  | DomainPointer p -> dump_uint16 (0xc000 land p)
-    (* TODO: Compress! *)
-  | DomainLabel ((_, l), r) -> (dump_varlen_string dump_uint8 l)^(dump_domain r)
+let rec dump_domain buf = function
+  | DomainEnd -> dump_uint8 buf 0
+  | DomainPointer p -> dump_uint16 buf (0xc000 land p)
+  | DomainLabel (l, r) ->
+    dump_varlen_string dump_uint8 buf l;
+    dump_domain buf r
 
 let rec string_of_domain = function
-  | DomainLabel ((_, s), rem) -> s::(string_of_domain rem)
+  | DomainLabel (s, rem) -> s::(string_of_domain rem)
   | DomainPointer p -> ["@" ^ (string_of_int p)]
   | DomainEnd -> []
 
@@ -170,16 +157,7 @@ struct rr [param ctx] = {
 }
 
 
-(* TODO! *)
-(* How to update the reverse hashtbl correctly while dumping ? Using a buffer instead of a string? *)
-(* We would also need a dump_checkpoint to initialize the c.base_offset *)
-(* - dump_checkpoint *)
-(* - rewrite params handling *)
-(* - use different ctxs checkpoints for parse/dump *)
-(* - rewrite dump_* as functions working on a buffer *)
-(* - write a wrapper, dump : (Buffer.t -> 'a -> unit) -> string *)
-
-struct dns_message = {
+struct dns_message [with_exact] = {
   parse_checkpoint ctx : dns_context;
   id : uint16;
   unparsedStuff : uint16;
@@ -197,7 +175,7 @@ struct dns_message = {
 let mk_query name qtype =
   let rec domain_of_stringlist = function
     | [] -> DomainEnd
-    | l::r -> DomainLabel ((0, l), domain_of_stringlist r)
+    | l::r -> DomainLabel (l, domain_of_stringlist r)
   in
   let domain = domain_of_stringlist (string_split '.' name) in
   {
@@ -239,7 +217,7 @@ let display_dns_message msg =
 
 let ask host name qtype =
   let dns_query = mk_query name qtype in
-  let dns_str = dump_dns_message dns_query in
+  let dns_str = exact_dump_dns_message dns_query in
   let s = Unix.socket Unix.PF_INET Unix.SOCK_DGRAM 0 in
   let host_entry = Unix.gethostbyname host in
   let inet_addr = host_entry.Unix.h_addr_list.(0) in

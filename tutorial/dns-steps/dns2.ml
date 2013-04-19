@@ -43,13 +43,13 @@ enum query_type (16, UnknownVal UnknownQueryType) =
 
 
 enum rr_class (16, UnknownVal UnknownRRClass) =
-  | 1 -> RRC_IN, "Internet"
+  | 1 -> RRC_IN, "IN"
   | 2 -> RRC_CS, "CSNET"
   | 3 -> RRC_CH, "CHAOS"
   | 4 -> RRC_HS, "Hesiod"
 
 enum query_class (16, UnknownVal UnknownQueryClass) =
-  | 1 -> QC_IN, "Internet"
+  | 1 -> QC_IN, "IN"
   | 2 -> QC_CS, "CSNET"
   | 3 -> QC_CH, "CHAOS"
   | 4 -> QC_HS, "Hesiod"
@@ -69,9 +69,9 @@ let parse_label input =
     true, Some (Label (parse_string len input))
   | _ -> raise (ParsingException (CustomException "Invalid label length", _h_of_si input))
 
-let dump_label = function
-  | Label s -> dump_varlen_string dump_uint8 s
-  | Pointer p -> dump_uint16 (0xc000 land p)
+let dump_label buf = function
+  | Label s -> dump_varlen_string dump_uint8 buf s
+  | Pointer p -> dump_uint16 buf (0xc000 land p)
 
 let string_of_label = function
   | Label s -> s
@@ -95,10 +95,12 @@ let parse_domain input =
   in
   aux []
 
-let rec dump_domain = function
-  | [] -> dump_uint8 0
-  | [Pointer _ as l] -> dump_label l
-  | (Label _ as l)::r -> (dump_label l)^(dump_domain r)
+let rec dump_domain buf = function
+  | [] -> dump_uint8 buf 0
+  | [Pointer _ as l] -> dump_label buf l
+  | (Label _ as l)::r ->
+    dump_label buf l;
+    dump_domain buf r
   | _ -> (* TODO *) failwith "Invalid domain"
 
 let value_of_domain d =
