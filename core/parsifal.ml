@@ -1,5 +1,11 @@
 open Lwt
 
+(***********)
+(* Options *)
+(***********)
+
+let default_buffer_size = ref 1024
+
 
 (*********************)
 (* Trivial functions *)
@@ -434,9 +440,9 @@ let value_of_enum string_of_val int_of_val size endianness v =
 
 (* Struct *)
 
-let try_dump dump_fun = function
-  | None -> ""
-  | Some x -> dump_fun x
+let try_dump dump_fun buf = function
+  | None -> ()
+  | Some x -> dump_fun buf x
 
 let try_value_of (value_of_fun : 'a -> value) = function
   | None -> VUnit
@@ -512,6 +518,16 @@ let parse_both_equal fatal err a b input =
   if a <> b
   then emit_parsing_exception fatal err input
 
+
+
+(*******************)
+(* Dumping helpers *)
+(*******************)
+
+let exact_dump dump_fun x =
+  let res = Buffer.create !default_buffer_size in
+  dump_fun res x;
+  Buffer.contents res
 
 
 (********************)

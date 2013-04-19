@@ -49,7 +49,7 @@ let lwt_parse_varint lwt_input =
   lwt_parse_bytelist [] lwt_input >>= fun bytes ->
   return (varint_of_bytelist bytes (_h_of_li lwt_input))
 
-let dump_varint _ = not_implemented "dump_varint"
+let dump_varint (_buf : Buffer.t) (_i : int) = not_implemented "dump_varint"
 
 let value_of_varint i = VSimpleInt i
 
@@ -74,8 +74,8 @@ let lwt_parse_protobuf_key lwt_input =
   lwt_parse_varint lwt_input >>= fun x ->
   return (wire_type_of_int (x land 7), x lsr 3)
 
-let dump_protobuf_key (wt, fn) =
-  dump_varint ((fn lsl 3) lor (int_of_wire_type wt))
+let dump_protobuf_key buf (wt, fn) =
+  dump_varint buf ((fn lsl 3) lor (int_of_wire_type wt))
 
 let string_of_protobuf_key (wt, fn) =
   Printf.sprintf "(%s, %d)" (string_of_wire_type wt) fn
@@ -99,8 +99,8 @@ let lwt_parse_length_delimited_container parse_fun lwt_input =
   lwt_parse_varint lwt_input >>= fun len ->
   lwt_parse_container "length_delimited_container" len parse_fun lwt_input
 
-let dump_length_delimited_container dump_fun v =
-  dump_container dump_varint dump_fun v
+let dump_length_delimited_container dump_fun buf v =
+  dump_varlen_container dump_varint dump_fun buf v
 
 
 

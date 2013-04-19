@@ -10,7 +10,7 @@ type ipv4 = string
 let parse_ipv4 = parse_string 4
 let lwt_parse_ipv4 = lwt_parse_string 4
 
-let dump_ipv4 ipv4 = ipv4
+let dump_ipv4 buf ipv4 = Buffer.add_string buf ipv4
 
 let string_of_ipv4 s =
   let elts = [s.[0]; s.[1]; s.[2]; s.[3]] in
@@ -30,7 +30,7 @@ type ipv6 = string
 let parse_ipv6 = parse_string 16
 let lwt_parse_ipv6 = lwt_parse_string 16
 
-let dump_ipv6 ipv6 = ipv6
+let dump_ipv6 buf ipv6 = Buffer.add_string buf ipv6
 
 (* TODO: Compress it! *)
 let string_of_ipv6 s =
@@ -70,7 +70,7 @@ let lwt_parse_magic magic_expected input =
   else fail (ParsingException (CustomException ("invalid magic (\"" ^
 				 (hexdump s) ^ "\")"), _h_of_li input))
 
-let dump_magic s = s
+let dump_magic buf s = Buffer.add_string buf s
 
 let string_of_magic s = hexdump s
 
@@ -94,9 +94,10 @@ let parse_nt_string len input =
     String.sub s 0 index;
   with Not_found -> s
 
-let dump_nt_string len s =
+let dump_nt_string len buf s =
   let missing_len = len - (String.length s) in
-  s ^ (String.make missing_len '\x00')
+  Buffer.add_string buf s;
+  Buffer.add_string buf (String.make missing_len '\x00')
 
 let value_of_nt_string s = VString (s, false)
 
@@ -132,9 +133,9 @@ let parse_length_constrained_container len_cons parse_fun input =
   handle_length_constraint input len len_cons;
   content
 
-let dump_length_constrained_container (* len_cons *) dump_fun o =
+let dump_length_constrained_container (* len_cons *) dump_fun buf o =
   (* Warning if length constraint not validated? *)
-  dump_fun o
+  dump_fun buf o
 
 
 
@@ -144,7 +145,7 @@ let parse_enrich_blocker level parse_fun input =
   input.cur_offset <- new_input.cur_offset;
   res
 
-let dump_enrich_blocker dump_fun o = dump_fun o
+let dump_enrich_blocker dump_fun buf o = dump_fun buf o
 
 
 

@@ -175,14 +175,14 @@ let extract_der_object name header_constraint parse_content input =
   res
 
 
-let dump_der_header (c, isC, t) =
+let dump_der_header buf (c, isC, t) =
   let t_int = int_of_asn1_tag t in
   if t_int >= 0x1f then raise (ParsingException (NotImplemented "long type", []));
   let h = ((int_of_asn1_class c) lsl 6) lor
     (if isC then 0x20 else 0) lor t_int in
-  String.make 1 (char_of_int h)
+  Buffer.add_char buf (char_of_int h)
 
-let dump_der_length l =
+let dump_der_length buf l =
   let rec compute_len accu = function
     | 0 -> accu
     | lg -> compute_len (accu + 1) (lg lsr 8)
@@ -194,17 +194,19 @@ let dump_der_length l =
       aux res (i-1) (lg lsr 8)
   in
   if l < 0x80
-  then String.make 1 (char_of_int l)
+  then Buffer.add_char buf (char_of_int l)
   else
     let len_len = compute_len 0 l in
     let res = String.make (len_len + 1) (char_of_int (len_len lor 0x80)) in
     aux res len_len l;
-    res
+    Buffer.add_string buf res
 
-let produce_der_object hdr dump_content v =
-  let content_dumped = dump_content v in
-  (dump_der_header hdr) ^ (dump_der_length (String.length content_dumped)) ^ content_dumped
-
+let produce_der_object hdr dump_content buf v =
+  dump_der_header buf hdr;
+  let tmp_buf = Buffer.create !default_buffer_size in
+  dump_content tmp_buf v;
+  dump_der_length buf (Buffer.length tmp_buf);
+  Buffer.add_buffer buf tmp_buf
 
 
 let lwt_extract_der_longtype input =
@@ -269,7 +271,7 @@ let _lwt_extract_der_object name header_constraint parse_content input =
     a_isConstructed = isC;
     a_tag = t;
   }
-  and raw_string () = (dump_der_header (c, isC, t)) ^ (dump_der_length len) ^ new_input.str in
+  and raw_string () = exact_dump (produce_der_object (c, isC, t) Buffer.add_string) new_input.str in
   let res = parse_content new_input in
   lwt_get_out input new_input >>= fun () ->
   return (res, der_info, raw_string)
@@ -300,11 +302,6 @@ let lwt_extract_der_seqof name header_constraint (* min max *) lwt_parse_content
       lwt_parse_aux (next::accu) input
   in lwt_extract_der_object name header_constraint (lwt_parse_aux []) input
 
-let produce_der_seqof header_constraint dump_content l =
-  let rec dump_der_list_aux accu = function
-    | [] -> String.concat "" (List.rev accu)
-    | x::r ->
-      let next = dump_content x in
-      dump_der_list_aux (next::accu) r
-  in
-  produce_der_object header_constraint (dump_der_list_aux []) l
+let produce_der_seqof hdr dump_content buf l =
+  let dump_der_list_aux b l = List.iter (dump_content b) l in
+  produce_der_object hdr dump_der_list_aux buf l

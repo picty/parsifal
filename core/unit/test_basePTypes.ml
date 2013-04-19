@@ -40,12 +40,12 @@ let str_wrap parse_fun s = exact_parse parse_fun (input_of_string "" s)
 
 let test_idem_pod parse dump rnd_fun () =
   let v1 = rnd_fun () in
-  let v2 = parse (dump v1) in
+  let v2 = parse (exact_dump dump v1) in
   assert_equal v1 v2
 
 let test_idem_dop parse dump rnd_fun () =
   let s1 = rnd_fun () in
-  let s2 = dump (parse s1) in
+  let s2 = exact_dump dump (parse s1) in
   assert_equal s1 s2
 
 let test_input_too_short parse expected_len _ =

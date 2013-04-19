@@ -42,10 +42,11 @@ asn1_union der_time [top; enrich; exhaustive] (UnparsedTime) =
 
 
 let test (parse : string_input -> 'a)
-         (dump : 'a -> string)
+         (raw_dump : Buffer.t -> 'a -> unit)
 	 (value_of : 'a -> value)
 	 (name : string) (s : string) =
   try
+    let dump = exact_dump raw_dump in
     let x = parse (input_of_string "" s) in
     print_endline (print_value ~name:name (value_of x));
     if (dump x = s)

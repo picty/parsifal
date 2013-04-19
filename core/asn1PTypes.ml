@@ -20,9 +20,9 @@ let parse_der_boolean_content input =
       warning BooleanNotInNormalForm input;
       (v <> 0)
 
-let dump_der_boolean_content = function
-  | true -> String.make 1 '\xff'
-  | false -> String.make 1 '\x00'
+let dump_der_boolean_content buf = function
+  | true -> Buffer.add_char buf '\xff'
+  | false -> Buffer.add_char buf '\x00'
 
 let value_of_der_boolean_content b = VBool b
 
@@ -51,7 +51,7 @@ let parse_der_integer_content input =
   end;
   l
 
-let dump_der_integer_content s = s
+let dump_der_integer_content buf s = Buffer.add_string buf s
 
 let value_of_der_integer_content i = VBigInt (i, BigEndian)
 
@@ -73,7 +73,7 @@ let parse_der_smallint_content input =
     in int_of_binstr 0 0
   end
 
-let dump_der_smallint_content i =
+let dump_der_smallint_content buf i =
   let rec compute_size rem =
     if rem < 0x80 then 1
     else if rem < 0x100 then 2
@@ -89,7 +89,7 @@ let dump_der_smallint_content i =
     end
   in
   mk_content (sz-1) i;
-  res
+  Buffer.add_string buf res
 
 let value_of_der_smallint_content i = VSimpleInt i
 
@@ -107,7 +107,7 @@ let parse_der_null_content input =
     drop_rem_bytes input;
   end
 
-let dump_der_null_content () = ""
+let dump_der_null_content _buf () = ()
 
 let value_of_der_null_content () = VUnit
 
@@ -156,19 +156,10 @@ let subid_to_charlist id =
     else aux (((x land 0x7f) lor 0x80)::accu) (x lsr 7)
   in aux [id land 0x7f] (id lsr 7)
 
-let _string_of_int_list l =
-  let len = List.length l in
-  let res = String.make len ' ' in
-  let rec populate_string i = function
-    | [] -> res
-    | c::r ->
-      res.[i] <- char_of_int c;
-      populate_string (i+1) r
-  in populate_string 0 l
-
-let dump_der_oid_content idlist =
+let dump_der_oid_content buf idlist =
   let cll = List.map subid_to_charlist idlist in
-  _string_of_int_list (List.flatten cll)
+  let add_char c = Buffer.add_char buf (char_of_int c) in
+  List.iter (List.iter add_char) cll
 
 
 let oid_expand = function
@@ -239,9 +230,9 @@ let parse_der_bitstring_content input =
   (* TODO: Check the trailing bits are zeroed. *)
   (nBits, content)
 
-let dump_der_bitstring_content (nBits, s) =
-  let prefix = String.make 1 (char_of_int nBits) in
-  prefix ^ s
+let dump_der_bitstring_content buf (nBits, s) =
+  Buffer.add_char buf (char_of_int nBits);
+  Buffer.add_string buf s
 
 let value_of_der_bitstring_content (nBits, s) =
   VRecord [
@@ -287,7 +278,7 @@ let parse_der_enumerated_bitstring_content description input =
   let res = aux 0 values in
   List.map (fun v -> description.(v)) res
 
-let dump_der_enumerated_bitstring_content description l =
+let dump_der_enumerated_bitstring_content description buf l =
   let next_val v = ((v lsr 1) lor (v lsl 7)) land 0xff in
   let n = Array.length description in
   let rec enumerate_bits bitval accu i = function
@@ -313,7 +304,9 @@ let dump_der_enumerated_bitstring_content description l =
   in
   let bits = enumerate_bits 0x80 [] 0 l in
   let nBits, intlist = encode [] bits in
-  dump_der_bitstring_content (nBits, _string_of_int_list intlist)
+  Buffer.add_char buf (char_of_int nBits);
+  let add_char c = Buffer.add_char buf (char_of_int c) in
+  List.iter add_char intlist
 
 let value_of_der_enumerated_bitstring_content l =
   VRecord [
@@ -339,7 +332,7 @@ let parse_der_octetstring_content apply_constraints input =
   ignore (apply_constraints res input);
   res
 
-let dump_der_octetstring_content s = s
+let dump_der_octetstring_content buf s = Buffer.add_string buf s
 let value_of_der_octetstring_content s = VString (s, true)
 asn1_alias der_octetstring = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
@@ -401,8 +394,8 @@ let parse_der_utc_time_content input =
   let res = parse_rem_string input in
   let tmp = utc_time_constraint res input in
   { tmp with year = int_of_utc_year tmp.year }
-let dump_der_utc_time_content t =
-  Printf.sprintf "%2.2d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
+let dump_der_utc_time_content buf t =
+  Printf.bprintf buf "%2.2d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
     (utc_year_of_int t.year) t.month t.day t.hour t.minute t.second
 let value_of_der_utc_time_content t = value_of_time_content "utc_time" t
 
@@ -410,8 +403,8 @@ type der_generalized_time_content = time_content
 let parse_der_generalized_time_content input =
   let res = parse_rem_string input in
   generalized_time_constraint res input
-let dump_der_generalized_time_content t =
-  Printf.sprintf "%4.4d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
+let dump_der_generalized_time_content buf t =
+  Printf.bprintf buf "%4.4d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
     t.year t.month t.day t.hour t.minute t.second
 let value_of_der_generalized_time_content t = value_of_time_content "generalized_time" t
 
@@ -530,22 +523,19 @@ and parse_der_constructed_content input =
   in parse_aux []
 
 
-let rec dump_der_object o =
-  let hdr = dump_der_header (o.a_class, (isConstructed o), o.a_tag) in
-  let content = dump_der_object_content o.a_content in
-  let len = dump_der_length (String.length content) in
-  hdr ^ len ^ content
+let rec dump_der_object buf o =
+  produce_der_object (o.a_class, (isConstructed o), o.a_tag) dump_der_object_content buf o.a_content
 
-and dump_der_object_content = function
-  | Boolean b -> dump_der_boolean_content b
-  | Integer i -> dump_der_integer_content i
-  | BitString (nBits, s) -> dump_der_bitstring_content (nBits, s)
-  | Null -> dump_der_null_content ()
-  | OId oid -> dump_der_oid_content oid
-  | String (s, _) -> dump_der_octetstring_content s
+and dump_der_object_content buf = function
+  | Boolean b -> dump_der_boolean_content buf b
+  | Integer i -> dump_der_integer_content buf i
+  | BitString (nBits, s) -> dump_der_bitstring_content buf (nBits, s)
+  | Null -> dump_der_null_content buf ()
+  | OId oid -> dump_der_oid_content buf oid
+  | String (s, _) -> dump_der_octetstring_content buf s
   | Constructed l ->
-    String.concat "" (List.map dump_der_object l)
-  | UnparsedDER (_, s) -> s
+    List.iter (dump_der_object buf) l
+  | UnparsedDER (_, s) -> Buffer.add_string buf s
 
 
 let string_of_der_object_content _ = "der_object"
@@ -591,9 +581,12 @@ let parse_bitstring_container parse_fun input =
   check_empty_input true new_input;
   res
 
-let dump_bitstring_container dump_fun o =
-  let content = dump_fun o in
-  dump_der_bitstring (0, content)
+let dump_bitstring_container dump_fun buf o =
+  let dump_content_aux b c =
+    Buffer.add_char b '\x00';
+    dump_fun b c
+  in
+  produce_der_object (C_Universal, false, T_BitString) dump_content_aux buf o
 
 
 let parse_octetstring_container parse_fun input =
@@ -608,9 +601,8 @@ let parse_octetstring_container parse_fun input =
   check_empty_input true new_input;
   res
 
-let dump_octetstring_container dump_fun o =
-  let content = dump_fun o in
-  dump_der_octetstring content
+let dump_octetstring_container dump_fun buf o =
+  produce_der_object (C_Universal, false, T_OctetString) dump_fun buf o
 
 
 let advanced_der_parse (parse_fun : (asn1_class * bool * asn1_tag) -> string_input -> 'a) (input : string_input) : 'a =

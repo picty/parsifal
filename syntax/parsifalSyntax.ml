@@ -261,8 +261,8 @@ let ocaml_type_of_field_type _loc t opt =
   let real_t = ocaml_type_of_ptype _loc t in
   if opt = Optional then <:ctyp< option $real_t$ >> else real_t
 
-let keep_built_fields (_, _, _, a) = a <> ParseCheckpoint
-let keep_real_fields (_, _, _, a) = (a <> ParseCheckpoint) && (a <> ParseField)
+let keep_built_fields l = List.filter (fun (_, _, _, a) -> a <> ParseCheckpoint) l
+let keep_dumped_fields l = List.filter (fun (_, _, _, a) -> (a <> ParseCheckpoint) && (a <> ParseField)) l
 
 let split_header _loc (hdr, isC) =
   let _c, _t = match hdr with
@@ -300,7 +300,7 @@ let mk_type _loc c =
 
     | Struct fields ->
       let mk_line (_loc, n, t, opt) = <:ctyp< $lid:n$ : $ocaml_type_of_field_type _loc t opt$ >> in
-      let ctyp_fields = List.map mk_line (List.filter keep_built_fields fields) in
+      let ctyp_fields = List.map mk_line (keep_built_fields fields) in
       <:ctyp< { $list:ctyp_fields$ } >>
 
     | Union union
@@ -478,7 +478,7 @@ let mk_parse_fun lwt_fun _loc c =
       let rec parse_fields = function
 	| [] ->
 	  let single_assign (_loc, n, _, _) = <:rec_binding< $lid:n$ = $exp: <:expr< $lid:n$ >> $ >> in
-	  let assignments = List.map single_assign (List.filter keep_built_fields fields) in
+	  let assignments = List.map single_assign (keep_built_fields fields) in
 	  mk_return <:expr< { $list:assignments$ } >>
 	| (_loc, n, t, attribute)::r ->
 	  let tmp = parse_fields r
@@ -580,7 +580,7 @@ let rec dump_fun_of_ptype _loc t =
     | PT_Array (_, subtype) ->
       <:expr< $mkf "array"$ $dump_fun_of_ptype _loc subtype$ >>
     | PT_Container (VarLen int_t, subtype) ->
-      <:expr< $mkf "container"$ $mkf int_t$ $dump_fun_of_ptype _loc subtype$ >>
+      <:expr< $mkf "varlen_container"$ $mkf int_t$ $dump_fun_of_ptype _loc subtype$ >>
     | PT_Container (_, subtype) -> dump_fun_of_ptype _loc subtype
 
     | PT_CustomContainer (m, n, e, subtype) ->
@@ -595,54 +595,65 @@ let mk_dump_fun _loc c =
       let le = (if c <.> LittleEndian then "le" else "") in
       let dump_int_fun = exp_qname _loc (Some "BasePTypes") ("dump_uint" ^ (string_of_int enum.size) ^ le)
       and ioe = <:expr< $lid:"int_of_" ^ c.name$ >> in
-      [ <:expr< $dump_int_fun$ ($ioe$ $lid:c.name$) >> ]
+      [ <:expr< $dump_int_fun$ buf ($ioe$ $lid:c.name$) >> ]
     end else []
 
   | Struct fields ->
-    let dump_one_field (_loc, n, t, attr) =
-      let raw_f = dump_fun_of_ptype _loc t in
-      let f = if attr = Optional then <:expr< Parsifal.try_dump $raw_f$ >> else raw_f in
-      <:expr< $f$ $lid:c.name$.$lid:n$ >>
-    in
-    let fields_dumped_expr = exp_of_list _loc (List.map dump_one_field (List.filter keep_real_fields fields)) in
-    [ <:expr< let fields_dumped = $fields_dumped_expr$ in
-	      String.concat "" fields_dumped >> ]
+    let rec dump_fields = function
+      | [] -> <:expr< () >>
+      | (_loc, n, t, attr)::r ->
+	let tmp = dump_fields r
+	and raw_f = dump_fun_of_ptype _loc t in
+	let f = if attr = Optional then <:expr< Parsifal.try_dump $raw_f$ >> else raw_f in
+	let dump_f = <:expr< $f$ buf $lid:c.name$.$lid:n$ >> in
+	<:expr< let $lid:"_" ^ n$ = $dump_f$ in $tmp$ >>
+    in [dump_fields (keep_dumped_fields fields)]
 
   | Union union ->
     let mk_case = function
       | _loc, cons, (_, PT_Empty) ->
-	<:match_case< $ <:patt< $uid:cons$ >> $ -> "" >>
+	<:match_case< $ <:patt< $uid:cons$ >> $ -> () >>
       | _loc, cons, (_, t) ->
 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
-        $ <:expr< $dump_fun_of_ptype _loc t$ x >> $ >>
+        $ <:expr< $dump_fun_of_ptype _loc t$ buf x >> $ >>
     and last_case =
       <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
-      $ <:expr< $dump_fun_of_ptype _loc union.unparsed_type$ x >> $ >>
+      $ <:expr< $dump_fun_of_ptype _loc union.unparsed_type$ buf x >> $ >>
     in
     let cases = (List.map mk_case (keep_unique_cons union.uchoices))@[last_case] in
     [ <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >> ]
 
-  | Alias atype -> [ <:expr< $dump_fun_of_ptype _loc atype$ $lid:c.name$ >> ]
+  | Alias atype -> [ <:expr< $dump_fun_of_ptype _loc atype$ buf $lid:c.name$ >> ]
 
   | ASN1Alias alias ->
     let header_constraint = split_header _loc alias.aaheader in
     let dump_content = dump_fun_of_ptype _loc alias.aatype in
     let meta_f_name = if alias.aalist then "produce_der_seqof" else "produce_der_object" in
     let meta_f = exp_qname _loc (Some "Asn1Engine") meta_f_name in
-    [ <:expr< $meta_f$ $header_constraint$ $dump_content$ $lid:c.name$ >> ]
+    [ <:expr< $meta_f$ $header_constraint$ $dump_content$ buf $lid:c.name$ >> ]
 
   | ASN1Union union ->
     let mk_case (_loc, cons, (p, t)) =
       <:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
-      $ <:expr< Asn1Engine.produce_der_object $expr_of_pat p$ $dump_fun_of_ptype _loc t$ x >> $ >>
+      $ <:expr< Asn1Engine.produce_der_object $expr_of_pat p$ $dump_fun_of_ptype _loc t$ buf x >> $ >>
     and last_case =
-      <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  o ) -> Asn1PTypes.dump_der_object o >>
+      <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  o ) -> Asn1PTypes.dump_der_object buf o >>
     in
     let cases = (List.map mk_case union.uchoices)@[last_case] in
     [ <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >> ]
 
   in
-  List.map (mk_multiple_args_fun _loc ("dump_" ^ c.name) ((keep_dump_params c.params)@[c.name])) body
+  List.map (mk_multiple_args_fun _loc ("dump_" ^ c.name) ((keep_dump_params c.params)@["buf"; c.name])) body
+
+
+let mk_exact_dump_fun _loc c =
+  if c <.> ExactParser then begin
+    let partial_params = List.map (fun p -> <:expr< $lid:p$ >>) (keep_dump_params c.params)
+    and params = (keep_dump_params c.params)@[c.name] in
+    let dump_fun = apply_exprs _loc (exp_qname _loc None ("dump_" ^ c.name)) partial_params in
+    let body = <:expr< Parsifal.exact_dump $dump_fun$ $lid:c.name$ >> in
+    [ mk_multiple_args_fun _loc ("exact_dump_" ^ c.name) params body ]
+  end else []
 
 
 
@@ -693,7 +704,7 @@ let mk_value_of_fun _loc c =
       <:expr< ($str:field_name$, Parsifal.VLazy (lazy ($f$ $lid:c.name$.$lid:n$))) >>
     in
     let name_field = <:expr< ("@name", Parsifal.VString ($str:c.name$, False)) >> in
-    let fields_expr = exp_of_list _loc (List.map value_of_one_field (List.filter keep_built_fields fields)) in
+    let fields_expr = exp_of_list _loc (List.map value_of_one_field (keep_built_fields fields)) in
     <:expr< Parsifal.VRecord ($uid:"::"$ $name_field$ $fields_expr$) >>
 
   | Union union
@@ -771,7 +782,7 @@ let mk_parsifal_construction _loc name raw_opts specific_descr =
 	     construction = specific_descr }
   and funs = [ mk_decls; mk_type; mk_specific_funs;
 	       mk_parse_fun false; mk_parse_fun true; mk_exact_parse_fun;
-	       mk_dump_fun; mk_value_of_fun ] in
+	       mk_dump_fun; mk_exact_dump_fun; mk_value_of_fun ] in
   let rec mk_sequence = function
     | [] -> <:str_item< >>
     | [si] -> <:str_item< $si$ >>

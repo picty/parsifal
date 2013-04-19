@@ -15,7 +15,7 @@ let peek_uint8 input =
 
 let lwt_parse_uint8 = lwt_parse_byte
 
-let dump_uint8 v = String.make 1 (char_of_int (v land 0xff))
+let dump_uint8 buf v = Buffer.add_char buf (char_of_int (v land 0xff))
 
 let value_of_uint8 i = VInt (i, 8, LittleEndian)
 
@@ -41,12 +41,9 @@ let lwt_parse_uint16 input =
   lwt_really_read input 2 >>= fun s ->
   return (((int_of_char s.[0]) lsl 8) lor (int_of_char s.[1]))
 
-let dump_uint16 v =
-  let c0 = char_of_int ((v lsr 8) land 0xff)
-  and c1 = char_of_int (v land 0xff) in
-  let res = String.make 2 c0 in
-  res.[1] <- c1;
-  res
+let dump_uint16 buf v =
+  Buffer.add_char buf (char_of_int ((v lsr 8) land 0xff));
+  Buffer.add_char buf (char_of_int (v land 0xff))
 
 let value_of_uint16 i = VInt (i, 16, BigEndian)
 
@@ -68,12 +65,9 @@ let lwt_parse_uint16le input =
   lwt_really_read input 2 >>= fun s ->
   return (((int_of_char s.[1]) lsl 8) lor (int_of_char s.[0]))
 
-let dump_uint16le v =
-  let c1 = char_of_int ((v lsr 8) land 0xff)
-  and c0 = char_of_int (v land 0xff) in
-  let res = String.make 2 c0 in
-  res.[1] <- c1;
-  res
+let dump_uint16le buf v =
+  Buffer.add_char buf (char_of_int (v land 0xff));
+  Buffer.add_char buf (char_of_int ((v lsr 8) land 0xff))
 
 let value_of_uint16le i = VInt (i, 16, LittleEndian)
 
@@ -95,14 +89,10 @@ let lwt_parse_uint24 input =
   return (((int_of_char s.[0]) lsl 16) lor
     ((int_of_char s.[1]) lsl 8) lor (int_of_char s.[2]))
 
-let dump_uint24 v =
-  let c0 = char_of_int ((v lsr 16) land 0xff)
-  and c1 = char_of_int ((v lsr 8) land 0xff)
-  and c2 = char_of_int (v land 0xff) in
-  let res = String.make 3 c0 in
-  res.[1] <- c1;
-  res.[2] <- c2;
-  res
+let dump_uint24 buf v =
+  Buffer.add_char buf (char_of_int ((v lsr 16) land 0xff));
+  Buffer.add_char buf (char_of_int ((v lsr 8) land 0xff));
+  Buffer.add_char buf (char_of_int (v land 0xff))
 
 let value_of_uint24 i = VInt (i, 24, BigEndian)
 
@@ -125,16 +115,11 @@ let lwt_parse_uint32 input =
   return (((int_of_char s.[0]) lsl 24) lor ((int_of_char s.[1]) lsl 16)
     lor ((int_of_char s.[2]) lsl 8) lor (int_of_char s.[3]))
 
-let dump_uint32 v =
-  let c0 = char_of_int ((v lsr 24) land 0xff)
-  and c1 = char_of_int ((v lsr 16) land 0xff)
-  and c2 = char_of_int ((v lsr 8) land 0xff)
-  and c3 = char_of_int (v land 0xff) in
-  let res = String.make 4 c0 in
-  res.[1] <- c1;
-  res.[2] <- c2;
-  res.[3] <- c3;
-  res
+let dump_uint32 buf v =
+  Buffer.add_char buf (char_of_int ((v lsr 24) land 0xff));
+  Buffer.add_char buf (char_of_int ((v lsr 16) land 0xff));
+  Buffer.add_char buf (char_of_int ((v lsr 8) land 0xff));
+  Buffer.add_char buf (char_of_int (v land 0xff))
 
 let value_of_uint32 i = VInt (i, 32, BigEndian)
 
@@ -159,16 +144,11 @@ let lwt_parse_uint32le input =
   return (((int_of_char s.[3]) lsl 24) lor ((int_of_char s.[2]) lsl 16)
     lor ((int_of_char s.[1]) lsl 8) lor (int_of_char s.[0]))
 
-let dump_uint32le v =
-  let c3 = char_of_int ((v lsr 24) land 0xff)
-  and c2 = char_of_int ((v lsr 16) land 0xff)
-  and c1 = char_of_int ((v lsr 8) land 0xff)
-  and c0 = char_of_int (v land 0xff) in
-  let res = String.make 4 c0 in
-  res.[1] <- c1;
-  res.[2] <- c2;
-  res.[3] <- c3;
-  res
+let dump_uint32le buf v =
+  Buffer.add_char buf (char_of_int (v land 0xff));
+  Buffer.add_char buf (char_of_int ((v lsr 8) land 0xff));
+  Buffer.add_char buf (char_of_int ((v lsr 16) land 0xff));
+  Buffer.add_char buf (char_of_int ((v lsr 24) land 0xff))
 
 let value_of_uint32le i = VInt (i, 32, LittleEndian)
 
@@ -203,22 +183,17 @@ let lwt_parse_uint64 input =
     let r = Int64.logor (Int64.shift_left (Int64.of_int r2) 32) (Int64.of_int r1) in
     return r
 
-let dump_uint64 v =
+let dump_uint64 buf v =
   let ff = Int64.of_int 0xff in
   let aux offset =
     char_of_int (Int64.to_int (Int64.logand (Int64.shift_right v offset) ff))
   in
-  let c0 = aux 56 and c1 = aux 48
-  and c2 = aux 40 and c3 = aux 32
-  and c4 = aux 24 and c5 = aux 16
-  and c6 = aux 8 and c7 = aux 0 in
-  let res = String.make 8 c0 in
-  res.[1] <- c1; res.[2] <- c2; res.[3] <- c3;
-  res.[4] <- c4; res.[5] <- c5; res.[6] <- c6;
-  res.[7] <- c7;
-  res
+  Buffer.add_char buf (aux 56); Buffer.add_char buf (aux 48);
+  Buffer.add_char buf (aux 40); Buffer.add_char buf (aux 32);
+  Buffer.add_char buf (aux 24); Buffer.add_char buf (aux 16);
+  Buffer.add_char buf (aux 8); Buffer.add_char buf (aux 0)
 
-let value_of_uint64 i = VBigInt (dump_uint64 i, BigEndian)
+let value_of_uint64 i = VBigInt (exact_dump dump_uint64 i, BigEndian)
 
 
 
@@ -251,22 +226,17 @@ let lwt_parse_uint64le input =
     let r = Int64.logor (Int64.shift_left (Int64.of_int r2) 32) (Int64.of_int r1) in
     return r
 
-let dump_uint64le v =
+let dump_uint64le buf v =
   let ff = Int64.of_int 0xff in
   let aux offset =
     char_of_int (Int64.to_int (Int64.logand (Int64.shift_right v offset) ff))
   in
-  let c7 = aux 56 and c6 = aux 48
-  and c5 = aux 40 and c4 = aux 32
-  and c3 = aux 24 and c2 = aux 16
-  and c1 = aux 8 and c0 = aux 0 in
-  let res = String.make 8 c0 in
-  res.[1] <- c1; res.[2] <- c2; res.[3] <- c3;
-  res.[4] <- c4; res.[5] <- c5; res.[6] <- c6;
-  res.[7] <- c7;
-  res
+  Buffer.add_char buf (aux 0); Buffer.add_char buf (aux 8);
+  Buffer.add_char buf (aux 16); Buffer.add_char buf (aux 24);
+  Buffer.add_char buf (aux 32); Buffer.add_char buf (aux 40);
+  Buffer.add_char buf (aux 48); Buffer.add_char buf (aux 56)
 
-let value_of_uint64le i = VBigInt (dump_uint64 i, LittleEndian)
+let value_of_uint64le i = VBigInt (exact_dump dump_uint64 i, LittleEndian)
 
 
 
@@ -327,11 +297,12 @@ let lwt_drop_rem_bytes input =
   end else fail (ParsingException (NotImplemented "lwt_drop_rem_bytes", _h_of_li input))
 
 
-let dump_string s = s
+let dump_string buf s = Buffer.add_string buf s
 
-let dump_varlen_string len_fun s =
+let dump_varlen_string len_fun buf s =
   let n = String.length s in
-  (len_fun n) ^ s
+  len_fun buf n;
+  Buffer.add_string buf s
 
 let value_of_string binary s = VString (s, binary)
 
@@ -415,13 +386,14 @@ let lwt_parse_varlen_list name len_fun parse_fun input =
   return res
 
 
-let dump_list dump_fun l =
-  String.concat "" (List.map dump_fun l)
+let dump_list dump_fun buf l = List.iter (dump_fun buf) l
 
-let dump_varlen_list len_fun dump_fun l =
-  let res = dump_list dump_fun l in
-  let n = String.length res in
-  (len_fun n) ^ res
+let dump_varlen_list len_fun dump_fun buf l =
+  let tmp_buf = Buffer.create !default_buffer_size in
+  dump_list dump_fun tmp_buf l;
+  let n = Buffer.length tmp_buf in
+  len_fun buf n;
+  Buffer.add_buffer buf tmp_buf
 
 let value_of_list sub_fun l = VList (List.map sub_fun l)
 
@@ -443,11 +415,6 @@ let lwt_parse_container name n parse_fun input =
   lwt_get_out input str_input >>= fun () ->
   return res
 
-let dump_container len_fun dump_fun content =
-  let res = dump_fun content in
-  let n = String.length res in
-  (len_fun n) ^ res
-
 
 let parse_varlen_container name len_fun parse_fun input =
   let n = len_fun input in
@@ -457,6 +424,12 @@ let lwt_parse_varlen_container name len_fun parse_fun input =
   len_fun input >>= fun n ->
   lwt_parse_container name n parse_fun input
 
+let dump_varlen_container len_fun dump_fun buf content =
+  let tmp_buf = Buffer.create !default_buffer_size in
+  dump_fun tmp_buf content;
+  let n = Buffer.length tmp_buf in
+  len_fun buf n;
+  Buffer.add_buffer buf tmp_buf
 
 
 (*********)
@@ -471,7 +444,7 @@ let lwt_parse_array n lwt_parse_fun input =
   lwt_parse_list n lwt_parse_fun input >>= fun l ->
   return (Array.of_list l)
 
-let dump_array dump_fun a =
-  String.concat "" (Array.to_list (Array.map dump_fun a))
+let dump_array dump_fun buf a =
+  Array.iter (dump_fun buf) a
 
 let value_of_array sub_fun a = VList (List.map sub_fun (Array.to_list a))

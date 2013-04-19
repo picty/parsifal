@@ -139,65 +139,58 @@ let lwt_string_of_base64_title title lwt_input =
 
 
 
-let to_raw_base64 s =
-  let n = String.length s in
-  let res = Buffer.create n in
+let to_raw_base64 maxlen buf bin_buf =
+  let n = Buffer.length bin_buf in
   let rec add_group = function
     | v::r, n ->
-      Buffer.add_char res base64_chars.[v];
+      Buffer.add_char buf base64_chars.[v];
       add_group (r, n)
     | [], 0 -> ()
     | [], _ ->
-      Buffer.add_char res '=';
+      Buffer.add_char buf '=';
       add_group ([], n-1)
   in
   let rec handle_next_group i rem =
     match rem with
       | 0 -> ()
       | 1 ->
-	let v1 = int_of_char (s.[i]) in
+	let v1 = int_of_char (Buffer.nth bin_buf i) in
 	add_group ([v1 lsr 2;
 		    (v1 lsl 4) land 0x3f], 2)
       | 2 ->
-	let v1 = int_of_char (s.[i])
-	and v2 = int_of_char (s.[i+1]) in
+	let v1 = int_of_char (Buffer.nth bin_buf i)
+	and v2 = int_of_char (Buffer.nth bin_buf (i+1)) in
 	add_group ([v1 lsr 2;
 		    ((v1 lsl 4) land 0x3f) lor (v2 lsr 4);
 		    (v2 lsl 2) land 0x3f], 1)
       | _ ->
-	let v1 = int_of_char (s.[i])
-	and v2 = int_of_char (s.[i+1])
-	and v3 = int_of_char (s.[i+2]) in
+	let v1 = int_of_char (Buffer.nth bin_buf i)
+	and v2 = int_of_char (Buffer.nth bin_buf (i+1))
+	and v3 = int_of_char (Buffer.nth bin_buf (i+2)) in
 	add_group ([v1 lsr 2;
 		    ((v1 lsl 4) land 0x3f) lor (v2 lsr 4);
 		    ((v2 lsl 2) land 0x3f) lor (v2 lsr 6);
 	      v3 land 0x3f], 0);
+	if maxlen > 0 && (i mod maxlen == 0) then Buffer.add_char buf '\n';
 	handle_next_group (i+3) (rem-3)
   in
-  handle_next_group 0 n;
-    Buffer.contents res
+  handle_next_group 0 n
 
 
-let to_base64 title s =
+let to_base64 title buf bin_buf =
   let mk_boundary t header =
-    if header
-    then "-----BEGIN " ^ t ^ "-----\n"
-    else "\n-----END " ^ t ^ "-----"
-  and cut_at l s =
-    let rec cut_at_aux accu remaining start =
-      if remaining > l
-      then cut_at_aux ((String.sub s start l)::accu) (remaining - l) (start + l)
-      else List.rev ((String.sub s start remaining)::accu)
-    in cut_at_aux [] (String.length s) 0
+    Buffer.add_string buf (if header then "-----BEGIN " else "\n-----END ");
+    Buffer.add_string buf t;
+    Buffer.add_string buf "-----\n"
   in
   match title with
   | HeaderInList [t] ->
-    (mk_boundary t true) ^
-    (String.concat "\n" (cut_at 64 (to_raw_base64 s))) ^
-    (mk_boundary t false)
+    mk_boundary t true;
+    to_raw_base64 48 buf bin_buf;
+    mk_boundary t false
   | HeaderInList _
   | AnyHeader
-  | NoHeader -> to_raw_base64 s
+  | NoHeader -> to_raw_base64 0 buf bin_buf
 
 
 
@@ -241,6 +234,7 @@ let lwt_parse_base64_container title parse_fun lwt_input =
   return res
 
 
-let dump_base64_container title dump_fun o =
-  let content = dump_fun o in
-  to_base64 title content
+let dump_base64_container title dump_fun buf o =
+  let tmp_buf = Buffer.create !default_buffer_size in
+  dump_fun tmp_buf o;
+  to_base64 title buf tmp_buf
