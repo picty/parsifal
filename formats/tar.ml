@@ -23,8 +23,8 @@ let parse_tar_numstring len input =
   try int_of_string ("0o" ^ octal_value)
   with _ -> raise (ParsingException (CustomException "int_of_string", _h_of_si input))
 
-let dump_tar_numstring len v =
-  Printf.sprintf "%*.*o\x00" len len v
+let dump_tar_numstring len buf v =
+  Printf.bprintf buf "%*.*o\x00" len len v
 
 (* TODO: change stg to get len in here? *)
 let value_of_tar_numstring i = VSimpleInt i

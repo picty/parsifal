@@ -107,8 +107,8 @@ let handle_input input =
 	| RSA {p_modulus = n} -> hexdump n
 	| _ -> "No RSA modulus found or parsed"
       in [result]
-    | BinDump -> [dump_certificate certificate]
-    | Dump -> [hexdump (dump_certificate certificate)]
+    | BinDump -> [exact_dump_certificate certificate]
+    | Dump -> [hexdump (exact_dump_certificate certificate)]
     | Text -> Str.split (Str.regexp_string "\n") (print_value (value_of_certificate certificate))
     | PrettyPrint -> pretty_print_certificate certificate
     | JSON -> Str.split (Str.regexp_string "\n") (Json.json_of_value (value_of_certificate certificate))

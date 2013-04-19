@@ -11,7 +11,7 @@ open Tls
 (* TODO: Handle exceptions in lwt code, and add timers *)
 
 let write_record o record =
-  let s = dump_tls_record record in
+  let s = exact_dump_tls_record record in
   really_write o s
 
 

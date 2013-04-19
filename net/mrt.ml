@@ -31,9 +31,11 @@ let parse_ip_prefix ipa_type input =
   | AFI_IPv4 -> IPv4Prefix (s, prefix_length)
   | AFI_IPv6 -> IPv6Prefix (s, prefix_length)
 
-let dump_ip_prefix = function
+let dump_ip_prefix buf = function
   | IPv4Prefix (s, l)
-  | IPv6Prefix (s, l) -> (dump_uint8 l) ^ s
+  | IPv6Prefix (s, l) ->
+    dump_uint8 buf l;
+    Buffer.add_string buf s
 
 let value_of_ip_prefix = function
   | IPv4Prefix (initial_s, prefix_len) ->
@@ -77,10 +79,10 @@ let parse_bgp_attribute_len attr input =
   if (attr land 0x10) = 0x10
   then true, parse_uint16 input
   else false, parse_uint8 input
-let dump_bgp_attribute_len (extended, v) =
+let dump_bgp_attribute_len buf (extended, v) =
   if extended
-  then dump_uint16 v
-  else dump_uint8 v
+  then dump_uint16 buf v
+  else dump_uint8 buf v
 let value_of_bgp_attribute_len (extended, v) =
   if extended
   then VInt (v, 16, BigEndian)

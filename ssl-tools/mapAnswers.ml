@@ -89,7 +89,10 @@ let parse_all_records enrich answer =
   let rec split_records accu ctx str_input recs error = match str_input, recs with
     | None, [] -> List.rev accu, ctx, error
     | None, record::r ->
-      let record_input = input_of_string ~verbose:(!verbose) ~enrich:enrich (string_of_ipv4 answer.ip) (dump_record_content record.record_content) in
+      let record_input =
+	input_of_string ~verbose:(!verbose) ~enrich:enrich (string_of_ipv4 answer.ip)
+          (exact_dump_record_content record.record_content)
+      in
       let cursor = record.content_type, record.record_version, record_input in
       split_records accu ctx (Some cursor) r error
     | Some (ct, v, i), _ ->
@@ -170,7 +173,7 @@ let handle_answer answer =
   if this_one then begin
     match !action with
       | IP -> print_endline ip
-      | Dump -> print_string (dump_answer_dump answer)
+      | Dump -> print_string (exact_dump_answer_dump answer)
       | All ->
         print_endline ip;
         let records, _, error = parse_all_records !enrich_style answer in
@@ -222,7 +225,7 @@ let handle_answer answer =
         let rec convert_to_scapy (len, ps) = function
           | [] -> List.rev ps
           | r::rs ->
-            let dump = dump_tls_record r in
+            let dump = exact_dump_tls_record r in
             let new_p =
               Printf.sprintf "IP(src=\"%s\")/TCP(sport=%d,dport=12345,seq=%d,flags=\"\")/(\"%s\".decode(\"hex\"))"
                 ip answer.port len (hexdump dump)
@@ -235,9 +238,9 @@ let handle_answer answer =
         let rec convert_to_pcap len ps = function
           | [] -> ()
           | r::rs ->
-            let dump = dump_tls_record r in
+            let dump = exact_dump_tls_record r in
             let new_p = Pcap.mk_packet answer.ip answer.port dump len in
-            print_string (Pcap.dump_packet new_p);
+            print_string (Parsifal.exact_dump Pcap.dump_packet new_p);
             convert_to_pcap (len + (String.length dump)) (new_p::ps) rs
         in
         convert_to_pcap 0 [] records

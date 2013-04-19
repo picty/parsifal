@@ -75,7 +75,7 @@ let really_write o s = _really_write o s 0 (String.length s)
 
 
 let write_record o record =
-  let s = dump_tls_record record in
+  let s = exact_dump_tls_record record in
   really_write o s
 
 
@@ -89,7 +89,7 @@ let rec forward update_fun state i o =
       state.clear <- false;
       return ()
     | CT_ApplicationData, false ->
-      let new_bytes = dump_record_content record.record_content in begin
+      let new_bytes = exact_dump_record_content record.record_content in begin
 	match update_fun state new_bytes with
 	| None -> return ()
 	| Some s -> if !dirty then fail (Failure "Blork!") else really_write o s

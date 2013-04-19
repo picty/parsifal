@@ -83,9 +83,9 @@ let parse_label input =
     true, Some (Label (parse_string len input))
   | _ -> raise (ParsingException (CustomException "Invalid label length", _h_of_si input))
 
-let dump_label = function
-  | Label s -> dump_varlen_string dump_uint8 s
-  | Pointer p -> dump_uint16 (0xc000 land p)
+let dump_label buf = function
+  | Label s -> dump_varlen_string dump_uint8 buf s
+  | Pointer p -> dump_uint16 buf (0xc000 land p)
 
 let string_of_label = function
   | Label s -> s
@@ -141,14 +141,16 @@ let parse_domain ctx input =
   let res = aux [] in
   unfold_domain domain_start ctx res
 
-let rec dump_raw_domain = function
-  | [] -> dump_uint8 0
-  | [Pointer _ as l] -> dump_label l
-  | (Label _ as l)::r -> (dump_label l)^(dump_raw_domain r)
+let rec dump_raw_domain buf = function
+  | [] -> dump_uint8 buf 0
+  | [Pointer _ as l] -> dump_label buf l
+  | (Label _ as l)::r ->
+    dump_label buf l;
+    dump_raw_domain buf r
   | _ -> (* TODO *) failwith "Invalid domain"
 
-let dump_domain = function
-  | RawDomain d -> dump_raw_domain d
+let dump_domain buf = function
+  | RawDomain d -> dump_raw_domain buf d
   | UnfoldedDomain _ -> failwith "NotImplemented: dump_unfolded_domain"
 
 let value_of_domain d =

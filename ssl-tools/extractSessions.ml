@@ -124,7 +124,10 @@ let parse_all_records enrich input =
   let rec split_records accu ctx str_input recs = match str_input, recs with
     | None, [] -> List.rev accu, ctx
     | None, record::r ->
-      let record_input = input_of_string ~verbose:(!verbose) ~enrich:enrich (input.cur_name) (dump_record_content record.record_content) in
+      let record_input =
+	input_of_string ~verbose:(!verbose) ~enrich:enrich (input.cur_name)
+	  (exact_dump_record_content record.record_content)
+      in
       let cursor = record.content_type, record.record_version, record_input in
       split_records accu ctx (Some cursor) r
     | Some (ct, v, i), _ ->

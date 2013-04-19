@@ -26,10 +26,10 @@ let parse_ssl2_cipher_spec input =
   if x = 0 then drop_bytes 1 input;
   parse_ssl2_cipher_spec (x <> 0) input
 
-let dump_ssl2_cipher_spec = function
-  | SSL2CipherSpec x -> dump_pure_ssl2_cipher_spec x
-  | TLSCipherSpec x -> TlsEnums.dump_ciphersuite x
-  | UnparsedSSL2CipherSpec s -> s
+let dump_ssl2_cipher_spec buf = function
+  | SSL2CipherSpec x -> dump_pure_ssl2_cipher_spec buf x
+  | TLSCipherSpec x -> TlsEnums.dump_ciphersuite buf x
+  | UnparsedSSL2CipherSpec s -> Buffer.add_string buf s
 
 
 (* TODO: Should it be SoftExceptions if they are ever implemented? *)
@@ -184,17 +184,15 @@ let lwt_parse_ssl2_record context input =
       ssl2_content = content }
   end
 
-let dump_ssl2_record record =
-  let hdr =
-    if record.ssl2_long_header
-    then dump_uint16 (0x8000 lor (record.ssl2_total_length))
-    else begin
-      (dump_uint16 (if record.ssl2_is_escape then 0x4000 lor record.ssl2_total_length else record.ssl2_total_length)) ^
-	(dump_uint8 record.ssl2_padding_length)
-    end
-  in
-  let padding = String.make record.ssl2_padding_length '\x00' in
-  hdr ^ (dump_ssl2_content record.ssl2_content) ^ padding
+let dump_ssl2_record buf record =
+  if record.ssl2_long_header
+  then dump_uint16 buf (0x8000 lor (record.ssl2_total_length))
+  else begin
+    dump_uint16 buf (if record.ssl2_is_escape then 0x4000 lor record.ssl2_total_length else record.ssl2_total_length);
+    dump_uint8 buf record.ssl2_padding_length
+  end;
+  dump_ssl2_content buf record.ssl2_content;
+  Buffer.add_string buf (String.make record.ssl2_padding_length '\x00')
 
 let value_of_ssl2_record record =
   VRecord [

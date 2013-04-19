@@ -82,7 +82,7 @@ let update_with_server_key_exchange ctx ske =
 (* Useful functions *)
 
 let write_record o record =
-  let s = dump_tls_record record in
+  let s = exact_dump_tls_record record in
   LwtUtil.really_write o s
 
 let send_plain_record out record =
@@ -143,11 +143,11 @@ let handle_answer handle_hs handle_alert s =
     lwt_parse_tls_record None s >>= fun record ->
     let result, new_hs_in, new_alert_in = match record.content_type with
       | CT_Handshake ->
-	let input = append_to_input hs_in (dump_record_content record.record_content) in
+	let input = append_to_input hs_in (exact_dump_record_content record.record_content) in
 	let r, h = process_input (parse_handshake_msg (Some ctx)) (handle_hs ctx) input in
 	r, h, alert_in
       | CT_Alert ->
-	let input = append_to_input alert_in (dump_record_content record.record_content) in
+	let input = append_to_input alert_in (exact_dump_record_content record.record_content) in
 	let r, a = process_input parse_tls_alert handle_alert input in
 	r, hs_in, a
       | _ -> FatalAlert "Unexpected content type", hs_in, alert_in

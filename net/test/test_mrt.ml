@@ -281,7 +281,7 @@ let rec map_mrt f input =
   lwt_parse_mrt_message input >>= fun mrt_msg ->
   let real_msg =
     if !safe_mode then begin
-      let str_input = input_of_string ~enrich:AlwaysEnrich "" (dump_mrt_message mrt_msg) in
+      let str_input = input_of_string ~enrich:AlwaysEnrich "" (exact_dump_mrt_message mrt_msg) in
       let res =
 	try parse_mrt_message str_input
 	with _ ->

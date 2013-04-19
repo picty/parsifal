@@ -9,9 +9,9 @@ let do_stg () =
   enrich_record_content := true;
   lwt_parse_tls_record None input >>= fun tls_record ->
   Lwt_io.printf "%s" (print_value (value_of_tls_record tls_record)) >>= fun () ->
-  let res = dump_tls_record tls_record in
+  let res = exact_dump_tls_record tls_record in
   wrap1 (parse_tls_record None) (input_of_string "" res) >>= fun tls_record2 ->
-  if res = dump_tls_record tls_record2
+  if res = exact_dump_tls_record tls_record2
   then return (hexdump res)
   else fail (Failure "dump (parse (res)) is not idempotent")
 

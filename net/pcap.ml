@@ -123,7 +123,7 @@ let std_pcap_hdr = {
   link_type = LinkTypeRaw;
   packets = []
 }
-let std_pcap_hdr_str = dump_pcap_file std_pcap_hdr
+let std_pcap_hdr_str = exact_dump_pcap_file std_pcap_hdr
 
 
 let mk_packet src_ip src_port payload seq =
@@ -153,7 +153,7 @@ let mk_packet src_ip src_port payload seq =
     dest_ip = "\x01\x02\x03\x04";
     ip_payload = TCPLayer tcp_layer
   } in
-  let data = dump_ip_layer ip_layer in
+  let data = Parsifal.exact_dump dump_ip_layer ip_layer in
   let data_len = String.length data in
   {
     timestamp = 0;

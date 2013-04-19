@@ -21,14 +21,14 @@ let merge_records ?context:(ctx=None) ?verbose:(verbose=true) ?enrich:(enrich=Al
       if current_ct = record.content_type &&
 	current_v = record.record_version
       then begin
-	let tmp_content = ((dump_record_content record.record_content)::current_content) in
+	let tmp_content = ((exact_dump_record_content record.record_content)::current_content) in
 	merge_aux current_ct current_v tmp_content r
       end else (mk_merged_record current_ct current_v current_content)::(handle_first l)
 
   and handle_first = function
     | [] -> []
     | record::r ->
-      merge_aux record.content_type record.record_version [dump_record_content record.record_content] r
+      merge_aux record.content_type record.record_version [exact_dump_record_content record.record_content] r
 
   in handle_first recs
 
@@ -36,7 +36,7 @@ let merge_records ?context:(ctx=None) ?verbose:(verbose=true) ?enrich:(enrich=Al
 let split_record record size =
   let ct = record.content_type
   and v = record.record_version
-  and content = dump_record_content record.record_content in
+  and content = exact_dump_record_content record.record_content in
   let len = String.length content in
 
   let rec mk_records accu offset =

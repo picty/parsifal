@@ -42,7 +42,7 @@ let really_write o s = _really_write o s 0 (String.length s)
 
 
 let write_record o record =
-  let s = dump_tls_record record in
+  let s = exact_dump_tls_record record in
   really_write o s
 
 
@@ -54,14 +54,14 @@ let rec forward state i o =
     begin
       match record.content_type, state.clear with
       | CT_Handshake, true ->
-	let hs_msg = parse_handshake_msg None (input_of_string "Handshake" (dump_record_content record.record_content)) in
+	let hs_msg = parse_handshake_msg None (input_of_string "Handshake" (exact_dump_record_content record.record_content)) in
 	print_endline (print_value ~indent:"  " ~name:"Handshake content" (value_of_handshake_msg hs_msg))
       | CT_ChangeCipherSpec, true ->
-	let hs_msg = parse_change_cipher_spec (input_of_string "CCS" (dump_record_content record.record_content)) in
+	let hs_msg = parse_change_cipher_spec (input_of_string "CCS" (exact_dump_record_content record.record_content)) in
 	print_endline (print_value ~indent:"  " ~name:"CCS content" (value_of_change_cipher_spec hs_msg));
 	state.clear <- false
       | CT_Alert, true ->
-	let hs_msg = parse_tls_alert (input_of_string "Alert" (dump_record_content record.record_content)) in
+	let hs_msg = parse_tls_alert (input_of_string "Alert" (exact_dump_record_content record.record_content)) in
 	print_endline (print_value ~indent:"  " ~name:"Alert content" (value_of_tls_alert hs_msg))
       | _ -> print_newline ()
     end;

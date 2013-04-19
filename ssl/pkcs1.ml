@@ -119,7 +119,7 @@ let raw_sign rnd_state typ hash msg n d =
     };
     X509Basics.hash_digest = digest
   } in
-  encrypt rnd_state typ (X509Basics.dump_hashAlgAndValue asn1_struct) n d
+  encrypt rnd_state typ (X509Basics.exact_dump_hashAlgAndValue asn1_struct) n d
 
 let raw_verify typ msg s n e =
   try
