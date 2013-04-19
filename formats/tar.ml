@@ -2,6 +2,7 @@ open Parsifal
 open BasePTypes
 open PTypes
 
+(* TODO: Mark ustar as one possible extra header *)
 
 enum file_type (8, UnknownVal UnknownFileType) =
   | 0 -> NormalFile

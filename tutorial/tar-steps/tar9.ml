@@ -24,8 +24,8 @@ let parse_tar_numstring len input =
   try int_of_string ("0o" ^ octal_value)
   with _ -> raise (ParsingException (CustomException "int_of_string", _h_of_si input))
 
-let dump_tar_numstring len v =
-  Printf.sprintf "%*.*o\x00" len len v
+let dump_tar_numstring len buf v =
+  Printf.bprintf buf "%*.*o\x00" len len v
 
 let value_of_tar_numstring v = VSimpleInt v
 
@@ -50,9 +50,10 @@ let parse_azt_string len input =
     String.sub s 0 index;
   with Not_found -> s
 
-let dump_azt_string len s =
+let dump_azt_string len buf s =
   let missing_len = len - (String.length s) in
-  s ^ (String.make missing_len '\x00')
+  Buffer.add_string buf s;
+  Buffer.add_string buf (String.make missing_len '\x00')
 
 let value_of_azt_string s = VString (s, false)
 
