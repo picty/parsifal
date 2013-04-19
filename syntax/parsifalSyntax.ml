@@ -54,7 +54,7 @@ type ptype =
 
 
 (* Records *)
-type field_attribute = NoFieldAttr | Optional | ParseCheckpoint | ParseField
+type field_attribute = NoFieldAttr | Optional | ParseCheckpoint | DumpCheckpoint | ParseField
 type struct_description = (Loc.t * string * ptype * field_attribute) list
 
 
@@ -261,8 +261,12 @@ let ocaml_type_of_field_type _loc t opt =
   let real_t = ocaml_type_of_ptype _loc t in
   if opt = Optional then <:ctyp< option $real_t$ >> else real_t
 
-let keep_built_fields l = List.filter (fun (_, _, _, a) -> a <> ParseCheckpoint) l
-let keep_dumped_fields l = List.filter (fun (_, _, _, a) -> (a <> ParseCheckpoint) && (a <> ParseField)) l
+let keep_parsed_fields fields =
+  List.filter (fun (_, _, _, a) -> a <> DumpCheckpoint) fields
+let keep_built_fields fields =
+  List.filter (fun (_, _, _, a) -> (a <> ParseCheckpoint) && (a <> DumpCheckpoint)) fields
+let keep_dumped_fields fields =
+  List.filter (fun (_, _, _, a) -> (a <> ParseCheckpoint) && (a <> ParseField)) fields
 
 let split_header _loc (hdr, isC) =
   let _c, _t = match hdr with
@@ -488,7 +492,7 @@ let mk_parse_fun lwt_fun _loc c =
 	    | _, _ -> f
 	  in
 	  mk_let_in n <:expr< $parse_f$ input >> tmp
-      in [parse_fields fields]
+      in [parse_fields (keep_parsed_fields fields)]
 
     | Union union ->
       let mk_case = function
@@ -604,9 +608,14 @@ let mk_dump_fun _loc c =
       | (_loc, n, t, attr)::r ->
 	let tmp = dump_fields r
 	and raw_f = dump_fun_of_ptype _loc t in
-	let f = if attr = Optional then <:expr< Parsifal.try_dump $raw_f$ >> else raw_f in
-	let dump_f = <:expr< $f$ buf $lid:c.name$.$lid:n$ >> in
-	<:expr< let $lid:"_" ^ n$ = $dump_f$ in $tmp$ >>
+	let f = if attr = Optional then <:expr< Parsifal.try_dump $raw_f$ >> else raw_f
+	and varname, arg =
+	  if attr = DumpCheckpoint
+	  then n, <:expr< $lid: c.name$ >>
+	  else "_" ^ n, <:expr< $lid:c.name$.$lid:n$ >>
+	in
+	let dump_f = <:expr< $f$ buf $arg$ >> in
+	<:expr< let $lid:varname$ = $dump_f$ in $tmp$ >>
     in [dump_fields (keep_dumped_fields fields)]
 
   | Union union ->
@@ -822,6 +831,7 @@ EXTEND Gram
     attr = OPT [
       "optional" -> Optional;
     | "parse_checkpoint" -> ParseCheckpoint;
+    | "dump_checkpoint" -> DumpCheckpoint;
     | "parse_field" -> ParseField
     ]; name = ident; ":"; field = ptype  ->
     match attr with
