@@ -15,6 +15,7 @@ Ciphersuites:
  - check the accepted ciphersuites
  - determine the preferred ciphersuites (with different stimuli)
  - determine the choice algorithm (directive or courteous)
+ - check for SCSV support / intolerance (in particular when it is the *first* suite)
 
 Compression Methods:
  - check the accepted comrpession methods
