@@ -1,28 +1,25 @@
 v0.2 (apr. 2013)
  - add hex_container / gzip_container as custom containers => needed for PNG
+ - General
+   * have a redmine to put all this stuff
+   * clean up TODOs in ml files.
+   * prepare the v0.2 version as the first one published
+ - Once v0.2 is freezed, add all the changes in a Changelog!
  - Write asn1_struct (struct + asn1_alias)
  - Software Engineering
    * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
    * non-regression test on answer-type/ncerts
  - Merge tls_context and ssl2_context?
  - Misc
-   * Factor som code (verbose option, file handling, action handling) in getopt
+   * Factor some code (verbose option, file handling, action handling) in getopt
    * getopt tuning (help usage messages [principal and details], multiline descriptions)
    * getopt tuning (add constraint on the number of args?)
    * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
- - Docs
-   * Write a tutorial
-     + Installation
-     + First use (x509 / dns)
-     + Creating support for new formats: tar, pcap
- - General
-   * have a redmine to put all this stuff
-   * clean up TODOs in ml files.
+ - Rewrite the tutorial as a HTML journey (installation, examples in interactive loop, tar-steps, dns-steps)
  - Tools
    * Write a cool passive TLS_Proxy
    * Add direct hex input to asn1parse and other programs
    * check_sslserver (see check_sslserver.ml for a complete TODO)
-   * picodig (using a special sr function (send/receive)?)
    * rewrite server-answer with the following options
      -p port to bind
      -A alert to send (Fatal,HandshakeFailure)
@@ -48,6 +45,7 @@ v0.3 (may 2013)
    * write tests for DNS
    * add an optional parameter "dont_quote" to print_value
    * use "dont_quote" in picodig
+   * picodig (using a special sr function (send/receive)?)
  - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
  - TlsEngine (work needed to factor code in mapAnswers and extractSessions properly)
    * work on TlsEngine.update* functions
