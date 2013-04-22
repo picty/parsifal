@@ -3,7 +3,7 @@ open BasePTypes
 open PTypes
 
 
-enum rr_type (16, UnknownVal UnknownRRType) =
+enum rr_type (16, UnknownVal UnknownQueryType) =
   | 1 -> RRT_A, "A"
   | 2 -> RRT_NS, "NS"
   | 3 -> RRT_MD, "MD"
@@ -19,41 +19,17 @@ enum rr_type (16, UnknownVal UnknownRRType) =
   | 13 -> RRT_HINFO, "HINFO"
   | 14 -> RRT_MINFO, "MINFO"
   | 15 -> RRT_MX, "MX"
+  | 252 -> RRT_AXFR, "AXFR"
+  | 253 -> RRT_MAILB, "MAILB"
+  | 254 -> RRT_MAILA, "MAILA"
+  | 255 -> RRT_ANYTYPE, "*"
 
-enum query_type (16, UnknownVal UnknownQueryType) =
-  | 1 -> QT_A, "A"
-  | 2 -> QT_NS, "NS"
-  | 3 -> QT_MD, "MD"
-  | 4 -> QT_MF, "MF"
-  | 5 -> QT_CNAME, "CNAME"
-  | 6 -> QT_SOA, "SOA"
-  | 7 -> QT_MB, "MB"
-  | 8 -> QT_MG, "MG"
-  | 9 -> QT_MR, "MR"
-  | 10 -> QT_NULL, "NULL"
-  | 11 -> QT_WKS, "WKS"
-  | 12 -> QT_PTR, "PTR"
-  | 13 -> QT_HINFO, "HINFO"
-  | 14 -> QT_MINFO, "MINFO"
-  | 15 -> QT_MX, "MX"
-  | 252 -> QT_AXFR, "AXFR"
-  | 253 -> QT_MAILB, "MAILB"
-  | 254 -> QT_MAILA, "MAILA"
-  | 255 -> QT_ANYTYPE, "*"
-
-
-enum rr_class (16, UnknownVal UnknownRRClass) =
+enum rr_class (16, UnknownVal UnknownQueryClass) =
   | 1 -> RRC_IN, "IN"
   | 2 -> RRC_CS, "CSNET"
   | 3 -> RRC_CH, "CHAOS"
   | 4 -> RRC_HS, "Hesiod"
-
-enum query_class (16, UnknownVal UnknownQueryClass) =
-  | 1 -> QC_IN, "IN"
-  | 2 -> QC_CS, "CSNET"
-  | 3 -> QC_CH, "CHAOS"
-  | 4 -> QC_HS, "Hesiod"
-  | 255 -> QC_ANYCLASS, "*"
+  | 255 -> RRC_ANYCLASS, "*"
 
 type label = Label of string | Pointer of int
 
@@ -139,8 +115,8 @@ union rdata [enrich] (UnparsedRData) =
 
 struct question = {
   qname : domain;
-  qtype : query_type;
-  qclass : query_class
+  qtype : rr_type;
+  qclass : rr_class
 }
 
 struct rr = {

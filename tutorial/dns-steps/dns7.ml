@@ -3,7 +3,7 @@ open BasePTypes
 open PTypes
 
 
-enum rr_type (16, UnknownVal UnknownRRType) =
+enum rr_type (16, UnknownVal UnknownQueryType) =
   | 1 -> RRT_A, "A"
   | 2 -> RRT_NS, "NS"
   | 3 -> RRT_MD, "MD"
@@ -19,41 +19,17 @@ enum rr_type (16, UnknownVal UnknownRRType) =
   | 13 -> RRT_HINFO, "HINFO"
   | 14 -> RRT_MINFO, "MINFO"
   | 15 -> RRT_MX, "MX"
+  | 252 -> RRT_AXFR, "AXFR"
+  | 253 -> RRT_MAILB, "MAILB"
+  | 254 -> RRT_MAILA, "MAILA"
+  | 255 -> RRT_ANYTYPE, "*"
 
-enum query_type (16, UnknownVal UnknownQueryType) =
-  | 1 -> QT_A, "A"
-  | 2 -> QT_NS, "NS"
-  | 3 -> QT_MD, "MD"
-  | 4 -> QT_MF, "MF"
-  | 5 -> QT_CNAME, "CNAME"
-  | 6 -> QT_SOA, "SOA"
-  | 7 -> QT_MB, "MB"
-  | 8 -> QT_MG, "MG"
-  | 9 -> QT_MR, "MR"
-  | 10 -> QT_NULL, "NULL"
-  | 11 -> QT_WKS, "WKS"
-  | 12 -> QT_PTR, "PTR"
-  | 13 -> QT_HINFO, "HINFO"
-  | 14 -> QT_MINFO, "MINFO"
-  | 15 -> QT_MX, "MX"
-  | 252 -> QT_AXFR, "AXFR"
-  | 253 -> QT_MAILB, "MAILB"
-  | 254 -> QT_MAILA, "MAILA"
-  | 255 -> QT_ANYTYPE, "*"
-
-
-enum rr_class (16, UnknownVal UnknownRRClass) =
+enum rr_class (16, UnknownVal UnknownQueryClass) =
   | 1 -> RRC_IN, "IN"
   | 2 -> RRC_CS, "CSNET"
   | 3 -> RRC_CH, "CHAOS"
   | 4 -> RRC_HS, "Hesiod"
-
-enum query_class (16, UnknownVal UnknownQueryClass) =
-  | 1 -> QC_IN, "IN"
-  | 2 -> QC_CS, "CSNET"
-  | 3 -> QC_CH, "CHAOS"
-  | 4 -> QC_HS, "Hesiod"
-  | 255 -> QC_ANYCLASS, "*"
+  | 255 -> RRC_ANYCLASS, "*"
 
 
 type domain =
@@ -141,8 +117,6 @@ struct mx_rdata [both_param ctx] = {
   mx_host : domain[ctx]
 }
 
-(* Improve value_of *)
-
 union rdata [enrich; both_param ctx] (UnparsedRData) =
   | RRT_A -> Address of ipv4
   | RRT_NS -> Domain of domain[ctx]
@@ -164,8 +138,8 @@ union rdata [enrich; both_param ctx] (UnparsedRData) =
 
 struct question [both_param ctx] = {
   qname : domain[ctx];
-  qtype : query_type;
-  qclass : query_class
+  qtype : rr_type;
+  qclass : rr_class
 }
 
 struct rr [both_param ctx] = {
@@ -176,15 +150,6 @@ struct rr [both_param ctx] = {
   rdata : container[uint16] of rdata(BOTH ctx; rtype)
 }
 
-
-(* TODO! *)
-(* How to update the reverse hashtbl correctly while dumping ? Using a buffer instead of a string? *)
-(* We would also need a dump_checkpoint to initialize the c.base_offset *)
-(* - dump_checkpoint *)
-(* - rewrite params handling *)
-(* - use different ctxs checkpoints for parse/dump *)
-(* - rewrite dump_* as functions working on a buffer *)
-(* - write a wrapper, dump : (Buffer.t -> 'a -> unit) -> string *)
 
 struct dns_message [with_exact] = {
   parse_checkpoint ctx : dns_pcontext;
@@ -213,7 +178,7 @@ let mk_query name qtype =
     unparsedStuff = 0x0100;
     qdcount = 1;
     ancount = 0; nscount = 0; arcount = 0;
-    questions = [{qname = domain; qtype = qtype; qclass = QC_IN}];
+    questions = [{qname = domain; qtype = qtype; qclass = RRC_IN}];
     answers = []; authority_answers = []; additional_records = [];
   }
 
@@ -221,8 +186,8 @@ let mk_query name qtype =
 let display_question q =
   Printf.printf "%-30s         %-10s %-10s\n"
     (String.concat "." (string_of_domain q.qname))
-    (string_of_query_type q.qtype)
-    (string_of_query_class q.qclass)
+    (string_of_rr_type q.qtype)
+    (string_of_rr_class q.qclass)
 
 let display_rr rr =
   Printf.printf "%-30s %-7d %-10s %-10s %s\n"
@@ -263,4 +228,4 @@ let ask host name qtype =
     
 
 let _ =
-  ask Sys.argv.(1) Sys.argv.(2) (query_type_of_string Sys.argv.(3))
+  ask Sys.argv.(1) Sys.argv.(2) (rr_type_of_string Sys.argv.(3))
