@@ -1,7 +1,6 @@
 v0.2 (apr. 2013)
  - Clean up DNS implementation
-   * should there really be both a rr_ and a query_ type/class type enum => merge?
-   * put the code from dns7.ml into formats/dns.ml
+   * write picodig in net/test
    * write tests for DNS
  - Write asn1_struct (struct + asn1_alias)
  - Software Engineering

@@ -3,7 +3,7 @@ open BasePTypes
 open PTypes
 
 
-enum rr_type (16, UnknownVal UnknownRRType) =
+enum rr_type (16, UnknownVal UnknownQueryType) =
   | 1 -> RRT_A, "A"
   | 2 -> RRT_NS, "NS"
   | 3 -> RRT_MD, "MD"
@@ -19,145 +19,92 @@ enum rr_type (16, UnknownVal UnknownRRType) =
   | 13 -> RRT_HINFO, "HINFO"
   | 14 -> RRT_MINFO, "MINFO"
   | 15 -> RRT_MX, "MX"
+  | 252 -> RRT_AXFR, "AXFR"
+  | 253 -> RRT_MAILB, "MAILB"
+  | 254 -> RRT_MAILA, "MAILA"
+  | 255 -> RRT_ANYTYPE, "*"
 
-enum query_type (16, UnknownVal UnknownQueryType) =
-  | 1 -> QT_A, "A"
-  | 2 -> QT_NS, "NS"
-  | 3 -> QT_MD, "MD"
-  | 4 -> QT_MF, "MF"
-  | 5 -> QT_CNAME, "CNAME"
-  | 6 -> QT_SOA, "SOA"
-  | 7 -> QT_MB, "MB"
-  | 8 -> QT_MG, "MG"
-  | 9 -> QT_MR, "MR"
-  | 10 -> QT_NULL, "NULL"
-  | 11 -> QT_WKS, "WKS"
-  | 12 -> QT_PTR, "PTR"
-  | 13 -> QT_HINFO, "HINFO"
-  | 14 -> QT_MINFO, "MINFO"
-  | 15 -> QT_MX, "MX"
-  | 252 -> QT_AXFR, "AXFR"
-  | 253 -> QT_MAILB, "MAILB"
-  | 254 -> QT_MAILA, "MAILA"
-  | 255 -> QT_ANYTYPE, "*"
-
-
-enum rr_class (16, UnknownVal UnknownRRClass) =
-  | 1 -> RRC_IN, "Internet"
+enum rr_class (16, UnknownVal UnknownQueryClass) =
+  | 1 -> RRC_IN, "IN"
   | 2 -> RRC_CS, "CSNET"
   | 3 -> RRC_CH, "CHAOS"
   | 4 -> RRC_HS, "Hesiod"
-
-enum query_class (16, UnknownVal UnknownQueryClass) =
-  | 1 -> QC_IN, "Internet"
-  | 2 -> QC_CS, "CSNET"
-  | 3 -> QC_CH, "CHAOS"
-  | 4 -> QC_HS, "Hesiod"
-  | 255 -> QC_ANYCLASS, "*"
-
-
-
-type dns_context = {
-  initial_offset : int;
-  previous_labels : (int, string list) Hashtbl.t;
-(*  rev_previous_labels : (string list, int) Hashtbl.t;   TODO: Useful for dump? *)
-}
-
-let mk_dns_context init_offset = {
-  initial_offset = init_offset;
-  previous_labels = Hashtbl.create 10;
-}
-
-
-type label = Label of string | Pointer of int
-
-let parse_label input =
-  let n = parse_uint8 input in
-  match (n land 0xc0), (n land 0x3f) with
-  | 0, 0 -> false, None
-  | 0xc0, hi_offset ->
-    let lo_offset = parse_uint8 input in
-    let offset = (hi_offset lsl 8) lor lo_offset in
-    false, Some (Pointer offset)
-  | 0, len ->
-    true, Some (Label (parse_string len input))
-  | _ -> raise (ParsingException (CustomException "Invalid label length", _h_of_si input))
-
-let dump_label buf = function
-  | Label s -> dump_varlen_string dump_uint8 buf s
-  | Pointer p -> dump_uint16 buf (0xc000 land p)
-
-let string_of_label = function
-  | Label s -> s
-  | Pointer p -> "@" ^ (string_of_int p)
-
-let value_of_label l = VString (string_of_label l, false)
+  | 255 -> RRC_ANYCLASS, "*"
 
 
 type domain =
-  | RawDomain of label list
-  | UnfoldedDomain of string list
+  | DomainLabel of string * domain
+  | DomainPointer of int
+  | DomainEnd
 
 
-let rec resolve tbl = function
-  | [] -> 0, []
-  | [Pointer p] -> 0, Hashtbl.find tbl p
-  | (Label l)::r ->
-    let n_labels, resolved_r = resolve tbl r in
-    (n_labels + 1, l::resolved_r)
-  | _ -> (* TODO *) failwith "Invalid domain"
+type dns_pcontext = {
+  base_offset : int;
+  direct_resolver : (int, domain) Hashtbl.t;
+}
 
-let rec record_new_offsets tbl offset = function
-  | 0, _ -> ()
-  | n_labels, ((l::r) as d) ->
-    Hashtbl.replace tbl offset d;
-    record_new_offsets tbl (offset + 1 + (String.length l)) (n_labels - 1, r)
-  | _ -> (* TODO *) failwith "Internal error: record_new_offsets"
+type dns_dcontext = {
+  output_offset : int;
+  reverse_resolver : (domain, int) Hashtbl.t;
+}
 
-let unfold_domain o ctx ls = match ctx with
-  | None -> RawDomain ls
-  | Some context ->
-    try
-      let (_, res) as record_data = resolve context.previous_labels ls in
-      record_new_offsets context.previous_labels (o - context.initial_offset) record_data;
-      UnfoldedDomain res
-    with
-      Not_found ->
-	(* TODO: Should not happen *)
-	RawDomain ls
+let parse_dns_pcontext input = {
+  base_offset = input.cur_base + input.cur_offset;
+  direct_resolver = Hashtbl.create 10;
+}
 
-let parse_domain ctx input =
-  let rec aux accu =
-    let do_continue, label = parse_label input in
-    let new_accu = match label with
-      | None -> accu
-      | Some l -> l::accu
-    in
-    if do_continue
-    then aux new_accu
-    else List.rev new_accu
-  in
-  let domain_start = input.cur_offset + input.cur_base in
-  let res = aux [] in
-  unfold_domain domain_start ctx res
+let dump_dns_dcontext buf _ = {
+  output_offset = Buffer.length buf;
+  reverse_resolver = Hashtbl.create 10;
+}
 
-let rec dump_raw_domain buf = function
-  | [] -> dump_uint8 buf 0
-  | [Pointer _ as l] -> dump_label buf l
-  | (Label _ as l)::r ->
-    dump_label buf l;
-    dump_raw_domain buf r
-  | _ -> (* TODO *) failwith "Invalid domain"
+let resolve_domains = ref true
+let compress_domains = ref true
 
-let dump_domain buf = function
-  | RawDomain d -> dump_raw_domain buf d
-  | UnfoldedDomain _ -> failwith "NotImplemented: dump_unfolded_domain"
+let rec parse_domain ctx input =
+  let o = input.cur_base + input.cur_offset in
+  let n = parse_uint8 input in
+  match (n land 0xc0), (n land 0x3f) with
+  | 0, 0 -> DomainEnd
+  | 0xc0, hi_offset ->
+    let lo_offset = parse_uint8 input in
+    let offset = (hi_offset lsl 8) lor lo_offset in
+    let d = DomainPointer offset in
+    if should_enrich resolve_domains input.enrich
+    then hash_get ctx.direct_resolver offset d
+    else d
+  | 0, len ->
+    let label = parse_string len input in
+    let rem = parse_domain ctx input in
+    let d = DomainLabel (label, rem) in
+    if should_enrich resolve_domains input.enrich
+    then Hashtbl.replace ctx.direct_resolver (o - ctx.base_offset) d;
+    d
+  | _ -> raise (ParsingException (CustomException "Invalid label length", _h_of_si input))
+
+let rec dump_domain ctx buf = function
+  | DomainEnd -> dump_uint8 buf 0
+  | DomainPointer p -> dump_uint16 buf (0xc000 land p)
+  | (DomainLabel (l, r)) as d ->
+    if !compress_domains then begin
+      try
+	dump_domain ctx buf (DomainPointer (Hashtbl.find ctx.reverse_resolver d))
+      with Not_found ->
+	Hashtbl.replace ctx.reverse_resolver d (Buffer.length buf - ctx.output_offset);
+	dump_varlen_string dump_uint8 buf l;
+	dump_domain ctx buf r
+    end else begin
+      dump_varlen_string dump_uint8 buf l;
+      dump_domain ctx buf r
+    end
+
+let rec string_of_domain = function
+  | DomainLabel (s, rem) -> s::(string_of_domain rem)
+  | DomainPointer p -> ["@" ^ (string_of_int p)]
+  | DomainEnd -> []
 
 let value_of_domain d =
-  let content = match d with
-    | RawDomain d -> List.map string_of_label d
-    | UnfoldedDomain d -> d
-  in
+  let content = string_of_domain d in
   VRecord [
     "@name", VString ("domain", false);
     "@string_of", VString (String.concat "." content, false);
@@ -165,56 +112,58 @@ let value_of_domain d =
   ]
 
 
-struct mx_rdata [param dns_context] = {
+struct mx_rdata [both_param ctx] = {
   mx_preference : uint16;
-  mx_host : domain(dns_context)
+  mx_host : domain[ctx]
 }
 
+(* TODO: Improve value_of *)
 
-union rdata [enrich; param dns_context] (UnparsedRData) =
+union rdata [enrich; both_param ctx] (UnparsedRData) =
   | RRT_A -> Address of ipv4
-  | RRT_NS -> Domain of domain(dns_context)
+  | RRT_NS -> Domain of domain[ctx]
   (* | 3 -> RRT_MD, "MD" *)
   (* | 4 -> RRT_MF, "MF" *)
-  | RRT_CNAME -> Domain of domain(dns_context)
+  | RRT_CNAME -> Domain of domain(ctx)
   (* | 6 -> RRT_SOA, "SOA" *)
   (* | 7 -> RRT_MB, "MB" *)
   (* | 8 -> RRT_MG, "MG" *)
   (* | 9 -> RRT_MR, "MR" *)
   (* | 10 -> RRT_NULL, "NULL" *)
   (* | 11 -> RRT_WKS, "WKS" *)
-  | RRT_PTR -> Domain of domain(dns_context)
+  | RRT_PTR -> Domain of domain[ctx]
   (* | 13 -> RRT_HINFO, "HINFO" *)
   (* | 14 -> RRT_MINFO, "MINFO" *)
-  | RRT_MX -> MX of mx_rdata(dns_context)
+  | RRT_MX -> MX of mx_rdata[ctx]
 
 
-struct question [param dns_context] = {
-  qname : domain(dns_context);
-  qtype : query_type;
-  qclass : query_class
+
+struct question [both_param ctx] = {
+  qname : domain[ctx];
+  qtype : rr_type;
+  qclass : rr_class
 }
 
-struct rr [param dns_context] = {
-  rname : domain(dns_context);
+struct rr [both_param ctx] = {
+  rname : domain[ctx];
   rtype : rr_type;
   rclass : rr_class;
   ttl : uint32;
-  rdata : container[uint16] of rdata(dns_context; rtype)
+  rdata : container[uint16] of rdata(BOTH ctx; rtype)
 }
 
 
-struct raw_dns_message [param dns_context] = {
+struct dns_message [with_exact] = {
+  parse_checkpoint ctx : dns_pcontext;
+  dump_checkpoint ctx : dns_dcontext;
   id : uint16;
   unparsedStuff : uint16;
   qdcount : uint16;
   ancount : uint16;
   nscount : uint16;
   arcount : uint16;
-  questions : list(qdcount) of question(dns_context);
-  answers : list(ancount) of rr(dns_context);
-  authority_answers : list(nscount) of rr(dns_context);
-  additional_records : list(arcount) of rr(dns_context)
+  questions : list(qdcount) of question[ctx];
+  answers : list(ancount) of rr[ctx];
+  authority_answers : list(nscount) of rr[ctx];
+  additional_records : list(arcount) of rr[ctx]
 }
-
-alias dns_message = raw_dns_message(Some (mk_dns_context input.cur_base))
