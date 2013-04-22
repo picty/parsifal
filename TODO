@@ -1,7 +1,5 @@
 v0.2 (apr. 2013)
- - Clean up DNS implementation
-   * clean up picodig
-   * write tests for DNS
+ - add hex_container / gzip_container as custom containers => needed for PNG
  - Write asn1_struct (struct + asn1_alias)
  - Software Engineering
    * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
@@ -45,6 +43,11 @@ v0.2 (apr. 2013)
      + add SSLv2 support in mapAnswers (especially -g)
 
 v0.3 (may 2013)
+ - Clean up DNS implementation
+   * add support for SOA RR
+   * write tests for DNS
+   * add an optional parameter "dont_quote" to print_value
+   * use "dont_quote" in picodig
  - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
  - TlsEngine (work needed to factor code in mapAnswers and extractSessions properly)
    * work on TlsEngine.update* functions
@@ -126,7 +129,6 @@ v0.3 (may 2013)
    * Add SoftExceptions for enums (could be useful for content_type / alert_level)
    * add control commands in struct (check / seek / stop)
    * be more cautious about int32 types...
-   * add hex_container / gzip_container as custom containers
    * improve get_wrapper (raw, gzip, base64, etc.)
    * add {,} to get path language (x.{y,z}.{t,a})
    * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))

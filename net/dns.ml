@@ -117,7 +117,16 @@ struct mx_rdata [both_param ctx] = {
   mx_host : domain[ctx]
 }
 
-(* TODO: Improve value_of *)
+(* TODO: value_of overload is a hack. *)
+let value_of_mx_rdata mx_rdata =
+  let content = string_of_domain mx_rdata.mx_host in
+  let domain = String.concat "." content in
+  VRecord [
+    "@name", VString ("mx_rdata", false);
+    "@string_of", VString (Printf.sprintf "%d %s" mx_rdata.mx_preference domain, false);
+    "mx_preference", VSimpleInt mx_rdata.mx_preference;
+    "mx_host", value_of_domain mx_rdata.mx_host;
+  ]
 
 union rdata [enrich; both_param ctx] (UnparsedRData) =
   | RRT_A -> Address of ipv4
