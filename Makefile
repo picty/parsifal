@@ -1,6 +1,7 @@
 all:
 	$(MAKE) -C syntax all byte
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core all byte
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/unit check
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/test all byte check
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net all byte
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net/test all byte check
@@ -34,5 +35,6 @@ clean:
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net/test clean
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net clean
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/test clean
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/unit clean
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core clean
 	$(MAKE) -C syntax clean
