@@ -1,4 +1,5 @@
 v0.2 (apr. 2013)
+ - patch parse_checkpoint to allow empty identifiers (parse_checkpoint _ : update_stuff)
  - add hex_container / gzip_container as custom containers => needed for PNG
  - General
    * have a redmine to put all this stuff
@@ -40,6 +41,7 @@ v0.2 (apr. 2013)
      + add SSLv2 support in mapAnswers (especially -g)
 
 v0.3 (may 2013)
+ - Context handling: code some helpers using (string, 'a) Hashtbl.t to allow for a simple parsing context with parse_checkpoint/parse_fields
  - Clean up DNS implementation
    * add support for SOA RR
    * write tests for DNS
