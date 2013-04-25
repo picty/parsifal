@@ -132,18 +132,23 @@ let print_hs ctx hs =
 
 let get_cs _ hs =
   match hs.handshake_content with
-    | ServerHello { ciphersuite = cs } -> Result cs
-    | _ -> NothingSoFar
+  | ServerHello { ciphersuite = cs } -> Result cs
+  | _ -> NothingSoFar
 
 let get_cm _ hs =
   match hs.handshake_content with
-    | ServerHello { compression_method = cm } -> Result cm
-    | _ -> NothingSoFar
+  | ServerHello { compression_method = cm } -> Result cm
+  | _ -> NothingSoFar
 
 let get_sh_version _ hs =
   match hs.handshake_content with
-    | ServerHello { server_version = v } -> Result v
-    | _ -> NothingSoFar
+  | ServerHello { server_version = v } -> Result v
+  | _ -> NothingSoFar
+
+let get_certs _ hs =
+  match hs.handshake_content with
+  | Certificate certs -> Result certs
+  | _ -> NothingSoFar
 
 let stop_on_fatal_alert alert =
   if alert.alert_level = AL_Fatal
@@ -226,6 +231,22 @@ let ssl_scan_versions () =
 
 let print_list = List.iter print_endline
 
+let save_certs certs =
+  let rec save_one_cert i = function
+    | cert::r ->
+      let f = open_out (!host ^ "-" ^ (string_of_int i) ^ ".pem") in
+      let buf = Buffer.create !default_buffer_size in
+      (* Base64.dump_base64_container (Base64.HeaderInList ["CERTIFICATE"]) dump__certificate buf cert; *)
+      dump__certificate buf cert;
+      Buffer.output_buffer f buf;
+      close_out f;
+      save_one_cert (i+1) r
+    | [] -> i
+  in
+  let n_certs = save_one_cert 0 certs in
+  Printf.printf "Saved %d certificates\n" n_certs
+
+
 let print_result print_fun = function
   | Result r -> print_fun r
   | Retry -> prerr_endline "Retry ?!"
@@ -242,4 +263,6 @@ let _ =
     | ["scan-compressions"] -> print_result print_list (Lwt_unix.run (ssl_scan get_cm string_of_compression_method (remove_from_list compressions)))
     | ["scan-versions"] -> print_result ignore (Lwt_unix.run (ssl_scan_versions ()))
     | ["probe"] | [] -> print_result ignore (Lwt_unix.run (send_and_receive !retry print_hs print_alert))
+    | ["extract-certificates"]
+    | ["extract-certs"] -> print_result save_certs (Lwt_unix.run (send_and_receive !retry get_certs stop_on_fatal_alert))
     | _ -> failwith "Invalid command"
