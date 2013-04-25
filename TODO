@@ -6,7 +6,6 @@ v0.2 (apr. 2013)
    * clean up TODOs in ml files.
    * prepare the v0.2 version as the first one published
  - Once v0.2 is freezed, add all the changes in a Changelog!
- - Write asn1_struct (struct + asn1_alias)
  - Software Engineering
    * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
    * non-regression test on answer-type/ncerts
@@ -41,6 +40,7 @@ v0.2 (apr. 2013)
      + add SSLv2 support in mapAnswers (especially -g)
 
 v0.3 (may 2013)
+ - Improve asn1_struct (correct option handling: params / top)
  - Context handling: code some helpers using (string, 'a) Hashtbl.t to allow for a simple parsing context with parse_checkpoint/parse_fields
  - Clean up DNS implementation
    * add support for SOA RR

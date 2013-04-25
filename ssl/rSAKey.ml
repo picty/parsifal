@@ -1,6 +1,6 @@
 open Asn1PTypes
 
-struct rsa_private_key_content = {
+asn1_struct rsa_private_key = {
   version : der_smallint;
   modulus : der_integer;
   publicExponent : der_integer;
@@ -11,14 +11,12 @@ struct rsa_private_key_content = {
   exponent2 : der_integer;
   coefficient : der_integer
 }
-asn1_alias rsa_private_key
 
 
-struct rsa_public_key_content = {
+asn1_struct rsa_public_key = {
   p_modulus : der_integer;
   p_publicExponent : der_integer
 }
-asn1_alias rsa_public_key
 
 
 alias rsa_signature = der_integer_content

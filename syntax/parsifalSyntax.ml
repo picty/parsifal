@@ -792,12 +792,7 @@ let mk_parsifal_construction _loc name raw_opts specific_descr =
   and funs = [ mk_decls; mk_type; mk_specific_funs;
 	       mk_parse_fun false; mk_parse_fun true; mk_exact_parse_fun;
 	       mk_dump_fun; mk_exact_dump_fun; mk_value_of_fun ] in
-  let rec mk_sequence = function
-    | [] -> <:str_item< >>
-    | [si] -> <:str_item< $si$ >>
-    | si::r -> <:str_item< $si$; $mk_sequence r$ >>
-  in
-  mk_sequence (List.concat (List.map (fun f -> f _loc pc) funs))
+  mk_sequence _loc (List.concat (List.map (fun f -> f _loc pc) funs))
 
 
 EXTEND Gram
@@ -905,13 +900,26 @@ EXTEND Gram
     mk_parsifal_construction _loc name raw_opts aa_descr
 
   | "asn1_alias"; name = ident; raw_opts = option_list ->
-    let real_name = lid_of_ident name in
+    let content_name = (lid_of_ident name) ^ "_content" in
     let aa_descr = ASN1Alias {
       aalist = false;
       aaheader = (Universal "T_Sequence", true);
-      aatype = (PT_Custom (None, real_name ^ "_content", []))
+      aatype = (PT_Custom (None, content_name, []))
     } in
     mk_parsifal_construction _loc name raw_opts aa_descr      
+
+  | "asn1_struct"; name = ident; raw_opts = option_list; "=";
+    "{"; fields = struct_fields; "}" ->
+    let content_name = (lid_of_ident name) ^ "_content" in
+    let content_ident = <:ident< $lid:content_name$ >> in
+    let struct_funs = mk_parsifal_construction _loc content_ident raw_opts (Struct fields) in
+    let aa_descr = ASN1Alias {
+      aalist = false;
+      aaheader = (Universal "T_Sequence", true);
+      aatype = (PT_Custom (None, content_name, []))
+    } in
+    let alias_funs = mk_parsifal_construction _loc name raw_opts aa_descr in
+    mk_sequence _loc [struct_funs; alias_funs]
 
   | "asn1_union"; name = ident; raw_opts = option_list;
     "("; u_c = ident; ")";

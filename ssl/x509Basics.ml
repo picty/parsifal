@@ -45,11 +45,10 @@ let parse_attributeValue t input =
   | None -> parse_attributeValue AVT_Anything input
   | Some res -> res
 
-struct atv_content = {
+asn1_struct atv = {
   attributeType : der_oid;
   attributeValue : attributeValue(hash_get attributeValueType_directory attributeType AVT_Anything)
 }
-asn1_alias atv
 
 (* TODO: Rewrite this once to_string is generated automatically, at least for scalar types? *)
 let string_of_atv_value = function
@@ -122,11 +121,10 @@ union algorithmParams [enrich] (UnparsedParams of der_object) =
   | APT_Null -> NoParams of der_null
   | APT_DSAParams -> DSAParams of DSAKey.dsa_params
 
-struct algorithmIdentifier_content = {
+asn1_struct algorithmIdentifier = {
   algorithmId : der_oid;
   optional algorithmParams : algorithmParams(hash_get algorithmParamsType_directory algorithmId APT_Unknown)
 }
-asn1_alias algorithmIdentifier
 
 
 (*******************)
@@ -160,11 +158,10 @@ union subjectPublicKey [enrich] (UnparsedPublicKey of der_object) =
   | SPK_DSA _params -> DSA of DSAKey.dsa_public_key
   | SPK_RSA -> RSA of RSAKey.rsa_public_key
 
-struct subjectPublicKeyInfo_content = {
+asn1_struct subjectPublicKeyInfo = {
   algorithm : algorithmIdentifier;
   subjectPublicKey : bitstring_container of subjectPublicKey(subjectPublicKeyType_of_algo algorithm)
 }
-asn1_alias subjectPublicKeyInfo
 
 
 
@@ -212,8 +209,7 @@ let parse_der_time input =
     UnparsedTime (mk_object c t content)
 
 
-struct validity_content = {
+asn1_struct validity = {
   notBefore : der_time;
   notAfter : der_time
 }
-asn1_alias validity
