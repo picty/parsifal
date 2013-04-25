@@ -112,6 +112,36 @@ let value_of_domain d =
   ]
 
 
+struct soa_rdata [both_param ctx] = {
+  soa_mname : domain[ctx];
+  soa_rname : domain[ctx];
+  soa_serial: uint32;
+  soa_refresh : uint32;
+  soa_retry : uint32;
+  soa_expire : uint32;
+  soa_minimum : uint32
+}
+
+(* TODO: value_of overload is a hack. *)
+let value_of_soa_rdata soa_rdata =
+  let mname = String.concat "." (string_of_domain soa_rdata.soa_mname) in
+  let rname = String.concat "." (string_of_domain soa_rdata.soa_rname) in
+  VRecord [
+    "@name", VString ("soa_rdata", false);
+    "@string_of", VString (Printf.sprintf "%s %s %d %d %d %d %d" mname  rname
+			     soa_rdata.soa_serial soa_rdata.soa_refresh
+			     soa_rdata.soa_retry soa_rdata.soa_expire
+			     soa_rdata.soa_minimum, false);
+    "soa_mname", value_of_domain soa_rdata.soa_mname;
+    "soa_rname", value_of_domain soa_rdata.soa_rname;
+    "soa_serial", VSimpleInt soa_rdata.soa_serial;
+    "soa_refresh", VSimpleInt soa_rdata.soa_refresh;
+    "soa_retry", VSimpleInt soa_rdata.soa_retry;
+    "soa_expire", VSimpleInt soa_rdata.soa_expire;
+    "soa_minimum", VSimpleInt soa_rdata.soa_minimum;
+  ]
+
+
 struct mx_rdata [both_param ctx] = {
   mx_preference : uint16;
   mx_host : domain[ctx]
@@ -131,18 +161,10 @@ let value_of_mx_rdata mx_rdata =
 union rdata [enrich; both_param ctx] (UnparsedRData) =
   | RRT_A -> Address of ipv4
   | RRT_NS -> Domain of domain[ctx]
-  (* | 3 -> RRT_MD, "MD" *)
-  (* | 4 -> RRT_MF, "MF" *)
-  | RRT_CNAME -> Domain of domain(ctx)
-  (* | 6 -> RRT_SOA, "SOA" *)
-  (* | 7 -> RRT_MB, "MB" *)
-  (* | 8 -> RRT_MG, "MG" *)
-  (* | 9 -> RRT_MR, "MR" *)
-  (* | 10 -> RRT_NULL, "NULL" *)
-  (* | 11 -> RRT_WKS, "WKS" *)
+  | RRT_CNAME -> Domain of domain[ctx]
+  | RRT_SOA -> SOA of soa_rdata[ctx]
+  | RRT_NULL -> NullRData of binstring
   | RRT_PTR -> Domain of domain[ctx]
-  (* | 13 -> RRT_HINFO, "HINFO" *)
-  (* | 14 -> RRT_MINFO, "MINFO" *)
   | RRT_MX -> MX of mx_rdata[ctx]
 
 

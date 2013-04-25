@@ -1,4 +1,5 @@
 v0.2 (apr. 2013)
+ - add a "use_to_string" option to change the value_of behabiour (useful for mx_rdata / soa_rdata for example)
  - patch parse_checkpoint to allow empty identifiers (parse_checkpoint _ : update_stuff)
  - add hex_container / gzip_container as custom containers => needed for PNG
  - General
@@ -43,7 +44,6 @@ v0.3 (may 2013)
  - Improve asn1_struct (correct option handling: params / top)
  - Context handling: code some helpers using (string, 'a) Hashtbl.t to allow for a simple parsing context with parse_checkpoint/parse_fields
  - Clean up DNS implementation
-   * add support for SOA RR
    * write tests for DNS
    * add an optional parameter "dont_quote" to print_value
    * use "dont_quote" in picodig
