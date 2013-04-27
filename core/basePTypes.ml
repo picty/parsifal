@@ -6,6 +6,8 @@ open Parsifal
 (* Integers *)
 (************)
 
+type uint8 = int
+
 let parse_uint8 = parse_byte
 
 let peek_uint8 input =
@@ -20,6 +22,8 @@ let dump_uint8 buf v = Buffer.add_char buf (char_of_int (v land 0xff))
 let value_of_uint8 i = VInt (i, 8, LittleEndian)
 
 
+
+type uint16 = int
 
 let parse_uint16 input =
   if input.cur_offset + 2 <= input.cur_length then begin
@@ -73,6 +77,8 @@ let value_of_uint16le i = VInt (i, 16, LittleEndian)
 
 
 
+type uint24 = int
+
 let parse_uint24 input =
   if input.cur_offset + 3 <= input.cur_length then begin
     let res =
@@ -97,6 +103,8 @@ let dump_uint24 buf v =
 let value_of_uint24 i = VInt (i, 24, BigEndian)
 
 
+
+type uint32 = int (* TODO? *)
 
 let parse_uint32 input =
   if input.cur_offset + 4 <= input.cur_length then begin
@@ -125,7 +133,7 @@ let value_of_uint32 i = VInt (i, 32, BigEndian)
 
 
 
-type uint32le = int
+type uint32le = int (* TODO? *)
 
 let parse_uint32le input =
   if input.cur_offset + 4 <= input.cur_length then begin

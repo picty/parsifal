@@ -44,7 +44,6 @@ type field_len =
 
 type ptype =
   | PT_Empty
-  | PT_Int of string                        (* name of the integer type *)
   | PT_String of field_len * bool
   | PT_Array of expr * ptype
   | PT_List of field_len * ptype
@@ -163,8 +162,6 @@ let param_list_of_decorator default_type = function
 
 let ptype_of_ident name decorator subtype =
   match name, decorator, subtype with
-    | <:ident< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, (None, None), None -> PT_Int int_t
-
     | <:ident< $lid:"list"$ >>, (None, None), Some t ->
       PT_List (Remaining, t)
     | <:ident< $lid:"list"$ >>, (None, Some e), Some t ->
@@ -248,7 +245,6 @@ let keep_unique_cons (constructors : 'a choice list) =
 
 let rec ocaml_type_of_ptype _loc = function
   | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
-  | PT_Int _ -> <:ctyp< $lid:"int"$ >>
   | PT_String _ -> <:ctyp< $lid:"string"$ >>
   | PT_List (_, subtype) -> <:ctyp< list $ocaml_type_of_ptype _loc subtype$ >>
   | PT_Array (_, subtype) -> <:ctyp< array $ocaml_type_of_ptype _loc subtype$ >>
@@ -411,7 +407,6 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
   let mkf fname = exp_qname _loc (Some "BasePTypes") (prefix ^ fname) in
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
-    | PT_Int int_t -> mkf int_t
 
     | PT_String (ExprLen e, _) -> <:expr< $mkf "string"$ $e$ >>
     | PT_String (VarLen int_t, _) -> <:expr< $mkf "varlen_string"$ $str:name$ $mkf int_t$ >>
@@ -569,7 +564,6 @@ let rec dump_fun_of_ptype _loc t =
   let mkf fname = exp_qname _loc (Some "BasePTypes") ("dump_" ^ fname) in
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
-    | PT_Int int_t -> mkf int_t
 
     | PT_String (VarLen int_t, _) -> <:expr< $mkf "varlen_string"$ $mkf int_t$ >>
     | PT_String (_, _) -> mkf "string"
@@ -674,13 +668,6 @@ let rec value_of_fun_of_ptype _loc t =
   let mkf fname = exp_qname _loc (Some "BasePTypes") ("value_of_" ^ fname) in
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
-    | PT_Int int_t -> mkf int_t
-
-(* TODO? It might be necessary to add stg about the header one day *)
-(*    | PT_String (VarLen int_t, binary) -> <:expr< $mkf "string"$ $exp_bool binary$ >> *)
-(*      <:expr< $mkf "string"$ $exp_bool binary$ $dump_fun _loc (PT_Int int_t)$ >> *)
-(*    | PT_String (_, binary) -> *)
-(*      <:expr< $mkf "string"$ $exp_bool binary$ (const "") >> *)
     | PT_String (_, binary) -> <:expr< $mkf "string"$ $exp_bool _loc binary$ >>
 
     | PT_Custom (m, n, _) -> exp_qname _loc m ("value_of_" ^ n)
