@@ -145,7 +145,8 @@ let value_of_length_constrained_container = value_of_container
 type 'a enrich_blocker = 'a
 
 let parse_enrich_blocker level parse_fun input =
-  let new_input = { input with enrich = EnrichLevel level } in
+  let enrich_value = if level > 1 then EnrichLevel level else NeverEnrich in
+  let new_input = { input with enrich = enrich_value } in
   let res = parse_fun new_input in
   input.cur_offset <- new_input.cur_offset;
   res
