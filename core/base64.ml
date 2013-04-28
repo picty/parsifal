@@ -1,4 +1,5 @@
 open Parsifal
+open BasePTypes
 open PTypes
 open Lwt
 
@@ -196,6 +197,8 @@ let to_base64 title buf bin_buf =
 
 (* Base64 container *)
 
+type 'a base64_container = 'a
+
 let parse_base64_container header_expected parse_fun input =
   let content = match header_expected with
     | NoHeader ->
@@ -233,8 +236,9 @@ let lwt_parse_base64_container title parse_fun lwt_input =
   check_empty_input true new_input;
   return res
 
-
 let dump_base64_container title dump_fun buf o =
   let tmp_buf = Buffer.create !default_buffer_size in
   dump_fun tmp_buf o;
   to_base64 title buf tmp_buf
+
+let value_of_base64_container = value_of_container
