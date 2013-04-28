@@ -45,7 +45,6 @@ type field_len =
 type ptype =
   | PT_Empty
   | PT_String of field_len * bool
-  | PT_Array of expr * ptype
   | PT_List of field_len * ptype
   | PT_Custom of (string option) * string * (param_type * expr) list
   | PT_CustomContainer of (string option) * string * (param_type * expr) list * ptype * bool
@@ -151,18 +150,19 @@ let ptype_of_ident name decorators subtype =
   match name, decorators, subtype with
     | <:ident< $lid:"list"$ >>, [], Some t -> PT_List (Remaining, t)
     | <:ident< $lid:"list"$ >>, [ParseParam, e], Some t -> PT_List (ExprLen e, t)
-    | <:ident< $lid:"list"$ >>, (* Compat Hack *)
-      [(BothParam, <:expr< $lid:int_t$ >>)], Some t ->
+    | <:ident< $lid:"list"$ >>, (* Compat Hack: BothParam should not be kept *)
+      [((BothParam|ContextParam), <:expr< $lid:int_t$ >>)], Some t ->
       PT_List (VarLen int_t, t)
-    (* TODO: There should be support for official ContextParam for list *)
     | <:ident< $lid:"list"$ >> as i,  _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid list type")
 
-    | <:ident< $lid:"array"$ >>, [ParseParam, e], Some t -> PT_Array (e, t)
+    | <:ident< $lid:"array"$ >>, [ParseParam, _], Some t ->
+      PT_CustomContainer (None, "array", decorators, t, true)
     | <:ident< $lid:"array"$ >> as i,  _, _ ->  Loc.raise (loc_of_ident i) (Failure "invalid array type")
 
     | <:ident< $lid:"container"$ >>, [ParseParam, _], Some t ->      (* Compat Hack: should be removed? *)
       PT_CustomContainer (Some "BasePTypes", "container", decorators, t, false)
-    | <:ident< $lid:"container"$ >>, [ BothParam, int_t ], Some t -> (* Compat Hack *)
+    | <:ident< $lid:"container"$ >>,                                 (* Compat Hack: BothParam should not be kept *)
+      [ (BothParam|ContextParam), int_t ], Some t ->
       PT_CustomContainer (Some "BasePTypes", "varlen_container", [ContextParam, int_t], t, false)
     | <:ident< $lid:"container"$ >> as i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid container type")
 
@@ -231,7 +231,6 @@ let rec ocaml_type_of_ptype _loc = function
   | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
   | PT_String _ -> <:ctyp< $lid:"string"$ >>
   | PT_List (_, subtype) -> <:ctyp< list $ocaml_type_of_ptype _loc subtype$ >>
-  | PT_Array (_, subtype) -> <:ctyp< array $ocaml_type_of_ptype _loc subtype$ >>
   | PT_Custom (None, n, _) -> <:ctyp< $lid:n$ >>
   | PT_Custom (Some m, n, _) -> <:ctyp< $uid:m$.$lid:n$ >>
   | PT_CustomContainer (None, n, _, subtype, _) -> <:ctyp< $lid:n$ $ocaml_type_of_ptype _loc subtype$ >>
@@ -419,12 +418,9 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
       <:expr< $mkf "varlen_list"$ $mkf int_t$
               $parse_fun_of_ptype false _loc name subtype$ >>
 
-    | PT_Array (e, subtype) ->
-      <:expr< $mkf "array"$ $e$ $parse_fun_of_ptype lwt_fun _loc name subtype$ >>
-
     | PT_CustomContainer (m, n, e, subtype, lwt_subparse) ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n))
-	((filter_params ParseParam prefix e)@[parse_fun_of_ptype lwt_subparse _loc name subtype])
+	((filter_params ParseParam prefix e)@[parse_fun_of_ptype (lwt_subparse && lwt_fun) _loc name subtype])
 
 
 
@@ -560,8 +556,6 @@ let rec dump_fun_of_ptype _loc t =
       <:expr< $mkf "varlen_list"$ $mkf int_t$ $dump_fun_of_ptype _loc subtype$ >>
     | PT_List (_, subtype) ->
       <:expr< $mkf "list"$ $dump_fun_of_ptype _loc subtype$ >>
-    | PT_Array (_, subtype) ->
-      <:expr< $mkf "array"$ $dump_fun_of_ptype _loc subtype$ >>
 
     | PT_CustomContainer (m, n, e, subtype, _) ->
       apply_exprs _loc (exp_qname _loc m ("dump_" ^ n))
@@ -655,8 +649,9 @@ let rec value_of_fun_of_ptype _loc t =
     | PT_Custom (m, n, _) -> exp_qname _loc m ("value_of_" ^ n)
 
     | PT_List (_, subtype) -> <:expr< $mkf "list"$ $value_of_fun_of_ptype _loc subtype$ >>
-    | PT_Array (_, subtype) -> <:expr< $mkf "array"$ $value_of_fun_of_ptype _loc subtype$ >>
-    | PT_CustomContainer (_, _, _, subtype, _) -> value_of_fun_of_ptype _loc subtype
+
+    | PT_CustomContainer (m, n, _, subtype, _) ->
+      <:expr< $exp_qname _loc m ("value_of_" ^ n)$ $value_of_fun_of_ptype _loc subtype$ >>
 
 
 

@@ -104,6 +104,7 @@ let lwt_parse_length_delimited_container parse_fun lwt_input =
 let dump_length_delimited_container dump_fun buf v =
   dump_varlen_container dump_varint dump_fun buf v
 
+let value_of_length_delimited_container = value_of_container
 
 
 (* Protobuf value *)

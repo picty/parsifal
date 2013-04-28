@@ -567,6 +567,7 @@ and value_of_der_object_content = function
 type 'a asn1 = 'a
 let parse_asn1 h = extract_der_object (print_header h) h
 let dump_asn1 = produce_der_object
+let value_of_asn1 = value_of_container
 
 
 type 'a bitstring_container = 'a
@@ -591,6 +592,8 @@ let dump_bitstring_container dump_fun buf o =
   in
   produce_der_object (C_Universal, false, T_BitString) dump_content_aux buf o
 
+let value_of_bitstring_container = value_of_container
+
 
 type 'a octetstring_container = 'a
 
@@ -608,6 +611,8 @@ let parse_octetstring_container parse_fun input =
 
 let dump_octetstring_container dump_fun buf o =
   produce_der_object (C_Universal, false, T_OctetString) dump_fun buf o
+
+let value_of_octetstring_container = value_of_container
 
 
 let advanced_der_parse (parse_fun : (asn1_class * bool * asn1_tag) -> string_input -> 'a) (input : string_input) : 'a =

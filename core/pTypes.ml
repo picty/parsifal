@@ -139,6 +139,7 @@ let dump_length_constrained_container (* len_cons *) dump_fun buf o =
   (* Warning if length constraint not validated? *)
   dump_fun buf o
 
+let value_of_length_constrained_container = value_of_container
 
 
 type 'a enrich_blocker = 'a
@@ -151,6 +152,7 @@ let parse_enrich_blocker level parse_fun input =
 
 let dump_enrich_blocker dump_fun buf o = dump_fun buf o
 
+let value_of_enrich_blocker = value_of_container
 
 
 (* Parse checkpoints and raw values *)

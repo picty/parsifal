@@ -421,6 +421,8 @@ let lwt_parse_container n parse_fun input =
 
 let dump_container dump_fun buf content = dump_fun buf content
 
+let value_of_container value_of_fun x = value_of_fun x
+
 
 type 'a varlen_container = 'a
 
@@ -438,6 +440,8 @@ let dump_varlen_container len_fun dump_fun buf content =
   let n = Buffer.length tmp_buf in
   len_fun buf n;
   Buffer.add_buffer buf tmp_buf
+
+let value_of_varlen_container = value_of_container
 
 
 (*********)
