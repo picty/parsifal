@@ -1,3 +1,5 @@
+open BasePTypes
+
 struct answer_dump [top] = {
   ip : PTypes.ipv4;
   port : uint16;

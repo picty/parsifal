@@ -11,7 +11,7 @@ open ParsifalHelpers
 
 (* Common *)
 
-type param_type = ParseParam | DumpParam | BothParam
+type param_type = ParseParam | DumpParam | BothParam | ContextParam
 
 type parsifal_option =
   | DoLwt
@@ -47,7 +47,6 @@ type ptype =
   | PT_String of field_len * bool
   | PT_Array of expr * ptype
   | PT_List of field_len * ptype
-  | PT_Container of field_len * ptype  (* the string corresponds to the integer type for the field length *)
   | PT_Custom of (string option) * string * (param_type * expr) list
   | PT_CustomContainer of (string option) * string * (param_type * expr) list * ptype
 
@@ -120,11 +119,11 @@ let opts_of_seq_expr expr =
     | <:expr< $lid:"exhaustive"$ >> -> [_loc, ExhaustiveChoices]
     | <:expr< $lid:"parse_param"$ $e$ >>
     | <:expr< $lid:"param"$ $e$ >>  ->
-      [_loc, Param (List.map (fun e -> ParseParam, e) (List.map lid_of_expr (list_of_com_expr e)))]
+      [_loc, Param (List.map (fun e -> (ParseParam, lid_of_expr e)) (list_of_com_expr e))]
     | <:expr< $lid:"dump_param"$ $e$ >>  ->
-      [_loc, Param (List.map (fun e -> DumpParam, e) (List.map lid_of_expr (list_of_com_expr e)))]
+      [_loc, Param (List.map (fun e -> (DumpParam, lid_of_expr e)) (list_of_com_expr e))]
     | <:expr< $lid:"both_param"$ $e$ >>  ->
-      [_loc, Param (List.map (fun e -> BothParam, e) (List.map lid_of_expr (list_of_com_expr e)))]
+      [_loc, Param (List.map (fun e -> (BothParam, lid_of_expr e)) (list_of_com_expr e))]
     | <:expr< $lid:"little_endian"$ >>   -> [_loc, LittleEndian]
     | _ -> Loc.raise (loc_of_expr e) (Failure "unknown option")
   in
@@ -147,64 +146,48 @@ let rec choices_of_match_cases = function
 
 (* PTypes *)
 
-type decorator_type = (expr option) * (expr option)
-
-let param_list_of_decorator default_type = function
-  | None -> []
-  | Some e ->
-    let extract_param_type = function
-      | <:expr< $uid:"DUMP"$ $e$ >> -> DumpParam, e
-      | <:expr< $uid:"BOTH"$ $e$ >> -> BothParam, e
-      | <:expr< $uid:"PARSE"$ $e$ >> -> ParseParam, e
-      | e -> default_type, e
-    in
-    List.map extract_param_type (list_of_sem_expr e)
-
-let ptype_of_ident name decorator subtype =
-  match name, decorator, subtype with
-    | <:ident< $lid:"list"$ >>, (None, None), Some t ->
-      PT_List (Remaining, t)
-    | <:ident< $lid:"list"$ >>, (None, Some e), Some t ->
-      PT_List (ExprLen e, t)
-    | <:ident< $lid:"list"$ >>, (Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None), Some t ->
+let ptype_of_ident name decorators subtype =
+  match name, decorators, subtype with
+    | <:ident< $lid:"list"$ >>, [], Some t -> PT_List (Remaining, t)
+    | <:ident< $lid:"list"$ >>, [ParseParam, e], Some t -> PT_List (ExprLen e, t)
+    | <:ident< $lid:"list"$ >>, (* Compat Hack *)
+      [(BothParam, <:expr< $lid:int_t$ >>)], Some t ->
       PT_List (VarLen int_t, t)
-    | <:ident< $lid:"list"$ >> as i,   _, _ ->
-      Loc.raise (loc_of_ident i) (Failure "invalid list type")
+    (* TODO: There should be support for official ContextParam for list *)
+    | <:ident< $lid:"list"$ >> as i,  _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid list type")
 
-    | <:ident< $lid:"array"$ >>, (None, Some e), Some t ->
-      PT_Array (e, t)
+    | <:ident< $lid:"array"$ >>, [ParseParam, e], Some t -> PT_Array (e, t)
+    | <:ident< $lid:"array"$ >> as i,  _, _ ->  Loc.raise (loc_of_ident i) (Failure "invalid array type")
 
-    | <:ident< $lid:"container"$ >>, (None, Some e), Some t ->
-      PT_Container (ExprLen e, t)
-    | <:ident< $lid:"container"$ >>, (Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None), Some t ->
-      PT_Container (VarLen int_t, t)
-    | <:ident< $lid:"container"$ >> as i, _, _ ->
-      Loc.raise (loc_of_ident i) (Failure "invalid container type")
+    | <:ident< $lid:"container"$ >>, [ParseParam, _], Some t ->      (* Compat Hack: should be removed? *)
+      PT_CustomContainer (Some "BasePTypes", "container", decorators, t)
+    | <:ident< $lid:"container"$ >>, [ BothParam, int_t ], Some t -> (* Compat Hack *)
+      PT_CustomContainer (Some "BasePTypes", "varlen_container", [ContextParam, int_t], t)
+    | <:ident< $lid:"container"$ >> as i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid container type")
 
-    | <:ident< $lid:"string"$ >>,    (None, None), None-> PT_String (Remaining, false)
-    | <:ident< $lid:"binstring"$ >>, (None, None), None -> PT_String (Remaining, true)
-    | <:ident< $lid:"string"$ >>,    (None, Some e), None ->
+      (* TODO: Work here to remove the unnecessary PT_String constructor *)
+    | <:ident< $lid:"string"$ >>,    [], None -> PT_String (Remaining, false)
+    | <:ident< $lid:"binstring"$ >>, [], None -> PT_String (Remaining, true)
+    | <:ident< $lid:"string"$ >>,    [ParseParam, e], None ->
       PT_String (ExprLen e, false)
-    | <:ident< $lid:"binstring"$ >>, (None, Some e), None ->
+    | <:ident< $lid:"binstring"$ >>, [ParseParam, e], None ->
       PT_String (ExprLen e, true)
-    | <:ident< $lid:"string"$ >>,    (Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None), None ->
+    | <:ident< $lid:"string"$ >>,                                 (* Compat Hack *)
+      [ BothParam, <:expr< $lid:int_t$ >> ], None ->
       PT_String (VarLen int_t, false)
-    | <:ident< $lid:"binstring"$ >>, (Some <:expr< $lid:("uint8"|"uint16"|"uint24"|"uint32" as int_t)$ >>, None), None ->
+    | <:ident< $lid:"binstring"$ >>,                              (* Compat Hack *)
+      [ BothParam, <:expr< $lid:int_t$ >> ], None ->
       PT_String (VarLen int_t, true)
     | <:ident< $lid:("string" | "binstring")$ >> as i, _, _ ->
       Loc.raise (loc_of_ident i) (Failure "invalid string type")
 
-    | custom_identifier, (both_dec, dec), None ->
-      let module_name, name = qname_ident (custom_identifier)
-      and p1 = param_list_of_decorator BothParam both_dec
-      and p2 = param_list_of_decorator ParseParam dec in
-      PT_Custom (module_name, name, p1@p2)
+    | custom_identifier, _, None ->
+      let module_name, name = qname_ident (custom_identifier) in
+      PT_Custom (module_name, name, decorators)
 
-    | custom_identifier, (both_dec, dec), Some t ->
-      let module_name, name = qname_ident (custom_identifier)
-      and p1 = param_list_of_decorator BothParam both_dec
-      and p2 = param_list_of_decorator ParseParam dec in
-      PT_CustomContainer (module_name, name, p1@p2, t)
+    | custom_identifier, _, Some t ->
+      let module_name, name = qname_ident (custom_identifier) in
+      PT_CustomContainer (module_name, name, decorators, t)
 
 
 (* ASN1 Aliases *)
@@ -248,7 +231,6 @@ let rec ocaml_type_of_ptype _loc = function
   | PT_String _ -> <:ctyp< $lid:"string"$ >>
   | PT_List (_, subtype) -> <:ctyp< list $ocaml_type_of_ptype _loc subtype$ >>
   | PT_Array (_, subtype) -> <:ctyp< array $ocaml_type_of_ptype _loc subtype$ >>
-  | PT_Container (_, subtype)
   | PT_CustomContainer (_, _, _, subtype) -> ocaml_type_of_ptype _loc subtype
   | PT_Custom (None, n, _) -> <:ctyp< $lid:n$ >>
   | PT_Custom (Some m, n, _) -> <:ctyp< $uid:m$.$lid:n$ >>
@@ -269,6 +251,16 @@ let split_header _loc (hdr, isC) =
     | Universal t -> <:expr< Asn1Engine.C_Universal >>, <:expr< Asn1Engine.$uid:t$ >>
     | Header (c, t) -> <:expr< Asn1Engine.$uid:c$ >>, <:expr< Asn1Engine.T_Unknown $int:string_of_int t$ >>
   in <:expr< ( $_c$, $exp_bool _loc isC$, $_t$ ) >>
+
+let filter_params type_to_keep prefix ps =
+  let fp_aux p accu = match type_to_keep, p with
+    | ParseParam, (ParseParam, e)
+    | DumpParam, (DumpParam, e)
+    | _, (BothParam, e) -> e::accu
+    | _, (ContextParam, ExId (_loc1, IdLid (_loc2, id))) ->
+      (ExId (_loc1, IdLid (_loc2, prefix ^ id)))::accu
+    | _, _ -> accu
+  in List.fold_right fp_aux ps []
 
 let keep_parse_params ps = List.map snd (List.filter (fun (t, _) -> t <> DumpParam) ps)
 let keep_dump_params ps = List.map snd (List.filter (fun (t, _) -> t <> ParseParam) ps)
@@ -409,11 +401,11 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
 
     | PT_String (ExprLen e, _) -> <:expr< $mkf "string"$ $e$ >>
-    | PT_String (VarLen int_t, _) -> <:expr< $mkf "varlen_string"$ $str:name$ $mkf int_t$ >>
+    | PT_String (VarLen int_t, _) -> <:expr< $mkf "varlen_string"$ $mkf int_t$ >>
     | PT_String (Remaining, _) -> mkf "rem_string"
 
     | PT_Custom (m, n, e) ->
-      apply_exprs _loc (exp_qname _loc m (prefix ^ n)) (keep_parse_params e)
+      apply_exprs _loc (exp_qname _loc m (prefix ^ n)) (filter_params ParseParam prefix e)
 
     | PT_List (ExprLen e, subtype) ->
       <:expr< $mkf "list"$ $e$
@@ -422,24 +414,15 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
       <:expr< $mkf "rem_list"$
               $parse_fun_of_ptype lwt_fun _loc name subtype$ >>
     | PT_List (VarLen int_t, subtype) ->
-      <:expr< $mkf "varlen_list"$ $str:name$ $mkf int_t$
+      <:expr< $mkf "varlen_list"$ $mkf int_t$
               $parse_fun_of_ptype false _loc name subtype$ >>
 
     | PT_Array (e, subtype) ->
       <:expr< $mkf "array"$ $e$ $parse_fun_of_ptype lwt_fun _loc name subtype$ >>
 
-    | PT_Container (ExprLen e, subtype) ->
-      <:expr< $mkf "container"$ $str:name$ $e$
-              $parse_fun_of_ptype false _loc name subtype$ >>
-    | PT_Container (VarLen int_t, subtype) ->
-      <:expr< $mkf "varlen_container"$ $str:name$ $mkf int_t$
-              $parse_fun_of_ptype false _loc name subtype$ >>
-    | PT_Container (Remaining, _) ->
-      Loc.raise _loc (Failure "Container without length spec are not allowed")      
-
     | PT_CustomContainer (m, n, e, subtype) ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n))
-	((keep_parse_params e)@[parse_fun_of_ptype false _loc name subtype])
+	((filter_params ParseParam prefix e)@[parse_fun_of_ptype false _loc name subtype])
 
 
 
@@ -569,7 +552,7 @@ let rec dump_fun_of_ptype _loc t =
     | PT_String (_, _) -> mkf "string"
 
     | PT_Custom (m, n, e) ->
-      apply_exprs _loc (exp_qname _loc m ("dump_" ^ n)) (keep_dump_params e)
+      apply_exprs _loc (exp_qname _loc m ("dump_" ^ n)) (filter_params DumpParam "dump_" e)
 
     | PT_List (VarLen int_t, subtype) ->
       <:expr< $mkf "varlen_list"$ $mkf int_t$ $dump_fun_of_ptype _loc subtype$ >>
@@ -577,13 +560,10 @@ let rec dump_fun_of_ptype _loc t =
       <:expr< $mkf "list"$ $dump_fun_of_ptype _loc subtype$ >>
     | PT_Array (_, subtype) ->
       <:expr< $mkf "array"$ $dump_fun_of_ptype _loc subtype$ >>
-    | PT_Container (VarLen int_t, subtype) ->
-      <:expr< $mkf "varlen_container"$ $mkf int_t$ $dump_fun_of_ptype _loc subtype$ >>
-    | PT_Container (_, subtype) -> dump_fun_of_ptype _loc subtype
 
     | PT_CustomContainer (m, n, e, subtype) ->
       apply_exprs _loc (exp_qname _loc m ("dump_" ^ n))
-	((keep_dump_params e)@[dump_fun_of_ptype _loc subtype])
+	((filter_params DumpParam "dump_" e)@[dump_fun_of_ptype _loc subtype])
 
 
 let mk_dump_fun _loc c =
@@ -674,7 +654,6 @@ let rec value_of_fun_of_ptype _loc t =
 
     | PT_List (_, subtype) -> <:expr< $mkf "list"$ $value_of_fun_of_ptype _loc subtype$ >>
     | PT_Array (_, subtype) -> <:expr< $mkf "array"$ $value_of_fun_of_ptype _loc subtype$ >>
-    | PT_Container (_, subtype)
     | PT_CustomContainer (_, _, _, subtype) -> value_of_fun_of_ptype _loc subtype
 
 
@@ -782,6 +761,24 @@ let mk_parsifal_construction _loc name raw_opts specific_descr =
   mk_sequence _loc (List.concat (List.map (fun f -> f _loc pc) funs))
 
 
+let mk_parse_param e accu = (ParseParam, e)::accu
+let mk_both_param e accu = (BothParam, e)::accu
+let mk_context_param e accu = match e with
+  | ExId (_, IdLid (_loc, p)) ->
+    ( ParseParam, <:expr< $lid:"parse_" ^  p$ >> )::
+    ( DumpParam, <:expr< $lid:"dump_" ^  p$ >> )::accu
+  | e -> Loc.raise (loc_of_expr e) (Failure "Context parameters should be lowercase identifiers")
+
+let extract_param_type default_param raw_param accu = match raw_param with
+  | <:expr< $uid:"DUMP"$ $e$ >> -> (DumpParam, e)::accu
+  | <:expr< $uid:"BOTH"$ $e$ >> -> (BothParam, e)::accu
+  | <:expr< $uid:"PARSE"$ $e$ >> -> (ParseParam, e)::accu
+  | <:expr< $uid:"CONTEXT"$ $e$ >> -> mk_context_param e accu
+  | e -> default_param e accu
+
+
+(* TODO: Work on better errors *)
+
 EXTEND Gram
   GLOBAL: str_item;
 
@@ -797,10 +794,13 @@ EXTEND Gram
   ]];
 
   ptype_decorator: [[
-    "("; e = expr; ")" -> (None, Some e)
-  | "["; e = expr; "]" -> (Some e, None)
-  | "["; e1 = expr; "]"; "("; e2 = expr; ")" -> (Some e1, Some e2)
-  | -> (None, None)
+    "{"; e = expr; "}"; next_decorator = ptype_decorator ->
+    (List.fold_right (extract_param_type mk_context_param) (list_of_sem_expr e) [])@next_decorator
+  | "["; e = expr; "]"; next_decorator = ptype_decorator ->
+    (List.fold_right (extract_param_type mk_both_param) (list_of_sem_expr e) [])@next_decorator
+  | "("; e = expr; ")"; next_decorator = ptype_decorator ->
+    (List.fold_right (extract_param_type mk_parse_param) (list_of_sem_expr e) [])@next_decorator
+  | -> []
   ]];
 
   ptype: [[

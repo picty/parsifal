@@ -272,19 +272,13 @@ let lwt_parse_rem_string input =
   else fail (ParsingException (NotImplemented "lwt_parse_rem_string", _h_of_li input))
 
 
-let parse_varlen_string name len_fun input =
+let parse_varlen_string len_fun input =
   let n = len_fun input in
-  let new_input = get_in input name n in
-  let res = parse_rem_string new_input in
-  get_out input new_input;
-  res
+  parse_string n input
 
-let lwt_parse_varlen_string name len_fun input =
+let lwt_parse_varlen_string len_fun input =
   len_fun input >>= fun n ->
-  lwt_get_in input name n >>= fun str_input ->
-  let res = parse_rem_string str_input in
-  lwt_get_out input str_input >>= fun () ->
-  return res
+  lwt_parse_string n input
 
 
 let drop_bytes n input =
@@ -379,16 +373,16 @@ let lwt_parse_rem_list lwt_parse_fun input =
   in aux []
 
 
-let parse_varlen_list name len_fun parse_fun input =
+let parse_varlen_list len_fun parse_fun input =
   let n = len_fun input in
-  let new_input = get_in input name n in
+  let new_input = get_in input "list" n in
   let res = parse_rem_list parse_fun new_input in
   get_out input new_input;
   res
 
-let lwt_parse_varlen_list name len_fun parse_fun input =
+let lwt_parse_varlen_list len_fun parse_fun input =
   len_fun input >>= fun n ->
-  lwt_get_in input name n >>= fun str_input ->
+  lwt_get_in input "list" n >>= fun str_input ->
   wrap2 parse_rem_list parse_fun str_input >>= fun res ->
   lwt_get_out input str_input >>= fun () ->
   return res
@@ -411,26 +405,28 @@ let value_of_list sub_fun l = VList (List.map sub_fun l)
 (* Container *)
 (*************)
 
-let parse_container name n parse_fun input =
-  let new_input = get_in input name n in
+let parse_container n parse_fun input =
+  let new_input = get_in input "container" n in
   let res = parse_fun new_input in
   get_out input new_input;
   res
 
-let lwt_parse_container name n parse_fun input =
-  lwt_get_in input name n >>= fun str_input ->
+let lwt_parse_container n parse_fun input =
+  lwt_get_in input "container" n >>= fun str_input ->
   wrap1 parse_fun str_input >>= fun res ->
   lwt_get_out input str_input >>= fun () ->
   return res
 
+let dump_container dump_fun buf content = dump_fun buf content
 
-let parse_varlen_container name len_fun parse_fun input =
+
+let parse_varlen_container len_fun parse_fun input =
   let n = len_fun input in
-  parse_container name n parse_fun input
+  parse_container n parse_fun input
 
-let lwt_parse_varlen_container name len_fun parse_fun input =
+let lwt_parse_varlen_container len_fun parse_fun input =
   len_fun input >>= fun n ->
-  lwt_parse_container name n parse_fun input
+  lwt_parse_container n parse_fun input
 
 let dump_varlen_container len_fun dump_fun buf content =
   let tmp_buf = Buffer.create !default_buffer_size in
