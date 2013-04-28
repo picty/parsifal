@@ -343,18 +343,13 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "nsSSLServerName" -> NSSSLServerName of der_ia5string(NoConstraint)
   | "nsComment" -> NSComment of der_ia5string(NoConstraint)
   | "sMIMECapabilities" -> SMIMECapabilities of sMIMECapabilities
-
-(* Sordid hack. TODO: auto-generate that with an option laxist? *)
-let parse_extnValue t input =
-  (* We need the exact=true to avoid failing in the octetstring_container *) 
-  match try_parse ~exact:true (parse_extnValue t) input with
-  | None -> parse_extnValue "" input
-  | Some res -> res
+  | "PARSING_FAILURE" -> ExtensionParsingFailure of binstring
 
 
 asn1_struct extension = {
   extnID : der_oid;
   optional critical : der_boolean;
-  extnValue : octetstring_container of extnValue(hash_get oid_directory extnID "")
+  extnValue : octetstring_container of exact_safe_union(hash_get oid_directory extnID ""; "PARSING_FAILURE") of extnValue
+  (* The exact is needed to avoid generating an error due to trailing stuff in the octetstring_container. *)
 }
 asn1_alias extension_list = seq_of extension (* TODO: min = 1 *)

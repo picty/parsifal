@@ -26,6 +26,7 @@ type attributeValueType =
   | AVT_IA5String of length_constraint
   | AVT_PrintableString of length_constraint
   | AVT_DirectoryString of length_constraint
+  | AVT_ParsingFailure
   | AVT_Anything
 
 let attributeValueType_directory : (int list, attributeValueType) Hashtbl.t = Hashtbl.create 10
@@ -38,16 +39,12 @@ union attributeValue [enrich] (UnparsedAV of der_object) =
   | AVT_IA5String len_cons -> AV_IA5String of der_ia5string (len_cons)
   | AVT_PrintableString len_cons -> AV_PrintableString of der_printablestring (len_cons)
   | AVT_DirectoryString len_cons -> AV_DirectoryString of directoryString (len_cons)
+  | AVT_ParsingFailure -> AV_ParsingFailure of der_object
 
-(* Sordid hack. TODO: auto-generate that with an option laxist? *)
-let parse_attributeValue t input =
-  match try_parse (parse_attributeValue t) input with
-  | None -> parse_attributeValue AVT_Anything input
-  | Some res -> res
 
 asn1_struct atv = {
   attributeType : der_oid;
-  attributeValue : attributeValue(hash_get attributeValueType_directory attributeType AVT_Anything)
+  attributeValue : safe_union (hash_get attributeValueType_directory attributeType AVT_Anything; AVT_Anything) of attributeValue
 }
 
 (* TODO: Rewrite this once to_string is generated automatically, at least for scalar types? *)
@@ -62,7 +59,7 @@ let string_of_atv_value = function
 
   | AV_DirectoryString (UnparsedDirectoryString _)
   | UnparsedAV { a_content = UnparsedDER _ } -> "[Unparsed]"
-  | UnparsedAV _ -> "NON-STRING-VALUE"
+  | AV_ParsingFailure _ | UnparsedAV _ -> "NON-STRING-VALUE"
 
 let string_of_atv atv =
   "/" ^ (short_string_of_oid atv.attributeType) ^ "=" ^ (string_of_atv_value atv.attributeValue)
@@ -192,22 +189,11 @@ union signature [enrich] (UnparsedSignature of binstring) =
 (************)
 
 (* TODO: this "exhaustive" should produce a warning *)
-asn1_union der_time [enrich; exhaustive] (UnparsedTime) =
+asn1_union raw_der_time [enrich; exhaustive] (UnparsedTime) =
   | (C_Universal, false, T_UTCTime) -> UTCTime of der_utc_time_content
-  | (C_Universal, false, T_GeneralizedTime) -> GeneralizedTime of der_generalized_time_content
+  | (C_Universal, false, T_GeneralizedTime) -> GeneralizedTime of der_generalized_time_content 
 
-(* Sordid hack. TODO: auto-generate that with an option laxist? *)
-let parse_der_time input =
-  match try_parse parse_der_time input with
-  | Some res -> res
-  | None ->
-    let (c, isC, t) = extract_der_header input in
-    let len = extract_der_length input in
-    let new_input = get_in input (print_header (c, isC, t)) len in
-    let content = UnparsedDER (isC, BasePTypes.parse_rem_string new_input) in
-    get_out input new_input;
-    UnparsedTime (mk_object c t content)
-
+alias der_time = safe_asn1_union of raw_der_time
 
 asn1_struct validity = {
   notBefore : der_time;

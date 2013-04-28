@@ -155,6 +155,42 @@ let dump_enrich_blocker dump_fun buf o = dump_fun buf o
 let value_of_enrich_blocker = value_of_container
 
 
+(* Safe union handling *)
+
+type 'a safe_union = 'a
+let parse_safe_union discriminator fallback_discriminator parse_fun input =
+  match try_parse (parse_fun discriminator) input with
+  | None -> parse_fun fallback_discriminator input
+  | Some res -> res
+(* TODO: lwt_parse_safe_union would need a lwt_subtype to be set by our code
+   For now, it is impossible to do so because only code in parsifalSyntax has access to this *)
+let dump_safe_union dump_fun u = dump_fun u
+let value_of_safe_union = value_of_container
+
+
+type 'a exact_safe_union = 'a
+let parse_exact_safe_union discriminator fallback_discriminator parse_fun input =
+  match try_parse ~exact:true (parse_fun discriminator) input with
+  | None -> parse_fun fallback_discriminator input
+  | Some res -> res
+(* TODO: lwt_parse_exact_safe_union *)
+let dump_exact_safe_union dump_fun u = dump_fun u
+let value_of_exact_safe_union = value_of_container
+
+
+type 'a safe_asn1_union = 'a
+let parse_safe_asn1_union parse_fun input =
+  match try_parse parse_fun input with
+  | Some res -> res
+  | None ->
+    let new_input = { input with enrich = NeverEnrich } in
+    let res = parse_fun new_input in
+    input.cur_offset <- new_input.cur_offset;
+    res
+let dump_safe_asn1_union dump_fun u = dump_fun u
+let value_of_safe_asn1_union = value_of_container
+
+
 (* Parse checkpoints and raw values *)
 
 let parse_save_offset input = input.cur_offset
