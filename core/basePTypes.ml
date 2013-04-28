@@ -330,6 +330,12 @@ let lwt_parse_list n lwt_parse_fun input =
       aux (x::accu) (i-1)
   in aux [] n
 
+let dump_list dump_fun buf l = List.iter (dump_fun buf) l
+
+let value_of_list sub_fun l = VList (List.map sub_fun l)
+
+
+type 'a rem_list = 'a list
 
 let parse_rem_list parse_fun input =
   let rec aux accu =
@@ -372,6 +378,12 @@ let lwt_parse_rem_list lwt_parse_fun input =
     end
   in aux []
 
+let dump_rem_list = dump_list
+
+let value_of_rem_list = value_of_list
+
+
+type 'a varlen_list = 'a list
 
 let parse_varlen_list len_fun parse_fun input =
   let n = len_fun input in
@@ -387,9 +399,6 @@ let lwt_parse_varlen_list len_fun parse_fun input =
   lwt_get_out input str_input >>= fun () ->
   return res
 
-
-let dump_list dump_fun buf l = List.iter (dump_fun buf) l
-
 let dump_varlen_list len_fun dump_fun buf l =
   let tmp_buf = Buffer.create !default_buffer_size in
   dump_list dump_fun tmp_buf l;
@@ -397,7 +406,7 @@ let dump_varlen_list len_fun dump_fun buf l =
   len_fun buf n;
   Buffer.add_buffer buf tmp_buf
 
-let value_of_list sub_fun l = VList (List.map sub_fun l)
+let value_of_varlen_list = value_of_list
 
 
 
