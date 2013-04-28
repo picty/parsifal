@@ -48,7 +48,8 @@ type ptype =
   | PT_Array of expr * ptype
   | PT_List of field_len * ptype
   | PT_Custom of (string option) * string * (param_type * expr) list
-  | PT_CustomContainer of (string option) * string * (param_type * expr) list * ptype
+  | PT_CustomContainer of (string option) * string * (param_type * expr) list * ptype * bool
+    (* PT_CustomContainer (module name, name, param list, subtype, lwt_subparse) *)
 
 
 (* Records *)
@@ -160,9 +161,9 @@ let ptype_of_ident name decorators subtype =
     | <:ident< $lid:"array"$ >> as i,  _, _ ->  Loc.raise (loc_of_ident i) (Failure "invalid array type")
 
     | <:ident< $lid:"container"$ >>, [ParseParam, _], Some t ->      (* Compat Hack: should be removed? *)
-      PT_CustomContainer (Some "BasePTypes", "container", decorators, t)
+      PT_CustomContainer (Some "BasePTypes", "container", decorators, t, false)
     | <:ident< $lid:"container"$ >>, [ BothParam, int_t ], Some t -> (* Compat Hack *)
-      PT_CustomContainer (Some "BasePTypes", "varlen_container", [ContextParam, int_t], t)
+      PT_CustomContainer (Some "BasePTypes", "varlen_container", [ContextParam, int_t], t, false)
     | <:ident< $lid:"container"$ >> as i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid container type")
 
       (* TODO: Work here to remove the unnecessary PT_String constructor *)
@@ -187,7 +188,7 @@ let ptype_of_ident name decorators subtype =
 
     | custom_identifier, _, Some t ->
       let module_name, name = qname_ident (custom_identifier) in
-      PT_CustomContainer (module_name, name, decorators, t)
+      PT_CustomContainer (module_name, name, decorators, t, false)
 
 
 (* ASN1 Aliases *)
@@ -231,9 +232,10 @@ let rec ocaml_type_of_ptype _loc = function
   | PT_String _ -> <:ctyp< $lid:"string"$ >>
   | PT_List (_, subtype) -> <:ctyp< list $ocaml_type_of_ptype _loc subtype$ >>
   | PT_Array (_, subtype) -> <:ctyp< array $ocaml_type_of_ptype _loc subtype$ >>
-  | PT_CustomContainer (_, _, _, subtype) -> ocaml_type_of_ptype _loc subtype
   | PT_Custom (None, n, _) -> <:ctyp< $lid:n$ >>
   | PT_Custom (Some m, n, _) -> <:ctyp< $uid:m$.$lid:n$ >>
+  | PT_CustomContainer (None, n, _, subtype, _) -> <:ctyp< $lid:n$ $ocaml_type_of_ptype _loc subtype$ >>
+  | PT_CustomContainer (Some m, n, _, subtype, _) -> <:ctyp< ($uid:m$.$lid:n$) $ocaml_type_of_ptype _loc subtype$ >>
 
 let ocaml_type_of_field_type _loc t opt =
   let real_t = ocaml_type_of_ptype _loc t in
@@ -420,9 +422,9 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
     | PT_Array (e, subtype) ->
       <:expr< $mkf "array"$ $e$ $parse_fun_of_ptype lwt_fun _loc name subtype$ >>
 
-    | PT_CustomContainer (m, n, e, subtype) ->
+    | PT_CustomContainer (m, n, e, subtype, lwt_subparse) ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n))
-	((filter_params ParseParam prefix e)@[parse_fun_of_ptype false _loc name subtype])
+	((filter_params ParseParam prefix e)@[parse_fun_of_ptype lwt_subparse _loc name subtype])
 
 
 
@@ -561,7 +563,7 @@ let rec dump_fun_of_ptype _loc t =
     | PT_Array (_, subtype) ->
       <:expr< $mkf "array"$ $dump_fun_of_ptype _loc subtype$ >>
 
-    | PT_CustomContainer (m, n, e, subtype) ->
+    | PT_CustomContainer (m, n, e, subtype, _) ->
       apply_exprs _loc (exp_qname _loc m ("dump_" ^ n))
 	((filter_params DumpParam "dump_" e)@[dump_fun_of_ptype _loc subtype])
 
@@ -654,7 +656,7 @@ let rec value_of_fun_of_ptype _loc t =
 
     | PT_List (_, subtype) -> <:expr< $mkf "list"$ $value_of_fun_of_ptype _loc subtype$ >>
     | PT_Array (_, subtype) -> <:expr< $mkf "array"$ $value_of_fun_of_ptype _loc subtype$ >>
-    | PT_CustomContainer (_, _, _, subtype) -> value_of_fun_of_ptype _loc subtype
+    | PT_CustomContainer (_, _, _, subtype, _) -> value_of_fun_of_ptype _loc subtype
 
 
 

@@ -126,6 +126,8 @@ let handle_length_constraint input len = function
     if len > n2 then raise (ParsingException (TooManyObjects (len, n2), _h_of_si input))
 
 
+type 'a length_constrained_container = 'a
+
 let parse_length_constrained_container len_cons parse_fun input =
   let old_offset = input.cur_offset in
   let content = parse_fun input in
@@ -138,6 +140,8 @@ let dump_length_constrained_container (* len_cons *) dump_fun buf o =
   dump_fun buf o
 
 
+
+type 'a enrich_blocker = 'a
 
 let parse_enrich_blocker level parse_fun input =
   let new_input = { input with enrich = EnrichLevel level } in

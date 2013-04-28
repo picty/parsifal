@@ -91,6 +91,8 @@ let value_of_protobuf_key (wt, fn) =
 
 (* Length defined stuff *)
 
+type 'a length_delimited_container = 'a
+
 let parse_length_delimited_container parse_fun input =
   let len = parse_varint input in
   parse_container len parse_fun input

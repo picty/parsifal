@@ -405,6 +405,8 @@ let value_of_list sub_fun l = VList (List.map sub_fun l)
 (* Container *)
 (*************)
 
+type 'a container = 'a
+
 let parse_container n parse_fun input =
   let new_input = get_in input "container" n in
   let res = parse_fun new_input in
@@ -419,6 +421,8 @@ let lwt_parse_container n parse_fun input =
 
 let dump_container dump_fun buf content = dump_fun buf content
 
+
+type 'a varlen_container = 'a
 
 let parse_varlen_container len_fun parse_fun input =
   let n = len_fun input in

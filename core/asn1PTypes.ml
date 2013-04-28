@@ -564,9 +564,12 @@ and value_of_der_object_content = function
 
 (* ASN.1 Containers *)
 
+type 'a asn1 = 'a
 let parse_asn1 h = extract_der_object (print_header h) h
 let dump_asn1 = produce_der_object
 
+
+type 'a bitstring_container = 'a
 
 let parse_bitstring_container parse_fun input =
   let (_nbits, content) = parse_der_bitstring input in
@@ -588,6 +591,8 @@ let dump_bitstring_container dump_fun buf o =
   in
   produce_der_object (C_Universal, false, T_BitString) dump_content_aux buf o
 
+
+type 'a octetstring_container = 'a
 
 let parse_octetstring_container parse_fun input =
   let content = parse_der_octetstring input in
