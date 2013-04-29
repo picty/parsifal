@@ -180,16 +180,20 @@ let to_raw_base64 maxlen buf bin_buf =
 
 
 let to_base64 title buf bin_buf =
-  let mk_boundary t header =
-    Buffer.add_string buf (if header then "-----BEGIN " else "\n-----END ");
+  let mk_begin_boundary t =
+    Buffer.add_string buf "-----BEGIN ";
     Buffer.add_string buf t;
     Buffer.add_string buf "-----\n"
+  and mk_end_boundary t =
+    Buffer.add_string buf "\n-----END ";
+    Buffer.add_string buf t;
+    Buffer.add_string buf "-----";
   in
   match title with
   | HeaderInList [t] ->
-    mk_boundary t true;
+    mk_begin_boundary t;
     to_raw_base64 48 buf bin_buf;
-    mk_boundary t false
+    mk_end_boundary t
   | HeaderInList _
   | AnyHeader
   | NoHeader -> to_raw_base64 0 buf bin_buf
