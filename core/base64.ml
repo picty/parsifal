@@ -170,8 +170,8 @@ let to_raw_base64 maxlen buf bin_buf =
 	and v3 = int_of_char (Buffer.nth bin_buf (i+2)) in
 	add_group ([v1 lsr 2;
 		    ((v1 lsl 4) land 0x3f) lor (v2 lsr 4);
-		    ((v2 lsl 2) land 0x3f) lor (v2 lsr 6);
-	      v3 land 0x3f], 0);
+		    ((v2 lsl 2) land 0x3f) lor (v3 lsr 6);
+		    v3 land 0x3f], 0);
 	if maxlen > 0 && (i mod maxlen == 0) then Buffer.add_char buf '\n';
 	handle_next_group (i+3) (rem-3)
   in
