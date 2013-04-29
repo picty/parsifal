@@ -44,7 +44,7 @@ union attributeValue [enrich] (UnparsedAV of der_object) =
 
 asn1_struct atv = {
   attributeType : der_oid;
-  attributeValue : safe_union (hash_get attributeValueType_directory attributeType AVT_Anything; AVT_Anything) of attributeValue
+  attributeValue : safe_union (hash_get attributeValueType_directory attributeType AVT_Anything; AVT_ParsingFailure) of attributeValue
 }
 
 (* TODO: Rewrite this once to_string is generated automatically, at least for scalar types? *)
