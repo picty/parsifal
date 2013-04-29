@@ -1,5 +1,4 @@
 v0.2 (apr. 2013)
- - debug Base64.dump_container which seems to eat all the memory available
  - add hex_container / gzip_container as custom containers => needed for PNG
  - patch parse_checkpoint to allow empty identifiers (parse_checkpoint _ : update_stuff)
  - General
@@ -179,6 +178,7 @@ v0.3 (may 2013)
 
 
 v0.4 (jun. 2013)
+ - Rewrite Base64 properly
  - Maybe add a lwt_dump_* function?
  - Propose a lwt_parse_wrapper, which stupidly tries to read byte by byte and give the result to parse? It could be improved when an input is rewindable or if OutOfBounds gave the number of bytes needed to continue (at least when some info is available)
  - Add cool containers where it is possible to specify the real type ( (int, string) either / int option )

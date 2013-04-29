@@ -13,6 +13,7 @@ open TlsEngine
 (* Option handling *)
 
 let verbose = ref false
+let base64 = ref true
 let host = ref "www.google.com"
 let port = ref 443
 let rec_version = ref V_TLSv1
@@ -69,6 +70,8 @@ let deep_parse () =
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
+  mkopt None "pem" (Set base64) "use PEM format (default)";
+  mkopt None "der" (Clear base64) "use DER format";
 
   mkopt (Some 'H') "host" (StringVal host) "host to contact";
   mkopt (Some 'p') "port" (IntVal port) "port to probe";
@@ -232,12 +235,16 @@ let ssl_scan_versions () =
 let print_list = List.iter print_endline
 
 let save_certs certs =
+  let ext = if !base64 then ".pem" else ".der" in
   let rec save_one_cert i = function
     | cert::r ->
-      let f = open_out (!host ^ "-" ^ (string_of_int i) ^ ".pem") in
+      let f = open_out (!host ^ "-" ^ (string_of_int i) ^ ext) in
       let buf = Buffer.create !default_buffer_size in
-      (* Base64.dump_base64_container (Base64.HeaderInList ["CERTIFICATE"]) dump__certificate buf cert; *)
-      dump__certificate buf cert;
+      let dump_fun =
+	if !base64
+	then Base64.dump_base64_container (Base64.HeaderInList ["CERTIFICATE"]) dump__certificate
+	else dump__certificate
+      in dump_fun buf cert;
       Buffer.output_buffer f buf;
       close_out f;
       save_one_cert (i+1) r
