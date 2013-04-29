@@ -143,13 +143,13 @@ let lwt_string_of_base64_title title lwt_input =
 let to_raw_base64 maxlen buf bin_buf =
   let n = Buffer.length bin_buf in
   let rec add_group = function
-    | v::r, n ->
+    | v::r, padding_needed ->
       Buffer.add_char buf base64_chars.[v];
-      add_group (r, n)
+      add_group (r, padding_needed)
     | [], 0 -> ()
-    | [], _ ->
+    | [], padding_needed ->
       Buffer.add_char buf '=';
-      add_group ([], n-1)
+      add_group ([], padding_needed - 1)
   in
   let rec handle_next_group i rem =
     match rem with
