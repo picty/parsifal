@@ -3,7 +3,7 @@ TARGETS =
 MLLIBS = parsifal_ssl
 LIBNAME = parsifal_ssl
 
-parsifal_ssl_SRCS := dSAKey.ml rSAKey.ml x509Basics.ml x509Extensions.ml cryptoUtil.ml \
+parsifal_ssl_SRCS := dHKey.ml dSAKey.ml rSAKey.ml x509Basics.ml x509Extensions.ml cryptoUtil.ml \
                      randomEngine.ml pkcs1.ml x509.ml answerDump.ml \
                      tlsEnums.ml tls.ml ssl2.ml tlsDatabase.ml tlsUtil.ml tlsEngine.ml
 
