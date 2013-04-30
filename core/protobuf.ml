@@ -91,17 +91,20 @@ let value_of_protobuf_key (wt, fn) =
 
 (* Length defined stuff *)
 
+type 'a length_delimited_container = 'a
+
 let parse_length_delimited_container parse_fun input =
   let len = parse_varint input in
-  parse_container "length_delimited_container" len parse_fun input
+  parse_container len parse_fun input
 
 let lwt_parse_length_delimited_container parse_fun lwt_input =
   lwt_parse_varint lwt_input >>= fun len ->
-  lwt_parse_container "length_delimited_container" len parse_fun lwt_input
+  lwt_parse_container len parse_fun lwt_input
 
 let dump_length_delimited_container dump_fun buf v =
   dump_varlen_container dump_varint dump_fun buf v
 
+let value_of_length_delimited_container = value_of_container
 
 
 (* Protobuf value *)

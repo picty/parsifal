@@ -1,4 +1,5 @@
 open Parsifal
+open BasePTypes
 open Asn1PTypes
 
 enum tls_version [with_lwt] (16, UnknownVal V_Unknown) =

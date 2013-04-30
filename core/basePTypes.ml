@@ -6,6 +6,8 @@ open Parsifal
 (* Integers *)
 (************)
 
+type uint8 = int
+
 let parse_uint8 = parse_byte
 
 let peek_uint8 input =
@@ -20,6 +22,8 @@ let dump_uint8 buf v = Buffer.add_char buf (char_of_int (v land 0xff))
 let value_of_uint8 i = VInt (i, 8, LittleEndian)
 
 
+
+type uint16 = int
 
 let parse_uint16 input =
   if input.cur_offset + 2 <= input.cur_length then begin
@@ -73,6 +77,8 @@ let value_of_uint16le i = VInt (i, 16, LittleEndian)
 
 
 
+type uint24 = int
+
 let parse_uint24 input =
   if input.cur_offset + 3 <= input.cur_length then begin
     let res =
@@ -97,6 +103,8 @@ let dump_uint24 buf v =
 let value_of_uint24 i = VInt (i, 24, BigEndian)
 
 
+
+type uint32 = int (* TODO? *)
 
 let parse_uint32 input =
   if input.cur_offset + 4 <= input.cur_length then begin
@@ -125,7 +133,7 @@ let value_of_uint32 i = VInt (i, 32, BigEndian)
 
 
 
-type uint32le = int
+type uint32le = int (* TODO? *)
 
 let parse_uint32le input =
   if input.cur_offset + 4 <= input.cur_length then begin
@@ -264,19 +272,13 @@ let lwt_parse_rem_string input =
   else fail (ParsingException (NotImplemented "lwt_parse_rem_string", _h_of_li input))
 
 
-let parse_varlen_string name len_fun input =
+let parse_varlen_string len_fun input =
   let n = len_fun input in
-  let new_input = get_in input name n in
-  let res = parse_rem_string new_input in
-  get_out input new_input;
-  res
+  parse_string n input
 
-let lwt_parse_varlen_string name len_fun input =
+let lwt_parse_varlen_string len_fun input =
   len_fun input >>= fun n ->
-  lwt_get_in input name n >>= fun str_input ->
-  let res = parse_rem_string str_input in
-  lwt_get_out input str_input >>= fun () ->
-  return res
+  lwt_parse_string n input
 
 
 let drop_bytes n input =
@@ -328,6 +330,12 @@ let lwt_parse_list n lwt_parse_fun input =
       aux (x::accu) (i-1)
   in aux [] n
 
+let dump_list dump_fun buf l = List.iter (dump_fun buf) l
+
+let value_of_list sub_fun l = VList (List.map sub_fun l)
+
+
+type 'a rem_list = 'a list
 
 let parse_rem_list parse_fun input =
   let rec aux accu =
@@ -370,23 +378,26 @@ let lwt_parse_rem_list lwt_parse_fun input =
     end
   in aux []
 
+let dump_rem_list = dump_list
 
-let parse_varlen_list name len_fun parse_fun input =
+let value_of_rem_list = value_of_list
+
+
+type 'a varlen_list = 'a list
+
+let parse_varlen_list len_fun parse_fun input =
   let n = len_fun input in
-  let new_input = get_in input name n in
+  let new_input = get_in input "list" n in
   let res = parse_rem_list parse_fun new_input in
   get_out input new_input;
   res
 
-let lwt_parse_varlen_list name len_fun parse_fun input =
+let lwt_parse_varlen_list len_fun parse_fun input =
   len_fun input >>= fun n ->
-  lwt_get_in input name n >>= fun str_input ->
+  lwt_get_in input "list" n >>= fun str_input ->
   wrap2 parse_rem_list parse_fun str_input >>= fun res ->
   lwt_get_out input str_input >>= fun () ->
   return res
-
-
-let dump_list dump_fun buf l = List.iter (dump_fun buf) l
 
 let dump_varlen_list len_fun dump_fun buf l =
   let tmp_buf = Buffer.create !default_buffer_size in
@@ -395,7 +406,7 @@ let dump_varlen_list len_fun dump_fun buf l =
   len_fun buf n;
   Buffer.add_buffer buf tmp_buf
 
-let value_of_list sub_fun l = VList (List.map sub_fun l)
+let value_of_varlen_list = value_of_list
 
 
 
@@ -403,26 +414,34 @@ let value_of_list sub_fun l = VList (List.map sub_fun l)
 (* Container *)
 (*************)
 
-let parse_container name n parse_fun input =
-  let new_input = get_in input name n in
+type 'a container = 'a
+
+let parse_container n parse_fun input =
+  let new_input = get_in input "container" n in
   let res = parse_fun new_input in
   get_out input new_input;
   res
 
-let lwt_parse_container name n parse_fun input =
-  lwt_get_in input name n >>= fun str_input ->
+let lwt_parse_container n parse_fun input =
+  lwt_get_in input "container" n >>= fun str_input ->
   wrap1 parse_fun str_input >>= fun res ->
   lwt_get_out input str_input >>= fun () ->
   return res
 
+let dump_container dump_fun buf content = dump_fun buf content
 
-let parse_varlen_container name len_fun parse_fun input =
+let value_of_container value_of_fun x = value_of_fun x
+
+
+type 'a varlen_container = 'a
+
+let parse_varlen_container len_fun parse_fun input =
   let n = len_fun input in
-  parse_container name n parse_fun input
+  parse_container n parse_fun input
 
-let lwt_parse_varlen_container name len_fun parse_fun input =
+let lwt_parse_varlen_container len_fun parse_fun input =
   len_fun input >>= fun n ->
-  lwt_parse_container name n parse_fun input
+  lwt_parse_container n parse_fun input
 
 let dump_varlen_container len_fun dump_fun buf content =
   let tmp_buf = Buffer.create !default_buffer_size in
@@ -430,6 +449,8 @@ let dump_varlen_container len_fun dump_fun buf content =
   let n = Buffer.length tmp_buf in
   len_fun buf n;
   Buffer.add_buffer buf tmp_buf
+
+let value_of_varlen_container = value_of_container
 
 
 (*********)

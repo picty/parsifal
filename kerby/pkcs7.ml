@@ -58,7 +58,7 @@ struct pkcs7_signed_data_content = {
   (* XXX parse CRLs *)
   optional crls : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of (list of binstring);
   signerInfos : asn1 [(C_Universal, true, T_Set)] of (list of signerInfo);
-  parse_checkpoint junk : ignore
+  parse_checkpoint _junk : ignore
 }
 asn1_alias pkcs7_signed_data
 
@@ -130,6 +130,6 @@ let ms_oids = [
 
 let _ =
   let register_oids (name, oid) = register_oid oid name in
-  List.map register_oids pkcs_oids;
-  List.map register_oids ms_oids
+  List.iter register_oids pkcs_oids;
+  List.iter register_oids ms_oids
 

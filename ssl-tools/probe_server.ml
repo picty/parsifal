@@ -13,6 +13,7 @@ open TlsEngine
 (* Option handling *)
 
 let verbose = ref false
+let base64 = ref true
 let host = ref "www.google.com"
 let port = ref 443
 let rec_version = ref V_TLSv1
@@ -69,6 +70,8 @@ let deep_parse () =
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
+  mkopt None "pem" (Set base64) "use PEM format (default)";
+  mkopt None "der" (Clear base64) "use DER format";
 
   mkopt (Some 'H') "host" (StringVal host) "host to contact";
   mkopt (Some 'p') "port" (IntVal port) "port to probe";
@@ -132,18 +135,23 @@ let print_hs ctx hs =
 
 let get_cs _ hs =
   match hs.handshake_content with
-    | ServerHello { ciphersuite = cs } -> Result cs
-    | _ -> NothingSoFar
+  | ServerHello { ciphersuite = cs } -> Result cs
+  | _ -> NothingSoFar
 
 let get_cm _ hs =
   match hs.handshake_content with
-    | ServerHello { compression_method = cm } -> Result cm
-    | _ -> NothingSoFar
+  | ServerHello { compression_method = cm } -> Result cm
+  | _ -> NothingSoFar
 
 let get_sh_version _ hs =
   match hs.handshake_content with
-    | ServerHello { server_version = v } -> Result v
-    | _ -> NothingSoFar
+  | ServerHello { server_version = v } -> Result v
+  | _ -> NothingSoFar
+
+let get_certs _ hs =
+  match hs.handshake_content with
+  | Certificate certs -> Result certs
+  | _ -> NothingSoFar
 
 let stop_on_fatal_alert alert =
   if alert.alert_level = AL_Fatal
@@ -226,6 +234,26 @@ let ssl_scan_versions () =
 
 let print_list = List.iter print_endline
 
+let save_certs certs =
+  let ext = if !base64 then ".pem" else ".der" in
+  let rec save_one_cert i = function
+    | cert::r ->
+      let f = open_out (!host ^ "-" ^ (string_of_int i) ^ ext) in
+      let buf = Buffer.create !default_buffer_size in
+      let dump_fun =
+	if !base64
+	then Base64.dump_base64_container (Base64.HeaderInList ["CERTIFICATE"]) dump__certificate
+	else dump__certificate
+      in dump_fun buf cert;
+      Buffer.output_buffer f buf;
+      close_out f;
+      save_one_cert (i+1) r
+    | [] -> i
+  in
+  let n_certs = save_one_cert 0 certs in
+  Printf.printf "Saved %d certificates\n" n_certs
+
+
 let print_result print_fun = function
   | Result r -> print_fun r
   | Retry -> prerr_endline "Retry ?!"
@@ -242,4 +270,6 @@ let _ =
     | ["scan-compressions"] -> print_result print_list (Lwt_unix.run (ssl_scan get_cm string_of_compression_method (remove_from_list compressions)))
     | ["scan-versions"] -> print_result ignore (Lwt_unix.run (ssl_scan_versions ()))
     | ["probe"] | [] -> print_result ignore (Lwt_unix.run (send_and_receive !retry print_hs print_alert))
+    | ["extract-certificates"]
+    | ["extract-certs"] -> print_result save_certs (Lwt_unix.run (send_and_receive !retry get_certs stop_on_fatal_alert))
     | _ -> failwith "Invalid command"

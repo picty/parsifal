@@ -13,7 +13,7 @@ open X509Extensions
 asn1_alias issuerUniqueId = primitive [C_ContextSpecific, 1] der_bitstring
 asn1_alias subjectUniqueId = primitive [C_ContextSpecific, 2] der_bitstring
 
-struct tbsCertificate_content = {
+asn1_struct tbsCertificate = {
   optional version : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_smallint;
   serialNumber : der_integer;
   signature : algorithmIdentifier;
@@ -29,7 +29,6 @@ struct tbsCertificate_content = {
   optional subjectUniqueId : asn1 [(C_ContextSpecific, false, T_Unknown 2)] of der_bitstring_content;
   optional extensions : asn1 [(C_ContextSpecific, true, T_Unknown 3)] of extension_list
 }
-asn1_alias tbsCertificate
 
 struct certificate_content = {
   parse_checkpoint position_before_tbs : save_offset;
@@ -83,7 +82,7 @@ let dh_spk_of_param = function
 let public_key_types = [
   [42;840;113549;1;1;1], "rsaEncryption", APT_Null, (fun _ -> SPK_RSA);
   [42;840;10040;4;1], "dsa", APT_DSAParams, dsa_spk_of_param;
-  [42;840;10046;2;1], "dh-public-number" , APT_DHParams, dh_spk_of_param
+  [42;840;10046;2;1], "dh-public-number" , APT_DHParams, dh_spk_of_param;
 ]
 
 let signature_types = [

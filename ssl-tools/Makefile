@@ -1,6 +1,6 @@
 # configurable section
 TARGETS = mapAnswers asn1parse x509show probe_server serveranswer sslproxy disturber \
-	  extractSessions
+	  extractSessions sslrevproxy
 
 mapAnswers_SRCS := mapAnswers.ml
 asn1parse_SRCS := asn1parse.ml
@@ -10,6 +10,7 @@ serveranswer_SRCS := serveranswer.ml
 sslproxy_SRCS := sslproxy.ml
 disturber_SRCS := disturber.ml
 extractSessions_SRCS := extractSessions.ml
+sslrevproxy_SRCS := sslrevproxy.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
