@@ -49,7 +49,7 @@ let test_idem_pod parse dump rnd_fun () =
 (* TODO: Add tests on invalid headers, and tests on invalid base64 chars *)
 
 
-let n = ref 1
+let n = ref 10
 
 let mk_one_b64_test header_type len =
   let prefix, dump_hdr = match header_type with
