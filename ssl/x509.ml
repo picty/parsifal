@@ -140,6 +140,7 @@ let extension_types = [
 
 let other_oids = [
   (* Prefixes *)
+  [43;6;1;5;2;2], "id-pkinit-san";
   [43;6;1;5;5;7], "id-pkix";
   [43;6;1;5;5;7;1], "id-pe";
   [43;6;1;5;5;7;2], "id-qt";
