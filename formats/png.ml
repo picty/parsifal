@@ -1,5 +1,6 @@
 open Lwt
 open Parsifal
+open BasePTypes
 open PTypes
 
 enum color_type (8, UnknownVal UnknownColorType) =

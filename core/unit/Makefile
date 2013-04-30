@@ -1,7 +1,8 @@
 # configurable section
-TARGETS = test_basePTypes
+TARGETS = test_basePTypes test_base64
 
 test_basePTypes_SRCS := test_basePTypes.ml
+test_base64_SRCS := test_base64.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
@@ -25,6 +26,8 @@ BUILD_DIR = build
 include ../../Makefile.ocaml
 
 
-check:	test_basePTypes.byte test_basePTypes
+check:	test_basePTypes.byte test_basePTypes test_base64.byte test_base64
 	./test_basePTypes.byte
 	./test_basePTypes
+	./test_base64.byte
+	./test_base64

@@ -15,7 +15,7 @@ exception Timeout
 
 let client_socket ?timeout:(timeout=None) host port =
   let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-  let host_entry = Unix.gethostbyname host in
+  Lwt_unix.gethostbyname host >>= fun host_entry ->
   let inet_addr = host_entry.Unix.h_addr_list.(0) in
   let addr = Unix.ADDR_INET (inet_addr, port) in
   let t = Lwt_unix.connect s addr in

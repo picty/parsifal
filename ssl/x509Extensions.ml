@@ -45,14 +45,13 @@ asn1_alias generalNames = seq_of generalName
 (* Authority Key Identifier *)
 (****************************)
 
-struct authorityKeyIdentifier_content = {
+asn1_struct authorityKeyIdentifier = {
   optional keyIdentifier : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of binstring;
   optional authorityCertIssuer : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of (list of generalName);
   optional authorityCertSerialNumber : asn1 [(C_ContextSpecific, false, T_Unknown 2)] of der_integer_content;
   parse_checkpoint _constraint : both_equal(false; (CustomException "AKI components 1 and 2 should be defined together");
                                             authorityCertIssuer = None; authorityCertSerialNumber = None)
 }
-asn1_alias authorityKeyIdentifier
 
 
 
@@ -79,11 +78,10 @@ let keyUsage_values = [|
 (****************************)
 
 (* TODO: Add structural check: at least one field should be present *)
-struct privateKeyUsagePeriod_content = {
+asn1_struct privateKeyUsagePeriod = {
   optional pkup_notBefore : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of der_generalized_time_content;
   optional pkup_notAfter : asn1 [(C_ContextSpecific, false, T_Unknown 1)] of der_generalized_time_content
 }
-asn1_alias privateKeyUsagePeriod
 
 
 
@@ -91,11 +89,10 @@ asn1_alias privateKeyUsagePeriod
 (* Basic Constraints *)
 (*********************)
 
-struct basicConstraints_content = {
+asn1_struct basicConstraints = {
   optional cA : der_boolean;
   optional pathLenConstraint : der_smallint
 }
-asn1_alias basicConstraints
 
 
 
@@ -103,20 +100,18 @@ asn1_alias basicConstraints
 (* NameConstraints *)
 (*******************)
 
-struct generalSubtree_content = {
+asn1_struct generalSubtree = {
   gst_base : generalName;
   optional gst_minimum : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of der_integer_content;
   optional gst_maximum : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_integer_content
 }
-asn1_alias generalSubtree
 asn1_alias generalSubtrees = seq_of generalSubtree (* TODO: 1 .. MAX *)
 
 (* TODO: Add structural constraint (0 or 1 must be present) *)
-struct nameConstraints_content = {
+asn1_struct nameConstraints = {
   optional permittedSubtrees : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of generalSubtrees;
   optional excludedSubtrees : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of generalSubtrees
 }
-asn1_alias nameConstraints
 
 
 
@@ -142,13 +137,12 @@ let reasonFlags_values = [|
 |]
 
 (* TODO: Add structural check: at least 0 or 2 should be present *)
-struct distributionPoint_content = {
+asn1_struct distributionPoint = {
   optional distributionPoint : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of distributionPointName;
   optional reasons : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of der_enumerated_bitstring_content[reasonFlags_values];
   optional crlIssuer : asn1 [(C_ContextSpecific, true, T_Unknown 2)] of (list of generalName)
 }
 
-asn1_alias distributionPoint
 asn1_alias crlDistributionPoints = seq_of distributionPoint (* TODO: 1 .. MAX *)
 
 
@@ -164,34 +158,30 @@ asn1_union displayText [enrich; exhaustive] (UnparsedDisplayText) =
   | C_Universal, false, T_UTF8String -> DT_UTF8String of der_octetstring_content (no_constraint)
   | C_Universal, false, T_BMPString -> DT_BMPString of der_octetstring_content (no_constraint)
 
-struct noticeReference_content = {
+asn1_struct noticeReference = {
   organization : displayText;
   noticeNumbers : asn1 [(C_Universal, true, T_Sequence)] of der_integer
 }
-asn1_alias noticeReference
 
-struct userNotice_content = {
+asn1_struct userNotice = {
   optional noticeRef : noticeReference;
   optional explicitText : displayText
 }
-asn1_alias userNotice
 
 union policyQualifier [enrich] (UnparsedQualifier of der_object) =
   | "id-qt-cps" -> CPSuri of der_ia5string(NoConstraint)
   | "id-qt-unotice" -> UserNotice of userNotice
 
-struct policyQualifierInfo_content = {
+asn1_struct policyQualifierInfo = {
   policyQualifierId : der_oid;
   qualifier : policyQualifier(hash_get oid_directory policyQualifierId "")
 }
-asn1_alias policyQualifierInfo
 asn1_alias policyQualifiers = seq_of policyQualifierInfo (* TODO: 1..MAX *)
 
-struct policyInformation_content = {
+asn1_struct policyInformation = {
   policyIdentifer : der_oid;
   optional policyQualifiers : policyQualifiers
 }
-asn1_alias policyInformation
 asn1_alias certificatePolicies = seq_of policyInformation (* 1..MAX *)
 
 
@@ -208,11 +198,10 @@ asn1_alias extendedKeyUsage = seq_of der_oid
 (* Authority Information Access *)
 (********************************)
 
-struct accessDescription_content = {
+asn1_struct accessDescription = {
   accessMethod : der_oid;
   accessLocation : generalName
 }
-asn1_alias accessDescription
 asn1_alias authorityInfoAccess = seq_of accessDescription (* TODO: 1 .. MAX *)
 
 
@@ -220,20 +209,18 @@ asn1_alias authorityInfoAccess = seq_of accessDescription (* TODO: 1 .. MAX *)
 (* Logotype *)
 (************)
 
-struct logotypeReference_content = {
+asn1_struct logotypeReference = {
   refStructHash : asn1 [h_sequence] of list of hashAlgAndValue; (* [1..MAX] *)
   refStructURI : asn1 [h_sequence] of list of der_ia5string(NoConstraint); (* [1..MAX] *)
 }
-asn1_alias logotypeReference
 
-struct logotypeAudioInfo_content = {
+asn1_struct logotypeAudioInfo = {
   fileSize : der_smallint; (* Possible Integer overflow *)
   playTime : der_smallint; (* Possible Integer overflow *)
   channels : der_smallint;
   optional sampleRate : asn1 [(C_ContextSpecific, false, T_Unknown 3)] of der_smallint;
   optional language : asn1 [(C_ContextSpecific, false, T_Unknown 4)] of der_printable_octetstring_content (no_constraint) (* IA5 *)
 }
-asn1_alias logotypeAudioInfo
 
 asn1_union logotypeImageResolution [enrich; exhaustive] (UnparsedLogotypeImageResolution) =
   | C_ContextSpecific, false, T_Unknown 1 -> LIR_NumBits of der_smallint
@@ -243,7 +230,7 @@ enum logotypeImageType (8, UnknownVal LIT_Unknown) =
   | 0 -> LIT_GrayScale, "grayScale"
   | 1 -> LIT_Color, "color"
 
-struct logotypeImageInfo_content = {
+asn1_struct logotypeImageInfo = {
   optional lii_type : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of logotypeImageType;
   fileSize : der_smallint; (* Possible Integer overflow *)
   xSize : der_smallint; (* Possible Integer overflow *)
@@ -251,52 +238,45 @@ struct logotypeImageInfo_content = {
   optional resolution : logotypeImageResolution;
   optional language : asn1 [(C_ContextSpecific, false, T_Unknown 4)] of der_printable_octetstring_content (no_constraint) (* IA5 *)
 }
-asn1_alias logotypeImageInfo
 
-struct logotypeDetails_content = {
+asn1_struct logotypeDetails = {
   media_type : der_ia5string(NoConstraint);
   logotypeHash : asn1 [h_sequence] of list of hashAlgAndValue; (* [1..MAX] *)
   logotypeURI : asn1 [h_sequence] of list of der_ia5string(NoConstraint); (* [1..MAX] *)
 }
-asn1_alias logotypeDetails
 
-struct logotypeAudio_content = {
+asn1_struct logotypeAudio = {
   audioDetails : logotypeDetails;
   optional audioInfo : logotypeAudioInfo;
 }
-asn1_alias logotypeAudio
 
-struct logotypeImage_content = {
+asn1_struct logotypeImage = {
   imageDetails : logotypeDetails;
   optional imageInfo : logotypeImageInfo;
 }
-asn1_alias logotypeImage
 
-struct logotypeData_content = {
+asn1_struct logotypeData = {
   optional image : asn1 [h_sequence] of list of logotypeImage;
   optional audio : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of list of logotypeAudio;
 }
-asn1_alias logotypeData
 
 asn1_union logotypeInfo [enrich; exhaustive] (UnparsedLogotypeInfo) =
   | C_ContextSpecific, true, T_Unknown 0 -> LI_Direct of logotypeData_content
   | C_ContextSpecific, true, T_Unknown 1 -> LI_Indirect of logotypeReference_content
 asn1_alias logotypeInfos = seq_of logotypeInfo
 
-struct otherLogotypeInfo_content = {
+asn1_struct otherLogotypeInfo = {
   logotypeType : der_oid;
   oli_info : logotypeInfo;
 }
-asn1_alias otherLogotypeInfo
 asn1_alias otherLogotypeInfos = seq_of otherLogotypeInfo
 
-struct logotype_content = {
+asn1_struct logotype = {
   optional communityLogos : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of logotypeInfos;
   optional issuerLogo : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of logotypeInfo;
   optional subjectLogo : asn1 [(C_ContextSpecific, true, T_Unknown 2)] of logotypeInfo;
   optional otherLogos : asn1 [(C_ContextSpecific, true, T_Unknown 3)] of otherLogotypeInfos;
 }
-asn1_alias logotype
 
 
 (****************)
@@ -333,11 +313,10 @@ union capabilityParam [enrich] (UnparsedCapabilityParam of der_object) =
   | CT_Int -> CapabilityLength of der_smallint
   | CT_Null -> CapabilityNull of der_null
 
-struct sMIMECapability_content = {
+asn1_struct sMIMECapability = {
   capability : der_oid;
   optional parameters : capabilityParam(hash_get capabilityType_directory capability CT_Unknown)
 }
-asn1_alias sMIMECapability
 asn1_alias sMIMECapabilities = seq_of sMIMECapability
 
 
@@ -364,19 +343,13 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "nsSSLServerName" -> NSSSLServerName of der_ia5string(NoConstraint)
   | "nsComment" -> NSComment of der_ia5string(NoConstraint)
   | "sMIMECapabilities" -> SMIMECapabilities of sMIMECapabilities
-
-(* Sordid hack. TODO: auto-generate that with an option laxist? *)
-let parse_extnValue t input =
-  (* We need the exact=true to avoid failing in the octetstring_container *) 
-  match try_parse ~exact:true (parse_extnValue t) input with
-  | None -> parse_extnValue "" input
-  | Some res -> res
+  | "PARSING_FAILURE" -> ExtensionParsingFailure of binstring
 
 
-struct extension_content = {
+asn1_struct extension = {
   extnID : der_oid;
   optional critical : der_boolean;
-  extnValue : octetstring_container of extnValue(hash_get oid_directory extnID "")
+  extnValue : octetstring_container of exact_safe_union(hash_get oid_directory extnID ""; "PARSING_FAILURE") of extnValue
+  (* The exact is needed to avoid generating an error due to trailing stuff in the octetstring_container. *)
 }
-asn1_alias extension
 asn1_alias extension_list = seq_of extension (* TODO: min = 1 *)

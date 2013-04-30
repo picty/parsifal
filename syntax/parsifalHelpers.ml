@@ -93,3 +93,10 @@ let mk_multiple_args_fun _loc fname argnames ?optargs:(optargnames=[]) body =
   in
   let b = <:binding< $pat: <:patt< $lid:fname$ >> $ = $exp:_mk_multiple_optargs_fun optargnames$ >>
   in <:str_item< value $b$ >>
+
+
+let rec mk_sequence _loc = function
+  | [] -> <:str_item< >>
+  | [si] -> <:str_item< $si$ >>
+  | si::r -> <:str_item< $si$; $mk_sequence _loc r$ >>
+

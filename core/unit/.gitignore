@@ -1,2 +1,4 @@
 test_basePTypes
 test_basePTypes.byte
+test_base64
+test_base64.byte

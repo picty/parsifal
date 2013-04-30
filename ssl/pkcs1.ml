@@ -111,7 +111,7 @@ let decrypt block_type expected_len ed n c =
 let raw_sign rnd_state typ hash msg n d =
   let oid, f = get_hash_fun_by_name hash in
   let digest = f msg in
-  let asn1_struct = {
+  let asn1_structure = {
     X509Basics.hash_function = {
       X509Basics.algorithmId = oid;
       (* TODO: Clean that up: params should depend on the oid *)
@@ -119,7 +119,7 @@ let raw_sign rnd_state typ hash msg n d =
     };
     X509Basics.hash_digest = digest
   } in
-  encrypt rnd_state typ (X509Basics.exact_dump_hashAlgAndValue asn1_struct) n d
+  encrypt rnd_state typ (X509Basics.exact_dump_hashAlgAndValue asn1_structure) n d
 
 let raw_verify typ msg s n e =
   try

@@ -134,8 +134,7 @@ type ssl2_record = {
 
 
 let parse_ssl2_record context input =
-  let name = "SSLv2 record content"
-  and parse_fun = parse_ssl2_content context
+  let parse_fun = parse_ssl2_content context
   and x = parse_uint16 input in
   if (x land 0x8000) = 0x8000 then
     let len = (x land 0x7fff) in
@@ -143,13 +142,13 @@ let parse_ssl2_record context input =
       ssl2_is_escape = false;
       ssl2_padding_length = 0;
       ssl2_total_length = len;
-      ssl2_content = parse_container name len parse_fun input }
+      ssl2_content = parse_container len parse_fun input }
   else begin
     let len = x land 0x3fff in
     let pad_len = parse_uint8 input in
     let real_len = if context.cleartext then (len - pad_len) else len
     and real_pad_len = if context.cleartext then pad_len else 0 in
-    let msg = parse_container name real_len parse_fun input in
+    let msg = parse_container real_len parse_fun input in
     drop_bytes real_pad_len input;
     { ssl2_long_header = true;
       ssl2_is_escape = (x land 0x4000) = 0x4000;
@@ -159,12 +158,11 @@ let parse_ssl2_record context input =
   end
 
 let lwt_parse_ssl2_record context input =
-  let name = "SSLv2 record content"
-  and parse_fun = parse_ssl2_content context in
+  let parse_fun = parse_ssl2_content context in
   lwt_parse_uint16 input >>= fun x ->
   if (x land 0x8000) = 0x8000 then begin
     let len = x land 0x7fff in
-    lwt_parse_container name len parse_fun input >>= fun content ->
+    lwt_parse_container len parse_fun input >>= fun content ->
     return { ssl2_long_header = false;
 	     ssl2_is_escape = false;
 	     ssl2_padding_length = 0;
@@ -175,7 +173,7 @@ let lwt_parse_ssl2_record context input =
     lwt_parse_uint8 input >>= fun pad_len ->
     let real_len = if context.cleartext then (len - pad_len) else len
     and real_pad_len = if context.cleartext then pad_len else 0 in
-    lwt_parse_container name real_len parse_fun input >>= fun content ->
+    lwt_parse_container real_len parse_fun input >>= fun content ->
     lwt_drop_bytes real_pad_len input >>= fun _ ->
     return { ssl2_long_header = true;
       ssl2_is_escape = (x land 0x4000) = 0x4000;

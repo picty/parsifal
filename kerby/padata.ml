@@ -9,8 +9,10 @@ open X509Extensions
 open Pkcs7
 
 (* ContextSpecific optimization *)
+type 'a cspe = 'a
 let parse_cspe n parse_fun input = parse_asn1 (C_ContextSpecific, true, T_Unknown n) parse_fun input
 let dump_cspe n dump_fun buf o = dump_asn1 (C_ContextSpecific, true, T_Unknown n) dump_fun buf o
+let value_of_cspe = BasePTypes.value_of_container
 
 (* DEFINITIONS *)
 (* Define KerberosString *)

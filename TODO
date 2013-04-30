@@ -1,21 +1,19 @@
 v0.2 (apr. 2013)
  - add hex_container / gzip_container as custom containers => needed for PNG
+ - patch parse_checkpoint to allow empty identifiers (parse_checkpoint _ : update_stuff)
  - General
    * have a redmine to put all this stuff
+   * create a mailing list
    * clean up TODOs in ml files.
    * prepare the v0.2 version as the first one published
  - Once v0.2 is freezed, add all the changes in a Changelog!
- - Write asn1_struct (struct + asn1_alias)
- - Software Engineering
-   * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
-   * non-regression test on answer-type/ncerts
+
  - Merge tls_context and ssl2_context?
  - Misc
    * Factor some code (verbose option, file handling, action handling) in getopt
    * getopt tuning (help usage messages [principal and details], multiline descriptions)
    * getopt tuning (add constraint on the number of args?)
    * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
- - Rewrite the tutorial as a HTML journey (installation, examples in interactive loop, tar-steps, dns-steps)
  - Tools
    * Write a cool passive TLS_Proxy
    * Add direct hex input to asn1parse and other programs
@@ -31,7 +29,6 @@ v0.2 (apr. 2013)
      -C send certificate message
      -D send server-hello-done message
    * improve probe-server
-     + add extract-cert feature
      + add SSLv2 support
      + add a way to handle TLS extensions
    * improve mapAnswers
@@ -40,13 +37,23 @@ v0.2 (apr. 2013)
      + add SSLv2 support in mapAnswers (especially -g)
 
 v0.3 (may 2013)
+ - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
+ - Use modules to aggregate the functions for some top-level objects (parse/dump/value_of)
+ - Improve asn1_struct (correct option handling: params / top)
+ - Context handling: code some helpers using (string, 'a) Hashtbl.t to allow for a simple parsing context with parse_checkpoint/parse_fields
+ - add a new VParsingError type and a choice decorator [parsingError] to remember when a safe_union failed
+ - Add recursive type definitions (PKCS#7 / DEX) between "begin_parsifal_block" and "end_parsifal_block"
+   * This will allow for defining "string_of" in such blocks to modify "value_of" behavior (useful for mx_rdata / soa_rdata for example)
+ - Rewrite the tutorial as a HTML journey (installation, examples in interactive loop, tar-steps, dns-steps)
  - Clean up DNS implementation
-   * add support for SOA RR
    * write tests for DNS
    * add an optional parameter "dont_quote" to print_value
    * use "dont_quote" in picodig
    * picodig (using a special sr function (send/receive)?)
- - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
+
+ - Software Engineering
+   * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
+   * non-regression test on answer-type/ncerts
  - TlsEngine (work needed to factor code in mapAnswers and extractSessions properly)
    * work on TlsEngine.update* functions
    * write the automata (client, server, transparent proxy, normalizing proxy)
@@ -62,13 +69,12 @@ v0.3 (may 2013)
    * [?] add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
    * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
    * put 'a result_type and handle_answer logic from probe_server into TlsEngine
- - Write a trivial SSL client or server
+ - Write a trivial RC4-MD5 SSL client or server
  - Add .mli for all files!
  - Add a proper way to be flexible while parsing ATV/Extensions/Times (flexible option + laxist option in input)... because that is where the parsing fails (and it should by default!)
  - Add @dump in VRecord when an option is present in struct?
  - Design the language to explore values (functions like hex / dump / substring / asn1parse / M.parse one day and conditionnal expressions...)
  - Factor some code (lwt_parse_file filename lwt_parse_fun; the more common options (enrich, verbose, input handling); get machinery)
- - Use modules to aggregate the functions for some top-level objects (parse/dump/value_of)
  - Docs
    * Document the preprocessor and write a new version of the JFLA article. Comapre to existing stuff:
      + https://github.com/jaked/deriving
@@ -113,11 +119,13 @@ v0.3 (may 2013)
 
  - General
    * Think about the exception system (fatal or not) => merge all in ParsifalException
+   * Reorder pTypes and pContainers?
  - Camlp4/Language
    * rethink the exhaustive/enrich options for unions/asn1_unions. The params are
      + Enrich status : always-enrich, enrich_by_default, dont_enrich_by_default (the last two add an enrich bool ref)
      + Exhaustive status : true or false
-     + Fail status when enriching has failed : exception, unparsed_constructor
+     + Fail status when enriching has failed : exception, unparsed_constructor => rewrite it without the safe_union container
+     + In fact, naming the UnknownVal constructor is not necessary => UnknownVal of type / Exception
    * the possibilities should be:
      + "closed" => always-enrich, exception on "_" case
      + "closed" + "exhaustive" => do not add the "_" case
@@ -134,7 +142,6 @@ v0.3 (may 2013)
        -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
-   * Add recursive type definitions (PKCS#7 / DEX)
    * Add bitfield support
      + this should look like struct
      + it should use bitparse_ / bitdump_ functions, that take two more args (current_byte, current_pos)
@@ -171,6 +178,7 @@ v0.3 (may 2013)
 
 
 v0.4 (jun. 2013)
+ - Rewrite Base64 properly
  - Maybe add a lwt_dump_* function?
  - Propose a lwt_parse_wrapper, which stupidly tries to read byte by byte and give the result to parse? It could be improved when an input is rewindable or if OutOfBounds gave the number of bytes needed to continue (at least when some info is available)
  - Add cool containers where it is possible to specify the real type ( (int, string) either / int option )

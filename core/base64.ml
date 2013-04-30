@@ -1,4 +1,5 @@
 open Parsifal
+open BasePTypes
 open PTypes
 open Lwt
 
@@ -62,36 +63,46 @@ let decode_rev_chunk b = function
   | new_chunk -> Some new_chunk
 
 
-let rec debaser b b64chunk input =
-  if eos input then ()
+let rec debaser expect_dash b b64chunk input =
+  if eos input then false
   else begin
     let c = drop_while (fun c -> reverse_base64_chars.(c) = -2) input in
     let v = reverse_base64_chars.(c) in
-    if v >= -1
-    then begin
+    if v >= -1 then begin
       match decode_rev_chunk b (v::b64chunk) with
-      | None -> ()
-      | Some new_chunk -> debaser b new_chunk input
-    end else raiseB64 "Invalid character" input
+      | None -> false
+      | Some new_chunk -> debaser expect_dash b new_chunk input
+    end else begin
+      if expect_dash && (v = -3) && (b64chunk = [])
+      then true
+      else raiseB64 "Invalid character" input
+    end
   end
 
-let rec lwt_debaser b b64chunk lwt_input =
+(* TODO: lwt_debaser does not handle eos correctly *)
+let rec lwt_debaser expect_dash b b64chunk lwt_input =
   lwt_drop_while (fun c -> reverse_base64_chars.(c) = -2) lwt_input >>= fun c ->
   let v = reverse_base64_chars.(c) in
   if v >= -1 
   then begin
     match decode_rev_chunk b (v::b64chunk) with
-    | None -> return ()
-    | Some new_chunk -> lwt_debaser b new_chunk lwt_input
-  end else lwt_raiseB64 "Invalid character" lwt_input
+    | None -> return false
+    | Some new_chunk -> lwt_debaser expect_dash b new_chunk lwt_input
+  end else begin
+    if expect_dash && (v = -3) && (b64chunk = [])
+    then return true
+    else lwt_raiseB64 "Invalid character" lwt_input
+  end
 
 
 
 let string_of_base64_title title input =
-  let read_title header input =
-    let c = drop_while (fun c -> reverse_base64_chars.(c) = -2) input in
-    if char_of_int c <> '-'
-    then raiseB64 "Dash expected" input;
+  let read_title dash_read header input =
+    if not dash_read then begin
+      let c = drop_while (fun c -> reverse_base64_chars.(c) = -2) input in
+      if char_of_int c <> '-'
+      then raiseB64 "Dash expected" input
+    end;
     ignore (parse_magic (if header then "----BEGIN " else "----END ") input);
     let title = read_while (fun c -> c <> (int_of_char '-')) input in
     ignore (parse_magic "----" input);
@@ -99,9 +110,9 @@ let string_of_base64_title title input =
   in
 
   let res = Buffer.create 1024 in
-  let t1 = read_title true input in
-  debaser res [] input;
-  let t2 = read_title false input in
+  let t1 = read_title false true input in
+  let dash_read = debaser true res [] input in
+  let t2 = read_title dash_read false input in
   match title, t1 = t2 with
   | None, true -> Buffer.contents res
   | Some t, true ->
@@ -112,22 +123,25 @@ let string_of_base64_title title input =
 
 
 let lwt_string_of_base64_title title lwt_input =
-  let lwt_read_title header lwt_input =
-    lwt_drop_while (fun c -> reverse_base64_chars.(c) = -2) lwt_input >>= fun c ->
-    if char_of_int c <> '-'
-    then lwt_raiseB64 "Dash expected" lwt_input
-    else begin
-      lwt_parse_magic (if header then  "----BEGIN " else "----END ") lwt_input >>= fun _ ->
-      lwt_read_while (fun c -> c <> (int_of_char '-')) lwt_input >>= fun title ->
-      lwt_parse_magic "----" lwt_input >>= fun _ ->
-      return title
-    end
+  let lwt_read_title dash_read header lwt_input =
+    let handle_first_dash =
+      if not dash_read then begin
+	lwt_drop_while (fun c -> reverse_base64_chars.(c) = -2) lwt_input >>= fun c ->
+	if char_of_int c <> '-'
+	then lwt_raiseB64 "Dash expected" lwt_input
+	else return ()
+      end else return ()
+    in handle_first_dash >>= fun () ->
+    lwt_parse_magic (if header then  "----BEGIN " else "----END ") lwt_input >>= fun _ ->
+    lwt_read_while (fun c -> c <> (int_of_char '-')) lwt_input >>= fun title ->
+    lwt_parse_magic "----" lwt_input >>= fun _ ->
+    return title
   in
 
   let res = Buffer.create 1024 in
-  lwt_read_title true lwt_input >>= fun t1 ->
-  lwt_debaser res [] lwt_input >>= fun () ->
-  lwt_read_title false lwt_input >>= fun t2 ->
+  lwt_read_title false true lwt_input >>= fun t1 ->
+  lwt_debaser true res [] lwt_input >>= fun dash_read ->
+  lwt_read_title dash_read false lwt_input >>= fun t2 ->
   match title, t1 = t2 with
   | None, true ->
     return (Buffer.contents res)
@@ -142,13 +156,13 @@ let lwt_string_of_base64_title title lwt_input =
 let to_raw_base64 maxlen buf bin_buf =
   let n = Buffer.length bin_buf in
   let rec add_group = function
-    | v::r, n ->
+    | v::r, padding_needed ->
       Buffer.add_char buf base64_chars.[v];
-      add_group (r, n)
+      add_group (r, padding_needed)
     | [], 0 -> ()
-    | [], _ ->
+    | [], padding_needed ->
       Buffer.add_char buf '=';
-      add_group ([], n-1)
+      add_group ([], padding_needed - 1)
   in
   let rec handle_next_group i rem =
     match rem with
@@ -169,25 +183,30 @@ let to_raw_base64 maxlen buf bin_buf =
 	and v3 = int_of_char (Buffer.nth bin_buf (i+2)) in
 	add_group ([v1 lsr 2;
 		    ((v1 lsl 4) land 0x3f) lor (v2 lsr 4);
-		    ((v2 lsl 2) land 0x3f) lor (v2 lsr 6);
-	      v3 land 0x3f], 0);
-	if maxlen > 0 && (i mod maxlen == 0) then Buffer.add_char buf '\n';
-	handle_next_group (i+3) (rem-3)
+		    ((v2 lsl 2) land 0x3f) lor (v3 lsr 6);
+		    v3 land 0x3f], 0);
+	let new_i = i+3 and new_rem = rem -3 in
+	if maxlen > 0 && (new_i mod maxlen == 0) then Buffer.add_char buf '\n';
+	handle_next_group new_i new_rem
   in
   handle_next_group 0 n
 
 
 let to_base64 title buf bin_buf =
-  let mk_boundary t header =
-    Buffer.add_string buf (if header then "-----BEGIN " else "\n-----END ");
+  let mk_begin_boundary t =
+    Buffer.add_string buf "-----BEGIN ";
     Buffer.add_string buf t;
     Buffer.add_string buf "-----\n"
+  and mk_end_boundary t =
+    Buffer.add_string buf "\n-----END ";
+    Buffer.add_string buf t;
+    Buffer.add_string buf "-----";
   in
   match title with
   | HeaderInList [t] ->
-    mk_boundary t true;
+    mk_begin_boundary t;
     to_raw_base64 48 buf bin_buf;
-    mk_boundary t false
+    mk_end_boundary t
   | HeaderInList _
   | AnyHeader
   | NoHeader -> to_raw_base64 0 buf bin_buf
@@ -196,11 +215,13 @@ let to_base64 title buf bin_buf =
 
 (* Base64 container *)
 
+type 'a base64_container = 'a
+
 let parse_base64_container header_expected parse_fun input =
   let content = match header_expected with
     | NoHeader ->
       let res = Buffer.create 1024 in
-      debaser res [] input;
+      ignore (debaser false res [] input);
       Buffer.contents res
     | AnyHeader -> string_of_base64_title None input
     | HeaderInList l -> string_of_base64_title (Some l) input
@@ -219,7 +240,7 @@ let lwt_parse_base64_container title parse_fun lwt_input =
     match title with
     | NoHeader ->
       let res = Buffer.create 1024 in
-      lwt_debaser res [] lwt_input >>= fun () ->
+      lwt_debaser false res [] lwt_input >>= fun _ ->
       return (Buffer.contents res)
     | AnyHeader -> lwt_string_of_base64_title None lwt_input
     | HeaderInList l -> lwt_string_of_base64_title (Some l) lwt_input
@@ -233,8 +254,9 @@ let lwt_parse_base64_container title parse_fun lwt_input =
   check_empty_input true new_input;
   return res
 
-
 let dump_base64_container title dump_fun buf o =
   let tmp_buf = Buffer.create !default_buffer_size in
   dump_fun tmp_buf o;
   to_base64 title buf tmp_buf
+
+let value_of_base64_container = value_of_container
