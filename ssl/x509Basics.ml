@@ -108,6 +108,7 @@ let value_of_distinguishedName dn =
 type algorithmParamsType =
   | APT_Null
   | APT_DSAParams
+  | APT_DHParams
   | APT_Unknown
 
 let algorithmParamsType_directory : (int list, algorithmParamsType) Hashtbl.t = Hashtbl.create 10
@@ -121,6 +122,7 @@ let populate_alg_directory dir (id, name, algParam, value) =
 union algorithmParams [enrich] (UnparsedParams of der_object) =
   | APT_Null -> NoParams of der_null
   | APT_DSAParams -> DSAParams of DSAKey.dsa_params
+  | APT_DHParams -> DHParams of DHKey.dh_params
 
 struct algorithmIdentifier_content = {
   algorithmId : der_oid;
@@ -146,6 +148,7 @@ asn1_alias hashAlgAndValue [top]
 
 type subjectPublicKeyType =
   | SPK_DSA of DSAKey.dsa_params
+  | SPK_DH of DHKey.dh_params
   | SPK_RSA
   | SPK_Unknown
 
@@ -158,6 +161,7 @@ let subjectPublicKeyType_of_algo algo =
 
 union subjectPublicKey [enrich] (UnparsedPublicKey of der_object) =
   | SPK_DSA _params -> DSA of DSAKey.dsa_public_key
+  | SPK_DH _params -> DH of DHKey.dh_public_key
   | SPK_RSA -> RSA of RSAKey.rsa_public_key
 
 struct subjectPublicKeyInfo_content = {

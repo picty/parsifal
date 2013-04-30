@@ -76,9 +76,14 @@ let dsa_spk_of_param = function
   | Some (DSAParams dp) -> SPK_DSA dp
   | _ -> SPK_Unknown
 
+let dh_spk_of_param = function
+  | Some (DHParams dp) -> SPK_DH dp
+  | _ -> SPK_Unknown
+
 let public_key_types = [
   [42;840;113549;1;1;1], "rsaEncryption", APT_Null, (fun _ -> SPK_RSA);
-  [42;840;10040;4;1], "dsa", APT_DSAParams, dsa_spk_of_param
+  [42;840;10040;4;1], "dsa", APT_DSAParams, dsa_spk_of_param;
+  [42;840;10046;2;1], "dh-public-number" , APT_DHParams, dh_spk_of_param
 ]
 
 let signature_types = [
@@ -136,6 +141,7 @@ let extension_types = [
 
 let other_oids = [
   (* Prefixes *)
+  [43;6;1;5;2;2], "id-pkinit-san";
   [43;6;1;5;5;7], "id-pkix";
   [43;6;1;5;5;7;1], "id-pe";
   [43;6;1;5;5;7;2], "id-qt";

@@ -751,3 +751,15 @@ let get_file_content filename =
 let string_input_of_filename filename =
   let content = get_file_content filename in
   input_of_string filename content
+
+let wrap f () =
+  try return (f ())
+  with e -> fail e
+
+let wrap1 f x =
+  try return (f x)
+  with e -> fail e
+
+let wrap2 f x y =
+  try return (f x y)
+  with e -> fail e

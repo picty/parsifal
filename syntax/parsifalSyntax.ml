@@ -455,7 +455,7 @@ let mk_parse_fun lwt_fun _loc c =
   let mk_return e = if lwt_fun then <:expr< Lwt.return $e$ >> else e
   and mk_compose f g x = (* f (g x) *)
     if lwt_fun
-    then <:expr< Lwt.bind ($g$ $x$) (Lwt.wrap1 $f$) >>
+    then <:expr< Lwt.bind ($g$ $x$) (Parsifal.wrap1 $f$) >>
     else <:expr< $f$ ($g$ $x$) >>
   and mk_let_in x v e = (* let x = v in e *)
     if lwt_fun
