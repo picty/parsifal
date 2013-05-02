@@ -226,11 +226,7 @@ let parse_base64_container header_expected parse_fun input =
     | AnyHeader -> string_of_base64_title None input
     | HeaderInList l -> string_of_base64_title (Some l) input
   in
-  let new_input = {
-    (input_of_string "base64_container" content) with
-      history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history;
-      enrich = input.enrich
-  } in
+  let new_input = get_in_container input "base64_container" content in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   res
