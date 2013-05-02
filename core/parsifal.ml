@@ -277,6 +277,18 @@ let get_in_container input name s =
     err_fun = input.err_fun
   }
 
+let lwt_get_in_container input name s =
+  let new_history = _h_of_li input in
+  { str = s;
+    cur_name = name;
+    cur_base = 0;
+    cur_offset = 0;
+    cur_length = String.length s;
+    enrich = update_enrich input.lwt_enrich;
+    history = new_history;
+    err_fun = input.lwt_err_fun
+  }
+
 let get_out old_input input =
   if input.cur_offset < input.cur_length
   then raise (ParsingException (UnexpectedTrailingBytes, _h_of_si input))
