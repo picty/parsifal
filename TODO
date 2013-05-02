@@ -5,7 +5,6 @@ v0.2 (apr. 2013)
    * have a redmine to put all this stuff
    * create a mailing list
    * clean up TODOs in ml files.
-   * prepare the v0.2 version as the first one published
  - Once v0.2 is freezed, add all the changes in a Changelog!
 
  - Merge tls_context and ssl2_context?
@@ -15,7 +14,6 @@ v0.2 (apr. 2013)
    * getopt tuning (add constraint on the number of args?)
  - Tools
    * Write a cool passive TLS_Proxy
-   * Add direct hex input to asn1parse and other programs
    * check_sslserver (see check_sslserver.ml for a complete TODO)
    * rewrite server-answer with the following options
      -p port to bind
