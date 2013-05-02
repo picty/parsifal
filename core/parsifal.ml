@@ -188,6 +188,7 @@ type parsing_exception =
   | NonEmptyHistory
   | UnableToRewind
   | InvalidBase64String of string
+  | InvalidHexString of string
   | CustomException of string
   | ValueNotInEnum of string
   | NotImplemented of string
@@ -201,6 +202,7 @@ let print_parsing_exception = function
   | NonEmptyHistory -> "NonEmptyHistory"
   | UnableToRewind -> "UnableToRewind"
   | InvalidBase64String e -> "Invalid base64 string (" ^ e ^ ")"
+  | InvalidHexString e -> "Invalid hex string (" ^ e ^ ")"
   | CustomException e -> e
   | ValueNotInEnum e -> "Invalid " ^ e
   | NotImplemented feat -> "Not implemented (" ^ feat ^ ")"

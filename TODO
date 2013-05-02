@@ -1,5 +1,5 @@
 v0.2 (apr. 2013)
- - add hex_container / gzip_container as custom containers => needed for PNG
+ - add gzip_container as custom containers => needed for PNG
  - patch parse_checkpoint to allow empty identifiers (parse_checkpoint _ : update_stuff)
  - General
    * have a redmine to put all this stuff
@@ -13,7 +13,6 @@ v0.2 (apr. 2013)
    * Factor some code (verbose option, file handling, action handling) in getopt
    * getopt tuning (help usage messages [principal and details], multiline descriptions)
    * getopt tuning (add constraint on the number of args?)
-   * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
  - Tools
    * Write a cool passive TLS_Proxy
    * Add direct hex input to asn1parse and other programs
@@ -175,6 +174,8 @@ v0.3 (may 2013)
    * certificates with extensions containing images
    * certificates signing each other (A <-> B)
  - PKCS#11 client (prospective)
+ - Misc
+   * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
 
 
 v0.4 (jun. 2013)
