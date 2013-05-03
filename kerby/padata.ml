@@ -23,30 +23,44 @@ asn1_alias seqkerbstring = seq_of der_kerberos_string
 alias der_kerberos_time = der_time
 
 
-struct pk_authenticator_content =
+asn1_struct pk_authenticator =
 {
   cusec : cspe [0] of der_smallint;
   ctime : cspe [1] of der_kerberos_time;
   nonce : cspe [2] of der_smallint; (* Chosen randomly, does not need to match KDC-REQ-BODY one *)
   optional pa_checksum : cspe[3] of der_octetstring (* SHA1 checksum or KDC-REQ-BODY *)
 }
-asn1_alias pk_authenticator
 
-struct auth_pack_content = {
+asn1_struct myoid =
+{
+  oid : cspe [0] of der_oid
+}
+
+asn1_alias oid_list = seq_of myoid
+
+asn1_struct auth_pack = {
   pk_authenticator : cspe [0] of pk_authenticator;
   clientPublicKeyValue : cspe [1] of subjectPublicKeyInfo;
   optional supported_cms_types : cspe [2] of sMIMECapabilities;
   (* FIXME Decode the two structures *)
-  optional what_is_it_FIXME : cspe[3] of binstring;
-  optional client_dh_nonce_FIXME : cspe[4] of binstring
+  optional client_dh_nonce : cspe[3] of binstring;
+  optional supported_KDFs : cspe[4] of oid_list
 }
-asn1_alias auth_pack
 
-struct krbContentInfo_content = {
-  oid : der_oid;
-  contentInfo : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of octetstring_container of auth_pack
+asn1_struct kdc_dh_key_info = {
+  subject_public_key : cspe [0] of der_bitstring;
+  nonce : cspe [1] of der_smallint;
+  optional dh_key_expiration : cspe [2] of der_kerberos_time
 }
-asn1_alias krbContentInfo
+
+union krbContentInfo_value [enrich] (UnparsedKrbContentInfo of binstring) =
+ | [43;6;1;5;2;3;1] -> ID_PKINIT_AuthData of auth_pack
+ | [43;6;1;5;2;3;2] -> ID_PKINIT_DHKeyData of kdc_dh_key_info
+
+asn1_struct krbContentInfo = {
+  oid : der_oid;
+  contentInfo : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of octetstring_container of krbContentInfo_value(oid)
+}
 
 struct mysignerInfo_content = {
   version : der_smallint;
@@ -61,7 +75,7 @@ struct mysignerInfo_content = {
 }
 asn1_alias mysignerInfo
 
-struct kerb_pkcs7_signed_data_content = {
+asn1_struct kerb_pkcs7_signed_data = {
   version : der_smallint;
   digestAlgorithms : digestAlgorithmIdentifiers;
   contentInfo : krbContentInfo;
@@ -71,24 +85,11 @@ struct kerb_pkcs7_signed_data_content = {
   signerInfos : asn1 [(C_Universal, true, T_Set)] of (list of mysignerInfo);
 }
 
-(*
-struct kerb_pkcs7_signed_data_content = {
-  version : der_smallint;
-  digestAlgorithms : digestAlgorithmIdentifiers;
-  contentInfo : krbContentInfo;
-  optional certificates : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of (list of certificate);
-  optional crls : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of (list of binstring);
-  signerInfos : asn1 [(C_Universal, true, T_Set)] of (list of signerInfo);
-}
-*)
-asn1_alias kerb_pkcs7_signed_data
-
-struct kerb_pkcs7_content = {
+asn1_struct kerb_pkcs7 = {
   p7_contenttype : der_oid;
   (*p7_content : pkcs7_content*)
-  p7_signed_data : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of kerb_pkcs7_signed_data
+  p7_signed_data : cspe [0] of kerb_pkcs7_signed_data
 }
-asn1_alias kerb_pkcs7[with_lwt]
 
 enum etype_type (8, UnknownVal UnknownEncryptType) =
   | 1  -> DES_CBC_CRC
@@ -111,7 +112,7 @@ struct externalPrincipalIdentifier_content = {
 asn1_alias externalPrincipalIdentifier
 asn1_alias externalPrincipalIdentifiers = seq_of externalPrincipalIdentifier
 
-struct pa_pk_as_req_content =
+asn1_struct pa_pk_as_req =
 {
   (*
   signed_auth_pack_TOFIX : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of binstring;
@@ -121,18 +122,22 @@ struct pa_pk_as_req_content =
   trusted_certifiers : cspe [1] of externalPrincipalIdentifiers;
   optional kdc_pk_id : cspe [2] of binstring
 }
-asn1_alias pa_pk_as_req
 
-asn1_alias myoid = seq_of der_oid
+asn1_struct dhrepinfo = 
+{
+  dh_signed_data : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of kerb_pkcs7;
+  optional server_dh_nonce : cspe [1] of binstring;
+  optional kdf_id : cspe [2] of myoid
+}
 
 struct pa_pk_as_rep =
 {
+  dhinfo : cspe [0] of dhrepinfo
   (*
-  dhinfo : cspe [0] of dhinfo
   (* or (ASN.1 CHOICE ! *)
   enckeypack : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of binstring
-  *)
   pa_pk_as_rep_FIXME : binstring
+  *)
 }
 
 struct etype_info2_content =
@@ -157,6 +162,11 @@ let kerberos_oids = [
   "Diffie-Hellman Key Exchange" , [42;840;10046;2;1];
   "id-pkinit-san", [43;6;1;5;2;2];
   "id-pkinit-authData",  [43;6;1;5;2;3;1];
+  "id-pkinit-DHKeyData",  [43;6;1;5;2;3;2];
+  "id-pkinit-kdf-ah-sha1",  [43;6;1;5;2;3;6;1];
+  "id-pkinit-kdf-ah-sha256",  [43;6;1;5;2;3;6;2];
+  "id-pkinit-kdf-ah-sha512",  [43;6;1;5;2;3;6;3];
+  "id-pkinit-kdf-ah-sha384",  [43;6;1;5;2;3;6;4];
 ]
 
 let handle_entry input =

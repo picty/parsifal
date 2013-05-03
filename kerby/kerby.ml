@@ -244,7 +244,7 @@ asn1_alias enc_ticket_part
 struct encrypted_data_content = 
 {
   encryption_type : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of etype_type;
-  kvno : 		cspe [1] of der_smallint;
+  optional kvno : 	cspe [1] of der_smallint;
   cipher : 		cspe [2] of binstring
 }
 asn1_alias encrypted_data
@@ -275,7 +275,7 @@ struct as_rep_content =
   crealm : 	cspe [3] of der_kerberos_string;
   cname : 	cspe [4] of cname;
   ticket : 	cspe [5] of asn1 [(C_Application, true, T_Unknown 1)] of ticket;
-  enc_part : 	cspe [6] of binstring;
+  enc_part : 	cspe [6] of encrypted_data
 }
 asn1_alias as_rep
 
