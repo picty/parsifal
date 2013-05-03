@@ -1,7 +1,3 @@
 data-samples
 stats
 *~
-*.cmo
-*.cmi
-*.cmx
-*.o
