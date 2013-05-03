@@ -731,6 +731,12 @@ let extract_param_type default_param raw_param accu = match raw_param with
   | <:expr< $uid:"CONTEXT"$ $e$ >> -> mk_context_param e accu
   | e -> default_param e accu
 
+let mk_evanescent_varname =
+  let evanescent_ref = ref 0 in
+  fun () ->
+    incr evanescent_ref;
+    Printf.sprintf "_evanescent_var_%4.4d" !evanescent_ref
+
 
 (* TODO: Work on better errors *)
 
@@ -765,15 +771,21 @@ EXTEND Gram
   ]];
 
   struct_field: [[
-    attr = OPT [
+    "parse_checkpoint"; ":"; field = ptype ->
+    (_loc, mk_evanescent_varname (), field, ParseCheckpoint)
+  | "dump_checkpoint"; ":"; field = ptype ->
+    (_loc, mk_evanescent_varname (), field, DumpCheckpoint)
+  | attr = OPT [
       "optional" -> Optional;
     | "parse_checkpoint" -> ParseCheckpoint;
     | "dump_checkpoint" -> DumpCheckpoint;
     | "parse_field" -> ParseField
     ]; name = ident; ":"; field = ptype  ->
-    match attr with
-    | Some a -> (_loc, lid_of_ident name, field, a)
-    | None -> (_loc, lid_of_ident name, field, NoFieldAttr)
+    begin
+      match attr with
+      | Some a -> (_loc, lid_of_ident name, field, a)
+      | None -> (_loc, lid_of_ident name, field, NoFieldAttr)
+    end
   ]];
 
   struct_fields: [[

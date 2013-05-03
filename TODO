@@ -1,6 +1,5 @@
 v0.2 (apr. 2013)
  - add gzip_container as custom containers => needed for PNG
- - patch parse_checkpoint to allow empty identifiers (parse_checkpoint _ : update_stuff)
  - General
    * have a redmine to put all this stuff
    * create a mailing list
