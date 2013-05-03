@@ -252,34 +252,71 @@ let value_of_uint64le i = VBigInt (exact_dump dump_uint64 i, LittleEndian)
 (* Strings *)
 (***********)
 
+type s = string
+type string = s
 let parse_string n input =
   if input.cur_offset + n <= input.cur_length then begin
     let res = String.sub input.str (input.cur_base + input.cur_offset) n in
     input.cur_offset <- input.cur_offset + n;
     res
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
-
 let lwt_parse_string n input = lwt_really_read input n
+let dump_string buf s = Buffer.add_string buf s
+let value_of_string s = VString (s, false)
 
+
+type binstring = string
+let parse_binstring = parse_string
+let lwt_parse_binstring = lwt_parse_string
+let dump_binstring = dump_string
+let value_of_binstring s = VString (s, true)
+
+
+type rem_string = string
 let parse_rem_string input =
   let res = String.sub input.str (input.cur_base + input.cur_offset) (input.cur_length - input.cur_offset) in
   input.cur_offset <- input.cur_length;
   res
-
 let lwt_parse_rem_string input =
   if input.lwt_rewindable
   then lwt_really_read input (input.lwt_length - input.lwt_offset)
   else fail (ParsingException (NotImplemented "lwt_parse_rem_string", _h_of_li input))
+let dump_rem_string = dump_string
+let value_of_rem_string = value_of_string
 
 
+type rem_binstring = string
+let parse_rem_binstring = parse_rem_string
+let lwt_parse_rem_binstring = lwt_parse_rem_string
+let dump_rem_binstring = dump_string
+let value_of_rem_binstring = value_of_binstring
+
+
+type varlen_string = string
 let parse_varlen_string len_fun input =
   let n = len_fun input in
   parse_string n input
-
 let lwt_parse_varlen_string len_fun input =
   len_fun input >>= fun n ->
   lwt_parse_string n input
+let dump_varlen_string len_fun buf s =
+  let n = String.length s in
+  len_fun buf n;
+  Buffer.add_string buf s
+let value_of_varlen_string = value_of_string
 
+
+type varlen_binstring = string
+let parse_varlen_binstring = parse_varlen_string
+let lwt_parse_varlen_binstring = lwt_parse_varlen_string
+let dump_varlen_binstring = dump_varlen_string
+let value_of_varlen_binstring = value_of_binstring
+
+
+
+(********************)
+(* Drop bytes utils *)
+(********************)
 
 let drop_bytes n input =
   if input.cur_offset + n <= input.cur_length
@@ -298,15 +335,6 @@ let lwt_drop_rem_bytes input =
     return ()
   end else fail (ParsingException (NotImplemented "lwt_drop_rem_bytes", _h_of_li input))
 
-
-let dump_string buf s = Buffer.add_string buf s
-
-let dump_varlen_string len_fun buf s =
-  let n = String.length s in
-  len_fun buf n;
-  Buffer.add_string buf s
-
-let value_of_string binary s = VString (s, binary)
 
 
 

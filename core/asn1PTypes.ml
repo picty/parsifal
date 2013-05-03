@@ -312,7 +312,7 @@ let value_of_der_enumerated_bitstring_content l =
   VRecord [
     "@name", VString ("der_enumerated_bitstring_content", false);
     "@string_of", VString ("[" ^ (String.concat ", " l) ^ "]", false);
-    "content", VList (List.map (value_of_string false) l)
+    "content", VList (List.map value_of_string l)
   ]
 
 asn1_alias der_enumerated_bitstring [both_param description] = primitive [T_BitString] der_enumerated_bitstring_content[description]

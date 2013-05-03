@@ -44,7 +44,6 @@ type field_len =
 
 type ptype =
   | PT_Empty
-  | PT_String of field_len * bool
   | PT_Custom of (string option) * string * (param_type * expr) list
   | PT_CustomContainer of (string option) * string * (param_type * expr) list * ptype * bool
     (* PT_CustomContainer (module name, name, param list, subtype, lwt_subparse) *)
@@ -167,21 +166,15 @@ let ptype_of_ident name decorators subtype =
       PT_CustomContainer (Some "BasePTypes", "varlen_container", [ContextParam, int_t], t, false)
     | <:ident< $lid:"container"$ >> as i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid container type")
 
-      (* TODO: Work here to remove the unnecessary PT_String constructor *)
-    | <:ident< $lid:"string"$ >>,    [], None -> PT_String (Remaining, false)
-    | <:ident< $lid:"binstring"$ >>, [], None -> PT_String (Remaining, true)
-    | <:ident< $lid:"string"$ >>,    [ParseParam, e], None ->
-      PT_String (ExprLen e, false)
-    | <:ident< $lid:"binstring"$ >>, [ParseParam, e], None ->
-      PT_String (ExprLen e, true)
-    | <:ident< $lid:"string"$ >>,                                 (* Compat Hack *)
-      [ BothParam, <:expr< $lid:int_t$ >> ], None ->
-      PT_String (VarLen int_t, false)
-    | <:ident< $lid:"binstring"$ >>,                              (* Compat Hack *)
-      [ BothParam, <:expr< $lid:int_t$ >> ], None ->
-      PT_String (VarLen int_t, true)
-    | <:ident< $lid:("string" | "binstring")$ >> as i, _, _ ->
-      Loc.raise (loc_of_ident i) (Failure "invalid string type")
+    | <:ident< $lid:"string"$ >>,    [], None -> PT_Custom (Some "BasePTypes", "rem_string", [])
+    | <:ident< $lid:"binstring"$ >>, [], None -> PT_Custom (Some "BasePTypes", "rem_binstring", [])
+    | <:ident< $lid:"string"$ >>,    [ParseParam, _], None -> PT_Custom (Some "BasePTypes", "string", decorators)
+    | <:ident< $lid:"binstring"$ >>, [ParseParam, _], None -> PT_Custom (Some "BasePTypes", "binstring", decorators)
+    | <:ident< $lid:"string"$ >>, [(BothParam|ContextParam), int_t], None -> (* Compat Hack *)
+      PT_Custom (Some "BasePTypes", "varlen_string", [ContextParam, int_t])
+    | <:ident< $lid:"binstring"$ >>, [(BothParam|ContextParam), int_t], None -> (* Compat Hack *)
+      PT_Custom (Some "BasePTypes", "varlen_binstring", [ContextParam, int_t])
+    | <:ident< $lid:("string" | "binstring")$ >> as i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid string type")
 
     | custom_identifier, _, None ->
       let module_name, name = qname_ident (custom_identifier) in
@@ -230,7 +223,6 @@ let keep_unique_cons (constructors : 'a choice list) =
 
 let rec ocaml_type_of_ptype _loc = function
   | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
-  | PT_String _ -> <:ctyp< $lid:"string"$ >>
   | PT_Custom (None, n, _) -> <:ctyp< $lid:n$ >>
   | PT_Custom (Some m, n, _) -> <:ctyp< $uid:m$.$lid:n$ >>
   | PT_CustomContainer (None, n, _, subtype, _) -> <:ctyp< $lid:n$ $ocaml_type_of_ptype _loc subtype$ >>
@@ -397,17 +389,10 @@ let mk_specific_funs _loc c =
 
 let rec parse_fun_of_ptype lwt_fun _loc name t =
   let prefix = if lwt_fun then "lwt_parse_" else "parse_" in
-  let mkf fname = exp_qname _loc (Some "BasePTypes") (prefix ^ fname) in
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
-
-    | PT_String (ExprLen e, _) -> <:expr< $mkf "string"$ $e$ >>
-    | PT_String (VarLen int_t, _) -> <:expr< $mkf "varlen_string"$ $mkf int_t$ >>
-    | PT_String (Remaining, _) -> mkf "rem_string"
-
     | PT_Custom (m, n, e) ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n)) (filter_params ParseParam prefix e)
-
     | PT_CustomContainer (m, n, e, subtype, lwt_subparse) ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n))
 	((filter_params ParseParam prefix e)@[parse_fun_of_ptype (lwt_subparse && lwt_fun) _loc name subtype])
@@ -532,16 +517,10 @@ let mk_exact_parse_fun _loc c =
 (*********************)
 
 let rec dump_fun_of_ptype _loc t =
-  let mkf fname = exp_qname _loc (Some "BasePTypes") ("dump_" ^ fname) in
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
-
-    | PT_String (VarLen int_t, _) -> <:expr< $mkf "varlen_string"$ $mkf int_t$ >>
-    | PT_String (_, _) -> mkf "string"
-
     | PT_Custom (m, n, e) ->
       apply_exprs _loc (exp_qname _loc m ("dump_" ^ n)) (filter_params DumpParam "dump_" e)
-
     | PT_CustomContainer (m, n, e, subtype, _) ->
       apply_exprs _loc (exp_qname _loc m ("dump_" ^ n))
 	((filter_params DumpParam "dump_" e)@[dump_fun_of_ptype _loc subtype])
@@ -626,13 +605,9 @@ let mk_exact_dump_fun _loc c =
 (**********************)
 
 let rec value_of_fun_of_ptype _loc t =
-  let mkf fname = exp_qname _loc (Some "BasePTypes") ("value_of_" ^ fname) in
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
-    | PT_String (_, binary) -> <:expr< $mkf "string"$ $exp_bool _loc binary$ >>
-
     | PT_Custom (m, n, _) -> exp_qname _loc m ("value_of_" ^ n)
-
     | PT_CustomContainer (m, n, _, subtype, _) ->
       <:expr< $exp_qname _loc m ("value_of_" ^ n)$ $value_of_fun_of_ptype _loc subtype$ >>
 
@@ -847,7 +822,7 @@ EXTEND Gram
     let union_descr = Union {
       uchoices = choices;
       unparsed_constr = fst u_b;
-      unparsed_type = pop_option (PT_String (Remaining, true)) (snd u_b);
+      unparsed_type = pop_option (PT_Custom (Some "BasePTypes", "rem_binstring", [])) (snd u_b);
     } in
     mk_parsifal_construction _loc name raw_opts union_descr
 
