@@ -48,7 +48,7 @@ struct ustar_header [param file_type] = {
 
 struct tar_header = {
   file_name : nt_string(BOTH 100);
-  parse_checkpoint _last_entry : stop_if(file_name = "");
+  parse_checkpoint : stop_if(file_name = "");
   file_mode : tar_numstring(BOTH 8);
   owner_uid : tar_numstring(BOTH 8);
   owner_gid : tar_numstring(BOTH 8);

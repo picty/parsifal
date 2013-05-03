@@ -49,8 +49,8 @@ asn1_struct authorityKeyIdentifier = {
   optional keyIdentifier : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of binstring;
   optional authorityCertIssuer : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of (list of generalName);
   optional authorityCertSerialNumber : asn1 [(C_ContextSpecific, false, T_Unknown 2)] of der_integer_content;
-  parse_checkpoint _constraint : both_equal(false; (CustomException "AKI components 1 and 2 should be defined together");
-                                            authorityCertIssuer = None; authorityCertSerialNumber = None)
+  parse_checkpoint : both_equal(false; (CustomException "AKI components 1 and 2 should be defined together");
+                                authorityCertIssuer = None; authorityCertSerialNumber = None)
 }
 
 
