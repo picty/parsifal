@@ -575,12 +575,7 @@ type 'a bitstring_container = 'a
 let parse_bitstring_container parse_fun input =
   let (_nbits, content) = parse_der_bitstring input in
   (* TODO:    if nbits <> 0 then *)
-  let new_input = {
-    (input_of_string "bitstring_container" content) with
-      history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history;
-      enrich = input.enrich;
-      err_fun = input.err_fun
-  } in
+  let new_input = get_in_container input "bitstring_container" content in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   res
@@ -599,12 +594,7 @@ type 'a octetstring_container = 'a
 
 let parse_octetstring_container parse_fun input =
   let content = parse_der_octetstring input in
-  let new_input = {
-    (input_of_string "octetstring_container" content) with
-      history = (input.cur_name, input.cur_offset, Some input.cur_length)::input.history;
-      enrich = input.enrich;
-      err_fun = input.err_fun
-  } in
+  let new_input = get_in_container input "bitstring_container" content in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   res

@@ -4,13 +4,17 @@ open Asn1Engine
 open Asn1PTypes
 open Getopt
 open X509
+open PTypes
 open Base64
 
 let indent = ref false
 let keep_going = ref false
 let openssl_mode = ref false
 
-let base64 = ref true
+type input_style = Hex | PEM | Raw
+let input_style = ref PEM
+let set_input_style v () = input_style := v
+
 let base64_header = ref (AnyHeader)
 let set_b64_header s =
   base64_header := HeaderInList [s];
@@ -22,8 +26,9 @@ let options = [
   mkopt (Some 'i') "indent" (Set indent) "indent the elements";
   mkopt (Some 'k') "keep-going" (Set keep_going) "keep working even when errors arise";
   mkopt (Some 'o') "openssl-mode" (Set openssl_mode) "mimic the output of openssl asn1parse";
-  mkopt None "pem" (Set base64) "use PEM format (default)";
-  mkopt None "der" (Clear base64) "use DER format";
+  mkopt None "pem" (TrivialFun (set_input_style PEM)) "use PEM format (default)";
+  mkopt None "der" (TrivialFun (set_input_style Raw)) "use DER (raw, binary) format";
+  mkopt None "hex" (TrivialFun (set_input_style Hex)) "use hex format";
   mkopt None "pem-header" (StringFun (set_b64_header)) "specify the header/trailer expected for PEM format";
   mkopt None "no-pem-header" (TrivialFun (fun () -> base64_header := NoHeader)) "do not expect header/trailer for PEM format";
 
@@ -160,9 +165,10 @@ let rec iter_on_names parse_fun = function
 let _ =
   let args = parse_args ~progname:"asn1parse" options Sys.argv in
   let parse_fun =
-    if !base64
-    then lwt_parse_base64_container !base64_header (parse 0 0)
-    else lwt_parse
+    match !input_style with
+    | Hex -> lwt_parse_hex_container (parse 0 0)
+    | PEM -> lwt_parse_base64_container !base64_header (parse 0 0)
+    | Raw -> lwt_parse
   in
   let t = match args with
     | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= parse_fun

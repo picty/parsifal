@@ -156,6 +156,97 @@ let dump_enrich_blocker dump_fun buf o = dump_fun buf o
 let value_of_enrich_blocker = value_of_container
 
 
+
+type 'a hex_container = 'a
+
+let reverse_hex_chars =
+  [|-1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+     0;  1;  2;  3;  4;  5;  6;  7;  8;  9; -1; -1; -1; -1; -1; -1;
+    -1; 10; 11; 12; 13; 14; 15; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; 10; 11; 12; 13; 14; 15; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1|]
+
+let extract_4bits input =
+  let c = parse_byte input in
+  match reverse_hex_chars.(c) with
+  | -1 -> raise (ParsingException (InvalidHexString "invalid character", _h_of_si input))
+  | res -> res
+
+let hexparse input =
+  let len = input.cur_length - input.cur_offset in
+  if len mod 2 <> 1 then raise (ParsingException (InvalidHexString "odd-length string", _h_of_si input));
+  let res = String.make (len / 2) ' ' in
+  for i = 0 to (len / 2) - 1 do
+    let hibits = extract_4bits input in
+    let lobits = extract_4bits input in
+    res.[i] <- char_of_int ((hibits lsl 4) lor lobits)
+  done;
+  res
+
+let parse_hex_container parse_fun input =
+  let content = hexparse input in
+  let new_input = get_in_container input "hex_container" content in
+  let res = parse_fun new_input in
+  check_empty_input true new_input;
+  res
+
+
+let lwt_extract_4bits input =
+  let handle_exn = function
+    | ParsingException (OutOfBounds, _) -> return None
+    | e -> fail e
+  in
+  let parsing_thread () =
+    lwt_parse_byte input >>= fun c ->
+    match reverse_hex_chars.(c) with
+    | -1 -> raise (ParsingException (InvalidHexString "invalid character", _h_of_li input))
+    | res -> return (Some res)
+  in
+  try_bind parsing_thread return handle_exn
+
+let lwt_hexparse input =
+  let rec lwt_hexparse_aux buf input =
+    lwt_extract_4bits input >>= function
+    | None -> return ()
+    | Some hibits ->
+      lwt_extract_4bits input >>= function
+      | None -> fail (ParsingException (InvalidHexString "odd-length string", _h_of_li input))
+      | Some lobits ->
+	Buffer.add_char buf (char_of_int ((hibits lsl 4) lor lobits));
+	lwt_hexparse_aux buf input
+  in
+  let buf = Buffer.create !default_buffer_size in
+  lwt_hexparse_aux buf input >>= fun () ->
+  return (Buffer.contents buf)
+
+let lwt_parse_hex_container parse_fun input =
+  lwt_hexparse input >>= fun content ->
+  let new_input = lwt_get_in_container input "hex_container" content in
+  let res = parse_fun new_input in
+  check_empty_input true new_input;
+  return res
+
+
+let dump_hex_container dump_fun buf o =
+  let tmp_buf = Buffer.create !default_buffer_size in
+  dump_fun tmp_buf o;
+  Buffer.add_string buf (hexdump (Buffer.contents tmp_buf))
+
+let value_of_base64_container = value_of_container
+
+
+
 (* Safe union handling *)
 
 type 'a safe_union = 'a

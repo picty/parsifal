@@ -7,37 +7,33 @@ open X509
 
 alias pkcs1_asn1_struct = hashAlgAndValue
 
-struct spcIndirectDataContent_content = {
+asn1_struct spcIndirectDataContent = {
   data : atv;
   messageDigest : pkcs1_asn1_struct
 }
-asn1_alias spcIndirectDataContent
 
-struct msContentInfo_content = {
+asn1_struct msContentInfo = {
   ms_oid : der_oid;
   contentInfo : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of spcIndirectDataContent
 }
-asn1_alias msContentInfo
 
 
 
-struct issuerAndSerialNumber_content = {
+asn1_struct issuerAndSerialNumber = {
   issuerDN : distinguishedName;
   issuerSN : der_integer
 }
-asn1_alias issuerAndSerialNumber
 
 
-struct attribute_content = {
+asn1_struct attribute = {
   a_oid : der_oid;
   a_content : asn1 [(C_Universal, true, T_Set)] of list of binstring
 }
-asn1_alias attribute
 
 asn1_alias authenticatedAttributes = constructed [C_ContextSpecific, 0] list of attribute
 asn1_alias unauthenticatedAttributes = constructed [C_ContextSpecific, 1] list of enrich_blocker(7) of der_object
 
-struct signerInfo_content = {
+asn1_struct signerInfo = {
   version : der_smallint;
   issuerAndSerialNumber : issuerAndSerialNumber;
   digestAlgorithm : algorithmIdentifier;
@@ -46,11 +42,10 @@ struct signerInfo_content = {
   encryptedDigest : der_octetstring;
   optional unAuthenticatedAttributesUNPARSED : unauthenticatedAttributes
 }
-asn1_alias signerInfo
 
 asn1_alias digestAlgorithmIdentifiers = set_of algorithmIdentifier
 
-struct pkcs7_signed_data_content = {
+asn1_struct pkcs7_signed_data = {
   version : der_smallint;
   digestAlgorithms : digestAlgorithmIdentifiers;
   contentInfo : msContentInfo;
@@ -60,7 +55,6 @@ struct pkcs7_signed_data_content = {
   signerInfos : asn1 [(C_Universal, true, T_Set)] of (list of signerInfo);
   parse_checkpoint _junk : ignore
 }
-asn1_alias pkcs7_signed_data
 
 (*
 union pkcs7_content_data (Unspecified of der_object) =

@@ -188,6 +188,7 @@ type parsing_exception =
   | NonEmptyHistory
   | UnableToRewind
   | InvalidBase64String of string
+  | InvalidHexString of string
   | CustomException of string
   | ValueNotInEnum of string
   | NotImplemented of string
@@ -201,6 +202,7 @@ let print_parsing_exception = function
   | NonEmptyHistory -> "NonEmptyHistory"
   | UnableToRewind -> "UnableToRewind"
   | InvalidBase64String e -> "Invalid base64 string (" ^ e ^ ")"
+  | InvalidHexString e -> "Invalid hex string (" ^ e ^ ")"
   | CustomException e -> e
   | ValueNotInEnum e -> "Invalid " ^ e
   | NotImplemented feat -> "Not implemented (" ^ feat ^ ")"
@@ -262,6 +264,30 @@ let get_in input name len =
     history = new_history;
     err_fun = input.err_fun
   } else raise (ParsingException (OutOfBounds, new_history))
+
+let get_in_container input name s =
+  let new_history = _h_of_si input in
+  { str = s;
+    cur_name = name;
+    cur_base = 0;
+    cur_offset = 0;
+    cur_length = String.length s;
+    enrich = update_enrich input.enrich;
+    history = new_history;
+    err_fun = input.err_fun
+  }
+
+let lwt_get_in_container input name s =
+  let new_history = _h_of_li input in
+  { str = s;
+    cur_name = name;
+    cur_base = 0;
+    cur_offset = 0;
+    cur_length = String.length s;
+    enrich = update_enrich input.lwt_enrich;
+    history = new_history;
+    err_fun = input.lwt_err_fun
+  }
 
 let get_out old_input input =
   if input.cur_offset < input.cur_length
