@@ -4,6 +4,7 @@ v0.2 (apr. 2013)
    * have a redmine to put all this stuff
    * create a mailing list
    * clean up TODOs in ml files.
+   * write README files to quickly describe all the files
  - Once v0.2 is freezed, add all the changes in a Changelog!
 
  - Merge tls_context and ssl2_context?
@@ -36,6 +37,7 @@ v0.3 (may 2013)
  - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
  - Use modules to aggregate the functions for some top-level objects (parse/dump/value_of)
  - Improve asn1_struct (correct option handling: params / top)
+ - (prospective) First support for PDF
  - Context handling: code some helpers using (string, 'a) Hashtbl.t to allow for a simple parsing context with parse_checkpoint/parse_fields
  - add a new VParsingError type and a choice decorator [parsingError] to remember when a safe_union failed
  - Add recursive type definitions (PKCS#7 / DEX) between "begin_parsifal_block" and "end_parsifal_block"
@@ -177,6 +179,7 @@ v0.3 (may 2013)
 
 v0.4 (jun. 2013)
  - Rewrite Base64 properly
+ - Think about a smart_dump function, which would auto-fill missing values (sizes, crcs...) => it could also be implemented using t_of_value and default/auto-fill information
  - Maybe add a lwt_dump_* function?
  - Propose a lwt_parse_wrapper, which stupidly tries to read byte by byte and give the result to parse? It could be improved when an input is rewindable or if OutOfBounds gave the number of bytes needed to continue (at least when some info is available)
  - Add cool containers where it is possible to specify the real type ( (int, string) either / int option )
