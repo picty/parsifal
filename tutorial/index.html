@@ -1,0 +1,90 @@
+<html>
+  <head>
+    <title>Parsifal: a tutorial</title>
+  </head>
+  <body>
+    <h1>Parsifal: a tutorial</h1>
+
+    <p>Parsifal is an OCaml camlp4-based preprocessor allowing you to
+    quickly write robust and efficient parsers.</p>
+
+    <p>Parsifal has been developped since October 2011 and the source
+    code is available
+    on <a href="https://github.com/ol-anssi/parsifal">GitHub</a>.
+
+
+    <h2>Origin of the project</h2>
+
+    <p>The origin of the project was to analyse a lot of SSL handshake
+    records from the <a href="https://www.eff.org/observatory">EFF SSL
+    Observatory</a>. The problem was to try and dissect the data to
+    extract the negotiated parameters (ciphersuites, certificates),
+    but a lot of servers do not really play by the book, and other do
+    not even answer using valid TLS messages. That is why we needed
+    a robust TLS/ASN.1/X.509 parser.</p>
+
+    <p>First, we wrote parsers in Python, but they're were terribly
+    slow. Then, a second C++ version was developped, using templates
+    and object-oriented programming to gain in speed. However, C++ is
+    a verbose and error-prone language; fixing segmentation faults and
+    memory leaks can really be tedious.</p>
+
+    <p>Next, we switched to OCaml for a third TLS parser, using a DSL
+    to browse TLS and certificate parameters. Yet again, two much code
+    needed to be written to add each feature. That is why we ended up
+    with another OCaml version of the parsers, using a pre-processor
+    to generate automatically types and functions.</p>
+
+    <p>This fourth version, called Parsifal, is composed of the
+    following components:
+      <ul>
+	<li>syntactic extensions to allow for new type constructions;</li>
+	<li>support for base types (integers, strings, lists, arrays,
+	etc.);</li>
+	<li>support for ASN.1 base types and useful container
+	implementations (Base64, Hexadecimal).</li>
+      </ul>
+    </p>
+
+    <p>Using Parsifal, several file formats and network protocols have
+      already been implemented (at least partially):
+      <ul>
+	<li>TAR;</li>
+	<li>PE (Portable Executable);</li>
+	<li>PCAP/IP/TCP/UDP rudimentary support;</li>
+	<li>DNS;</li>
+	<li>X.509 certificates;</li>
+	<li>SSLv2/TLS messages.</li>
+      </ul>
+    </p>
+
+    <p>For
+    information, <a href="http://www.acsac.org/2012/openconf/modules/request.php?module=oc_program&action=summary.php&id=163&OPENCONF=b4ff90e37b884f9530476ba7c26f9b27">our
+    work on SSL/TLS records</a> has been published
+    at <a href="http://www.acsac.org/2012/">ACSAC 2012</a>.
+
+
+
+
+
+
+    <h2>Installation</h2>
+
+    Download / installation / first compilation example
+
+
+    <h2>Concepts: PTypes and constructions</h2>
+
+    First examples with the preprocessor
+
+
+    <h2>Step-by-step: TAR parser</h2>
+
+
+    <h2>Step-by-step: DNS engine</h2>
+
+    <hline/>
+
+    <p align="center">Last modified May 10th 2013</p>
+  </body>
+</html>
