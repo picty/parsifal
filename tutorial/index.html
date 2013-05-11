@@ -10,7 +10,10 @@
 
     <p>Parsifal has been developped since October 2011 and the source
     code is available
-    on <a href="https://github.com/ol-anssi/parsifal">GitHub</a>.
+    on <a href="https://github.com/ol-anssi/parsifal">GitHub</a>.</p>
+
+    TODO: table of contents + different versions (1 HTML / many HTMLS
+    / ZIP with all the files)
 
 
     <h2>Origin of the project</h2>
@@ -64,18 +67,153 @@
     at <a href="http://www.acsac.org/2012/">ACSAC 2012</a>.
 
 
-
-
-
-
     <h2>Installation</h2>
 
-    Download / installation / first compilation example
+    <p>The following packages are needed to compile Parsifal (the
+    names given correspond to Debian's package names):
+      <ul>
+	<li>ocaml</li>
+	<li>ocaml-findlib</li>
+	<li>liblwt-ocaml-dev (>= 2.3)</li>
+	<li>libcryptokit-ocaml-dev</li>
+	<li>make</li>
+      </ul>
+    </p>
+
+    <p>Next, Parsifal source code can be downloaded
+    from <a href="https://github.com/ol-anssi/parsifal">GitHub</a>,
+    and compiled using <code>make</code>:</p>
+
+    <code>
+      git clone https://github.com/ol-anssi/parsifal.git<br/>
+      cd parsifal<br/>
+      make
+    </code>
+
+    <p>Then you can install the program using <code>make
+    install</code> as <code>root</code>. The library will be copied
+    into <code>/usr/lib/ocaml</code> and the programs
+    into <code>/usr/local/bin</code>. Alternatively, environment
+    variables <code>LIBDIR</code> and <code>BINDIR</code> can be set
+    before launching <code>make install</code>.</p>
 
 
     <h2>Concepts: PTypes and constructions</h2>
 
-    First examples with the preprocessor
+    <h3>Principle</h3>
+
+    <p>Parsifal main concept are PTypes, OCaml types and the functions
+    associated. For a PType <code>t</code>, this means the following
+    definitions:
+      <ul>
+	<li>a type <code>t</code>;</li>
+	<li><code>parse_t : string_input -> t</code> to parse
+	a <code>t</code> value from a character string;</li>
+	<li>optionnaly, <code>lwt_parse_t : lwt_input -> t</code> to
+	parse a <code>t</code> value from a Lwt channel;</li>
+	<li><code>dump_t : Buffer.t -> t -> unit</code> to add the
+	string representation of a <code>t</code> value to a
+	buffer;</li>
+	<li>value_of_t : t -> value to convert a <code>t</code>
+	value to an abstract hierarchical value of type
+	<code>value</code>.</li>
+      </ul>
+    </p>
+
+    <p>Parsifal uses two sorts of inputs: <code>string_input</code>
+    and <code>lwt_input</code>. The first one allows for efficient
+    parsing from a character string, but needs to load the entire
+    string in memory. On the contrary, the second one uses a Lwt
+    channel, which allows for stream processing.</p>
+
+    <p>The type <code>value</code> allows for a high-level
+    representation, which can then be used by different fonctions:
+      <ul>
+	<li><code>string_of_value</code>, to extract a one-line
+	printable representation of a value;</li>
+	<li><code>print_value</code>, to extract a thorough printable
+	representation of a value;</li>
+	<li><code>json_of_value</code>, to get
+	a <a href="http://www.json.org/">JSON</a> representation of a
+	value;</li>
+	<li><code>get_value path v</code>, a quick way to explore a
+	value following a path (more on that later TODO_REF)
+      </ul>
+    </p>
+
+    <p>Moreover, <code>parse</code> and <code>dump</code> functions
+    can take parameters. The complete grammar is given there TODO_REF.
+
+    <h3>Creating a project</h3>
+
+    Script mk_project.sh
+
+    <h3>Enumerations</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>Structures</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>Unions</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>Aliases</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>ASN.1 Aliases and ASN.1 Structures</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>ASN.1 Unions</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>Available PTypes</h3>
+
+    Integers, strings, lists, arrays
+
+    Containers (base64, hex, asn1, length_constrained, bitstring,
+    octetstring, enrich_blocker)
 
 
     <h2>Step-by-step: TAR parser</h2>
@@ -83,8 +221,18 @@
 
     <h2>Step-by-step: DNS engine</h2>
 
-    <hline/>
 
-    <p align="center">Last modified May 10th 2013</p>
+    <h2>And beyond...</h2>
+
+    Talk about enrich option, getopt, json, get_value.
+
+
+    <h2>Reference</h2>
+
+    BNF?
+
+    <hr width="85%"/>
+
+    <p align="center">Last modified May 11th 2013</p>
   </body>
 </html>
