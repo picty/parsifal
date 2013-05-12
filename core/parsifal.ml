@@ -645,7 +645,7 @@ let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="va
 	| _, VUnit -> accu
 	| _, VOption None -> accu
 	| name, v ->
-	  if verbose || (String.length name > 1 && name.[0] <> '@')
+	  if verbose || (String.length name >= 1 && name.[0] <> '@')
 	  then (print_value ~verbose:verbose ~indent:new_indent ~name:name v)::accu
 	  else accu
       in
