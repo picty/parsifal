@@ -146,7 +146,24 @@
 
     <h3>Creating a project</h3>
 
-    Script mk_project.sh
+    <p>To create a Parsifal project, the simplest way is to run
+    the <code>mk_project.sh project</code> script,
+    where <code>project</code> is your project's name. You will need
+    to set the <code>PARSIFAL_DIR</code> environment variable to the
+    directory containing Parsifal.</p>
+
+    <p>This will create a new directory called <code>project</code>
+    containing a working Makefile and a
+    quasi-empty <code>project.ml</code>. Calling <code>make</code> in
+    this directory will compile the source and link it against
+    Parsifal libraries, as soon as the compiled libs are in a
+    directory known to OCaml (for example, a directory pointed
+    by <code>OCAMLPATH</code> variable environment).</p>
+    
+    <p>The directory freshly created can be
+    found <a href="project/">here</a>. Let's now edit
+    the <a href="project/project.ml"><code>project.ml</code> file</a>
+    to do a little more than printing Hello to the world.</p>
 
     <h3>Enumerations</h3>
 
