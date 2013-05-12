@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -17,7 +17,14 @@ DESTDIR=$1
 
 [ -n "$DESTDIR" ] || error "Invalid destination directory"
 [ -f "$DESTDIR" ] && error "Invalid destination directory ($DESTDIR): file already exists"
+[ "$(echo -n "$DESTDIR" | sed 's/^[a-z][a-zA-Z0-9_]*$//g' | wc -c)" -eq 0 ] || error "The file should only contain letters, figures and underscores, and start with a lowercase letter"
 
 mkdir "$DESTDIR"
 cp "$PARSIFAL_DIR/Makefile.ocaml" "$DESTDIR/Makefile.ocaml"
-cp "$PARSIFAL_DIR/Makefile.template" "$DESTDIR/Makefile"
+sed "s/project/$DESTDIR/g" "$PARSIFAL_DIR/Makefile.template" > "$DESTDIR/Makefile"
+cat > "$DESTDIR/$DESTDIR.ml" << EOF
+open Parsifal
+
+let _ =
+  print_endline "Hello, world!"
+EOF
