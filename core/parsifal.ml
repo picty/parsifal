@@ -548,7 +548,7 @@ let parse_both_equal fatal err a b input =
 (* TODO: We do NOT check for integer overflow! *)
 (* TODO: Should this cur_byte/remaining_bits be stored in input? *)
 let _bits_masks = [|0; 1; 3; 7; 15; 31; 63; 127; 255|]
-let parse_bits nbits (cur_byte, remaining_bits) input =
+let parse_bits nbits bit_state input =
   let rec parse_bits_aux nbits cur_byte remaining_bits input res =
     match nbits, remaining_bits with
     | 0, _ -> (cur_byte, remaining_bits), res
@@ -564,9 +564,16 @@ let parse_bits nbits (cur_byte, remaining_bits) input =
 	let new_res = (res lsl remaining_bits) lor (cur_byte land _bits_masks.(remaining_bits)) in
 	parse_bits_aux (nbits - remaining_bits) (parse_byte input) 8 input new_res
       end
-  in parse_bits_aux nbits cur_byte remaining_bits input 0
+  in
+  let cur_byte, remaining_bits = match bit_state with
+    | None -> 0, 0
+    | Some s -> s
+  in
+  match parse_bits_aux nbits cur_byte remaining_bits input 0 with
+  | (_, 0), res -> None, res
+  | s, res -> Some s, res
 
-let dump_bits buf nbits (cur_byte, free_bits) value =
+let dump_bits buf nbits bit_state value =
   let rec dump_bits_aux buf nbits cur_byte free_bits value =
     match nbits, free_bits with
     | _, 0 ->
@@ -582,7 +589,14 @@ let dump_bits buf nbits (cur_byte, free_bits) value =
 	Buffer.add_char buf (char_of_int new_byte);
 	dump_bits_aux buf shift 0 8 value
       end
-  in dump_bits_aux buf nbits cur_byte free_bits value
+  in
+  let cur_byte, free_bits = match bit_state with
+    | None -> 0, 8
+    | Some s -> s
+  in
+  match dump_bits_aux buf nbits cur_byte free_bits value with
+  | (_, 8) -> None
+  | s -> Some s
 
 
 (* TODO: Write cleanup functions to handle non-full bytes *)

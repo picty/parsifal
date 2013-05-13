@@ -196,7 +196,7 @@ type dns_flags = {
 }
 
 let parse_dns_flags input =
-  let st0 = (0, 0) in
+  let st0 = None in
   let st1, qr = parse_bits 1 st0 input in
   let st2, opcode = parse_bits 4 st1 input in
   let st3, aa = parse_bits 1 st2 input in
@@ -209,7 +209,7 @@ let parse_dns_flags input =
     rd = rd = 1; ra = ra = 1; z = z; rcode = rcode }
 
 let dump_dns_flags buf flags =
-  let st0 = (0, 8) in
+  let st0 = None in
   let st1 = dump_bits buf 1 st0 (if flags.qr then 1 else 0) in
   let st2 = dump_bits buf 4 st1 flags.opcode in
   let st3 = dump_bits buf 1 st2 (if flags.aa then 1 else 0) in
