@@ -6,28 +6,12 @@ v0.2 (apr. 2013)
    * clean up TODOs in ml files.
    * write README files to quickly describe all the files
  - Once v0.2 is freezed, add all the changes in a Changelog!
-
  - Merge tls_context and ssl2_context?
  - Misc
    * Factor some code (verbose option, file handling, action handling) in getopt
    * getopt tuning (help usage messages [principal and details], multiline descriptions)
    * getopt tuning (add constraint on the number of args?)
  - Tools
-   * Write a cool passive TLS_Proxy
-   * check_sslserver (see check_sslserver.ml for a complete TODO)
-   * rewrite server-answer with the following options
-     -p port to bind
-     -A alert to send (Fatal,HandshakeFailure)
-     --versions (as in probe-certs)
-     --ciphersuite
-     --compression
-     -c cert-file (add a cert)
-     -S send server-hello message
-     -C send certificate message
-     -D send server-hello-done message
-   * improve probe-server
-     + add SSLv2 support
-     + add a way to handle TLS extensions
    * improve mapAnswers
      + add record_version to A/H answer types
      + add support for client_hello_sent in mapAnswers/answer_type?
@@ -109,6 +93,13 @@ v0.3 (may 2013)
      + Graph construction (From a big pool of certs, try to create all the links...)
    * Add a way to create a certificate object
  - Tools
+   * Write a cool passive TLS_Proxy
+   * check_sslserver (see check_sslserver.ml for a complete TODO)
+   * rewrite server-answer with the following options
+     + implement control over record splitting
+   * improve probe-server
+     + add SSLv2 support
+     + add a way to handle TLS extensions
    * bgpdump and/or obsdump
    * x509check (enrich the x509 object before analysing!)
    * chaincheck
