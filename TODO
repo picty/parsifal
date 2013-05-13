@@ -132,9 +132,16 @@ v0.3 (may 2013)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
    * Add bitfield support
-     + this should look like struct
-     + it should use bitparse_ / bitdump_ functions, that take two more args (current_byte, current_pos)
-     + enums should offer bitparse and bitdump funs
+     + incorporate cur_byte/nbits to input/lwt_input as an (int, int) option
+     + rewrite parse_bits (it should mark None when nothing more has to be done)
+     + incorporate cur_byte/freebits to output [which is a Buffer + stuff] as an (int, int) option
+     + rewrite dump_bits (it should mark None when nothing more has to be done)
+     + write parse_ and dump_ for enums that do not fit on entire bytes
+     + write bit_bool PType  
+     + write bit_int(n) PType
+     + write remaining_bits PType
+     + rewrite dns_flags using flags
+     + at the end of structs, check None
  - Tls
    * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
    * Implement every extension/PK present in ssl-data
