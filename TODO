@@ -132,8 +132,6 @@ v0.3 (may 2013)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
    * Add bitfield support
-     + incorporate cur_byte/nbits to input/lwt_input as an (int, int) option
-     + rewrite parse_bits (it should mark None when nothing more has to be done)
      + incorporate cur_byte/freebits to output [which is a Buffer + stuff] as an (int, int) option
      + rewrite dump_bits (it should mark None when nothing more has to be done)
      + write parse_ and dump_ for enums that do not fit on entire bytes

@@ -154,6 +154,7 @@ type string_input = {
   cur_name : string;
   cur_base : int;
   mutable cur_offset : int;
+  mutable cur_bitstate : (int * int) option;
   cur_length : int;
   enrich : enrich_style;
   history : history;
@@ -164,6 +165,7 @@ type lwt_input = {
   lwt_ch : Lwt_io.input_channel;
   lwt_name : string;
   mutable lwt_offset : int;
+  mutable lwt_bitstate : (int * int) option;
   lwt_rewindable : bool;
   mutable lwt_length : int;
   lwt_enrich : enrich_style;
@@ -245,6 +247,7 @@ let input_of_string ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name 
     cur_name = name;
     cur_base = 0;
     cur_offset = 0;
+    cur_bitstate = None;
     cur_length = String.length s;
     enrich = enrich;
     history = [];
@@ -259,6 +262,7 @@ let get_in input name len =
     cur_name = name;
     cur_base = input.cur_base + input.cur_offset;
     cur_offset = 0;
+    cur_bitstate = None;
     cur_length = len;
     enrich = update_enrich input.enrich;
     history = new_history;
@@ -271,32 +275,21 @@ let get_in_container input name s =
     cur_name = name;
     cur_base = 0;
     cur_offset = 0;
+    cur_bitstate = None;
     cur_length = String.length s;
     enrich = update_enrich input.enrich;
     history = new_history;
     err_fun = input.err_fun
   }
 
-let lwt_get_in_container input name s =
-  let new_history = _h_of_li input in
-  { str = s;
-    cur_name = name;
-    cur_base = 0;
-    cur_offset = 0;
-    cur_length = String.length s;
-    enrich = update_enrich input.lwt_enrich;
-    history = new_history;
-    err_fun = input.lwt_err_fun
-  }
-
 let get_out old_input input =
-  if input.cur_offset < input.cur_length
+  if (input.cur_offset < input.cur_length) || (input.cur_bitstate <> None)
   then raise (ParsingException (UnexpectedTrailingBytes, _h_of_si input))
   else old_input.cur_offset <- old_input.cur_offset + input.cur_length
 
 
 let append_to_input input next_string =
-  if input.cur_base = 0 && input.history = []
+  if input.cur_base = 0 && input.cur_bitstate = None && input.history = []
   then begin
     let new_str = (String.sub input.str input.cur_offset (input.cur_length - input.cur_offset)) ^ next_string in
     { input with
@@ -310,7 +303,7 @@ let append_to_input input next_string =
   }
 
 let drop_used_string input =
-  if input.cur_base = 0 && input.history = []
+  if input.cur_base = 0 && input.cur_bitstate = None && input.history = []
   then begin
     let new_str = String.sub input.str input.cur_offset (input.cur_length - input.cur_offset) in
     { input with
@@ -322,20 +315,22 @@ let drop_used_string input =
 
 
 let eos input =
-  input.cur_offset >= input.cur_length
+  input.cur_offset >= input.cur_length && input.cur_bitstate = None
 
 let check_empty_input fatal input =
   if not (eos input) then emit_parsing_exception fatal UnexpectedTrailingBytes input
 
 let try_parse ?exact:(exact=false) parse_fun input =
   if eos input then None else begin
-    let saved_offset = input.cur_offset in
+    let saved_offset = input.cur_offset
+    and saved_bitstate = input.cur_bitstate in
     try
       let res = Some (parse_fun input) in
       if exact then check_empty_input true input;
       res
     with ParsingException _ ->
       input.cur_offset <- saved_offset;
+      input.cur_bitstate <- saved_bitstate;
       None
   end
 
@@ -365,6 +360,7 @@ let input_of_channel ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name
   return { lwt_ch = ch; lwt_name = name;
 	   lwt_offset = Int64.to_int (Lwt_io.position ch);
 	   (* TODO: Possible integer overflow in 32-bit *)
+	   lwt_bitstate = None;
 	   lwt_rewindable = rewindable;
 	   lwt_length = length;
 	   lwt_enrich = enrich;
@@ -406,14 +402,28 @@ let lwt_get_in input name len =
     cur_name = name;
     cur_base = 0;
     cur_offset = 0;
+    cur_bitstate = None;
     cur_length = len;
     enrich = update_enrich input.lwt_enrich;
     history = [input.lwt_name, input.lwt_offset, None];
     err_fun = input.lwt_err_fun
   }
 
+let lwt_get_in_container input name s =
+  let new_history = _h_of_li input in
+  { str = s;
+    cur_name = name;
+    cur_base = 0;
+    cur_offset = 0;
+    cur_bitstate = None;
+    cur_length = String.length s;
+    enrich = update_enrich input.lwt_enrich;
+    history = new_history;
+    err_fun = input.lwt_err_fun
+  }
+
 let lwt_get_out old_input input =
-  if input.cur_offset < input.cur_length
+  if (input.cur_offset < input.cur_length) || (input.cur_bitstate <> None)
   then fail (ParsingException (UnexpectedTrailingBytes, _h_of_si input))
   else begin
     old_input.lwt_offset <- old_input.lwt_offset + input.cur_length;
@@ -421,7 +431,7 @@ let lwt_get_out old_input input =
   end
 
 let lwt_eos input =
-  input.lwt_rewindable && (input.lwt_offset >= input.lwt_length)
+  input.lwt_rewindable && (input.lwt_offset >= input.lwt_length) && (input.lwt_bitstate = None)
 
 let lwt_check_empty_input fatal input =
   if lwt_eos input
@@ -431,11 +441,13 @@ let lwt_check_empty_input fatal input =
 
 let lwt_try_parse lwt_parse_fun input =
   if lwt_eos input then return None else begin
-    let saved_offset = input.lwt_offset in
+    let saved_offset = input.lwt_offset
+    and saved_bitstate = input.lwt_bitstate in
     let finalize_ok x = return (Some x)
     and finalize_nok = function
       | ParsingException _ ->
 	input.lwt_offset <- saved_offset;
+	input.lwt_bitstate <- saved_bitstate;
 	if input.lwt_rewindable
 	then begin
 	  Lwt_io.set_position input.lwt_ch (Int64.of_int saved_offset) >>= fun () ->
@@ -548,7 +560,7 @@ let parse_both_equal fatal err a b input =
 (* TODO: We do NOT check for integer overflow! *)
 (* TODO: Should this cur_byte/remaining_bits be stored in input? *)
 let _bits_masks = [|0; 1; 3; 7; 15; 31; 63; 127; 255|]
-let parse_bits nbits bit_state input =
+let parse_bits nbits input =
   let rec parse_bits_aux nbits cur_byte remaining_bits input res =
     match nbits, remaining_bits with
     | 0, _ -> (cur_byte, remaining_bits), res
@@ -565,13 +577,41 @@ let parse_bits nbits bit_state input =
 	parse_bits_aux (nbits - remaining_bits) (parse_byte input) 8 input new_res
       end
   in
-  let cur_byte, remaining_bits = match bit_state with
+  let cur_byte, remaining_bits = match input.cur_bitstate with
     | None -> 0, 0
     | Some s -> s
   in
-  match parse_bits_aux nbits cur_byte remaining_bits input 0 with
-  | (_, 0), res -> None, res
-  | s, res -> Some s, res
+  let ((_, rem_bits) as s), res = parse_bits_aux nbits cur_byte remaining_bits input 0 in
+  input.cur_bitstate <- (if rem_bits = 0 then None else Some s);
+  res
+
+let lwt_parse_bits nbits input =
+  let rec lwt_parse_bits_aux nbits cur_byte remaining_bits input res =
+    match nbits, remaining_bits with
+    | 0, _ -> return ((cur_byte, remaining_bits), res)
+    | _, 0 ->
+      lwt_parse_byte input >>= fun b ->
+      lwt_parse_bits_aux nbits b 8 input res
+    | _, _ ->
+      if nbits <= remaining_bits
+      then begin
+	let new_rem = remaining_bits - nbits in
+	let new_state = cur_byte, new_rem
+	and new_res = (res lsl nbits) lor ((cur_byte lsr new_rem) land _bits_masks.(nbits))
+	in return (new_state, new_res)
+      end else begin
+	let new_res = (res lsl remaining_bits) lor (cur_byte land _bits_masks.(remaining_bits)) in
+	lwt_parse_byte input >>= fun b ->
+	lwt_parse_bits_aux (nbits - remaining_bits) b 8 input new_res
+      end
+  in
+  let cur_byte, remaining_bits = match input.lwt_bitstate with
+    | None -> 0, 0
+    | Some s -> s
+  in
+  lwt_parse_bits_aux nbits cur_byte remaining_bits input 0 >>= fun (((_, rem_bits) as s), res) ->
+  input.lwt_bitstate <- (if rem_bits = 0 then None else Some s);
+  return res
 
 let dump_bits buf nbits bit_state value =
   let rec dump_bits_aux buf nbits cur_byte free_bits value =

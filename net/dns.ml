@@ -196,15 +196,14 @@ type dns_flags = {
 }
 
 let parse_dns_flags input =
-  let st0 = None in
-  let st1, qr = parse_bits 1 st0 input in
-  let st2, opcode = parse_bits 4 st1 input in
-  let st3, aa = parse_bits 1 st2 input in
-  let st4, tc = parse_bits 1 st3 input in
-  let st5, rd = parse_bits 1 st4 input in
-  let st6, ra = parse_bits 1 st5 input in
-  let st7, z = parse_bits 3 st6 input in
-  let _, rcode = parse_bits 4 st7 input in
+  let qr = parse_bits 1 input in
+  let opcode = parse_bits 4 input in
+  let aa = parse_bits 1 input in
+  let tc = parse_bits 1 input in
+  let rd = parse_bits 1 input in
+  let ra = parse_bits 1 input in
+  let z = parse_bits 3 input in
+  let rcode = parse_bits 4 input in
   { qr = qr = 1; opcode = opcode; aa = aa = 1; tc = tc = 1;
     rd = rd = 1; ra = ra = 1; z = z; rcode = rcode }
 
