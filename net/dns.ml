@@ -184,11 +184,61 @@ struct rr [both_param ctx] = {
 }
 
 
+type dns_flags = {
+  qr : bool;
+  opcode : int;
+  aa : bool;
+  tc : bool;
+  rd : bool;
+  ra : bool;
+  z : int;
+  rcode : int;
+}
+
+let parse_dns_flags input =
+  let st0 = (0, 0) in
+  let st1, qr = parse_bits 1 st0 input in
+  let st2, opcode = parse_bits 4 st1 input in
+  let st3, aa = parse_bits 1 st2 input in
+  let st4, tc = parse_bits 1 st3 input in
+  let st5, rd = parse_bits 1 st4 input in
+  let st6, ra = parse_bits 1 st5 input in
+  let st7, z = parse_bits 3 st6 input in
+  let _, rcode = parse_bits 4 st7 input in
+  { qr = qr = 1; opcode = opcode; aa = aa = 1; tc = tc = 1;
+    rd = rd = 1; ra = ra = 1; z = z; rcode = rcode }
+
+let dump_dns_flags buf flags =
+  let st0 = (0, 8) in
+  let st1 = dump_bits buf 1 st0 (if flags.qr then 1 else 0) in
+  let st2 = dump_bits buf 4 st1 flags.opcode in
+  let st3 = dump_bits buf 1 st2 (if flags.aa then 1 else 0) in
+  let st4 = dump_bits buf 1 st3 (if flags.tc then 1 else 0) in
+  let st5 = dump_bits buf 1 st4 (if flags.rd then 1 else 0) in
+  let st6 = dump_bits buf 1 st5 (if flags.ra then 1 else 0) in
+  let st7 = dump_bits buf 3 st6 flags.z in
+  let _ = dump_bits buf 4 st7 flags.rcode in
+  ()
+
+let value_of_dns_flags flags =
+  VRecord [
+    "@name", VString ("dns_flags", false);
+    "qr", VBool flags.qr;
+    "opcode", VSimpleInt flags.opcode;
+    "aa", VBool flags.aa;
+    "tc", VBool flags.tc;
+    "rd", VBool flags.rd;
+    "ra", VBool flags.ra;
+    "z", VSimpleInt flags.z;
+    "rcode", VSimpleInt flags.rcode;
+  ]
+		 
+
 struct dns_message [with_exact] = {
   parse_checkpoint ctx : dns_pcontext;
   dump_checkpoint ctx : dns_dcontext;
   id : uint16;
-  unparsedStuff : uint16;
+  flags : dns_flags;
   qdcount : uint16;
   ancount : uint16;
   nscount : uint16;
