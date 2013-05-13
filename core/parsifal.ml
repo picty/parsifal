@@ -545,6 +545,49 @@ let parse_both_equal fatal err a b input =
   then emit_parsing_exception fatal err input
 
 
+(* TODO: We do NOT check for integer overflow! *)
+(* TODO: Should this cur_byte/remaining_bits be stored in input? *)
+let _bits_masks = [|0; 1; 3; 7; 15; 31; 63; 127; 255|]
+let parse_bits nbits (cur_byte, remaining_bits) input =
+  let rec parse_bits_aux nbits cur_byte remaining_bits input res =
+    match nbits, remaining_bits with
+    | 0, _ -> (cur_byte, remaining_bits), res
+    | _, 0 -> parse_bits_aux nbits (parse_byte input) 8 input res
+    | _, _ ->
+      if nbits <= remaining_bits
+      then begin
+	let new_rem = remaining_bits - nbits in
+	let new_state = cur_byte, new_rem
+	and new_res = (res lsl nbits) lor ((cur_byte lsr new_rem) land _bits_masks.(nbits))
+	in new_state, new_res
+      end else begin
+	let new_res = (res lsl remaining_bits) lor (cur_byte land _bits_masks.(remaining_bits)) in
+	parse_bits_aux (nbits - remaining_bits) (parse_byte input) 8 input new_res
+      end
+  in parse_bits_aux nbits cur_byte remaining_bits input 0
+
+let dump_bits buf nbits (cur_byte, free_bits) value =
+  let rec dump_bits_aux buf nbits cur_byte free_bits value =
+    match nbits, free_bits with
+    | _, 0 ->
+      Buffer.add_char buf (char_of_int cur_byte);
+      dump_bits_aux buf nbits 0 8 value
+    | 0, _ -> (cur_byte, free_bits)
+    | _, _ ->
+      if nbits < free_bits
+      then (cur_byte lsl nbits) lor (value land _bits_masks.(nbits)), free_bits - nbits
+      else begin
+	let shift = nbits - free_bits in
+	let new_byte = (cur_byte lsl free_bits) lor ((value lsr shift) land _bits_masks.(free_bits)) in
+	Buffer.add_char buf (char_of_int new_byte);
+	dump_bits_aux buf shift 0 8 value
+      end
+  in dump_bits_aux buf nbits cur_byte free_bits value
+
+
+(* TODO: Write cleanup functions to handle non-full bytes *)
+
+
 
 (*******************)
 (* Dumping helpers *)
