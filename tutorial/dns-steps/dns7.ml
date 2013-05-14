@@ -54,7 +54,7 @@ let parse_dns_pcontext input = {
 }
 
 let dump_dns_dcontext buf _ = {
-  output_offset = Buffer.length buf;
+  output_offset = POutput.length buf;
   reverse_resolver = Hashtbl.create 10;
 }
 

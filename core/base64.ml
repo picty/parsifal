@@ -49,16 +49,16 @@ let lwt_raiseB64 s i =
 
 let decode_rev_chunk b = function
   | [-1; -1; v2; v1] -> 
-    Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)));
+    POutput.add_byte b ((v1 lsl 2) lor (v2 lsr 4));
     None
   | [-1; v3; v2; v1] ->
-    Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)));
-    Buffer.add_char b (char_of_int (((v2 land 0xf) lsl 4) lor (v3 lsr 2)));
+    POutput.add_byte b ((v1 lsl 2) lor (v2 lsr 4));
+    POutput.add_byte b (((v2 land 0xf) lsl 4) lor (v3 lsr 2));
     None
   | [v4; v3; v2; v1] ->
-    Buffer.add_char b (char_of_int ((v1 lsl 2) lor (v2 lsr 4)));
-    Buffer.add_char b (char_of_int (((v2 land 0xf) lsl 4) lor (v3 lsr 2)));
-    Buffer.add_char b (char_of_int (((v3 land 0x3) lsl 6) lor v4));
+    POutput.add_byte b ((v1 lsl 2) lor (v2 lsr 4));
+    POutput.add_byte b (((v2 land 0xf) lsl 4) lor (v3 lsr 2));
+    POutput.add_byte b (((v3 land 0x3) lsl 6) lor v4);
     Some []
   | new_chunk -> Some new_chunk
 
@@ -109,16 +109,16 @@ let string_of_base64_title title input =
     title
   in
 
-  let res = Buffer.create 1024 in
+  let res = POutput.create () in
   let t1 = read_title false true input in
   let dash_read = debaser true res [] input in
   let t2 = read_title dash_read false input in
   match title, t1 = t2 with
-  | None, true -> Buffer.contents res
+  | None, true -> POutput.contents res
   | Some t, true ->
     if not (List.mem t1 t)
     then raiseB64 (List.hd t ^ " expected, " ^ t1 ^ " found") input
-    else Buffer.contents res
+    else POutput.contents res
   | _, false -> raiseB64 "inconsistent titles" input
 
 
@@ -138,55 +138,55 @@ let lwt_string_of_base64_title title lwt_input =
     return title
   in
 
-  let res = Buffer.create 1024 in
+  let res = POutput.create () in
   lwt_read_title false true lwt_input >>= fun t1 ->
   lwt_debaser true res [] lwt_input >>= fun dash_read ->
   lwt_read_title dash_read false lwt_input >>= fun t2 ->
   match title, t1 = t2 with
   | None, true ->
-    return (Buffer.contents res)
+    return (POutput.contents res)
   | Some t, true ->
     if not (List.mem t1 t)
     then lwt_raiseB64 (List.hd t ^ " expected, " ^ t1 ^ " found") lwt_input
-    else return (Buffer.contents res)
+    else return (POutput.contents res)
   | _, false -> lwt_raiseB64 "inconsistent titles" lwt_input
 
 
 
 let to_raw_base64 maxlen buf bin_buf =
-  let n = Buffer.length bin_buf in
+  let n = POutput.length bin_buf in
   let rec add_group = function
     | v::r, padding_needed ->
-      Buffer.add_char buf base64_chars.[v];
+      POutput.add_char buf base64_chars.[v];
       add_group (r, padding_needed)
     | [], 0 -> ()
     | [], padding_needed ->
-      Buffer.add_char buf '=';
+      POutput.add_char buf '=';
       add_group ([], padding_needed - 1)
   in
   let rec handle_next_group i rem =
     match rem with
       | 0 -> ()
       | 1 ->
-	let v1 = int_of_char (Buffer.nth bin_buf i) in
+	let v1 = POutput.byte_at bin_buf i in
 	add_group ([v1 lsr 2;
 		    (v1 lsl 4) land 0x3f], 2)
       | 2 ->
-	let v1 = int_of_char (Buffer.nth bin_buf i)
-	and v2 = int_of_char (Buffer.nth bin_buf (i+1)) in
+	let v1 = POutput.byte_at bin_buf i
+	and v2 = POutput.byte_at bin_buf (i+1) in
 	add_group ([v1 lsr 2;
 		    ((v1 lsl 4) land 0x3f) lor (v2 lsr 4);
 		    (v2 lsl 2) land 0x3f], 1)
       | _ ->
-	let v1 = int_of_char (Buffer.nth bin_buf i)
-	and v2 = int_of_char (Buffer.nth bin_buf (i+1))
-	and v3 = int_of_char (Buffer.nth bin_buf (i+2)) in
+	let v1 = POutput.byte_at bin_buf i
+	and v2 = POutput.byte_at bin_buf (i+1)
+	and v3 = POutput.byte_at bin_buf (i+2) in
 	add_group ([v1 lsr 2;
 		    ((v1 lsl 4) land 0x3f) lor (v2 lsr 4);
 		    ((v2 lsl 2) land 0x3f) lor (v3 lsr 6);
 		    v3 land 0x3f], 0);
 	let new_i = i+3 and new_rem = rem -3 in
-	if maxlen > 0 && (new_i mod maxlen == 0) then Buffer.add_char buf '\n';
+	if maxlen > 0 && (new_i mod maxlen == 0) then POutput.add_char buf '\n';
 	handle_next_group new_i new_rem
   in
   handle_next_group 0 n
@@ -194,13 +194,13 @@ let to_raw_base64 maxlen buf bin_buf =
 
 let to_base64 title buf bin_buf =
   let mk_begin_boundary t =
-    Buffer.add_string buf "-----BEGIN ";
-    Buffer.add_string buf t;
-    Buffer.add_string buf "-----\n"
+    POutput.add_string buf "-----BEGIN ";
+    POutput.add_string buf t;
+    POutput.add_string buf "-----\n"
   and mk_end_boundary t =
-    Buffer.add_string buf "\n-----END ";
-    Buffer.add_string buf t;
-    Buffer.add_string buf "-----";
+    POutput.add_string buf "\n-----END ";
+    POutput.add_string buf t;
+    POutput.add_string buf "-----";
   in
   match title with
   | HeaderInList [t] ->
@@ -220,9 +220,9 @@ type 'a base64_container = 'a
 let parse_base64_container header_expected parse_fun input =
   let content = match header_expected with
     | NoHeader ->
-      let res = Buffer.create 1024 in
+      let res = POutput.create () in
       ignore (debaser false res [] input);
-      Buffer.contents res
+      POutput.contents res
     | AnyHeader -> string_of_base64_title None input
     | HeaderInList l -> string_of_base64_title (Some l) input
   in
@@ -235,9 +235,9 @@ let lwt_parse_base64_container title parse_fun lwt_input =
   begin
     match title with
     | NoHeader ->
-      let res = Buffer.create 1024 in
+      let res = POutput.create () in
       lwt_debaser false res [] lwt_input >>= fun _ ->
-      return (Buffer.contents res)
+      return (POutput.contents res)
     | AnyHeader -> lwt_string_of_base64_title None lwt_input
     | HeaderInList l -> lwt_string_of_base64_title (Some l) lwt_input
   end >>= fun content ->
@@ -247,7 +247,7 @@ let lwt_parse_base64_container title parse_fun lwt_input =
   return res
 
 let dump_base64_container title dump_fun buf o =
-  let tmp_buf = Buffer.create !default_buffer_size in
+  let tmp_buf = POutput.create () in
   dump_fun tmp_buf o;
   to_base64 title buf tmp_buf
 

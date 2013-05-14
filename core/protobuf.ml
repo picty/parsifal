@@ -49,7 +49,7 @@ let lwt_parse_varint lwt_input =
   lwt_parse_bytelist [] lwt_input >>= fun bytes ->
   return (varint_of_bytelist bytes (_h_of_li lwt_input))
 
-let dump_varint (_buf : Buffer.t) (_i : int) = not_implemented "dump_varint"
+let dump_varint (_buf : POutput.t) (_i : int) = not_implemented "dump_varint"
 
 let value_of_varint i = VSimpleInt i
 

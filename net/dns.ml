@@ -54,7 +54,7 @@ let parse_dns_pcontext input = {
 }
 
 let dump_dns_dcontext buf _ = {
-  output_offset = Buffer.length buf;
+  output_offset = POutput.length buf;
   reverse_resolver = Hashtbl.create 10;
 }
 
@@ -90,7 +90,7 @@ let rec dump_domain ctx buf = function
       try
 	dump_domain ctx buf (DomainPointer (Hashtbl.find ctx.reverse_resolver d))
       with Not_found ->
-	Hashtbl.replace ctx.reverse_resolver d (Buffer.length buf - ctx.output_offset);
+	Hashtbl.replace ctx.reverse_resolver d (POutput.length buf - ctx.output_offset);
 	dump_varlen_string dump_uint8 buf l;
 	dump_domain ctx buf r
     end else begin
@@ -108,7 +108,7 @@ let value_of_domain d =
   VRecord [
     "@name", VString ("domain", false);
     "@string_of", VString (String.concat "." content, false);
-    "content", VList (List.map (value_of_string false) content)
+    "content", VList (List.map value_of_string content)
   ]
 
 
@@ -184,11 +184,23 @@ struct rr [both_param ctx] = {
 }
 
 
+struct dns_flags = {
+  qr : bit_bool;
+  opcode : bit_int[4];
+  aa : bit_bool;
+  tc : bit_bool;
+  rd : bit_bool;
+  ra : bit_bool;
+  z : bit_int[3];
+  rcode : bit_int[4];
+}
+		 
+
 struct dns_message [with_exact] = {
   parse_checkpoint ctx : dns_pcontext;
   dump_checkpoint ctx : dns_dcontext;
   id : uint16;
-  unparsedStuff : uint16;
+  flags : dns_flags;
   qdcount : uint16;
   ancount : uint16;
   nscount : uint16;

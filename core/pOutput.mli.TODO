@@ -1,0 +1,17 @@
+type t
+
+val default_buffer_size : int ref
+val create : unit -> t
+
+val contents : t -> string
+val length : t -> int
+val byte_at : t -> int -> int
+
+val add_bits : t -> int -> int -> unit
+val add_byte : t -> int -> unit
+val add_char : t -> char -> unit
+val add_string : t -> string -> unit
+val bprintf : t -> ('a, Buffer.t, unit) format -> 'a
+val add_output : t -> t -> unit
+
+val output_buffer : out_channel -> t -> unit

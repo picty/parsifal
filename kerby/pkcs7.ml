@@ -53,7 +53,7 @@ asn1_struct pkcs7_signed_data = {
   (* XXX parse CRLs *)
   optional crls : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of (list of binstring);
   signerInfos : asn1 [(C_Universal, true, T_Set)] of (list of signerInfo);
-  parse_checkpoint _junk : ignore
+  parse_checkpoint : ignore
 }
 
 (*

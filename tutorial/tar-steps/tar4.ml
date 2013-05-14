@@ -39,7 +39,7 @@ let parse_optional_tar_numstring len input =
   | x -> x
 
 let dump_optional_tar_numstring len buf = function
-  | None -> Buffer.add_char buf '\x00'
+  | None -> POutput.add_char buf '\x00'
   | Some v -> dump_tar_numstring len buf v
 
 let value_of_optional_tar_numstring v = try_value_of value_of_tar_numstring v

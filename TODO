@@ -1,33 +1,18 @@
 v0.2 (apr. 2013)
+ - cleanup the Makefile to handle the .mli -> .cmi generation properly
  - add gzip_container as custom containers => needed for PNG
- - patch parse_checkpoint to allow empty identifiers (parse_checkpoint _ : update_stuff)
  - General
    * have a redmine to put all this stuff
    * create a mailing list
    * clean up TODOs in ml files.
+   * write README files to quickly describe all the files
  - Once v0.2 is freezed, add all the changes in a Changelog!
-
  - Merge tls_context and ssl2_context?
  - Misc
    * Factor some code (verbose option, file handling, action handling) in getopt
    * getopt tuning (help usage messages [principal and details], multiline descriptions)
    * getopt tuning (add constraint on the number of args?)
  - Tools
-   * Write a cool passive TLS_Proxy
-   * check_sslserver (see check_sslserver.ml for a complete TODO)
-   * rewrite server-answer with the following options
-     -p port to bind
-     -A alert to send (Fatal,HandshakeFailure)
-     --versions (as in probe-certs)
-     --ciphersuite
-     --compression
-     -c cert-file (add a cert)
-     -S send server-hello message
-     -C send certificate message
-     -D send server-hello-done message
-   * improve probe-server
-     + add SSLv2 support
-     + add a way to handle TLS extensions
    * improve mapAnswers
      + add record_version to A/H answer types
      + add support for client_hello_sent in mapAnswers/answer_type?
@@ -37,6 +22,7 @@ v0.3 (may 2013)
  - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
  - Use modules to aggregate the functions for some top-level objects (parse/dump/value_of)
  - Improve asn1_struct (correct option handling: params / top)
+ - (prospective) First support for PDF
  - Context handling: code some helpers using (string, 'a) Hashtbl.t to allow for a simple parsing context with parse_checkpoint/parse_fields
  - add a new VParsingError type and a choice decorator [parsingError] to remember when a safe_union failed
  - Add recursive type definitions (PKCS#7 / DEX) between "begin_parsifal_block" and "end_parsifal_block"
@@ -108,6 +94,13 @@ v0.3 (may 2013)
      + Graph construction (From a big pool of certs, try to create all the links...)
    * Add a way to create a certificate object
  - Tools
+   * Write a cool passive TLS_Proxy
+   * check_sslserver (see check_sslserver.ml for a complete TODO)
+   * rewrite server-answer with the following options
+     + implement control over record splitting
+   * improve probe-server
+     + add SSLv2 support
+     + add a way to handle TLS extensions
    * bgpdump and/or obsdump
    * x509check (enrich the x509 object before analysing!)
    * chaincheck
@@ -140,9 +133,13 @@ v0.3 (may 2013)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
    * Add bitfield support
-     + this should look like struct
-     + it should use bitparse_ / bitdump_ functions, that take two more args (current_byte, current_pos)
-     + enums should offer bitparse and bitdump funs
+     + write parse_ and dump_ for enums that do not fit on entire bytes
+     + write remaining_bits PType
+     + rewrite dns_flags using flags in dnsXX.ml in tutorial.
+     + at the end of structs, at the end of exact_parse / lwt_exact_parse, check None
+     + use parsifal.mli to control cur_bitstate and lwt_bitstate tightly
+     + add more checks to check bitstate = None when working on bytes?
+     + check the performance on simple unit tests?
  - Tls
    * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
    * Implement every extension/PK present in ssl-data
@@ -178,6 +175,7 @@ v0.3 (may 2013)
 
 v0.4 (jun. 2013)
  - Rewrite Base64 properly
+ - Think about a smart_dump function, which would auto-fill missing values (sizes, crcs...) => it could also be implemented using t_of_value and default/auto-fill information
  - Maybe add a lwt_dump_* function?
  - Propose a lwt_parse_wrapper, which stupidly tries to read byte by byte and give the result to parse? It could be improved when an input is rewindable or if OutOfBounds gave the number of bytes needed to continue (at least when some info is available)
  - Add cool containers where it is possible to specify the real type ( (int, string) either / int option )

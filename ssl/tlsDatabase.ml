@@ -12,24 +12,6 @@ let mk_csdescr cs kx au enc mac prf exp min max =
   Hashtbl.replace ciphersuite_descriptions cs desc
 
 
-(*
-
-echo let _ =
-while IFS=: read x cs x kx au enc1 enc2 enc3 mac1 mac2 prf1 prf2 x export min max; do
-  echo '  'mk_csdescr $cs KX_$kx AU_$au \(ENC_$enc2 \(BC_$enc1, $enc3\)\) \(MAC_HMAC \(HF_${mac1/HMAC-/}, $mac2\)\) PRF_$prf1 $export 0x$min 0x$max\;
-done < ciphersuites-iana.txt | sed 's/(ENC_ (BC_NULL, 0))/ENC_Null/
-s/(ENC_ (BC_RC4, \([0-9]*\)))/(ENC_Stream (SC_RC4, \1))/
-s/ 0 0x0/ false 0x0/
-s/ 1 0x0/ true 0x0/
-s/PRF_DEFAULT/PRF_Default/
-s/AU_NULL/AU_Null/
-s/(MAC_HMAC (HF_AEAD, [0-9]*''))/MAC_AEAD/
-s/(MAC_HMAC (HF_NULL, 0))/MAC_Unknown/
-s/KX_NULL/KX_Unknown/' | grep -v '\(SRP\|PSK\|KRB5\)';
-echo '();;'
-
-*)
-
 let enrich_suite_hash () =
   mk_csdescr TLS_NULL_WITH_NULL_NULL KX_Unknown AU_Null ENC_Null MAC_Unknown PRF_Default false 0x0300 0xffff;
   mk_csdescr TLS_RSA_WITH_NULL_MD5 KX_RSA AU_RSA ENC_Null (MAC_HMAC (HF_MD5, 128)) PRF_Default false 0x0300 0xffff;

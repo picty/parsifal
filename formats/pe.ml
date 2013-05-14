@@ -126,9 +126,9 @@ struct data_directory_entry [with_lwt] = {
 
 struct pe_file [with_lwt] = {
   msdos_header: msdos_header;
-  parse_checkpoint __e_dummyseek : seek_offset(0x3c);
+  parse_checkpoint : seek_offset(0x3c);
   pehdr_loc : uint16le;
-  parse_checkpoint __e_dummyseek2 : seek_offset(pehdr_loc);
+  parse_checkpoint : seek_offset(pehdr_loc);
 
   pe_header : pe_header;
 

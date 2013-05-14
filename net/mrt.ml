@@ -35,7 +35,7 @@ let dump_ip_prefix buf = function
   | IPv4Prefix (s, l)
   | IPv6Prefix (s, l) ->
     dump_uint8 buf l;
-    Buffer.add_string buf s
+    POutput.add_string buf s
 
 let value_of_ip_prefix = function
   | IPv4Prefix (initial_s, prefix_len) ->

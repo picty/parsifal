@@ -1,0 +1,146 @@
+################################################
+# you should not change anything after this line
+
+OCAMLC = ocamlc
+OCAMLDEP = ocamldep
+OCAMLFIND = ocamlfind
+OCAMLMKTOP = ocamlmktop
+OCAMLOPT = ocamlopt
+
+GEN_INCLUDES = $(shell $(OCAMLFIND) query -format "-I %d" -predicates native $(OCAML_LIBS))
+GEN_LIBS = $(shell $(OCAMLFIND) query -format "%a" -predicates native -recursive $(OCAML_LIBS))
+GEN_BYTE_INCLUDES = $(shell $(OCAMLFIND) query -format "-I %d" -predicates byte -recursive $(OCAML_LIBS))
+GEN_BYTE_LIBS = $(shell $(OCAMLFIND) query -format "%a" -predicates byte -recursive $(OCAML_LIBS))
+
+# use the following variables to add extra flags (not guessed by ocamlfind)
+OCAMLOPTS_CC = $(GEN_INCLUDES) $(EXTRA_OCAMLOPT_CC_FLAGS) -I $(BUILD_DIR)
+OCAMLOPTS_LD = $(GEN_INCLUDES) $(GEN_LIBS) $(EXTRA_OCAMLOPT_LD_FLAGS)
+OCAMLC_CC = $(GEN_BYTE_INCLUDES) $(EXTRA_OCAMLC_CC_FLAGS)
+OCAMLC_LD = $(GEN_BYTE_INCLUDES) $(GEN_BYTE_LIBS) $(EXTRA_OCAMLC_LD_FLAGS)
+OCAML_COMPILER_OPTIONS = -w +a-4-6-9-31-32 -warn-error +a-4-6-9-31-32-33
+
+# install options
+LIBDIR ?= /usr/local/lib/ocaml
+BINDIR ?= /usr/local/bin
+
+
+all: real_all
+
+
+# TARGET handling (native, byte and toplevel)
+
+define TARGET_template
+ $(1)_OBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmx)
+ $(1): $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -o $$@ $(OCAMLOPTS_LD) $$^
+
+ $(1)_BOBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmo)
+ $(1).byte: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -o $$@ $(OCAMLC_LD) $$^
+
+ $(1).top: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLMKTOP) -o $$@ $(OCAMLC_LD) $$^
+
+ ALL_INCS   += $$($(1)_INCS)
+ ALL_SRCS   += $$($(1)_SRCS)
+ ALL_OBJS   += $$($(1)_OBJS)
+endef
+
+$(foreach prog,$(TARGETS),$(eval $(call TARGET_template,$(prog))))
+
+
+
+# MLLIB handling (native and byte)
+
+define MLLIB_template
+ $(1)_OBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmx)
+ $(1)_CMIS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmi)
+ $(BUILD_DIR)/$(1).cmxa: $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -a -o $$@ $$^
+
+ $(1)_BOBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmo)
+ $(BUILD_DIR)/$(1).cma: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -a -o $$@ $(OCAMLC_LD) $$^
+
+ META_TO_BUILD = $(BUILD_DIR)/META
+ ALL_INCS   += $$($(1)_INCS)
+ ALL_SRCS   += $$($(1)_SRCS)
+ ALL_CMIS   += $$($(1)_CMIS)
+ ALL_OBJS   += $$($(1)_OBJS)
+endef
+
+$(foreach lib,$(MLLIBS),$(eval $(call MLLIB_template,$(lib))))
+
+
+
+# generic rules
+real_all: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(META_TO_BUILD)
+
+byte: builddir depends $(TARGETS:%=%.byte) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(META_TO_BUILD)
+
+# TODO: Improve this rule
+install: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(MLLIBS:%=$(BUILD_DIR)/%.a) $(TARGETS:%=%.byte) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(ALL_CMIS) $(META_TO_BUILD)
+	 @for f in $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(MLLIBS:%=$(BUILD_DIR)/%.a) $(ALL_CMIS) $(META_TO_BUILD); do \
+	   echo "Installing $$(basename $$f) -> $(LIBDIR)/$(LIBNAME)/$$(basename $$f)"; \
+	   install -D -m 0644 "$$f" "$(LIBDIR)/$(LIBNAME)/$$(basename $$f)"; \
+	 done
+	 @for f in $(TARGETS) $(TARGETS:%=%.byte); do \
+	   echo "Installing $$(basename $$f) -> $(BINDIR)/$$(basename $$f)"; \
+	   install -D -m 0755 "$$f" "$(BINDIR)/$$(basename $$f)"; \
+	 done
+
+top:
+	$(MAKE) $(TARGETS:%=%.top)
+
+test:
+	echo $(OCAMLFIND) query -format "%o" -predicates byte -recursive $(OCAML_LIBS)
+
+
+
+
+# Simple compilation rules and dependencies
+
+$(BUILD_DIR)/META: META
+	cp "$<" "$@"
+
+$(BUILD_DIR)/%.cmi: %.mli
+	$(OCAMLC) -c $<
+
+$(BUILD_DIR)/%.cmx: %.ml
+ifdef USE_CAMLP4
+	$(OCAMLFIND) $(OCAMLOPT) -o $@ -c -g $(OCAMLOPTS_CC) $(OCAML_COMPILER_OPTIONS) -syntax camlp4o $<
+else
+	$(OCAMLOPT) -o $@ -c -g $(OCAMLOPTS_CC) $<
+endif
+
+$(BUILD_DIR)/%.cmo: %.ml
+ifdef USE_CAMLP4
+	$(OCAMLFIND) $(OCAMLC) -o $@ -c -g $(OCAMLOPTS_CC) $(OCAML_COMPILER_OPTIONS) -syntax camlp4o $<
+else
+	$(OCAMLC) -o $@ -c -g $(OCAMLOPTS_CC) $<
+endif
+
+
+clean:
+	rm -f *.cmo *.cmx *.cmi *.o $(TARGETS) $(TARGETS:%=%.byte) $(TARGETS:%=%.top) \
+	   $(MLLIBS:%=%.cmxa) $(MLLIBS:%=%.cma) $(MLLIBS:%=%.a)
+	[ -z "$(BUILD_DIR)" ] || rm -rf $(BUILD_DIR)
+
+
+depends: builddir $(BUILD_DIR)/.depends
+
+$(BUILD_DIR)/.depends: $(ALL_SRCS) $(ALL_INCS)
+	[ -d "$(BUILD_DIR)" ] || mkdir "$(BUILD_DIR)"
+ifdef USE_CAMLP4
+	$(OCAMLFIND) $(OCAMLDEP) $(OCAMLOPTS_CC) -syntax camlp4o -native $^ > $@
+else
+	$(OCAMLDEP) $(OCAMLOPTS_CC) -native $^ > $@
+endif
+	sed -i -e "s+^\(.*\.cm. *\):+$(BUILD_DIR)/\1:+" -e "s+ \([^/ ]*\.cm.\)+ $(BUILD_DIR)/\1+g" $(BUILD_DIR)/.depends
+
+builddir: $(BUILD_DIR)
+
+$(BUILD_DIR):
+	mkdir $(BUILD_DIR)
+
+.PHONY: real_all all builddir clean depends byte top
+
+
+
+-include $(BUILD_DIR)/.depends
+

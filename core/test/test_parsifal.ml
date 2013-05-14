@@ -43,7 +43,7 @@ asn1_union der_time [top; enrich; exhaustive] (UnparsedTime) =
 
 
 let test (parse : string_input -> 'a)
-         (raw_dump : Buffer.t -> 'a -> unit)
+         (raw_dump : POutput.t -> 'a -> unit)
 	 (value_of : 'a -> value)
 	 (name : string) (s : string) =
   try

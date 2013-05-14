@@ -1,0 +1,255 @@
+<html>
+  <head>
+    <title>Parsifal: a tutorial</title>
+  </head>
+  <body>
+    <h1>Parsifal: a tutorial</h1>
+
+    <p>Parsifal is an OCaml camlp4-based preprocessor allowing you to
+    quickly write robust and efficient parsers.</p>
+
+    <p>Parsifal has been developped since October 2011 and the source
+    code is available
+    on <a href="https://github.com/ol-anssi/parsifal">GitHub</a>.</p>
+
+    TODO: table of contents + different versions (1 HTML / many HTMLS
+    / ZIP with all the files)
+
+
+    <h2>Origin of the project</h2>
+
+    <p>The origin of the project was to analyse a lot of SSL handshake
+    records from the <a href="https://www.eff.org/observatory">EFF SSL
+    Observatory</a>. The problem was to try and dissect the data to
+    extract the negotiated parameters (ciphersuites, certificates),
+    but a lot of servers do not really play by the book, and other do
+    not even answer using valid TLS messages. That is why we needed
+    a robust TLS/ASN.1/X.509 parser.</p>
+
+    <p>First, we wrote parsers in Python, but they're were terribly
+    slow. Then, a second C++ version was developped, using templates
+    and object-oriented programming to gain in speed. However, C++ is
+    a verbose and error-prone language; fixing segmentation faults and
+    memory leaks can really be tedious.</p>
+
+    <p>Next, we switched to OCaml for a third TLS parser, using a DSL
+    to browse TLS and certificate parameters. Yet again, two much code
+    needed to be written to add each feature. That is why we ended up
+    with another OCaml version of the parsers, using a pre-processor
+    to generate automatically types and functions.</p>
+
+    <p>This fourth version, called Parsifal, is composed of the
+    following components:
+      <ul>
+	<li>syntactic extensions to allow for new type constructions;</li>
+	<li>support for base types (integers, strings, lists, arrays,
+	etc.);</li>
+	<li>support for ASN.1 base types and useful container
+	implementations (Base64, Hexadecimal).</li>
+      </ul>
+    </p>
+
+    <p>Using Parsifal, several file formats and network protocols have
+      already been implemented (at least partially):
+      <ul>
+	<li>TAR;</li>
+	<li>PE (Portable Executable);</li>
+	<li>PCAP/IP/TCP/UDP rudimentary support;</li>
+	<li>DNS;</li>
+	<li>X.509 certificates;</li>
+	<li>SSLv2/TLS messages.</li>
+      </ul>
+    </p>
+
+    <p>For
+    information, <a href="http://www.acsac.org/2012/openconf/modules/request.php?module=oc_program&action=summary.php&id=163&OPENCONF=b4ff90e37b884f9530476ba7c26f9b27">our
+    work on SSL/TLS records</a> has been published
+    at <a href="http://www.acsac.org/2012/">ACSAC 2012</a>.
+
+
+    <h2>Installation</h2>
+
+    <p>The following packages are needed to compile Parsifal (the
+    names given correspond to Debian's package names):
+      <ul>
+	<li>ocaml</li>
+	<li>ocaml-findlib</li>
+	<li>liblwt-ocaml-dev (>= 2.3)</li>
+	<li>libcryptokit-ocaml-dev</li>
+	<li>make</li>
+      </ul>
+    </p>
+
+    <p>Next, Parsifal source code can be downloaded
+    from <a href="https://github.com/ol-anssi/parsifal">GitHub</a>,
+    and compiled using <code>make</code>:</p>
+
+    <code>
+      git clone https://github.com/ol-anssi/parsifal.git<br/>
+      cd parsifal<br/>
+      make
+    </code>
+
+    <p>Then you can install the program using <code>make
+    install</code> as <code>root</code>. The library will be copied
+    into <code>/usr/lib/ocaml</code> and the programs
+    into <code>/usr/local/bin</code>. Alternatively, environment
+    variables <code>LIBDIR</code> and <code>BINDIR</code> can be set
+    before launching <code>make install</code>.</p>
+
+
+    <h2>Concepts: PTypes and constructions</h2>
+
+    <h3>Principle</h3>
+
+    <p>Parsifal main concept are PTypes, OCaml types and the functions
+    associated. For a PType <code>t</code>, this means the following
+    definitions:
+      <ul>
+	<li>a type <code>t</code>;</li>
+	<li><code>parse_t : string_input -> t</code> to parse
+	a <code>t</code> value from a character string;</li>
+	<li>optionnaly, <code>lwt_parse_t : lwt_input -> t</code> to
+	parse a <code>t</code> value from a Lwt channel;</li>
+	<li><code>dump_t : Buffer.t -> t -> unit</code> to add the
+	string representation of a <code>t</code> value to a
+	buffer;</li>
+	<li>value_of_t : t -> value to convert a <code>t</code>
+	value to an abstract hierarchical value of type
+	<code>value</code>.</li>
+      </ul>
+    </p>
+
+    <p>Parsifal uses two sorts of inputs: <code>string_input</code>
+    and <code>lwt_input</code>. The first one allows for efficient
+    parsing from a character string, but needs to load the entire
+    string in memory. On the contrary, the second one uses a Lwt
+    channel, which allows for stream processing.</p>
+
+    <p>The type <code>value</code> allows for a high-level
+    representation, which can then be used by different fonctions:
+      <ul>
+	<li><code>string_of_value</code>, to extract a one-line
+	printable representation of a value;</li>
+	<li><code>print_value</code>, to extract a thorough printable
+	representation of a value;</li>
+	<li><code>json_of_value</code>, to get
+	a <a href="http://www.json.org/">JSON</a> representation of a
+	value;</li>
+	<li><code>get_value path v</code>, a quick way to explore a
+	value following a path (more on that later TODO_REF)
+      </ul>
+    </p>
+
+    <p>Moreover, <code>parse</code> and <code>dump</code> functions
+    can take parameters. The complete grammar is given there TODO_REF.
+
+    <h3>Creating a project</h3>
+
+    <p>To create a Parsifal project, the simplest way is to run
+    the <code>mk_project.sh project</code> script,
+    where <code>project</code> is your project's name. You will need
+    to set the <code>PARSIFAL_DIR</code> environment variable to the
+    directory containing Parsifal.</p>
+
+    <p>This will create a new directory called <code>project</code>
+    containing a working Makefile and a
+    quasi-empty <code>project.ml</code>. Calling <code>make</code> in
+    this directory will compile the source and link it against
+    Parsifal libraries, as soon as the compiled libs are in a
+    directory known to OCaml (for example, a directory pointed
+    by <code>OCAMLPATH</code> variable environment).</p>
+    
+    <p>The directory freshly created can be
+    found <a href="project/">here</a>. Let's now edit
+    the <a href="project/project.ml"><code>project.ml</code> file</a>
+    to do a little more than printing Hello to the world.</p>
+
+    <h3>Enumerations</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>Structures</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>Unions</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>Aliases</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>ASN.1 Aliases and ASN.1 Structures</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>ASN.1 Unions</h3>
+
+    One-liner on the construction
+
+    Code example
+
+    Code expanded
+
+    Compilation and execution
+
+    <h3>Available PTypes</h3>
+
+    Integers, strings, lists, arrays
+
+    Containers (base64, hex, asn1, length_constrained, bitstring,
+    octetstring, enrich_blocker)
+
+
+    <h2>Step-by-step: TAR parser</h2>
+
+
+    <h2>Step-by-step: DNS engine</h2>
+
+
+    <h2>And beyond...</h2>
+
+    Talk about enrich option, getopt, json, get_value.
+
+
+    <h2>Reference</h2>
+
+    BNF?
+
+    <hr width="85%"/>
+
+    <p align="center">Last modified May 11th 2013</p>
+  </body>
+</html>

@@ -180,7 +180,7 @@ let dump_der_header buf (c, isC, t) =
   if t_int >= 0x1f then raise (ParsingException (NotImplemented "long type", []));
   let h = ((int_of_asn1_class c) lsl 6) lor
     (if isC then 0x20 else 0) lor t_int in
-  Buffer.add_char buf (char_of_int h)
+  POutput.add_byte buf h
 
 let dump_der_length buf l =
   let rec compute_len accu = function
@@ -194,19 +194,19 @@ let dump_der_length buf l =
       aux res (i-1) (lg lsr 8)
   in
   if l < 0x80
-  then Buffer.add_char buf (char_of_int l)
+  then POutput.add_byte buf l
   else
     let len_len = compute_len 0 l in
     let res = String.make (len_len + 1) (char_of_int (len_len lor 0x80)) in
     aux res len_len l;
-    Buffer.add_string buf res
+    POutput.add_string buf res
 
 let produce_der_object hdr dump_content buf v =
   dump_der_header buf hdr;
-  let tmp_buf = Buffer.create !default_buffer_size in
+  let tmp_buf = POutput.create () in
   dump_content tmp_buf v;
-  dump_der_length buf (Buffer.length tmp_buf);
-  Buffer.add_buffer buf tmp_buf
+  dump_der_length buf (POutput.length tmp_buf);
+  POutput.add_output buf tmp_buf
 
 
 let lwt_extract_der_longtype input =
@@ -254,6 +254,7 @@ let _lwt_extract_der_object name header_constraint parse_content input =
     cur_name = name;
     cur_base = 0;
     cur_offset = offset;
+    cur_bitstate = None;
     cur_length = -1;
     enrich = input.lwt_enrich;
     history = [];
@@ -263,6 +264,7 @@ let _lwt_extract_der_object name header_constraint parse_content input =
   let hlen = input.lwt_offset - offset in
   lwt_extract_der_length input >>= fun len ->
   lwt_get_in input name len >>= fun new_input ->
+  let add_str buf s = POutput.add_string buf s in
   let der_info = {
     a_offset = offset;
     a_hlen = hlen;
@@ -271,7 +273,7 @@ let _lwt_extract_der_object name header_constraint parse_content input =
     a_isConstructed = isC;
     a_tag = t;
   }
-  and raw_string () = exact_dump (produce_der_object (c, isC, t) Buffer.add_string) new_input.str in
+  and raw_string () = exact_dump (produce_der_object (c, isC, t) add_str) new_input.str in
   let res = parse_content new_input in
   lwt_get_out input new_input >>= fun () ->
   return (res, der_info, raw_string)

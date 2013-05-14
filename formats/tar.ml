@@ -25,7 +25,7 @@ let parse_tar_numstring len input =
   with _ -> raise (ParsingException (CustomException "int_of_string", _h_of_si input))
 
 let dump_tar_numstring len buf v =
-  Printf.bprintf buf "%*.*o\x00" len len v
+  POutput.bprintf buf "%*.*o\x00" len len v
 
 (* TODO: change stg to get len in here? *)
 let value_of_tar_numstring i = VSimpleInt i
@@ -48,7 +48,7 @@ struct ustar_header [param file_type] = {
 
 struct tar_header = {
   file_name : nt_string(BOTH 100);
-  parse_checkpoint _last_entry : stop_if(file_name = "");
+  parse_checkpoint : stop_if(file_name = "");
   file_mode : tar_numstring(BOTH 8);
   owner_uid : tar_numstring(BOTH 8);
   owner_gid : tar_numstring(BOTH 8);
