@@ -6,9 +6,8 @@ open Asn1PTypes
 open Asn1Engine
 open X509Basics
 open Padata
+open KerberosTypes
 open Getopt
-
-
 
 let dest_port = ref 88
 
@@ -129,18 +128,6 @@ enum principalname_type (8, UnknownVal UnknownPrincipalNameType) =
   | 1 -> Principal
   | 2 -> Service_and_Instance
   | 3 -> Service_and_Host
-
-(* ContextSpecific optimization *)
-let parse_cspe n parse_fun input = parse_asn1 (C_ContextSpecific, true, T_Unknown n) parse_fun input
-let dump_cspe n dump_fun buf o = dump_asn1 (C_ContextSpecific, true, T_Unknown n) dump_fun buf o
-
-asn1_struct encrypted_data = 
-{
-  encryption_type : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of etype_type;
-  optional kvno : 	cspe [1] of der_smallint;
-  cipher : 		cspe [2] of der_octetstring
-}
-
 
 union padata_value [enrich] (UnparsedPaDataValueContent of binstring) =
   | 1, true -> PA_TGS_REQ of binstring
