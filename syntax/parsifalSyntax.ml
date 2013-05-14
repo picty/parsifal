@@ -422,12 +422,19 @@ let mk_parse_fun lwt_fun _loc c =
     | _ when not (c <.> DoLwt) && lwt_fun -> []
 
     | Enum enum ->
+      (* TODO: How can we treat non-aligned 8-bit enums properly and efficiently in most cases *)
+      (* Add a AlwaysAligned option? Or on the contrary *)
+      (* Rewrite parse_bits to be efficient when things are aligned? *)
       if enum.size mod 8 = 0 then begin
 	let le = (if c <.> LittleEndian then "le" else "") in
 	let parse_int_fun = mkname "BasePTypes" ("parse_uint" ^ (string_of_int enum.size) ^ le)
 	and eoi = <:expr< $lid:c.name ^ "_of_int"$ >> in
 	[ mk_compose eoi parse_int_fun <:expr< input >> ]
-      end else []
+      end else begin
+	let parse_int_fun = <:expr< Parsifal.parse_bits $int:string_of_int enum.size$ >>
+	and eoi = <:expr< $lid:c.name ^ "_of_int"$ >> in
+	[ mk_compose eoi parse_int_fun <:expr< input >> ]
+      end
 
     | Struct fields ->
       let rec parse_fields = function
@@ -529,12 +536,18 @@ let rec dump_fun_of_ptype _loc t =
 let mk_dump_fun _loc c =
   let body = match c.construction with
   | Enum enum ->
+    (* TODO: How can we treat non-aligned 8-bit enums properly and efficiently in most cases *)
+    (* Rewrite parse_bits to be efficient when things are aligned? *)
     if enum.size mod 8 = 0 then begin
       let le = (if c <.> LittleEndian then "le" else "") in
       let dump_int_fun = exp_qname _loc (Some "BasePTypes") ("dump_uint" ^ (string_of_int enum.size) ^ le)
       and ioe = <:expr< $lid:"int_of_" ^ c.name$ >> in
       [ <:expr< $dump_int_fun$ buf ($ioe$ $lid:c.name$) >> ]
-    end else []
+    end else begin
+      let dump_int_fun = <:expr< POutput.add_bits buf $int:string_of_int enum.size$ >>
+      and ioe = <:expr< $lid:"int_of_" ^ c.name$ >> in
+      [ <:expr< $dump_int_fun$ ($ioe$ $lid:c.name$) >> ]
+    end
 
   | Struct fields ->
     let rec dump_fields = function

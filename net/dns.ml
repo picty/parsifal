@@ -184,6 +184,14 @@ struct rr [both_param ctx] = {
 }
 
 
+enum rcode (4, UnknownVal UnkownRCode) =
+  | 0 -> RC_NoError, "NOERROR"
+  | 1 -> RC_FormatError, "FORMERR"
+  | 2 -> RC_ServerFailure, "SERVFAIL"
+  | 3 -> RC_NameError, "NXDOMAIN"
+  | 4 -> RC_NotImplemented, "NOTIMP"
+  | 5 -> RC_Refused, "REFUSED"
+
 struct dns_flags = {
   qr : bit_bool;
   opcode : bit_int[4];
@@ -192,7 +200,7 @@ struct dns_flags = {
   rd : bit_bool;
   ra : bit_bool;
   z : bit_int[3];
-  rcode : bit_int[4];
+  rcode : rcode;
 }
 		 
 

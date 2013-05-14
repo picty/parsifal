@@ -54,7 +54,7 @@ let mk_query name qtype qclass =
   {
     id = 1234;
     flags = { qr = false; opcode = 0; aa = false; tc = false;
-	      rd = true; ra = false; z = 0; rcode = 0 };
+	      rd = true; ra = false; z = 0; rcode = RC_NoError };
     qdcount = 1;
     ancount = 0; nscount = 0; arcount = 0;
     questions = [{qname = domain; qtype = qtype; qclass = qclass}];
@@ -77,8 +77,8 @@ let display_rr rr =
 
 let display_dns_message msg =
   Printf.printf ";; id = %d\n" msg.id;
-  Printf.printf ";; QR=%b Opcode=%d AA=%b TC=%b RD=%b RA=%b Z=%d RCODE=%d\n"
-    msg.flags.qr msg.flags.opcode msg.flags.aa msg.flags.tc msg.flags.rd msg.flags.ra msg.flags.z msg.flags.rcode;
+  Printf.printf ";; QR=%b Opcode=%d AA=%b TC=%b RD=%b RA=%b Z=%d RCODE=%s\n"
+    msg.flags.qr msg.flags.opcode msg.flags.aa msg.flags.tc msg.flags.rd msg.flags.ra msg.flags.z (string_of_rcode msg.flags.rcode);
   Printf.printf "\n;; QUESTION SECTION:\n";
   List.iter display_question msg.questions;
   Printf.printf "\n;; ANSWER SECTION:\n";
