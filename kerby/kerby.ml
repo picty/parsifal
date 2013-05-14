@@ -114,6 +114,7 @@ enum msg_type (8, UnknownVal UnknownMsgType) =
 enum pvno (8, UnknownVal UnknownProtocolVersion) =
   | 5 -> KerberosV5
 
+(* NOT USED *)
 enum padata_type (8, UnknownVal UnknownPreAuthenticationType) =
   | 1 -> PA_TGS_REQ
   | 2 -> PA_ENC_TIMESTAMP
@@ -121,7 +122,7 @@ enum padata_type (8, UnknownVal UnknownPreAuthenticationType) =
   | 11 -> PA_ETYPE_INFO
   | 16 -> PA_PK_AS_REQ
   | 17 -> PA_PK_AS_REP
-  | 18 -> PA_ETYPE_INFO
+  | 18 -> PA_ETYPE_INFO_UNUSUED
   | 19 -> PA_ETYPE_INFO2
 
 enum principalname_type (8, UnknownVal UnknownPrincipalNameType) =
