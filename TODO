@@ -135,7 +135,7 @@ v0.3 (may 2013)
    * Add bitfield support
      + write parse_ and dump_ for enums that do not fit on entire bytes
      + write remaining_bits PType
-     + rewrite dns_flags using flags
+     + rewrite dns_flags using flags in dnsXX.ml in tutorial.
      + at the end of structs, at the end of exact_parse / lwt_exact_parse, check None
      + use parsifal.mli to control cur_bitstate and lwt_bitstate tightly
      + add more checks to check bitstate = None when working on bytes?
