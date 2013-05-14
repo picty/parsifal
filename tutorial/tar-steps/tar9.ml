@@ -52,8 +52,8 @@ let parse_azt_string len input =
 
 let dump_azt_string len buf s =
   let missing_len = len - (String.length s) in
-  Buffer.add_string buf s;
-  Buffer.add_string buf (String.make missing_len '\x00')
+  POutput.add_string buf s;
+  POutput.add_string buf (String.make missing_len '\x00')
 
 let value_of_azt_string s = VString (s, false)
 

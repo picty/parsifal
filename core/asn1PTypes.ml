@@ -21,8 +21,8 @@ let parse_der_boolean_content input =
       (v <> 0)
 
 let dump_der_boolean_content buf = function
-  | true -> Buffer.add_char buf '\xff'
-  | false -> Buffer.add_char buf '\x00'
+  | true -> POutput.add_char buf '\xff'
+  | false -> POutput.add_char buf '\x00'
 
 let value_of_der_boolean_content b = VBool b
 
@@ -51,7 +51,7 @@ let parse_der_integer_content input =
   end;
   l
 
-let dump_der_integer_content buf s = Buffer.add_string buf s
+let dump_der_integer_content buf s = POutput.add_string buf s
 
 let value_of_der_integer_content i = VBigInt (i, BigEndian)
 
@@ -89,7 +89,7 @@ let dump_der_smallint_content buf i =
     end
   in
   mk_content (sz-1) i;
-  Buffer.add_string buf res
+  POutput.add_string buf res
 
 let value_of_der_smallint_content i = VSimpleInt i
 
@@ -158,7 +158,7 @@ let subid_to_charlist id =
 
 let dump_der_oid_content buf idlist =
   let cll = List.map subid_to_charlist idlist in
-  let add_char c = Buffer.add_char buf (char_of_int c) in
+  let add_char c = POutput.add_byte buf c in
   List.iter (List.iter add_char) cll
 
 
@@ -231,8 +231,8 @@ let parse_der_bitstring_content input =
   (nBits, content)
 
 let dump_der_bitstring_content buf (nBits, s) =
-  Buffer.add_char buf (char_of_int nBits);
-  Buffer.add_string buf s
+  POutput.add_byte buf nBits;
+  POutput.add_string buf s
 
 let value_of_der_bitstring_content (nBits, s) =
   VRecord [
@@ -304,9 +304,8 @@ let dump_der_enumerated_bitstring_content description buf l =
   in
   let bits = enumerate_bits 0x80 [] 0 l in
   let nBits, intlist = encode [] bits in
-  Buffer.add_char buf (char_of_int nBits);
-  let add_char c = Buffer.add_char buf (char_of_int c) in
-  List.iter add_char intlist
+  POutput.add_byte buf nBits;
+  List.iter (POutput.add_byte buf) intlist
 
 let value_of_der_enumerated_bitstring_content l =
   VRecord [
@@ -332,7 +331,7 @@ let parse_der_octetstring_content apply_constraints input =
   ignore (apply_constraints res input);
   res
 
-let dump_der_octetstring_content buf s = Buffer.add_string buf s
+let dump_der_octetstring_content buf s = POutput.add_string buf s
 let value_of_der_octetstring_content s = VString (s, true)
 asn1_alias der_octetstring = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
@@ -395,7 +394,7 @@ let parse_der_utc_time_content input =
   let tmp = utc_time_constraint res input in
   { tmp with year = int_of_utc_year tmp.year }
 let dump_der_utc_time_content buf t =
-  Printf.bprintf buf "%2.2d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
+  POutput.bprintf buf "%2.2d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
     (utc_year_of_int t.year) t.month t.day t.hour t.minute t.second
 let value_of_der_utc_time_content t = value_of_time_content "utc_time" t
 
@@ -404,7 +403,7 @@ let parse_der_generalized_time_content input =
   let res = parse_rem_string input in
   generalized_time_constraint res input
 let dump_der_generalized_time_content buf t =
-  Printf.bprintf buf "%4.4d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
+  POutput.bprintf buf "%4.4d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
     t.year t.month t.day t.hour t.minute t.second
 let value_of_der_generalized_time_content t = value_of_time_content "generalized_time" t
 
@@ -535,7 +534,7 @@ and dump_der_object_content buf = function
   | String (s, _) -> dump_der_octetstring_content buf s
   | Constructed l ->
     List.iter (dump_der_object buf) l
-  | UnparsedDER (_, s) -> Buffer.add_string buf s
+  | UnparsedDER (_, s) -> POutput.add_string buf s
 
 
 let string_of_der_object_content _ = "der_object"
@@ -582,7 +581,7 @@ let parse_bitstring_container parse_fun input =
 
 let dump_bitstring_container dump_fun buf o =
   let dump_content_aux b c =
-    Buffer.add_char b '\x00';
+    POutput.add_char b '\x00';
     dump_fun b c
   in
   produce_der_object (C_Universal, false, T_BitString) dump_content_aux buf o

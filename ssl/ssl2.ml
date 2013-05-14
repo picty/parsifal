@@ -29,7 +29,7 @@ let parse_ssl2_cipher_spec input =
 let dump_ssl2_cipher_spec buf = function
   | SSL2CipherSpec x -> dump_pure_ssl2_cipher_spec buf x
   | TLSCipherSpec x -> TlsEnums.dump_ciphersuite buf x
-  | UnparsedSSL2CipherSpec s -> Buffer.add_string buf s
+  | UnparsedSSL2CipherSpec s -> POutput.add_string buf s
 
 
 (* TODO: Should it be SoftExceptions if they are ever implemented? *)
@@ -190,7 +190,7 @@ let dump_ssl2_record buf record =
     dump_uint8 buf record.ssl2_padding_length
   end;
   dump_ssl2_content buf record.ssl2_content;
-  Buffer.add_string buf (String.make record.ssl2_padding_length '\x00')
+  POutput.add_string buf (String.make record.ssl2_padding_length '\x00')
 
 let value_of_ssl2_record record =
   VRecord [

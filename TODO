@@ -1,4 +1,5 @@
 v0.2 (apr. 2013)
+ - cleanup the Makefile to handle the .mli -> .cmi generation properly
  - add gzip_container as custom containers => needed for PNG
  - General
    * have a redmine to put all this stuff
@@ -132,14 +133,15 @@ v0.3 (may 2013)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
    * Add bitfield support
-     + incorporate cur_byte/freebits to output [which is a Buffer + stuff] as an (int, int) option
-     + rewrite dump_bits (it should mark None when nothing more has to be done)
      + write parse_ and dump_ for enums that do not fit on entire bytes
      + write bit_bool PType  
      + write bit_int(n) PType
      + write remaining_bits PType
      + rewrite dns_flags using flags
-     + at the end of structs, check None
+     + at the end of structs, at the end of exact_parse / lwt_exact_parse, check None
+     + use parsifal.mli to control cur_bitstate and lwt_bitstate tightly
+     + add more checks to check bitstate = None when working on bytes?
+     + check the performance on simple unit tests?
  - Tls
    * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
    * Implement every extension/PK present in ssl-data

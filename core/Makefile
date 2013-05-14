@@ -3,7 +3,7 @@ TARGETS =
 MLLIBS = parsifal_core
 LIBNAME = parsifal_core
 
-parsifal_core_SRCS := parsifal.ml basePTypes.ml pTypes.ml asn1Engine.ml asn1PTypes.ml base64.ml \
+parsifal_core_SRCS := pOutput.ml parsifal.ml basePTypes.ml pTypes.ml asn1Engine.ml asn1PTypes.ml base64.ml \
                       getopt.ml protobuf.ml json.ml lwtUtil.ml
 
 # comment this line if not using camlp4

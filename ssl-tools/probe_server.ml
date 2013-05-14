@@ -239,13 +239,13 @@ let save_certs certs =
   let rec save_one_cert i = function
     | cert::r ->
       let f = open_out (!host ^ "-" ^ (string_of_int i) ^ ext) in
-      let buf = Buffer.create !default_buffer_size in
+      let buf = POutput.create () in
       let dump_fun =
 	if !base64
 	then Base64.dump_base64_container (Base64.HeaderInList ["CERTIFICATE"]) dump__certificate
 	else dump__certificate
       in dump_fun buf cert;
-      Buffer.output_buffer f buf;
+      POutput.output_buffer f buf;
       close_out f;
       save_one_cert (i+1) r
     | [] -> i

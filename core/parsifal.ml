@@ -613,34 +613,6 @@ let lwt_parse_bits nbits input =
   input.lwt_bitstate <- (if rem_bits = 0 then None else Some s);
   return res
 
-let dump_bits buf nbits bit_state value =
-  let rec dump_bits_aux buf nbits cur_byte free_bits value =
-    match nbits, free_bits with
-    | _, 0 ->
-      Buffer.add_char buf (char_of_int cur_byte);
-      dump_bits_aux buf nbits 0 8 value
-    | 0, _ -> (cur_byte, free_bits)
-    | _, _ ->
-      if nbits < free_bits
-      then (cur_byte lsl nbits) lor (value land _bits_masks.(nbits)), free_bits - nbits
-      else begin
-	let shift = nbits - free_bits in
-	let new_byte = (cur_byte lsl free_bits) lor ((value lsr shift) land _bits_masks.(free_bits)) in
-	Buffer.add_char buf (char_of_int new_byte);
-	dump_bits_aux buf shift 0 8 value
-      end
-  in
-  let cur_byte, free_bits = match bit_state with
-    | None -> 0, 8
-    | Some s -> s
-  in
-  match dump_bits_aux buf nbits cur_byte free_bits value with
-  | (_, 8) -> None
-  | s -> Some s
-
-
-(* TODO: Write cleanup functions to handle non-full bytes *)
-
 
 
 (*******************)
@@ -648,9 +620,9 @@ let dump_bits buf nbits bit_state value =
 (*******************)
 
 let exact_dump dump_fun x =
-  let res = Buffer.create !default_buffer_size in
+  let res = POutput.create () in
   dump_fun res x;
-  Buffer.contents res
+  POutput.contents res
 
 
 (********************)

@@ -10,7 +10,7 @@ type ipv4 = string
 let parse_ipv4 = parse_string 4
 let lwt_parse_ipv4 = lwt_parse_string 4
 
-let dump_ipv4 buf ipv4 = Buffer.add_string buf ipv4
+let dump_ipv4 buf ipv4 = POutput.add_string buf ipv4
 
 let string_of_ipv4 s =
   let elts = [s.[0]; s.[1]; s.[2]; s.[3]] in
@@ -30,7 +30,7 @@ type ipv6 = string
 let parse_ipv6 = parse_string 16
 let lwt_parse_ipv6 = lwt_parse_string 16
 
-let dump_ipv6 buf ipv6 = Buffer.add_string buf ipv6
+let dump_ipv6 buf ipv6 = POutput.add_string buf ipv6
 
 (* TODO: Compress it! *)
 let string_of_ipv6 s =
@@ -70,7 +70,7 @@ let lwt_parse_magic magic_expected input =
   else fail (ParsingException (CustomException ("invalid magic (\"" ^
 				 (hexdump s) ^ "\")"), _h_of_li input))
 
-let dump_magic buf s = Buffer.add_string buf s
+let dump_magic buf s = POutput.add_string buf s
 
 let string_of_magic s = hexdump s
 
@@ -96,8 +96,8 @@ let parse_nt_string len input =
 
 let dump_nt_string len buf s =
   let missing_len = len - (String.length s) in
-  Buffer.add_string buf s;
-  Buffer.add_string buf (String.make missing_len '\x00')
+  POutput.add_string buf s;
+  POutput.add_string buf (String.make missing_len '\x00')
 
 let value_of_nt_string s = VString (s, false)
 
@@ -223,12 +223,12 @@ let lwt_hexparse input =
       lwt_extract_4bits input >>= function
       | None -> fail (ParsingException (InvalidHexString "odd-length string", _h_of_li input))
       | Some lobits ->
-	Buffer.add_char buf (char_of_int ((hibits lsl 4) lor lobits));
+	POutput.add_byte buf ((hibits lsl 4) lor lobits);
 	lwt_hexparse_aux buf input
   in
-  let buf = Buffer.create !default_buffer_size in
+  let buf = POutput.create () in
   lwt_hexparse_aux buf input >>= fun () ->
-  return (Buffer.contents buf)
+  return (POutput.contents buf)
 
 let lwt_parse_hex_container parse_fun input =
   lwt_hexparse input >>= fun content ->
@@ -239,9 +239,9 @@ let lwt_parse_hex_container parse_fun input =
 
 
 let dump_hex_container dump_fun buf o =
-  let tmp_buf = Buffer.create !default_buffer_size in
+  let tmp_buf = POutput.create () in
   dump_fun tmp_buf o;
-  Buffer.add_string buf (hexdump (Buffer.contents tmp_buf))
+  POutput.add_string buf (hexdump (POutput.contents tmp_buf))
 
 let value_of_base64_container = value_of_container
 

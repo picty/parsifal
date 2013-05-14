@@ -54,7 +54,7 @@ let parse_dns_pcontext input = {
 }
 
 let dump_dns_dcontext buf _ = {
-  output_offset = Buffer.length buf;
+  output_offset = POutput.length buf;
   reverse_resolver = Hashtbl.create 10;
 }
 
@@ -90,7 +90,7 @@ let rec dump_domain ctx buf = function
       try
 	dump_domain ctx buf (DomainPointer (Hashtbl.find ctx.reverse_resolver d))
       with Not_found ->
-	Hashtbl.replace ctx.reverse_resolver d (Buffer.length buf - ctx.output_offset);
+	Hashtbl.replace ctx.reverse_resolver d (POutput.length buf - ctx.output_offset);
 	dump_varlen_string dump_uint8 buf l;
 	dump_domain ctx buf r
     end else begin
@@ -208,16 +208,14 @@ let parse_dns_flags input =
     rd = rd = 1; ra = ra = 1; z = z; rcode = rcode }
 
 let dump_dns_flags buf flags =
-  let st0 = None in
-  let st1 = dump_bits buf 1 st0 (if flags.qr then 1 else 0) in
-  let st2 = dump_bits buf 4 st1 flags.opcode in
-  let st3 = dump_bits buf 1 st2 (if flags.aa then 1 else 0) in
-  let st4 = dump_bits buf 1 st3 (if flags.tc then 1 else 0) in
-  let st5 = dump_bits buf 1 st4 (if flags.rd then 1 else 0) in
-  let st6 = dump_bits buf 1 st5 (if flags.ra then 1 else 0) in
-  let st7 = dump_bits buf 3 st6 flags.z in
-  let _ = dump_bits buf 4 st7 flags.rcode in
-  ()
+  POutput.add_bits buf 1 (if flags.qr then 1 else 0);
+  POutput.add_bits buf 4 flags.opcode;
+  POutput.add_bits buf 1 (if flags.aa then 1 else 0);
+  POutput.add_bits buf 1 (if flags.tc then 1 else 0);
+  POutput.add_bits buf 1 (if flags.rd then 1 else 0);
+  POutput.add_bits buf 1 (if flags.ra then 1 else 0);
+  POutput.add_bits buf 3 flags.z;
+  POutput.add_bits buf 4 flags.rcode
 
 let value_of_dns_flags flags =
   VRecord [
