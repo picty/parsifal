@@ -56,6 +56,7 @@ asn1_struct kdc_dh_key_info = {
 union krbContentInfo_value [enrich] (UnparsedKrbContentInfo of binstring) =
  | [43;6;1;5;2;3;1] -> ID_PKINIT_AuthData of auth_pack
  | [43;6;1;5;2;3;2] -> ID_PKINIT_DHKeyData of kdc_dh_key_info
+ | [43;6;1;5;2;3;3] -> ID_PKINIT_RKeyData of binstring
 
 asn1_struct krbContentInfo = {
   oid : der_oid;
@@ -169,6 +170,7 @@ let kerberos_oids = [
   "id-pkinit-san", [43;6;1;5;2;2];
   "id-pkinit-authData",  [43;6;1;5;2;3;1];
   "id-pkinit-DHKeyData",  [43;6;1;5;2;3;2];
+  "id-pkinit-RKeyData",  [43;6;1;5;2;3;3];
   "id-pkinit-kdf-ah-sha1",  [43;6;1;5;2;3;6;1];
   "id-pkinit-kdf-ah-sha256",  [43;6;1;5;2;3;6;2];
   "id-pkinit-kdf-ah-sha512",  [43;6;1;5;2;3;6;3];
