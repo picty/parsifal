@@ -193,7 +193,10 @@ struct cname_content =
 }
 asn1_alias cname
 alias sname = cname
+(* FIXME !!
 asn1_alias etypes = seq_of asn1 [(C_Universal, false, T_Integer)] of etype_type
+*)
+asn1_alias etypes = seq_of der_integer
 
 let kdc_options_values = [|
   "RESERVED";
