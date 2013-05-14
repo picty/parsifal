@@ -133,15 +133,26 @@ enum principalname_type (8, UnknownVal UnknownPrincipalNameType) =
 let parse_cspe n parse_fun input = parse_asn1 (C_ContextSpecific, true, T_Unknown n) parse_fun input
 let dump_cspe n dump_fun buf o = dump_asn1 (C_ContextSpecific, true, T_Unknown n) dump_fun buf o
 
+asn1_struct encrypted_data = 
+{
+  encryption_type : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of etype_type;
+  optional kvno : 	cspe [1] of der_smallint;
+  cipher : 		cspe [2] of der_octetstring
+}
+
+
 union padata_value [enrich] (UnparsedPaDataValueContent of binstring) =
   | 1, true -> PA_TGS_REQ of binstring
-  | 2, true -> PA_ENC_TIMESTAMP of binstring
+  | 2, true -> PA_ENC_TIMESTAMP of encrypted_data
+  | 3, true -> PA_PW_SALT of binstring
+  | 11, _ -> PA_ENCTYPE_INFO of etype_infos
   | 14, true -> PA_PK_AS_REQ_OLD of binstring
   | 15, true -> PA_PK_AS_REP_OLD of binstring
   | 16, true -> PA_PK_AS_REQ of pa_pk_as_req (* FIXME Improve PKCS7 *)
-  | 17, true -> PA_PK_AS_REP of pa_pk_as_rep (* TODO PKCS7 *)
-  | 18, true -> PA_ENCTYPE_INFO of binstring
+  | 17, true -> PA_PK_AS_REP of pa_pk_as_rep (* FIXME Improve PKCS7 *)
+  | 18, true -> PA_ENCTYPE_INFO_UNUSED of binstring
   | 19,  _ -> PA_ENCTYPE_INFO2 of etype_info2s
+  | 128, true -> PA_PAC_REQUEST of binstring
   | 133, _ -> Other_PA_DATA of string 		(* TODO Is it MIT only ? *)
   | 136, true -> Other_PA_DATA of binstring
   | 147, true -> Other_PA_DATA of binstring
@@ -289,33 +300,45 @@ struct enc_ticket_part_content =
 asn1_alias enc_ticket_part
 *)
 
-struct encrypted_data_content = 
-{
-  encryption_type : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of etype_type;
-  optional kvno : 	cspe [1] of der_smallint;
-  cipher : 		cspe [2] of binstring
-}
-asn1_alias encrypted_data
-
-struct ticket_content =
+asn1_struct ticket =
 {
   tkvno : cspe [0] of der_smallint;
   realm : cspe [1] of der_kerberos_string;
   sname : cspe [2] of sname;
   enc_tkt_part : cspe [3] of encrypted_data;
 }
-asn1_alias ticket
 
-struct as_req_content =
+(* AP_REQ *)
+asn1_struct ap_req =
+{
+  pvno : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
+  msg_type : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
+  ap_options :  cspe [2] of binstring;
+  ticket : 	cspe [3] of binstring;
+  authenticator : 	cspe [4] of encrypted_data;
+}
+
+(* AP_REP *)
+asn1_struct ap_rep =
+{
+  pvno : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
+  msg_type : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
+  enc_part : 	cspe [2] of encrypted_data
+}
+
+
+
+(* AS_REQ *)
+asn1_struct as_req =
 {
   pvno : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of pvno;
   msg_type : 	cspe [2] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
   optional padata : cspe [3] of padatas;
   req_body : 	cspe [4] of req_body;
 }
-asn1_alias as_req
 
-struct as_rep_content =
+(* AS_REP *)
+asn1_struct as_rep =
 {
   pvno : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
   msg_type : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
@@ -325,10 +348,9 @@ struct as_rep_content =
   ticket : 	cspe [5] of asn1 [(C_Application, true, T_Unknown 1)] of ticket;
   enc_part : 	cspe [6] of encrypted_data
 }
-asn1_alias as_rep
 
-
-struct krb_error_content = {
+(* KRB_ERR *)
+asn1_struct krb_error = {
   pvno : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
   msg_type : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
   optional ctime : 	cspe [2] of der_kerberos_time;
@@ -343,13 +365,14 @@ struct krb_error_content = {
   optional e_text : 	cspe [11] of der_kerberos_string;
   optional e_data : 	cspe [12] of octetstring_container of err_padatas
 }
-asn1_alias krb_error
 
 asn1_union kerberos_msg_type [enrich] (UnparsedKerberosMessage ) =
   | (C_Application, true, T_Unknown 10) -> AS_REQ of as_req
   | (C_Application, true, T_Unknown 11) -> AS_REP of as_rep
   | (C_Application, true, T_Unknown 12) -> TGS_REQ of as_req
   | (C_Application, true, T_Unknown 13) -> TGS_REP of as_rep
+  | (C_Application, true, T_Unknown 14) -> AP_REQ of ap_req
+  | (C_Application, true, T_Unknown 15) -> AP_REP of ap_rep
   | (C_Application, true, T_Unknown 30) -> KRB_ERR of krb_error
 
 struct kerberos_msg = 
