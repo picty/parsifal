@@ -119,7 +119,7 @@ asn1_struct pa_pk_as_req =
   *)
   (* TODO better test CMS (PKCS#7) *)
   signed_auth_pack : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of kerb_pkcs7;
-  trusted_certifiers : cspe [1] of externalPrincipalIdentifiers;
+  optional trusted_certifiers : cspe [1] of externalPrincipalIdentifiers;
   optional kdc_pk_id : cspe [2] of binstring
 }
 
