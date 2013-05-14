@@ -40,7 +40,7 @@ asn1_alias oid_list = seq_of myoid
 
 asn1_struct auth_pack = {
   pk_authenticator : cspe [0] of pk_authenticator;
-  clientPublicKeyValue : cspe [1] of subjectPublicKeyInfo;
+  optional clientPublicValue : cspe [1] of subjectPublicKeyInfo;
   optional supported_cms_types : cspe [2] of sMIMECapabilities;
   (* FIXME Decode the two structures *)
   optional client_dh_nonce : cspe[3] of binstring;
