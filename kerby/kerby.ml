@@ -109,6 +109,7 @@ enum msg_type (8, UnknownVal UnknownMsgType) =
   | 11 -> AS_REP
   | 12 -> TGS_REQ
   | 13 -> TGS_REP
+  | 14 -> AP_REQ
   | 30 -> KRB_ERROR
 
 enum pvno (8, UnknownVal UnknownProtocolVersion) =
