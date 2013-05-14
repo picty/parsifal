@@ -104,6 +104,12 @@ enum etype_type (8, UnknownVal UnknownEncryptType) =
   | 24 -> RC4_HMAC_EXP
   | 25 -> CAMELLIA128_CTS_CMAC
   | 26 -> CAMELLIA256_CTS_CMAC
+(* FIXME CANNOT USE ETYPE correctly because der_smallint overflows*)
+(*
+  | -128 -> RC4_MD4
+  | -133 -> RC4_HMAC_OLD
+  | -135 -> RC4_HMAC_OLD_EXP
+*)
 
 struct externalPrincipalIdentifier_content = {
  optional subjectName : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of distinguishedName;
