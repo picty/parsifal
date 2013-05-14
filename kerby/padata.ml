@@ -80,16 +80,63 @@ asn1_struct kerb_pkcs7_signed_data = {
   version : der_smallint;
   digestAlgorithms : digestAlgorithmIdentifiers;
   contentInfo : krbContentInfo;
-  optional certificates : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of (list of certificate);
-  optional crls : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of (list of binstring);
+  optional certificates : cspe [0] of (list of certificate);
+  optional crls : cspe [0] of (list of binstring);
   (* FIXME Ugly hack, because Heimdal does not seem to use normal issuerAndSerial structure *)
   signerInfos : asn1 [(C_Universal, true, T_Set)] of (list of mysignerInfo);
 }
 
+(* Only 2 possible values *)
+union recipientIdentifier_value [enrich] (UnparsedRecipientIdentifier)=
+ | 0 -> IssuerAndSerialNumber of issuerAndSerialNumber
+ | 2 -> SubjectKeyIdentifier of cspe [0] of der_octetstring
+
+struct keyTransRecipientInfo = 
+{
+  version : der_smallint;
+  rid : recipientIdentifier_value(version);
+  keyEncryptionAlgorithm : algorithmIdentifier;
+  encryptedKey : der_octetstring
+}
+
+(* FIXME Implement proper definition *)
+alias keyAgreeRecipientInfo = binstring
+alias keKRecipientInfo = binstring
+alias passwordRecipientInfo = binstring
+alias otherRecipientInfo = binstring
+
+asn1_struct recipientInfo = 
+{
+  ktri : keyTransRecipientInfo;
+  optional kari :  cspe [1] of keyAgreeRecipientInfo;
+  optional kekri : cspe [2] of keKRecipientInfo;
+  optional pwri :  cspe [3] of passwordRecipientInfo;
+  optional ori :   cspe [4] of otherRecipientInfo;
+}
+
+asn1_struct encryptedContentInfo = 
+{
+  contentType : der_oid;
+  contentEncryptionAlgorithm : algorithmIdentifier;
+  optional encryptedContent : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of binstring
+}
+
+(* FIXME Implement originatorInfo/unprotectedAttrs *)
+asn1_struct kerb_pkcs7_enveloped_data = {
+  version : der_smallint;
+  optional originatorInfo : cspe [0] of binstring;
+  recipientInfo : asn1 [(C_Universal, true, T_Set)] of (list of recipientInfo);
+  encryptedContentInfo : encryptedContentInfo;
+  optional unprotectedAttrs : cspe [1] of (list of binstring);
+}
+
+union p7_content [enrich] (Unspecified of der_object) =
+  | [42;840;113549;1;7;2] -> SignedData of kerb_pkcs7_signed_data
+  | [42;840;113549;1;7;3] -> EnvelopedData of kerb_pkcs7_enveloped_data
+
 asn1_struct kerb_pkcs7 = {
-  p7_contenttype : der_oid;
-  (*p7_content : pkcs7_content*)
-  p7_signed_data : cspe [0] of kerb_pkcs7_signed_data
+  p7_content_type : der_oid;
+  p7_content : cspe [0] of p7_content(p7_content_type)
 }
 
 enum etype_type (8, UnknownVal UnknownEncryptType) =
@@ -139,7 +186,8 @@ asn1_struct dhrepinfo =
 
 struct pa_pk_as_rep =
 {
-  dhinfo : cspe [0] of dhrepinfo
+  optional dhinfo : cspe [0] of dhrepinfo;
+  optional encKeypack : asn1 [(C_ContextSpecific, false, T_Unknown 1)] of kerb_pkcs7;
   (*
   (* or (ASN.1 CHOICE ! *)
   enckeypack : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of binstring
