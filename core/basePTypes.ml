@@ -497,3 +497,19 @@ let dump_array dump_fun buf a =
   Array.iter (dump_fun buf) a
 
 let value_of_array sub_fun a = VList (List.map sub_fun (Array.to_list a))
+
+
+
+(**************)
+(* Bit fields *)
+(**************)
+
+type bit_bool = bool
+let parse_bit_bool input = (parse_bits 1 input) = 1
+let dump_bit_bool buf b = POutput.add_bits buf 1 (if b then 1 else 0)
+let value_of_bit_bool b = VBool b
+
+type bit_int = int
+let parse_bit_int nbits input = parse_bits nbits input
+let dump_bit_int nbits buf i = POutput.add_bits buf nbits i
+let value_of_bit_int i = VSimpleInt i

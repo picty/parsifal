@@ -134,8 +134,6 @@ v0.3 (may 2013)
        -> Apply it to MP_REACH_NLRI in Mrt.
    * Add bitfield support
      + write parse_ and dump_ for enums that do not fit on entire bytes
-     + write bit_bool PType  
-     + write bit_int(n) PType
      + write remaining_bits PType
      + rewrite dns_flags using flags
      + at the end of structs, at the end of exact_parse / lwt_exact_parse, check None
