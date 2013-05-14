@@ -233,6 +233,24 @@ let kdc_options_values = [|
   "VALIDATE"
 |]
 
+enum addr_type (8, UnknownVal UnknownAddrType) =
+  | 2 -> DIRECTIONNAL
+  | 3 -> CHAOSNET
+  | 5 -> XNS
+  | 7 -> ISO
+  | 12 -> DECNET_PHASE_IV
+  | 16 -> APPLETALK_DDP
+  | 20 -> NETBIOS
+  | 24 -> IPV6
+
+asn1_struct host_address =
+{
+  addr_type : cspe [0] of asn1 [(C_Universal, false, T_Integer)] of addr_type;
+  address : cspe [1] of der_octetstring
+}
+
+asn1_alias host_addresses = seq_of host_address
+
 struct req_body_content =
 {
   kdc_options: 		cspe [0] of der_enumerated_bitstring[kdc_options_values];
@@ -244,8 +262,8 @@ struct req_body_content =
   optional time : 	cspe [6] of der_kerberos_time; 		(* KerberosTime OPTIONAL,*)
   nonce : 		cspe [7] of der_smallint; 		(* UInt32 *)
   etype : 		cspe [8] of etypes; 			(* SEQUENCE OF Int32  -- EncryptionType*)
-  optional addresses: 	cspe [9] of der_object; 		(* HostAddresses OPTIONAL,*)
-  optional enc_authorization_data: 	cspe [10] of der_object;	(* EncryptedData OPTIONAL*)
+  optional addresses: 	cspe [9] of host_addresses; 		(* HostAddresses OPTIONAL,*)
+  optional enc_authorization_data: 	cspe [10] of encrypted_data;	(* EncryptedData OPTIONAL*)
   optional additional_tickets: 		cspe [11] of der_object		(* SEQUENCE OF Ticket OPTIONAL *)
 }
 
