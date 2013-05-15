@@ -192,7 +192,11 @@ enum rcode (4, UnknownVal UnkownRCode) =
   | 4 -> RC_NotImplemented, "NOTIMP"
   | 5 -> RC_Refused, "REFUSED"
 
-struct dns_flags = {
+
+struct dns_message [with_exact] = {
+  parse_checkpoint ctx : dns_pcontext;
+  dump_checkpoint ctx : dns_dcontext;
+  id : uint16;
   qr : bit_bool;
   opcode : bit_int[4];
   aa : bit_bool;
@@ -201,14 +205,6 @@ struct dns_flags = {
   ra : bit_bool;
   z : bit_int[3];
   rcode : rcode;
-}
-		 
-
-struct dns_message [with_exact] = {
-  parse_checkpoint ctx : dns_pcontext;
-  dump_checkpoint ctx : dns_dcontext;
-  id : uint16;
-  flags : dns_flags;
   qdcount : uint16;
   ancount : uint16;
   nscount : uint16;
