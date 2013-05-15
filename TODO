@@ -133,7 +133,6 @@ v0.3 (may 2013)
        -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
        -> Apply it to MP_REACH_NLRI in Mrt.
    * Add bitfield support
-     + write remaining_bits PType
      + rewrite dns_flags using flags in dnsXX.ml in tutorial.
      + at the end of structs, at the end of exact_parse / lwt_exact_parse, check None
      + use parsifal.mli to control cur_bitstate and lwt_bitstate tightly

@@ -558,7 +558,6 @@ let parse_both_equal fatal err a b input =
 
 
 (* TODO: We do NOT check for integer overflow! *)
-(* TODO: Should this cur_byte/remaining_bits be stored in input? *)
 let _bits_masks = [|0; 1; 3; 7; 15; 31; 63; 127; 255|]
 let parse_bits nbits input =
   let rec parse_bits_aux nbits cur_byte remaining_bits input res =
@@ -612,6 +611,9 @@ let lwt_parse_bits nbits input =
   lwt_parse_bits_aux nbits cur_byte remaining_bits input 0 >>= fun (((_, rem_bits) as s), res) ->
   input.lwt_bitstate <- (if rem_bits = 0 then None else Some s);
   return res
+
+let drop_remaining_bits input =
+  input.cur_bitstate <- None
 
 
 
