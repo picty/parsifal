@@ -53,7 +53,7 @@ let mk_query name qtype qclass =
   let domain = domain_of_stringlist (string_split '.' name) in
   {
     id = 1234;
-    qr = false; opcode = 0; aa = false; tc = false;
+    qr = false; opcode = StandardQuery; aa = false; tc = false;
     rd = true; ra = false; z = 0; rcode = RC_NoError;
     qdcount = 1;
     ancount = 0; nscount = 0; arcount = 0;
@@ -77,8 +77,8 @@ let display_rr rr =
 
 let display_dns_message msg =
   Printf.printf ";; id = %d\n" msg.id;
-  Printf.printf ";; QR=%b Opcode=%d AA=%b TC=%b RD=%b RA=%b Z=%d RCODE=%s\n"
-    msg.qr msg.opcode msg.aa msg.tc msg.rd msg.ra msg.z (string_of_rcode msg.rcode);
+  Printf.printf ";; QR=%b Opcode=%s AA=%b TC=%b RD=%b RA=%b Z=%d RCODE=%s\n"
+    msg.qr (string_of_opcode msg.opcode) msg.aa msg.tc msg.rd msg.ra msg.z (string_of_rcode msg.rcode);
   Printf.printf "\n;; QUESTION SECTION:\n";
   List.iter display_question msg.questions;
   Printf.printf "\n;; ANSWER SECTION:\n";

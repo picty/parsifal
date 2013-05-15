@@ -184,6 +184,11 @@ struct rr [both_param ctx] = {
 }
 
 
+enum opcode (4, UnknownVal UnknownOpcode) =
+  | 0 -> StandardQuery
+  | 1 -> InverseQuery
+  | 2 -> ServerStatusRequest
+
 enum rcode (4, UnknownVal UnkownRCode) =
   | 0 -> RC_NoError, "NOERROR"
   | 1 -> RC_FormatError, "FORMERR"
@@ -198,7 +203,7 @@ struct dns_message [with_exact] = {
   dump_checkpoint ctx : dns_dcontext;
   id : uint16;
   qr : bit_bool;
-  opcode : bit_int[4];
+  opcode : opcode;
   aa : bit_bool;
   tc : bit_bool;
   rd : bit_bool;
