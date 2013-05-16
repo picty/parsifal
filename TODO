@@ -178,6 +178,9 @@ v0.4 (jun. 2013)
  - Propose a lwt_parse_wrapper, which stupidly tries to read byte by byte and give the result to parse? It could be improved when an input is rewindable or if OutOfBounds gave the number of bytes needed to continue (at least when some info is available)
  - Add cool containers where it is possible to specify the real type ( (int, string) either / int option )
    => example : device_major in tar header?
+ - Improve support for RightToLeft bit parsing
+   * add more efficient versions to parse zLib-style bit fields)
+   * write dump_rtol_bit(s) functions
  - Formats
    * Protobuf
    * PNG
