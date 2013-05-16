@@ -30,7 +30,7 @@ type connection = {
 }
 
 let connections : (connection_key, connection) Hashtbl.t = Hashtbl.create 100
-
+let udp_connections : (connection_key, (direction * string) list) Hashtbl.t = Hashtbl.create 100
 
 let update_connection = function
   | { ip_payload = TCPLayer {
@@ -56,22 +56,49 @@ let update_connection = function
 	   ack, seq, ServerToClient
 	else None, 0, 0, ClientToServer
       in match key with
+       | None -> ()
+       | Some k -> begin
+        try
+         let c = Hashtbl.find connections k in
+         (* TODO: We do NOT handle seq wrapping *)
+         Hashtbl.replace connections k {
+           first_src_seq = min c.first_src_seq src_seq;
+           first_dst_seq = min c.first_dst_seq dst_seq;
+           segments = c.segments@[dir, src_seq, payload]
+         }
+        with Not_found ->
+         Hashtbl.replace connections k {
+           first_src_seq = src_seq;
+           first_dst_seq = dst_seq;
+         segments = [dir, src_seq, payload]
+         }
+      end
+    end
+   | { source_ip = src_ip;
+      dest_ip = dst_ip;
+      ip_payload = UDPLayer {
+	udp_source_port = src_port;
+	udp_dest_port = dst_port;
+	udp_payload = payload } } ->
+    begin
+      let key, dir =
+	if dst_port = !dest_port
+	then Some {source = src_ip, src_port;
+		   destination = dst_ip, dst_port},
+	  ClientToServer
+	else if src_port = !dest_port
+	then Some {source = dst_ip, dst_port;
+		   destination = src_ip, src_port},
+	   ServerToClient
+	else None, ClientToServer
+      in match key with
       | None -> ()
       | Some k -> begin
 	try
-	  let c = Hashtbl.find connections k in
-	  (* TODO: We do NOT handle seq wrapping *)
-	  Hashtbl.replace connections k {
-	    first_src_seq = min c.first_src_seq src_seq;
-	    first_dst_seq = min c.first_dst_seq dst_seq;
-	    segments = c.segments@[dir, src_seq, payload]
-	  }
+	  let c = Hashtbl.find udp_connections k in
+	  Hashtbl.replace udp_connections k (c@[dir, exact_dump dump_udp_service payload])
 	with Not_found ->
-	  Hashtbl.replace connections k {
-	    first_src_seq = src_seq;
-	    first_dst_seq = dst_seq;
-	  segments = [dir, src_seq, payload]
-	  }
+	  Hashtbl.replace udp_connections k [dir, exact_dump dump_udp_service payload]
       end
     end
   | _ -> ()
@@ -82,6 +109,7 @@ enum msg_type (8, UnknownVal UnknownMsgType) =
   | 11 -> AS_REP
   | 12 -> TGS_REQ
   | 13 -> TGS_REP
+  | 14 -> AP_REQ
   | 30 -> KRB_ERROR
 
 enum pvno (8, UnknownVal UnknownProtocolVersion) =
@@ -106,15 +134,26 @@ enum principalname_type (8, UnknownVal UnknownPrincipalNameType) =
 let parse_cspe n parse_fun input = parse_asn1 (C_ContextSpecific, true, T_Unknown n) parse_fun input
 let dump_cspe n dump_fun buf o = dump_asn1 (C_ContextSpecific, true, T_Unknown n) dump_fun buf o
 
+asn1_struct encrypted_data = 
+{
+  encryption_type : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of etype_type;
+  optional kvno : 	cspe [1] of der_smallint;
+  cipher : 		cspe [2] of der_octetstring
+}
+
+
 union padata_value [enrich] (UnparsedPaDataValueContent of binstring) =
   | 1, true -> PA_TGS_REQ of binstring
-  | 2, true -> PA_ENC_TIMESTAMP of binstring
+  | 2, true -> PA_ENC_TIMESTAMP of encrypted_data
+  | 3, true -> PA_PW_SALT of binstring
+  | 11, _ -> PA_ENCTYPE_INFO of etype_infos
   | 14, true -> PA_PK_AS_REQ_OLD of binstring
   | 15, true -> PA_PK_AS_REP_OLD of binstring
   | 16, true -> PA_PK_AS_REQ of pa_pk_as_req (* FIXME Improve PKCS7 *)
-  | 17, true -> PA_PK_AS_REP of pa_pk_as_rep (* TODO PKCS7 *)
-  | 18, true -> PA_ENCTYPE_INFO of binstring
+  | 17, true -> PA_PK_AS_REP of pa_pk_as_rep (* FIXME Improve PKCS7 *)
+  | 18, true -> PA_ENCTYPE_INFO_UNUSED of binstring
   | 19,  _ -> PA_ENCTYPE_INFO2 of etype_info2s
+  | 128, true -> PA_PAC_REQUEST of binstring
   | 133, _ -> Other_PA_DATA of string 		(* TODO Is it MIT only ? *)
   | 136, true -> Other_PA_DATA of binstring
   | 147, true -> Other_PA_DATA of binstring
@@ -166,7 +205,10 @@ struct cname_content =
 }
 asn1_alias cname
 alias sname = cname
+(* FIXME !!
 asn1_alias etypes = seq_of asn1 [(C_Universal, false, T_Integer)] of etype_type
+*)
+asn1_alias etypes = seq_of der_integer
 
 let kdc_options_values = [|
   "RESERVED";
@@ -203,6 +245,24 @@ let kdc_options_values = [|
   "VALIDATE"
 |]
 
+enum addr_type (8, UnknownVal UnknownAddrType) =
+  | 2 -> DIRECTIONNAL
+  | 3 -> CHAOSNET
+  | 5 -> XNS
+  | 7 -> ISO
+  | 12 -> DECNET_PHASE_IV
+  | 16 -> APPLETALK_DDP
+  | 20 -> NETBIOS
+  | 24 -> IPV6
+
+asn1_struct host_address =
+{
+  addr_type : cspe [0] of asn1 [(C_Universal, false, T_Integer)] of addr_type;
+  address : cspe [1] of der_octetstring
+}
+
+asn1_alias host_addresses = seq_of host_address
+
 struct req_body_content =
 {
   kdc_options: 		cspe [0] of der_enumerated_bitstring[kdc_options_values];
@@ -214,8 +274,8 @@ struct req_body_content =
   optional time : 	cspe [6] of der_kerberos_time; 		(* KerberosTime OPTIONAL,*)
   nonce : 		cspe [7] of der_smallint; 		(* UInt32 *)
   etype : 		cspe [8] of etypes; 			(* SEQUENCE OF Int32  -- EncryptionType*)
-  optional addresses: 	cspe [9] of der_object; 		(* HostAddresses OPTIONAL,*)
-  optional enc_authorization_data: 	cspe [10] of der_object;	(* EncryptedData OPTIONAL*)
+  optional addresses: 	cspe [9] of host_addresses; 		(* HostAddresses OPTIONAL,*)
+  optional enc_authorization_data: 	cspe [10] of encrypted_data;	(* EncryptedData OPTIONAL*)
   optional additional_tickets: 		cspe [11] of der_object		(* SEQUENCE OF Ticket OPTIONAL *)
 }
 
@@ -241,33 +301,45 @@ struct enc_ticket_part_content =
 asn1_alias enc_ticket_part
 *)
 
-struct encrypted_data_content = 
-{
-  encryption_type : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of etype_type;
-  kvno : 		cspe [1] of der_smallint;
-  cipher : 		cspe [2] of binstring
-}
-asn1_alias encrypted_data
-
-struct ticket_content =
+asn1_struct ticket =
 {
   tkvno : cspe [0] of der_smallint;
   realm : cspe [1] of der_kerberos_string;
   sname : cspe [2] of sname;
   enc_tkt_part : cspe [3] of encrypted_data;
 }
-asn1_alias ticket
 
-struct as_req_content =
+(* AP_REQ *)
+asn1_struct ap_req =
+{
+  pvno : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
+  msg_type : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
+  ap_options :  cspe [2] of binstring;
+  ticket : 	cspe [3] of binstring;
+  authenticator : 	cspe [4] of encrypted_data;
+}
+
+(* AP_REP *)
+asn1_struct ap_rep =
+{
+  pvno : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
+  msg_type : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
+  enc_part : 	cspe [2] of encrypted_data
+}
+
+
+
+(* AS_REQ *)
+asn1_struct as_req =
 {
   pvno : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of pvno;
   msg_type : 	cspe [2] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
   optional padata : cspe [3] of padatas;
   req_body : 	cspe [4] of req_body;
 }
-asn1_alias as_req
 
-struct as_rep_content =
+(* AS_REP *)
+asn1_struct as_rep =
 {
   pvno : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
   msg_type : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
@@ -275,12 +347,11 @@ struct as_rep_content =
   crealm : 	cspe [3] of der_kerberos_string;
   cname : 	cspe [4] of cname;
   ticket : 	cspe [5] of asn1 [(C_Application, true, T_Unknown 1)] of ticket;
-  enc_part : 	cspe [6] of binstring;
+  enc_part : 	cspe [6] of encrypted_data
 }
-asn1_alias as_rep
 
-
-struct krb_error_content = {
+(* KRB_ERR *)
+asn1_struct krb_error = {
   pvno : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
   msg_type : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
   optional ctime : 	cspe [2] of der_kerberos_time;
@@ -295,18 +366,24 @@ struct krb_error_content = {
   optional e_text : 	cspe [11] of der_kerberos_string;
   optional e_data : 	cspe [12] of octetstring_container of err_padatas
 }
-asn1_alias krb_error
 
 asn1_union kerberos_msg_type [enrich] (UnparsedKerberosMessage ) =
   | (C_Application, true, T_Unknown 10) -> AS_REQ of as_req
   | (C_Application, true, T_Unknown 11) -> AS_REP of as_rep
   | (C_Application, true, T_Unknown 12) -> TGS_REQ of as_req
   | (C_Application, true, T_Unknown 13) -> TGS_REP of as_rep
+  | (C_Application, true, T_Unknown 14) -> AP_REQ of ap_req
+  | (C_Application, true, T_Unknown 15) -> AP_REP of ap_rep
   | (C_Application, true, T_Unknown 30) -> KRB_ERR of krb_error
 
 struct kerberos_msg = 
 {
   record_mark : binstring(4);
+  msg_content : kerberos_msg_type;
+}
+
+struct kerberos_udp_msg = 
+{
   msg_content : kerberos_msg_type;
 }
 
@@ -349,6 +426,34 @@ let handle_connection k c =
   List.iter handle_one_seg segs;
   print_newline ()
 
+let handle_udp_connection k c =
+  let rec trivial_aggregate = function
+    | [] -> []
+    | (dir, seg)::ss ->
+      match trivial_aggregate ss with
+      | [] -> [dir, seg]
+      | ((dir', seg')::r) as l ->
+	if (dir = dir')
+	then (dir, seg ^ seg')::r
+	else (dir, seg)::l
+  in
+
+  let cname = Printf.sprintf "%s:%d -> %s:%d\n"
+    (string_of_ipv4 (fst k.source)) (snd k.source)
+    (string_of_ipv4 (fst k.destination)) (snd k.destination)
+  in
+
+  print_endline cname;
+  let segs = trivial_aggregate c in
+  let handle_one_seg (dir, content) =
+    let input = input_of_string "" content in
+    let kerberos_udp_msg = parse_kerberos_udp_msg input in
+    let str_value = print_value (value_of_kerberos_udp_msg kerberos_udp_msg) in
+    Printf.printf "  %s : %s\n" (string_of_dir dir) str_value
+  in
+  List.iter handle_one_seg segs;
+  print_newline ()
+
   (* Si tu as ecrit kerberos_msg, 
      let msg = parse_kerberos_msg (input_of_string (string_of_dir dir) content) *)
  (* List.iter (fun (dir, content) -> Printf.printf "  %s :\n" (string_of_dir dir) (parse_as_req content)) segs ;
@@ -366,6 +471,7 @@ let handle_one_file input =
   lwt_parse_pcap_file input >>= fun pcap ->
   List.iter handle_one_packet pcap.packets;
   Hashtbl.iter handle_connection connections;
+  Hashtbl.iter handle_udp_connection udp_connections;
 
   return ()
 
