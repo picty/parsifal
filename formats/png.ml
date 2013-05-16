@@ -234,6 +234,41 @@ let value_of_image_time t = VRecord [
 ]
 
 
+(* Animated PNG Chunks *)
+
+struct animation_control = {
+  num_frames : uint32;
+  num_plays : uint32;
+}
+
+enum dispose_op (8, UnknownVal UnknownDisposeOp) =
+| 0 -> APNG_DISPOSE_OP_NONE
+| 1 -> APNG_DISPOSE_OP_BACKGROUND
+| 2 -> APNG_DISPOSE_OP_PREVIOUS
+
+enum blend_op (8, UnknownVal UnknownBlendOp) =
+| 0 -> APNG_BLEND_OP_SOURCE
+| 1 -> APNG_BLEND_OP_OVER
+
+struct frame_control = {
+  fc_sequence_number : uint32;
+  fc_width : uint32;
+  fc_height : uint32;
+  x_offset : uint32;
+  y_offset : uint32;
+  delay_num : uint16;
+  delay_den : uint16;
+  dispose_op : dispose_op;
+  blend_op : blend_op;
+}
+
+struct frame_data = {
+  fd_sequence_number : uint32;
+  frame_data : binstring;
+}
+
+
+
 union chunk_content [enrich;param ctx] (UnparsedChunkContent) =
 | "IHDR" -> ImageHeader of image_header(ctx)
 | "IDAT" -> ImageData of binstring
@@ -253,6 +288,9 @@ union chunk_content [enrich;param ctx] (UnparsedChunkContent) =
 | "pHYs" -> ImagePhysicalPixelDimensions of image_physical_pixel_dimension
 | "sPLT" -> ImageSuggestedPalette of image_suggested_palette
 | "tIME" -> ImageTime of image_time
+| "acTL" -> AnimationControlChunk of animation_control
+| "fcTL" -> FrameControlChunk of frame_control
+| "fdAT" -> FrameDataChunk of frame_data
 
 
 
