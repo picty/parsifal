@@ -1,5 +1,5 @@
 v0.2 (apr. 2013)
- - cleanup the Makefile to handle the .mli -> .cmi generation properly
+ - Write a PNG normalizer and a PNG2BPM converter
  - General
    * have a redmine to put all this stuff
    * create a mailing list
@@ -18,6 +18,10 @@ v0.2 (apr. 2013)
      + add SSLv2 support in mapAnswers (especially -g)
 
 v0.3 (may 2013)
+ - cleanup the Makefile to handle the .mli -> .cmi generation properly
+   * force the ml -> mli generation when mli does not exist ?
+   * explicit the mli -> cmi transformation
+ - regarder pngcrush
  - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
  - Use modules to aggregate the functions for some top-level objects (parse/dump/value_of)
  - Improve asn1_struct (correct option handling: params / top)
@@ -181,9 +185,6 @@ v0.4 (jun. 2013)
  - Improve support for RightToLeft bit parsing
    * add more efficient versions to parse zLib-style bit fields)
    * write dump_rtol_bit(s) functions
- - Formats
-   * Protobuf
-   * PNG
  - Camlp4/language
    * Generate dump2protobuf for structs?
  - X509
