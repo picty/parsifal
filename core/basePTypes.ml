@@ -513,3 +513,13 @@ type bit_int = int
 let parse_bit_int nbits input = parse_bits nbits input
 let dump_bit_int nbits buf i = POutput.add_bits buf nbits i
 let value_of_bit_int i = VSimpleInt i
+
+type rtol_bit_bool = bool
+let parse_rtol_bit_bool input = (parse_rtol_bits 1 input) = 1
+let dump_rtol_bit_bool _buf _b = raise (ParsingException (NotImplemented "dump_rtol_bit_bool", []))
+let value_of_rtol_bit_bool b = VBool b
+
+type rtol_bit_int = int
+let parse_rtol_bit_int nbits input = parse_rtol_bits nbits input
+let dump_rtol_bit_int _nbits _buf _i = raise (ParsingException (NotImplemented "dump_rtol_bit_int", []))
+let value_of_rtol_bit_int i = VSimpleInt i

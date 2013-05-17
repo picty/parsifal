@@ -1,16 +1,6 @@
 open Parsifal
 open BasePTypes
 
-(* This is pure madness: reading from the right then inside from the left... *)
-let parse_rtol_bits nbits input =
-  let rec parse_rtol_bits_aux input = function
-    | 0 -> 0
-    | nbits ->
-      let b = parse_rtol_bit input in
-      b lor ((parse_rtol_bits_aux input (nbits - 1)) lsl 1)
-  in parse_rtol_bits_aux input nbits
-
-
 (* RFC 1951 -- section 3.2.1 -- Huffman coding *)
 type 'a huffman_tree = Leaf of 'a | Node of 'a huffman_tree * 'a huffman_tree | Nothing
 

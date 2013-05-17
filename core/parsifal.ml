@@ -565,6 +565,7 @@ let parse_both_equal fatal err a b input =
 (* Bit handling *)
 (* TODO: We do NOT check for integer overflow! *)
 
+(* LeftToRight reading *)
 let _bits_masks = [|0; 1; 3; 7; 15; 31; 63; 127; 255|]
 let parse_bits nbits input =
   let rec parse_bits_aux nbits cur_byte remaining_bits input res =
@@ -621,6 +622,7 @@ let lwt_parse_bits nbits input =
   input.lwt_bitstate <- (if rem_bits = 0 then NoBitState else LeftToRight (b, rem_bits));
   return res
 
+(* RightToLeft reading *)
 let parse_rtol_bit input =
   let new_bitstate, res = match input.cur_bitstate with
     | NoBitState ->
@@ -632,6 +634,27 @@ let parse_rtol_bit input =
   in
   input.cur_bitstate <- new_bitstate;
   res
+
+(* This may seem like pure madness, but zLib/PNG (RFCs 1950/1951) work exactly
+   like that: if a byte contains two 4-bit values, A..a followed by B..b,
+   where the uppercase bit is the MSB, and the lowercase bit is the LSB, the
+   bits are ordered as follows:
+
+          7  4 3  0
+         +---------+
+         |B..b|A..a|
+         +---------+
+*)
+(* TODO: Improve this version that may be more efficient *)
+let parse_rtol_bits nbits input =
+  let rec parse_rtol_bits_aux input = function
+    | 0 -> 0
+    | nbits ->
+      let b = parse_rtol_bit input in
+      b lor ((parse_rtol_bits_aux input (nbits - 1)) lsl 1)
+  in parse_rtol_bits_aux input nbits
+
+
 
 let drop_remaining_bits input =
   input.cur_bitstate <- NoBitState
