@@ -1,6 +1,5 @@
 v0.2 (apr. 2013)
  - cleanup the Makefile to handle the .mli -> .cmi generation properly
- - add gzip_container as custom containers => needed for PNG
  - General
    * have a redmine to put all this stuff
    * create a mailing list
@@ -125,6 +124,7 @@ v0.3 (may 2013)
    * Add SoftExceptions for enums (could be useful for content_type / alert_level)
    * add control commands in struct (check / seek / stop)
    * be more cautious about int32 types...
+   * add gzip_container (using zlib_container)
    * improve get_wrapper (raw, gzip, base64, etc.)
    * add {,} to get path language (x.{y,z}.{t,a})
    * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
