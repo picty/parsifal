@@ -1,4 +1,8 @@
-Parsifal contributors:
- - Olivier Levillain (ANSSI)
- - Pierre Chifflier (ANSSI)
- - Thomas Calderon (ANSSI)
+== Parsifal developpers ==
+
+Maintainer: Olivier Levillain
+
+Contributors:
+ - Pierre Chifflier (PE, PKCS#7)
+ - Thomas Calderon (Kerberos)
+ - Anthony Albert (PNG)
