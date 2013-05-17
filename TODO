@@ -1,5 +1,5 @@
 v0.2 (apr. 2013)
- - Write a PNG normalizer and a PNG2BPM converter
+ - Write a PNG normalizer and a PNG to BPM converter
  - General
    * have a redmine to put all this stuff
    * create a mailing list
@@ -11,13 +11,21 @@ v0.2 (apr. 2013)
    * Factor some code (verbose option, file handling, action handling) in getopt
    * getopt tuning (help usage messages [principal and details], multiline descriptions)
    * getopt tuning (add constraint on the number of args?)
+
+v0.3 (may 2013)
+ - DNS: implement some RRs:
+   * AAAA, SRV, TKEY, TSIG, AXFR, IXFR, OPT
+   * SPF, 
+   * CAA, CERT, SSHFP, TLSA
+   * DLV DS, DNSKEY, RRSIG, NSEC, NSEC3, NSEC3PARAM
+ - rewrite TLS context
+ - add update functions directly in the structs?
  - Tools
    * improve mapAnswers
      + add record_version to A/H answer types
      + add support for client_hello_sent in mapAnswers/answer_type?
      + add SSLv2 support in mapAnswers (especially -g)
 
-v0.3 (may 2013)
  - cleanup the Makefile to handle the .mli -> .cmi generation properly
    * force the ml -> mli generation when mli does not exist ?
    * explicit the mli -> cmi transformation
