@@ -2,12 +2,6 @@ open Parsifal
 open BasePTypes
 open PTypes
 
-struct counted_octet_string_blo = 
-{
-  size : uint16;
-  content : string(size)
-}
-
 enum etype_type (16, UnknownVal UnknownEncryptType) =
   | 1  -> DES_CBC_CRC
   | 2  -> DES_CBC_MD4

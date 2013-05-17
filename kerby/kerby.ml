@@ -280,14 +280,7 @@ asn1_struct ticket =
 }
 
 (* AP_REQ *)
-asn1_struct ap_req =
-{
-  pvno : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
-  msg_type : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
-  ap_options :  cspe [2] of binstring;
-  ticket : 	cspe [3] of binstring;
-  authenticator : 	cspe [4] of encrypted_data;
-}
+(* defined in PADATA, because it can be used in PA_TGS_REQ *)
 
 (* AP_REP *)
 asn1_struct ap_rep =
