@@ -1,6 +1,11 @@
 open Parsifal
 open BasePTypes
 
+
+(*********************)
+(* DEFLATE Algorithm *)
+(*********************)
+
 (* RFC 1951 -- section 3.2.1 -- Huffman coding *)
 type 'a huffman_tree = Leaf of 'a | Node of 'a huffman_tree * 'a huffman_tree | Nothing
 
@@ -243,19 +248,69 @@ let compress buf s =
 
 
 
+(***********************************)
+(* RFC 1951: raw DEFLATE container *)
+(***********************************)
+
+type 'a deflate_container = 'a
+
+let parse_deflate_container parse_fun input =
+  let content_buf = decompress input in
+  drop_remaining_bits input;
+  let new_input = get_in_container input "deflate_container" (Buffer.contents content_buf) in
+  let res = parse_fun new_input in
+  check_empty_input true new_input;
+  res
+
+let dump_deflate_container dump_fun buf o =
+  let tmp_buf = POutput.create () in
+  dump_fun tmp_buf o;
+  compress buf (POutput.contents tmp_buf)
+
+let value_of_deflate_container = value_of_container
+
+
+
+(*************************)
+(* RFC 1950: zLib stream *)
+(*************************)
+
+(* TODO: add a rtol option to enum *)
+(* enum zlib_compression_method (4, UnknownVal UnknownCompressionMethod) =
+|  8 -> CM_Deflate
+| 15 -> CM_Reserved *)
+
+(* TODO: Check these values and implement RFC 1950? *)
+struct zlib_stream = {
+  compression_method : rtol_bit_int(4); (* TODO: this should use the previous enum *)
+  compression_info : rtol_bit_int(4);   (* TODO: this should depend on compression_method *)
+  fcheck : rtol_bit_int(5);
+  fdict : rtol_bit_bool;
+  flevel : rtol_bit_int(2);
+  (* if fdict is set, dict : uint32; *) (* TODO *)
+  zlib_data : deflate_container of binstring;
+  adler32_checksum : uint32;            (* TODO *)
+}
+
 type 'a zlib_container = 'a
 
 let parse_zlib_container parse_fun input =
-  let content_buf = decompress input in
-  drop_remaining_bits input;
-  let new_input = get_in_container input "zlib_container" (Buffer.contents content_buf) in
+  let stream = parse_zlib_stream input in
+  let new_input = get_in_container input "zlib_container" stream.zlib_data in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   res
 
 let dump_zlib_container dump_fun buf o =
-  let tmp_buf = POutput.create () in
-  dump_fun tmp_buf o;
-  compress buf (POutput.contents tmp_buf)
+  let stream = {
+    compression_method = 8;
+    compression_info = 7;
+    fcheck = 0;           (* TODO: Implement RFC 1950 *)
+    fdict = false;
+    flevel = 0;
+    zlib_data = exact_dump dump_fun o;
+    adler32_checksum = 0; (* TODO: Implement RFC 1950 *)
+  } in
+  dump_zlib_stream buf stream
 
 let value_of_zlib_container = value_of_container
