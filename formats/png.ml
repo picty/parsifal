@@ -4,10 +4,11 @@ open PTypes
 open BasePTypes
 
 
-
-(*azt - decoupe au caractère 0x00 soit en entier: 0*)
+(* TODO: Maybe this PType should be moved into parsifal_core? *)
+(* azt_string reads a string until a null character arises *)
 type azt_string = string
 
+(* TODO: Use a buffer instead *)
 let rec parse_azt_string input =
   let next_char = parse_uint8 input in
   if next_char = 0
@@ -22,9 +23,10 @@ let value_of_azt_string s = VString (s, false)
 
 
 
-(* ******Critical Chunk****** *)
+(***********************************)
+(* Enumerations and useful aliases *)
+(***********************************)
 
-(*Image Header*)
 enum color_type (8, UnknownVal UnknownColorType) =
 | 0 -> Grayscale
 | 0x02 -> Truecolor
@@ -42,83 +44,78 @@ enum interlace_method (8, UnknownVal UnknownInterlaceMethod) =
 | 0 -> NoInterlace
 | 0x01 -> Adam7
 
+enum rendering_intent (8, UnknownVal UnknownRenderingIntent) =
+| 0 -> Perceptual
+| 0x01 -> RelativeColorimetric
+| 0x02 -> Saturation
+| 0x03 -> AbsoluteColorimetric
 
-(* PNG Context - contient paramètre color_type*)
+enum compression_flag (8, UnknownVal UnknownCompressionFlag) =
+| 0 -> NoCompression
+| 0x01 -> Compression
+
+enum pixel_physical_unit (8, UnknownVal UnknownPixelPhysicalUnit) =
+| 0 -> Unknown
+| 0x01 -> Meter
+
+alias color_definition = array(3) of uint8
+alias truecolor_definition = array(3) of uint16
+
+
+
+(***************)
+(* PNG Context *)
+(***************)
+
+(* For now, it only remembers the color_type parsed in IHDR *)
 type png_context = {
   mutable ihdr_color_type : color_type;
 }
 
-(*Fonction parse de png_contexte avec une valeur par défaut 0xff*)
 let parse_png_context _input =
   { ihdr_color_type = UnknownColorType 0xff }
 
-(*Fonction parse update color type pour récupérer color_type et le mettre dans le contexte*)
 let parse_update_color_type ctx color_type _input =
   ctx.ihdr_color_type <- color_type
 
 
+
+(*******************)
+(* Critical Chunks *)
+(*******************)
+
+(* Image Header *)
 struct image_header [param ctx] = {
-  width : uint32; (*Nombre de pixel en largueur*)
-  height : uint32; (*Nombre de pixel en longueur*)
-  bit_depth : uint8; (*en fonction de color type*)
+  width : uint32;
+  height : uint32;
+  bit_depth : uint8;
   color_type : color_type;
-  parse_checkpoint _update_color_type : update_color_type(ctx; color_type); (*parse_checkpoint identifiant _update_color_type*)
+  parse_checkpoint : update_color_type(ctx; color_type);
   compression_method : compression_method;
   filter_method : filter_method;
   interlace_method : interlace_method;
 }
 
 
-(*Image Data - TODO: A decompresser via zlib*)
-(* Format zlib : 
-Compression method/flags code (4b->8 pour PNG - 4b-> 7:32k windows size): 1 byte
-Additional flags/check bits:   (4b-> check bit - 1b-> preset dico - 2b->compression level):1 byte
-Compressed data blocks:        n bytes
-Check value:                   4 bytes
-input_byte ?
-*)
-(* Premier octet decompressé : type de filtre - 0 à 5 *)
-struct image_data = {
-  compression_method_and_info : binstring(1);
-  additional_flag : binstring(1);
-  data_compress : binstring(input.cur_length-6); (*input: entrée courante*)
-  checksum_compress_data : binstring(4);
-}
-
-(*Image Palette - TODO: controle:chunksize divisible par 3*)
-struct index_palette = {
-  red_index : uint8;
-  green_index : uint8;
-  blue_index : uint8;
-}
-
-struct image_palette = {
-  palette_indexes : list of index_palette;
-}
+(* Image Data can not be treated as a chunk, since we must wait for *)
+(* the concatenation of IDAT chunks to uncomress the zlib container *)
 
 
-(* ******Anscillary Chunk****** *)
 
-(*Image Transparency *)
+(********************)
+(* Anscillary Chunk *)
+(********************)
 
-struct truecolor_trns = {
-  red_truecolor_trns : uint16;
-  green_truecolor_trns : uint16;
-  blue_truecolor_trns : uint16;
-}
-
-struct indexedcolor_list_trns = {
-  indexedcolor_list_transparency : list of uint8; (*Une par entrée de la palette - complément par défaut à 0xff: opaque*)
-}
-
+(* Image Transparency *)
 union image_transparency_type [enrich] (UnparsedChunkContent) =
 | Grayscale -> GrayscaleTransparency of uint16
-| Truecolor -> TruecolorTransparency of truecolor_trns
-| Indexedcolor -> IndexedcolorTransparency of indexedcolor_list_trns
+| Truecolor -> TruecolorTransparency of truecolor_definition
+| Indexedcolor -> IndexedcolorTransparency of list of uint8
+  (* One for each palette entry (default is 0xff [opaque] for the remaining) *)
 
 
-(*Image Chromaticity *)
-(*TODO: divisé par 10000*)
+(* Image Chromaticity *)
+(* TODO: the value should be divided by 1000 *)
 struct image_chromaticity = {
   white_chromaticity_x : uint32;
   white_chromaticity_y : uint32;
@@ -131,9 +128,8 @@ struct image_chromaticity = {
 }
 
 
-(*Image embedded ICC profile*)
-(*TODO: a décompresser*)
-
+(* Image embedded ICC profile *)
+(* TODO: should be uncompressed *)
 struct image_embedded_profile = {
   embedded_profile_name : azt_string;
   embedded_profile_compression_method : uint8;
@@ -141,135 +137,78 @@ struct image_embedded_profile = {
 }
 
 
-(*Image significant bit - Pour retrouver le bithdepth réel de l'image*)
-(*bitdepth réel de l'image est inférieur au bitdepth ajusté : 1,2,4,8 ou 16»*)
-(*Méthode de complément à bitdepht ajusté *)
-
-struct truecolor_significant_bit = {
-  significant_red_bits : uint8;
-  significant_green_bits : uint8;
-  significant_blue_bits : uint8;
-}
-
-struct indexedcolor_significant_bit = {
-  significant_red_bits : uint8;
-  significant_green_bits : uint8;
-  significant_blue_bits : uint8;
-}
-
-struct grayscalewithalphachannel_significant_bit = {
-  significant_grayscale_bit : uint8;
-  significant_alpha_bit : uint8;
-}
-
-struct truecolorwithalphachannel_significantbit = {
-  significant_red_bits : uint8;
-  significant_green_bits : uint8;
-  significant_blue_bits : uint8;
-  significant_alpha_bit : uint8;
-}
-
+(* Image significant bit - To recover the real image bitdepth *)
 union image_significant_bit_type [enrich] (UnparsedChunkContent) =
 | Grayscale -> GrayscaleSignificantBit of uint8
-| Truecolor -> TruecolorSignificantBit of truecolor_significant_bit
-| Indexedcolor -> IndexedcolorSignificantBit of indexedcolor_significant_bit
-| GrayscaleWithAlphaChannel -> GrayscaleWithAlphaChannelSignificantBit of grayscalewithalphachannel_significant_bit
-| TruecolorWithAlphaChannel -> TruecolorWithAlphaChannelSignificantBit of truecolorwithalphachannel_significantbit
+| Truecolor -> TruecolorSignificantBit of array(3) of uint8
+| Indexedcolor -> IndexedcolorSignificantBit of array(3) of uint8
+| GrayscaleWithAlphaChannel -> GrayscaleWithAlphaChannelSignificantBit of array(2) of uint8
+| TruecolorWithAlphaChannel -> TruecolorWithAlphaChannelSignificantBit of array(4) of uint8
 
 
-(*Image standard RGB profile*)
-(*TODO: a détailler...*)
-enum rendering_intent (8, UnknownVal UnknownColorType) =
-| 0 -> Perceptual
-| 0x01 -> RelativeColorimetric
-| 0x02 -> Saturation
-| 0x03 -> AbsoluteColorimetric
-
+(* Image standard RGB profile *)
+(* TODO...*)
 struct image_standard_rgb_profile = {
   rendering_intent : rendering_intent;
 }
 
 
-(*Image textual data - Latin-1*)
-(*TODO: contrôle de taille du key_word: de 1 à 79 octets*)
+(* Image textual data - Latin-1 *)
 struct image_textual_data = {
-  key_word : azt_string;
+  key_word : length_constrained_container(AtMost 80) of azt_string;
   text : string;
 }
 
 let value_of_image_textual_data t = VString (t.key_word ^ ": " ^ t.text, false)
 
 
-(*Image compressed textual data - Latin-1*)
-(*TODO: à décompresser *)
+(* Image compressed textual data - Latin-1 *)
+(* TODO: Uncompress *)
 struct image_compressed_textual_data = {
-  key_word : azt_string;
+  key_word : length_constrained_container(AtMost 80) of azt_string;
   textual_compression_method : uint8;
-  text_compress : binstring;
+  text_compress : ZLib.zlib_container of string;
 }
 
 let value_of_image_compressed_textual_data t = VString (t.key_word ^ ": " ^ t.text_compress, false)
 
 
-(*Image international textual data*)
-(*TODO: contrôle de taille du key_word: de 1 à 79 octets*)
-(*String: ...UTF-8... ?*)
-
-enum compression_flag (8, UnknownVal UnknownInterlaceMethod) =
-| 0 -> NoCompression
-| 0x01 -> Compression
-
+(* Image international textual data *)
+(* String: ...UTF-8... ? *)
 struct image_international_textual_data = {
-  key_word : azt_string;
-  compression_flag : uint8;
-  compression_method : compression_flag;
+  key_word : length_constrained_container(AtMost 80) of azt_string;
+  compression_flag : compression_flag;
+  compression_method : compression_method;
   language_tag : azt_string;
   translated_keyword : azt_string;
   text : string;
 }
 
 
-(*Image background color - background à appliquer*)
-struct truecolor_background_color = {
-  background_red_bits : uint16;
-  background_green_bits : uint16;
-  background_blue_bits : uint16;  
-}
-
+(* Image background color - background to apply *)
 union image_background_color_type [enrich] (UnparsedChunkContent) =
-(*sur 16 bits mais ne garder que les bits significatifs au regard du bitdepth s'il est inférieur à 16*)
-| Grayscale -> GrayscaleBackgroundColor of uint16
-| Truecolor -> TruecolorBackgroundColor of truecolor_background_color
-| Indexedcolor -> IndexedcolorBackgroundColor of uint8 (*Index de la palette à utiliser*)
+| Grayscale -> GrayscaleBackgroundColor of uint16 (* the value uses 16 bits but only some of them may be signifiant *)
+| Truecolor -> TruecolorBackgroundColor of truecolor_definition
+| Indexedcolor -> IndexedcolorBackgroundColor of uint8 (* Palette index *)
 | GrayscaleWithAlphaChannel -> GrayscaleWithAlphaChannelBackgroundColor of uint16
-| TruecolorWithAlphaChannel -> TruecolorWithAlphaChannelBackgroundColor of truecolor_background_color
+| TruecolorWithAlphaChannel -> TruecolorWithAlphaChannelBackgroundColor of truecolor_definition
 
 
-(*Image histogramme - fréquence d'appel à l'index d'une palette*)
-struct image_histogramme_list = {
-  image_hist_list : list of uint16; (*Une par entrée de la palette exactement*)
-}
-
-(*Image physical pixel dimension - ratio - nombre de pixel par unité*)
-enum pixel_physical_unit (8, UnknownVal UnknownInterlaceMethod) =
-| 0 -> Unknown
-| 0x01 -> Meter
-
+(* Image physical pixel dimension - ratio - pixe number by unit *)
 struct image_physical_pixel_dimension = {
   pixel_per_unit_x : uint32;
   pixel_per_unit_y : uint32;
   pixel_physical_unit : pixel_physical_unit;
 }
 
-(*Image suggested palette - utilisé par le système si truecolor non supporté par le système et PLTE absent - quantification*)
-
+(* Image suggested palette - used by the system when truecolor is not supported *)
 (*struct image_suggested_palette = {
   palette_name : azt_string;
-  bitdepth : uint8; (*8 ou 16*)
-  red_composante : (*Fonction de bitdepth: 1 ou 2 octets*)
-  green_composante : (*Fonction de bitdepth*)
-  blue_composante : (*Fonction de bitdepth*)
-  alpha_composante : (*Fonction de bitdepth*)
+  bitdepth : uint8; (* 8 or 16 *)
+  red_composante : (* Depends on bitdepth: 1 or 2 bytes *)
+  green_composante : (* Depends on bitdepth: 1 or 2 bytes *)
+  blue_composante : (* Depends on bitdepth: 1 or 2 bytes *)
+  alpha_composante : (* Depends on bitdepth: 1 or 2 bytes *)
   color_frequency : uint16;
 }*)
 
@@ -286,11 +225,10 @@ struct image_time = {
 
 
 union chunk_content [enrich;param ctx] (UnparsedChunkContent) =
-(* traitement avec valeurs binaires ? - 5ème bit: uppercase / lowercase*)
 | "IHDR" -> ImageHeader of image_header(ctx)
-| "IDAT" -> ImageData of image_data (*binstring*) (*simple binstring: besoin de concaténer les IDAT avant traitement décompression ou image_data*)
+| "IDAT" -> ImageData of binstring
 | "IEND" -> ImageEnd
-| "PLTE" -> ImagePalette of image_palette
+| "PLTE" -> ImagePalette of list of color_definition
 | "gAMA" -> ImageGama of uint32 (*Image Gama -TODO: controle 4 octets - divisé par 10000*)
 | "tRNS" -> ImageTransparency of image_transparency_type(ctx.ihdr_color_type)
 | "cHRM" -> ImageChromaticity of image_chromaticity
@@ -301,14 +239,14 @@ union chunk_content [enrich;param ctx] (UnparsedChunkContent) =
 | "zTXt" -> ImageCompressedTextualDatat of image_compressed_textual_data
 | "iTXt" -> ImageInternationalTextualData of image_international_textual_data
 | "bKGD" -> ImageBackgroundClour of image_background_color_type(ctx.ihdr_color_type)
-| "hIST" -> ImageHistogramme of image_histogramme_list
+| "hIST" -> ImageHistogramme of list of uint16
 | "pHYs" -> ImagePhysicalPixelDimensions of image_physical_pixel_dimension
 (*| "sPLT" -> ImageSuggestedPalette of image_suggested_palette*)
 | "tIME" -> ImageTime of image_time
 
 
 
-(*Format d'un chunk - avec paramètres contexte*)
+(* Chunk definition, with a context *)
 struct chunk [param ctx] = {
   chunk_size : uint32;
   chunk_type : string(4);
@@ -316,7 +254,7 @@ struct chunk [param ctx] = {
   chunk_crc : uint32;
 }
 
-(*Structure fichier PNG - Ajout d'un contexte via parse_checkpoint*)
+(* PNG global structure *)
 struct png_file = {
   parse_checkpoint ctx : png_context;
   png_magic : magic("\x89\x50\x4e\x47\x0d\x0a\x1a\x0a");
