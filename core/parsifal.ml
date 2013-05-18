@@ -99,6 +99,12 @@ let quote_string s =
   res
 
 
+let mapi f l =
+  let rec mapi_aux f accu i = function
+    | [] -> List.rev accu
+    | x::xs -> mapi_aux f ((f i x)::accu) (i+1) xs
+  in mapi_aux f [] 0 l
+
 
 (***************)
 (* value types *)
@@ -745,9 +751,9 @@ let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="va
     Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (quote_string s) (String.length s)
 
   | VList l ->
-    let print_subvalue x = print_value ~verbose:verbose ~indent:(indent ^ "  ") x in
+    let print_subvalue i x = print_value ~verbose:verbose ~indent:(indent ^ "  ") ~name:(name ^ "[" ^ string_of_int i ^ "]") x in
     (Printf.sprintf "%s%s {\n" indent name) ^
-      (String.concat "" (List.map print_subvalue l)) ^
+      (String.concat "" (mapi print_subvalue l)) ^
       (Printf.sprintf "%s}\n" indent)
   | VRecord l -> begin
     try
