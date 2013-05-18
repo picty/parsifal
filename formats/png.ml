@@ -213,7 +213,7 @@ struct image_physical_pixel_dimension = {
 }*)
 
 
-(*Image time - Date de dernière modification de l'image*)
+(* Image time - Last modification date *)
 struct image_time = {
   year : uint16;
   month : uint8;
@@ -222,6 +222,21 @@ struct image_time = {
   minute : uint8;
   second : uint8;
 }
+
+let string_of_image_time t =
+  Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d"
+    t.year t.month t.day t.hour t.minute t.second
+
+let value_of_image_time t = VRecord [
+  "@name", VString ("image_time", false);
+  "@string_of", VString (string_of_image_time t, false);
+  "year", VSimpleInt t.year;
+  "month", VSimpleInt t.month;
+  "day", VSimpleInt t.day;
+  "hour", VSimpleInt t.hour;
+  "minute", VSimpleInt t.minute;
+  "second", VSimpleInt t.second;
+]
 
 
 union chunk_content [enrich;param ctx] (UnparsedChunkContent) =
