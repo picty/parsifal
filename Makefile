@@ -1,17 +1,17 @@
 all:
 	$(MAKE) -C syntax all byte
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core all byte
-	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/unit check
-	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/test all byte check
+	[ -z "${DO_UNIT_TEST}" ] || OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/unit check
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C core/test check
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net all byte
-	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net/test all byte check
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net/test check
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C formats all byte
-	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C formats/test all byte check
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C formats/test check
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl all byte
-	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl/test all byte check
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl/test check
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C kerby all byte
-	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net-tools all byte
-	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl-tools all byte
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net-tools all
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl-tools all
 
 install::
 	$(MAKE) -C syntax install

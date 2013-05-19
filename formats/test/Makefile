@@ -27,4 +27,4 @@ BUILD_DIR = build
 include ../../Makefile.ocaml
 
 
-check: all byte
+check: all

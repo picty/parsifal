@@ -27,6 +27,5 @@ BUILD_DIR = build
 include ../../Makefile.ocaml
 
 
-check:	test_parsifal.byte test_parsifal
-	./test_parsifal.byte
+check:	test_parsifal
 	./test_parsifal
