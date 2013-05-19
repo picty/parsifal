@@ -1,4 +1,5 @@
 open BasePTypes
+open PTypes
 open TlsEnums
 
 
@@ -107,11 +108,9 @@ struct new_session_ticket = {
   ticket : binstring[uint16]
 }
 
-(* TODO: Add another keyword for this kind of unions? *)
-union _certificate [exhaustive] (UnparsedCertificate) =
-  | () -> ParsedCertificate of X509.certificate
-
-alias certificates = list[uint24] of container[uint24] of _certificate(())
+let enrich_certificate_in_certificates = ref false
+alias certificates = list[uint24] of container[uint24] of
+    trivial_union(enrich_certificate_in_certificates) of X509.certificate
 
 
 (* DHE *)
@@ -213,7 +212,7 @@ type crypto_context = {
   mutable s_ciphersuite : ciphersuite_description;
   mutable s_compression_method : TlsEnums.compression_method;
 
-  mutable s_certificates : _certificate list;
+  mutable s_certificates : (X509.certificate trivial_union) list;
 
   mutable s_server_key_exchange : server_key_exchange;
 
@@ -235,13 +234,13 @@ struct signature_and_hash_algorithm = {
   signature_algorithm : signature_algorithm
 }
 
-union _distinguishedName [exhaustive] (UnparsedDN) =
-  | () -> ParsedDN of X509Basics.distinguishedName
 
+let enrich_distinguishedName_in_certificate_request = ref false
 struct certificate_request = {
   certificate_types : list[uint8] of client_certificate_type;
   supported_signature_algorithms : list[uint16] of signature_and_hash_algorithm;
-  certificate_authorities : list[uint16] of container[uint16] of _distinguishedName(())
+  certificate_authorities : list[uint16] of container[uint16] of
+      trivial_union(enrich_distinguishedName_in_certificate_request) of X509Basics.distinguishedName
 }
 
 

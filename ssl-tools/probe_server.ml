@@ -64,8 +64,8 @@ let update_both_versions s =
   ActionDone
 
 let deep_parse () =
-  enrich__certificate := true;
-  enrich__distinguishedName := true
+  enrich_certificate_in_certificates := true;
+  enrich_distinguishedName_in_certificate_request := true
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
@@ -240,10 +240,11 @@ let save_certs certs =
     | cert::r ->
       let f = open_out (!host ^ "-" ^ (string_of_int i) ^ ext) in
       let buf = POutput.create () in
+      let dump_cert = PTypes.dump_trivial_union X509.dump_certificate in
       let dump_fun =
 	if !base64
-	then Base64.dump_base64_container (Base64.HeaderInList ["CERTIFICATE"]) dump__certificate
-	else dump__certificate
+	then Base64.dump_base64_container (Base64.HeaderInList ["CERTIFICATE"]) dump_cert
+	else dump_cert
       in dump_fun buf cert;
       POutput.output_buffer f buf;
       close_out f;

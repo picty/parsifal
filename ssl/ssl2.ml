@@ -1,6 +1,7 @@
 open Lwt
 open Parsifal
 open BasePTypes 
+open PTypes
 
 type ssl2_context = {
   cleartext : bool
@@ -77,6 +78,7 @@ struct ssl2_client_master_key = {
   ssl2_key_arg : binstring(ssl2_key_arg_length)
 }
 
+let enrich_certificate_in_server_hello = ref false
 struct ssl2_server_hello = {
   ssl2_session_id_hit : uint8;
   ssl2_server_certificate_type : ssl2_certificate_type;
@@ -84,7 +86,8 @@ struct ssl2_server_hello = {
   ssl2_server_certificate_length : uint16;
   ssl2_server_cipher_specs_length : uint16;
   ssl2_server_session_id_length : uint16;
-  ssl2_server_certificate : container(ssl2_server_certificate_length) of Tls._certificate(());
+  ssl2_server_certificate : container(ssl2_server_certificate_length) of
+      trivial_union(enrich_certificate_in_server_hello) of X509.certificate;
   ssl2_server_cipher_specs : container(ssl2_server_cipher_specs_length) of list of ssl2_cipher_spec;
   ssl2_server_session_id : binstring(ssl2_server_session_id_length)
 }
@@ -94,11 +97,13 @@ struct ssl2_request_certificate = {
   ssl2_certificate_challenge : binstring
 }
 
+let enrich_certificate_in_client_certificate = ref false
 struct ssl2_client_certificate = {
   ssl2_client_certificate_type : ssl2_certificate_type;
   ssl2_client_certificate_length : uint16;
   ssl2_response_length : uint16;
-  ssl2_client_certificate : container(ssl2_client_certificate_length) of Tls._certificate (());
+  ssl2_client_certificate : container(ssl2_client_certificate_length) of
+      trivial_union(enrich_certificate_in_client_certificate) of X509.certificate;
   ssl2_response : binstring(ssl2_response_length) (* TODO *)
 }
 

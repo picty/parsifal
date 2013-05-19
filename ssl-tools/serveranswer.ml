@@ -107,7 +107,7 @@ let send_hs o sh_version =
     compression_method = !compression_method;
     server_extensions = None;
   }
-  and certs = HT_Certificate, Certificate [UnparsedCertificate !certcontent]
+  and certs = HT_Certificate, Certificate [PTypes.Unparsed !certcontent]
     (* TODO: SKE *)
   and shd = HT_ServerHelloDone, ServerHelloDone
   in

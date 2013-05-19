@@ -275,7 +275,7 @@ let handle_answer answer =
                   { content_type = CT_Handshake;
                     record_content = Handshake {
                       handshake_type = HT_Certificate;
-                      handshake_content = Certificate ((ParsedCertificate cert)::_) }}::_), _
+                      handshake_content = Certificate ((Parsed cert)::_) }}::_), _
             -> Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
             (quote_string (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject))))
 
@@ -283,7 +283,7 @@ let handle_answer answer =
               ssl2_handshake_type = SSL2_HT_SERVER_HELLO;
               ssl2_handshake_content = SSL2ServerHello {
                 ssl2_server_version = v;
-                ssl2_server_certificate = ParsedCertificate cert;
+                ssl2_server_certificate = Parsed cert;
                 ssl2_server_cipher_specs = cs
               }
             }}::_), _
@@ -339,7 +339,7 @@ let handle_answer answer =
           | { content_type = CT_Handshake;
               record_content = Handshake {
                 handshake_type = HT_Certificate;
-                handshake_content = Certificate ((UnparsedCertificate cert_string)::_) }}::_ ->
+                handshake_content = Certificate ((Unparsed cert_string)::_) }}::_ ->
             begin
               try
                 let cert = parse_certificate (input_of_string ~verbose:(!verbose) "" cert_string) in
@@ -349,7 +349,7 @@ let handle_answer answer =
           | { content_type = CT_Handshake;
               record_content = Handshake {
                 handshake_type = HT_Certificate;
-                handshake_content = Certificate ((ParsedCertificate cert)::_) }}::_ ->
+                handshake_content = Certificate ((Parsed cert)::_) }}::_ ->
             Some (String.concat ", " (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
           | _::r -> extractSubjectOfFirstCert r
         in
