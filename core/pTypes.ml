@@ -319,6 +319,18 @@ let parse_conditionnal_container condition parse_fun input =
 let dump_conditionnal_container dump_fun buf o = try_dump dump_fun buf o
 let value_of_conditionnal_container value_of_fun o = try_value_of value_of_fun o
 
+type 'a trivial_union = Parsed of 'a | Unparsed of binstring
+let parse_trivial_union condition parse_fun input =
+  if should_enrich condition input.enrich
+  then Parsed (parse_fun input)
+  else Unparsed (parse_rem_binstring input)
+let dump_trivial_union dump_fun buf = function
+  | Parsed x -> dump_fun buf x
+  | Unparsed s -> POutput.add_string buf s
+let value_of_trivial_union value_of_fun = function
+  | Parsed x -> value_of_fun x
+  | Unparsed s -> VUnparsed (VString (s, true))
+
 
 (* Parse checkpoints and raw values *)
 
