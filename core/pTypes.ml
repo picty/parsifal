@@ -284,7 +284,7 @@ let parse_safe_union discriminator fallback_discriminator parse_fun input =
   | Some res -> res
 (* TODO: lwt_parse_safe_union would need a lwt_subtype to be set by our code
    For now, it is impossible to do so because only code in parsifalSyntax has access to this *)
-let dump_safe_union dump_fun u = dump_fun u
+let dump_safe_union dump_fun buf u = dump_fun buf u
 let value_of_safe_union = value_of_container
 
 
@@ -294,7 +294,7 @@ let parse_exact_safe_union discriminator fallback_discriminator parse_fun input 
   | None -> parse_fun fallback_discriminator input
   | Some res -> res
 (* TODO: lwt_parse_exact_safe_union *)
-let dump_exact_safe_union dump_fun u = dump_fun u
+let dump_exact_safe_union dump_fun buf u = dump_fun buf u
 let value_of_exact_safe_union = value_of_container
 
 
@@ -307,8 +307,17 @@ let parse_safe_asn1_union parse_fun input =
     let res = parse_fun new_input in
     input.cur_offset <- new_input.cur_offset;
     res
-let dump_safe_asn1_union dump_fun u = dump_fun u
+let dump_safe_asn1_union dump_fun buf u = dump_fun buf u
 let value_of_safe_asn1_union = value_of_container
+
+
+type 'a conditionnal_container = 'a option
+let parse_conditionnal_container condition parse_fun input =
+  if condition
+  then Some (parse_fun input)
+  else None
+let dump_conditionnal_container dump_fun buf o = try_dump dump_fun buf o
+let value_of_conditionnal_container value_of_fun o = try_value_of value_of_fun o
 
 
 (* Parse checkpoints and raw values *)
