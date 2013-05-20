@@ -19,6 +19,7 @@ enum rr_type (16, UnknownVal UnknownQueryType) =
   | 13 -> RRT_HINFO, "HINFO"
   | 14 -> RRT_MINFO, "MINFO"
   | 15 -> RRT_MX, "MX"
+  | 16 -> RRT_TXT, "TXT"
   | 252 -> RRT_AXFR, "AXFR"
   | 253 -> RRT_MAILB, "MAILB"
   | 254 -> RRT_MAILA, "MAILA"
@@ -142,6 +143,11 @@ let value_of_soa_rdata soa_rdata =
   ]
 
 
+struct hinfo_rdata = {
+  hinfo_cpu : string[uint8];
+  hinfo_os : string[uint8];
+}
+
 struct mx_rdata [both_param ctx] = {
   mx_preference : uint16;
   mx_host : domain[ctx]
@@ -165,7 +171,9 @@ union rdata [enrich; both_param ctx] (UnparsedRData) =
   | RRT_SOA -> SOA of soa_rdata[ctx]
   | RRT_NULL -> NullRData of binstring
   | RRT_PTR -> Domain of domain[ctx]
+  | RRT_HINFO -> HInfo of hinfo_rdata
   | RRT_MX -> MX of mx_rdata[ctx]
+  | RRT_TXT -> TXT of list of string[uint8]
 
 
 
