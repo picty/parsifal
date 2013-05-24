@@ -1,7 +1,8 @@
 # configurable section
-TARGETS = picodig
+TARGETS = picodig ic2012dns
 
 picodig_SRCS := picodig.ml
+ic2012dns_SRCS := ic2012dns.ml
 
 # comment this line if not using camlp4
 # USE_CAMLP4 = yes
