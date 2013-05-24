@@ -128,7 +128,7 @@ let _ =
           with
           | ParsingException (e, h) ->
             if !verbose then Printf.printf "%-16s ERROR (%s)\n" ip (string_of_exception e h)
-        end else Printf.printf "%-16s EMPTY\n" ip
+        end else if !verbose then Printf.printf "%-16s EMPTY\n" ip
       end
     done
   with
