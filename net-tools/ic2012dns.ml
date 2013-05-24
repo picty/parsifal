@@ -104,26 +104,27 @@ let _ =
     while true do
       let ip = input_line f in
       let data = input_line f in
-      let input = input_of_string ip data in
-      try
-        let answer = parse_quoted_printable_container parse_dns_message input in
-        match !action with
-        | All -> print_endline (print_value ~name:ip ~indent:"  " (value_of_dns_message answer))
-        | Dig ->
-          print_endline ip;
-          display_dns_message answer;
-          print_newline ()
-        | AnswerOnly -> match answer with
-          | { qr = true; 
-              qdcount = 1; ancount = 1; nscount = 0; arcount = 0;
-              answers = [r]
-            } -> 
-            Printf.printf "%s: " ip;
-            display_rr r
-          | _ -> Printf.printf "%s: more than one RR or invalid answer.\n" ip
-      with
-      | ParsingException (e, h) ->
-        Printf.printf "%s\n  ERROR: %s\n  RAW=%s\n\n" ip (string_of_exception e h) (quote_string data)
+      if String.length data > 0 then begin
+        let input = input_of_string ip data in
+        try
+          let answer = parse_quoted_printable_container parse_dns_message input in
+          match !action with
+          | All -> print_endline (print_value ~name:ip ~indent:"  " (value_of_dns_message answer))
+          | Dig ->
+            print_endline ip;
+            display_dns_message answer;
+            print_newline ()
+          | AnswerOnly -> match answer with
+            | { qr = true;  qdcount = 1; ancount = 1; answers = [r] } ->
+              Printf.printf "%-16s " ip;
+              display_rr r
+            | { qr = true; rcode = rcode; qdcount = 1; ancount = 0; answers = [] } ->
+              if !verbose then Printf.printf "%-16s %s\n" ip (string_of_rcode rcode)
+            | _ -> if !verbose then Printf.printf "%-16s more than one RR or invalid answer.\n" ip
+        with
+        | ParsingException (e, h) ->
+          if !verbose then Printf.printf "%-16s ERROR (%s)\n" ip (string_of_exception e h)
+      end else Printf.printf "%-16s EMPTY\n" ip
     done
   with
   | End_of_file -> exit 0
