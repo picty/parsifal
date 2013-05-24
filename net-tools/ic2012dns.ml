@@ -34,6 +34,7 @@ let value_of_quoted_printable_container = value_of_container
 type action = All | Dig | AnswerOnly
 let action = ref Dig
 let verbose = ref false
+let filter = ref ""
 
 let enrich_style = ref DefaultEnrich
 let set_enrich_level l =
@@ -57,6 +58,8 @@ let options = [
   mkopt (Some 'A') "all" (TrivialFun (fun () -> action := All)) "show all the information of the answer";
   mkopt (Some 'D') "dig-style" (TrivialFun (fun () -> action := Dig)) "prints the answer like dig";
   mkopt (Some 'a') "answer-only" (TrivialFun (fun () -> action := AnswerOnly)) "only prints the answer RR";
+
+  mkopt (Some 'f') "filter-ip" (StringVal filter) "filter on a given IP";
 
   mkopt None "always-enrich" (TrivialFun (fun () -> enrich_style := AlwaysEnrich)) "always enrich the structure parsed";
   mkopt None "never-enrich" (TrivialFun (fun () -> enrich_style := NeverEnrich)) "never enrich the structure parsed";
@@ -104,27 +107,29 @@ let _ =
     while true do
       let ip = input_line f in
       let data = input_line f in
-      if String.length data > 0 then begin
-        let input = input_of_string ip data in
-        try
-          let answer = parse_quoted_printable_container parse_dns_message input in
-          match !action with
-          | All -> print_endline (print_value ~name:ip ~indent:"  " (value_of_dns_message answer))
-          | Dig ->
-            print_endline ip;
-            display_dns_message answer;
-            print_newline ()
-          | AnswerOnly -> match answer with
-            | { qr = true;  qdcount = 1; ancount = 1; answers = [r] } ->
-              Printf.printf "%-16s " ip;
-              display_rr r
-            | { qr = true; rcode = rcode; qdcount = 1; ancount = 0; answers = [] } ->
-              if !verbose then Printf.printf "%-16s %s\n" ip (string_of_rcode rcode)
-            | _ -> if !verbose then Printf.printf "%-16s more than one RR or invalid answer.\n" ip
-        with
-        | ParsingException (e, h) ->
-          if !verbose then Printf.printf "%-16s ERROR (%s)\n" ip (string_of_exception e h)
-      end else Printf.printf "%-16s EMPTY\n" ip
+      if !filter = "" || !filter = ip then begin
+        if String.length data > 0 then begin
+          let input = input_of_string ip data in
+          try
+            let answer = parse_quoted_printable_container parse_dns_message input in
+            match !action with
+            | All -> print_endline (print_value ~name:ip ~indent:"  " (value_of_dns_message answer))
+            | Dig ->
+              print_endline ip;
+              display_dns_message answer;
+              print_newline ()
+            | AnswerOnly -> match answer with
+              | { qr = true;  qdcount = 1; ancount = 1; answers = [r] } ->
+                Printf.printf "%-16s " ip;
+                display_rr r
+              | { qr = true; rcode = rcode; ancount = 0; answers = [] } ->
+                if !verbose then Printf.printf "%-16s %s\n" ip (string_of_rcode rcode)
+              | _ -> if !verbose then Printf.printf "%-16s more than one RR or invalid answer.\n" ip
+          with
+          | ParsingException (e, h) ->
+            if !verbose then Printf.printf "%-16s ERROR (%s)\n" ip (string_of_exception e h)
+        end else Printf.printf "%-16s EMPTY\n" ip
+      end
     done
   with
   | End_of_file -> exit 0
