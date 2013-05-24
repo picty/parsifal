@@ -1,83 +1,281 @@
-v0.2 (apr. 2013)
- - Write a PNG normalizer and a PNG to BPM converter
- - General
-   * have a redmine to put all this stuff
-   * create a mailing list
-   * clean up TODOs in ml files.
-   * write README files to quickly describe all the files
- - Once v0.2 is freezed, add all the changes in a Changelog!
- - Merge tls_context and ssl2_context?
- - Misc
-   * Factor some code (verbose option, file handling, action handling) in getopt
-   * getopt tuning (help usage messages [principal and details], multiline descriptions)
-   * getopt tuning (add constraint on the number of args?)
+Ticket #0
+ - create a mailing list
 
-v0.3 (may 2013)
- - DNS: implement some RRs:
-   * AAAA, SRV, TKEY, TSIG, AXFR, IXFR, OPT
-   * SPF, 
-   * CAA, CERT, SSHFP, TLSA
-   * DLV DS, DNSKEY, RRSIG, NSEC, NSEC3, NSEC3PARAM
- - rewrite TLS context
- - add update functions directly in the structs?
- - Tools
-   * improve mapAnswers
-     + add record_version to A/H answer types
-     + add support for client_hello_sent in mapAnswers/answer_type?
-     + add SSLv2 support in mapAnswers (especially -g)
 
+v0.2 => 2013-06-01
+
+Ticket #1: Implement properly RSA/PKCS#1
+ - merge pkcs1.ml and rSAKey.ml in rsa.ml
+ - create a crypto directory?
+ - write a proper pkcs1_container
+ - write test_pkcs1.ml to check RSA implementation (unit tests)
+ - write some perf test to see whether cryptokit is needed
+ - optionaly, try to simplify the RSA code to avoid the useless creation of a key object (however, this might need getting rid of cryptokit and take some performance hit)
+
+Ticket #2: Sort and document pTypes and pContainers
+ - merge basePTypes/PTypes/ASN1Ptypes?
+ - ocamldoc all them
+
+
+Add fields to describe features/bugs => core/crypto/net/format/tools
+
+v0.3 => 2013-09-01
+v1.0 => 2013-12-01
+
+Ticket #3: Write some PNG tools
+ - look at the pngcrush project
+ - write a PNG normalizer
+ - write PNG to BPM converter
+
+Ticket #4: Tag every file/dir with some short doc
+ - write READMEs and stuff to quickly describe what's what
+ - create a proper Changelog
+
+Ticket #5: Clean up source code from all those TODOs
+ - write tickets from all the TODOs in ml files
+
+Ticket #6: Tune getopt
+ - improve help usage messages: one-liner and optional details, multiline descriptions
+ - handle constraints on the number of args
+ - document arg handling (for example, when it is a command)
+ - help factoring some code (verbose option, file handling, action handling)
+
+Ticket #7: Implement more DNS RR types
+ - AAAA, SRV, TKEY, TSIG, AXFR, IXFR, OPT
+ - SPF
+ - CAA, CERT, SSHFP, TLSA
+ - DLV DS, DNSKEY, RRSIG, NSEC, NSEC3, NSEC3PARAM
+
+Ticket #8: Rewrite TLS context
+ * NEEDS A LOT OF WORK
+ - merge tls_context and ssl2_context?
+ - rethink tlsEngine / tls to incorporate context checks/updates in the description?
+ - work on TlsEngine.update* functions
+ - write the automata (client, server, transparent proxy, normalizing proxy)
+ - add a automaton_state field in context
+ - add a check_consistency field in context
+ - add a generic update function relying on the context and the message received to
+   * check the consistency if necessary
+   * update the state
+   * return what to do next?
+ - add another generic function with hooks for after each message / alert / appdata / ccs / heartbeat
+
+Ticket #9: Clean up CRC implementation
+ - this should go in core/crc.ml or util/crc.ml
+ - write all the CRC needed for PNG and GZip (CRC16 and 32)
+ - write crc_containers
+
+Ticket #10: Improve Makefile and the compilation process
  - cleanup the Makefile to handle the .mli -> .cmi generation properly
    * force the ml -> mli generation when mli does not exist ?
    * explicit the mli -> cmi transformation
- - regarder pngcrush
- - Write a parse_XXXX_as_value (string_input/lwt_input -> value) which would keep the context (offset/len)
- - Use modules to aggregate the functions for some top-level objects (parse/dump/value_of) => and add a description!
- - Improve asn1_struct (correct option handling: params / top)
- - (prospective) First support for PDF
- - Context handling: code some helpers using (string, 'a) Hashtbl.t to allow for a simple parsing context with parse_checkpoint/parse_fields
- - add a new VParsingError type and a choice decorator [parsingError] to remember when a safe_union failed
- - Add recursive type definitions (PKCS#7 / DEX) between "begin_parsifal_block" and "end_parsifal_block"
-   * This will allow for defining "string_of" in such blocks to modify "value_of" behavior (useful for mx_rdata / soa_rdata for example)
- - Rewrite the tutorial as a HTML journey (installation, examples in interactive loop, tar-steps, dns-steps)
- - Clean up DNS implementation
-   * write tests for DNS
-   * add an optional parameter "dont_quote" to print_value
-   * use "dont_quote" in picodig
-   * picodig (using a special sr function (send/receive)?)
+ - handle inter-lib dependencies in the overall Makefile
+ - cleanup the directory madness (LIBDIR/BINDIR) and use standard stuff instead
 
+Ticket #11: Sort and document all the modules
+ * Depends on #10
+ - rethink the overall organisation in directories
+ - syntax and core should be merged?
+ - add .mli for all files!
+ - ocamldoc everything
+
+Ticket #12: Improve asn1_struct
+ - for now, options are used for the struct and the asn1_alias
+ - it is not the logical way to handle top (which should only affect the asn1_alias)
+ - furthermore, params option should be added in definition and in the aliased type
+
+Ticket #13: Write parse_t_as_value functions
+ - the objective is to do parse and value_of in one pass
+ - and to keep the context (offset/len)
+
+Ticket #14: Generate modules around top-level PTypes
+ - the interface should be (type t / parse / lwt_parse / dump / value_of / parse_value_of)
+ - it should allow to produce a short description
+
+Ticket #15: Create a registry of top-level PTypes
+ * Depends on #14
+ - the modules generated should automatically be added to the registry
+ - write a PoC, called parsifal, to parse every possible top-level PType and print its value
+   * the PType selection could be given by a command line option
+   * or by trying every possible stuff?
+
+Ticket #16: parsillade
+ * Depends on #13, #14 and #15
+ - write a GUI to explore files
+
+Ticket #17: Recursive PType definitions
+ * NEEDS A LOT OF WORK
+ - add recursive type definitions between "begin_parsifal_block" and "end_parsifal_block"
+ - in fact, the idea would be to populate the following structure when preprocessing a PType
+   * type definition
+   * type dependencies (to try to sort the PTypes inside a block)
+   * parse/lwt_parse/parse_as_value
+   * dump
+   * (optional) int_of / of_int / of_string
+   * (optional) string_of
+   * value_of
+ - some functions could be overloaded by the developer
+ - if a string_of is defined inside such a block, use it in value_of (and always create a VRecord)
+ - for example, it would be simpler to write string_of_mx_rdata/soa_rdata and not all the value_of
+ - it could also allow to skip automatically parse/dump/value_of generation when they are given by the developer
+
+Ticket #18: Clean up PKCS#7 implementation
+ * NEEDS A LOT OF WORK
+ * Depends on #17
+ - find a way to put the implementation (it should not be in kerby, but rather in crypto?)
+ - allow for recursive definition?
+
+Ticket #19: Look at DEX format
+ * NEEDS A LOT OF WORK
+ * Depends on #17
+
+Ticket #20: Rewrite Base64 implementation
+
+Ticket #21: Write PCAP helpers
+ - the idea would be to automatically handle getopt base options, file processing and TCP/UDP connexion extraction
+ - this would be appreciated for extractSessions and kerby
+
+Ticket #22: Be more cautious about int32 types...
+ * THIS IS A BUG!
+ * NEEDS A LOT OF WORK
+ - clean up integer handling in uint types
+ - insure it works properly on x86 and x86-64
+
+Ticket #23: Add gzip_container
+ - using zlib_container
+
+Ticket #24: Rethink the union options
+ * NEEDS A LOT OF WORK
+ - this is about union and asn1_union
+ - the params are
+   * Enrich status : always-enrich, enrich_by_default, dont_enrich_by_default (the last two add an enrich bool ref)
+   * Exhaustive status : true or false
+   * Fail status when enriching has failed : exception, unparsed_constructor => rewrite it without the safe_union container
+   * In fact, naming the UnknownVal constructor is not necessary => UnknownVal of type / Exception
+ - the possibilities should be:
+   * "closed" => always-enrich, exception on "_" case
+   * "closed" + "exhaustive" => do not add the "_" case
+   * (default) => dont_enrich_by_default, exhaustive = false, on fail => let the exception go
+   * options "enrich", "exhaustive", "soft_fail" to change the default
+   * option "unparsed_type" to specify the type and remove the mandatory name?
+ - add SoftExceptions for enums (could be useful for content_type / alert_level)
+ - add a "flexible" decorator in structures
+   -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)
+   -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
+   -> Apply it to MP_REACH_NLRI in Mrt.
+   -> Apply it to ATV/Extensions/Times (flexible option + laxist option in input)... because that is where the parsing fails (and it should by default!)
+ - add a new VParsingError type and a choice decorator [parsingError] to remember when a safe_union failed
+
+Ticket #25: Think about a real get language
+ * NEEDS A LOT OF WORK
+ - improve get_wrapper (raw, gzip, base64, etc.)
+ - add {,} to get path language (x.{y,z}.{t,a})
+ - design a real language to explore values (functions like hex / dump / substring / asn1parse / M.parse one day and conditionnal expressions...)
+
+Ticket #26: Think about t_of_value generation
+ * NEEDS A LOT OF WORK
+
+Ticket #27: Think about a put function
+ * NEEDS A LOT OF WORK
+ - more precisely, a way to browse a value and modify it while browsing
+ - this idea of cursor can be found in some Haskell books (ref?)
+
+Ticket #28: Improve mapAnswers
+ - add record_version to A/H answer types
+ - add support for client_hello_sent in mapAnswers/answer_type?
+ - add SSLv2 support in mapAnswers (especially -g)
+
+Ticket #29: First support for the PDF format
+ * NEEDS A LOT OF WORK
+
+Ticket #30: First support for the HTTP protocol
+ * NEEDS A LOT OF WORK
+
+Ticket #31: Code some context helpers
+ - the context could be a (string, 'a) Hashtbl.t
+ - we should write some useful functions to allow for a simple parsing context and standardized parse_checkpoints/parse_fields
+
+Ticket #32: Clean up DNS implementation
+ - write tests for DNS
+ - add an optional parameter "dont_quote" to print_value
+ - use "dont_quote" in picodig
+ - picodig (using a special sr function (send/receive)?)
+
+Ticket #33: Rewrite the tutorial as a HTML journey
+ * v0.2
+ * NEEDS A LOT OF WORK
+
+Ticket #34: Write an article for CRISIS 2013 (tutorial)
+ * v0.2
+ * NEEDS A LOT OF WORK
+
+Ticket #35: Write a white paper
+ * v0.3
+ * NEEDS A LOT OF WORK
+ - Document the preprocessor and write a new version of the JFLA article. Comapre to existing stuff:
+   * https://github.com/jaked/deriving
+   * http://www.lexifi.com/blog/syntax-extensions-without-camlp4
+   * http://code.google.com/p/bitstring/
+   * Lex/Bison and Haskell's Parsec
+   * Haskell's Binary?
+   * Haskell's Templates?
+
+Ticket #36: Improve bitfield support
+ - rewrite dns_flags using flags in dnsXX.ml in tutorial.
+ - at the end of structs, at the end of exact_parse / lwt_exact_parse, check None
+ - use parsifal.mli to control cur_bitstate and lwt_bitstate tightly
+ - add more checks to check bitstate = None when working on bytes?
+ - check the performance on simple unit tests?
+ - improve support for RightToLeft bit parsing
+   * add more efficient versions to parse zLib-style bit fields
+   * write dump_rtol_bit(s) functions
+
+Ticket #37: Improve lwt support for fallback strategies
+ - maybe lwt_parse_byte/lwt_parse_string/... should store the bytes read in a Buffer
+
+Ticket #38: Implement support for CSR (PKCS#10?)
+
+Ticket #39: Implement support for OCSP
+
+Ticket #40: Implement support for CRLs
+
+Ticket #41: Cross-reference the RFCs / PKCS standards implemented
+
+Ticket #42: Write a web site
+ * v0.3
+
+Ticket #43: Write a cool support for DSA
+
+Ticket #44: Implement a signature_algo module interface
+ - verify/sign
+ - write a signed_block container using the module
+
+Ticket #45: Write a asym_cipher_algo module interface
+ - encrypt/decrypt
+ - write a asym_encrypted_block
+
+Ticket #46: Write a sym_cipher_algo module interface
+ - encrypt/decrypt
+ - write a asym_encrypted_block
+ - Look at the code of cryptokit which seems groovy
+
+Ticket #47:...
+
+
+
+
+
+v0.3 (may 2013)
  - Software Engineering
    * Write some tests (unit tests, non-regression [for X.509 for example], coverage test, etc.)
    * non-regression test on answer-type/ncerts
  - TlsEngine (work needed to factor code in mapAnswers and extractSessions properly)
-   * work on TlsEngine.update* functions
-   * write the automata (client, server, transparent proxy, normalizing proxy)
-   * add a automaton_state field in context
-   * add a check_consistency field in context
-   * add a generic update function relying on the context and the message received to
-     + check the consistency if necessary
-     + update the state
-     + return what to do next?
-   * add another generic function with hooks for after each message / alert / appdata / ccs / heartbeat
    * Move mapAnswers.split_record in TlsUtil?
-   * Clean up code in Tls and TlsEngine
    * [?] add a function "process_in : tls_record Lwt_mvar t -> tls_context -> tls_record Lwt_mvar t" which tries and aggregates messages, enrich handshakes and put one by record. When compression/cryptography works, it will also take that into account.
    * [?] add a function "process_out" to compress/mac/encrypt and slice in records of the correct length.
    * put 'a result_type and handle_answer logic from probe_server into TlsEngine
  - Write a trivial RC4-MD5 SSL client or server
- - Add .mli for all files!
- - Add a proper way to be flexible while parsing ATV/Extensions/Times (flexible option + laxist option in input)... because that is where the parsing fails (and it should by default!)
- - Add @dump in VRecord when an option is present in struct?
- - Design the language to explore values (functions like hex / dump / substring / asn1parse / M.parse one day and conditionnal expressions...)
  - Factor some code (lwt_parse_file filename lwt_parse_fun; the more common options (enrich, verbose, input handling); get machinery)
- - Docs
-   * Document the preprocessor and write a new version of the JFLA article. Comapre to existing stuff:
-     + https://github.com/jaked/deriving
-     + http://www.lexifi.com/blog/syntax-extensions-without-camlp4
-     + http://code.google.com/p/bitstring/
-     + Lex/Bison and Haskell's Parsec
-     + Haskell's Binary?
-     + Haskell's Templates?
-   * Write index.txt for all subdirs
  - X509
    * Code construct_chains/check_chains in caml
      + add decoration directly to the certificate object (origin[s], trust)?
@@ -120,49 +318,9 @@ v0.3 (may 2013)
 
  - General
    * Think about the exception system (fatal or not) => merge all in ParsifalException
-   * Reorder pTypes and pContainers?
- - Camlp4/Language
-   * rethink the exhaustive/enrich options for unions/asn1_unions. The params are
-     + Enrich status : always-enrich, enrich_by_default, dont_enrich_by_default (the last two add an enrich bool ref)
-     + Exhaustive status : true or false
-     + Fail status when enriching has failed : exception, unparsed_constructor => rewrite it without the safe_union container
-     + In fact, naming the UnknownVal constructor is not necessary => UnknownVal of type / Exception
-   * the possibilities should be:
-     + "closed" => always-enrich, exception on "_" case
-     + "closed" + "exhaustive" => do not add the "_" case
-     + (default) => dont_enrich_by_default, exhaustive = false, on fail => let the exception go
-     + options "enrich", "exhaustive", "soft_fail" to change the default
-     + option "unparsed_type" to specify the type and remove the mandatory name?
-   * Add SoftExceptions for enums (could be useful for content_type / alert_level)
-   * add control commands in struct (check / seek / stop)
-   * be more cautious about int32 types...
-   * add gzip_container (using zlib_container)
-   * improve get_wrapper (raw, gzip, base64, etc.)
-   * add {,} to get path language (x.{y,z}.{t,a})
-   * Implement the parse_check function (the result could be OK | Fail | StopEnrich (continue but do not enrich the following stuff))
-   * Add a "flexible" decorator in structures
-       -> try to parse or if it fails, parse with ~enrich:false (it would only be effective on union, but it still counts)
-       -> add another one to have "flexible-like field : type" turned into "field : | Either type | Or binstring" ?
-       -> Apply it to MP_REACH_NLRI in Mrt.
-   * Add bitfield support
-     + rewrite dns_flags using flags in dnsXX.ml in tutorial.
-     + at the end of structs, at the end of exact_parse / lwt_exact_parse, check None
-     + use parsifal.mli to control cur_bitstate and lwt_bitstate tightly
-     + add more checks to check bitstate = None when working on bytes?
-     + check the performance on simple unit tests?
  - Tls
    * use record check functions to constrain a binrec (length of 2^14 in TlsRecord)
    * Implement every extension/PK present in ssl-data
- - X509
-   * Add support for CSR
-   * OCSP and CRL parsers
- - Crypto
-   * Write test_pkcs1 to check RSA implementation
-   * Look at the code of cryptokit which seems groovy
-   * Simplify the RSA code (to avoid the useless creation of a key object)
-   * Add support for DSA
-   * Merge PKCS#1 and RSAKey?
-   * Think about the bigint (Big_int, Cryptokit, or stg else?)
  - Tools
    * x509compare
    * Begin a GUI for PKI tools
@@ -179,29 +337,19 @@ v0.3 (may 2013)
    * certificates with extensions containing images
    * certificates signing each other (A <-> B)
  - PKCS#11 client (prospective)
- - Misc
-   * Add an option to customize the integer dump -> hexdump or hexdump_with_separator or hexdump_openssl_like
 
 
 v0.4 (jun. 2013)
- - Rewrite Base64 properly
  - Think about a smart_dump function, which would auto-fill missing values (sizes, crcs...) => it could also be implemented using t_of_value and default/auto-fill information
  - Maybe add a lwt_dump_* function?
  - Propose a lwt_parse_wrapper, which stupidly tries to read byte by byte and give the result to parse? It could be improved when an input is rewindable or if OutOfBounds gave the number of bytes needed to continue (at least when some info is available)
  - Add cool containers where it is possible to specify the real type ( (int, string) either / int option )
    => example : device_major in tar header?
- - Improve support for RightToLeft bit parsing
-   * add more efficient versions to parse zLib-style bit fields)
-   * write dump_rtol_bit(s) functions
- - Camlp4/language
-   * Generate dump2protobuf for structs?
  - X509
    * Add a test to really check if the idempotence was broken!
  - Tools
    * s_server
  - PKCS#11 ressource (prospective)
- - Parsifal
-   * Add options to skip parse/dump/value_of generation with structures
 
 
 v1.0 (oct 2013)
