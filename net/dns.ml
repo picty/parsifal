@@ -164,6 +164,11 @@ let value_of_mx_rdata mx_rdata =
     "mx_host", value_of_domain mx_rdata.mx_host;
   ]
 
+
+alias txt_rdata = list of string[uint8]
+let value_of_txt_rdata txt_rdata = VString (String.concat "." txt_rdata, false)
+
+
 union rdata [enrich; both_param ctx] (UnparsedRData) =
   | RRT_A -> Address of ipv4
   | RRT_NS -> Domain of domain[ctx]
@@ -173,7 +178,7 @@ union rdata [enrich; both_param ctx] (UnparsedRData) =
   | RRT_PTR -> Domain of domain[ctx]
   | RRT_HINFO -> HInfo of hinfo_rdata
   | RRT_MX -> MX of mx_rdata[ctx]
-  | RRT_TXT -> TXT of list of string[uint8]
+  | RRT_TXT -> TXT of txt_rdata
 
 
 
