@@ -1,0 +1,1021 @@
+\documentclass{beamer}
+\useoutertheme{infolines}
+\usepackage[french]{babel}
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{listings}
+\usepackage{array}
+\lstset{language=Caml, basicstyle=\footnotesize,
+  morekeywords={enum, alias, struct, union,
+                asn1_alias, asn1_union, asn1_struct,
+                UnknownVal, with_lwt, Exception}}
+
+
+\title[Parsifal]{Parsifal, ou comment écrire rapidement des \emph{parsers}
+  robustes et efficaces}
+\author{Olivier Levillain}
+%\institution{ANSSI / Télécom SudParis}
+\date{5 juin 2013}
+
+\begin{document}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+  \maketitle
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]{De la difficulté d'écrire des \textit{parsers} (1/3)}
+
+  \begin{itemize}
+  \item Combien de manière d'encoder des entiers en ASN.1 (DER)?\\[.5cm]
+  \item<2-> \textbf{Au moins 3}
+    \begin{itemize}
+    \item<2-> encodage du \textit{tag}
+    \item<2-> encodage de la longueur d'un objet
+    \item<2-> encodage des entiers ASN.1
+    \end{itemize}
+  \end{itemize}
+
+  % Ajouter du tikz? 00 0 00010                        0x02            0x12 0x34 : une simple valeur entière
+  % Ajouter du tikz? 10 0 11111  1 0000001  0 0000001  0x05            <5 octets>
+  % Ajouter du tikz? 00 1 10000                        0x82 0x06 0x45  <0x645 octets>
+\end{frame}
+
+
+\begin{frame}[fragile]{De la difficulté d'écrire des \textit{parsers} (2/3)}
+
+  \begin{itemize}
+  \item Pour les concepteurs de PNG/ZLIB/DEFLATE, comment remplir des
+    champs de tailles respectives 1, 2, 3 et 4~bits dans un flux
+    d'octets?
+
+  \item<2-> Extrait de la RFC1951:
+{\footnotesize
+\begin{verbatim}
+  * Data elements are packed into bytes in order of
+    increasing bit number within the byte, i.e., starting
+    with the least-significant bit of the byte.
+  * Data elements other than Huffman codes are packed
+    starting with the least-significant bit of the data
+    element.
+  * Huffman codes are packed starting with the most-
+    significant bit of the code.
+\end{verbatim}
+}
+
+    % TODO: Faire du Tikz
+
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{De la difficulté d'écrire des \textit{parsers} (3/3)}
+
+  \begin{itemize}
+  \item \texttt{libtiff}: 3 failles liées au \textit{parser} en 2012
+    \begin{itemize}
+    \item DSA-2589 (CVE-2012-5581)
+    \item DSA-2561 (CVE-2012-4447)
+    \item DSA-2447 (CVE-2012-1173)\\[.5cm]
+    \end{itemize}
+  \item \texttt{libpng}: 2 failles en 2012
+    \begin{itemize}
+    \item DSA-2439 (CVE-2011-3045)
+    \item DSA-2410 (CVE-2011-3026)\\[.5cm]
+    \end{itemize}
+  \item \texttt{wireshark}: plusieurs failles dans les dissecteurs en 2012
+    \begin{itemize}
+    \item DSA-2590 (CVE-2012-4048, CVE-2012-4296)
+    \item DSA-2395 (plusieurs CVE)
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Cas réel: analyse de données SSL}
+
+  \begin{itemize}
+  \item Analyse de mesures SSL (article publié à ACSAC 2012)
+    \begin{itemize}
+    \item pour chaque hôte contacté, réponse du serveur à un
+      \texttt{ClientHello} TLS sur le port 443
+    \item en tout, 140~Go de données brutes\\[.5cm]
+    \end{itemize}
+
+  \item Problème pour disséquer toutes ces données
+    \begin{itemize}
+    \item données corrompues
+    \item protocole autre que SSL/TLS (en général HTTP ou SSH)
+    \item erreurs plus subtiles dans les messages\\[.5cm]
+    \end{itemize}
+
+  \item<2-> Que répond un serveur si vous lui proposez les choix A, B et C?
+    \begin{itemize}
+    \item A, B ou C
+    \item la réponse D
+    \item une réponse dans laquelle le champ \textit{manque}
+    \end{itemize}
+
+  \item<3-> Besoin de \textit{parsers} robustes et efficaces
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Historique des outils}
+  Pour traiter ce volume de données, plusieurs implantations ont été développées
+  \begin{itemize}
+  \item premier prototype en Python:
+    \begin{itemize}
+    \item<2-> rapide à écrire, mais lent à l'exécution
+    \end{itemize}
+  \item seconde version en C++ (avec \textit{templates} et des objets):
+    \begin{itemize}
+    \item<2-> flexible, rapide, mais verbeux et pénible à mettre au point
+    \end{itemize}
+  \item troisième version en OCaml (avec un DSL, \textit{Domain Specific Language} ressemblant à Python):
+    \begin{itemize}
+    \item<2-> rapide, flexible et robuste, mais encore trop verbeux\\[.5cm]
+    \end{itemize}
+  \item<3-> Parsifal: du code OCaml avec un préprocesseur: tous les indicateurs au vert
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Parsifal: plaquette publicitaire}
+
+  \begin{itemize}
+  \item \'Ecriture de \textit{parsers} grâce à du code \textbf{concis}
+    \begin{itemize}
+    \item<2-> X.509 décrit en 500~SLOCs, DNS en 200\\[.2cm]
+    \end{itemize}
+  \item \textbf{Efficacité} des programmes produits
+    \begin{itemize}
+    \item<2-> Pour MRT/X.509, performances similaires à des
+      programmes C\\[.2cm]
+    \end{itemize}
+  \item \textbf{Robustesse} des outils développés
+    \begin{itemize}
+    \item<2-> Les outils fonctionnent sur des données parfois impures\\[.2cm]
+    \end{itemize}
+  \item Méthodologie de développement adaptée à l'écriture
+    \textbf{incrémentale} de \textit{parsers} flexibles
+    \begin{itemize}
+    \item<2-> Débrayage possible de l'enrichissement de certains
+      champs\\[.2cm]
+    \end{itemize}
+  \end{itemize}
+
+  \uncover<3->{
+    \begin{minipage}[c]{.49\linewidth}
+      \vspace*{\stretch{1}}
+      \begin{center}
+        \includegraphics[width=.85\linewidth]{github}
+      \end{center}
+      \vspace*{\stretch{1}}
+    \end{minipage}
+    \begin{minipage}[c]{.49\linewidth}
+      \vspace*{\stretch{1}}
+      \begin{center}
+        \includegraphics[width=.5\linewidth]{ocaml}
+      \end{center}
+      \vspace*{\stretch{1}}
+    \end{minipage}
+  }
+\end{frame}
+
+
+\begin{frame}[fragile]{Exemple: structure d'une image PNG}
+
+  \begin{lstlisting}
+struct png_chunk = {
+  chunk_size : uint32;
+  chunk_type : string(4);
+  data : binstring(chunk_size);
+  crc : uint32;
+}
+
+struct png_file = {
+  png_magic : magic("\x89\x50\x4e\x47\x0d\x0a\x1a\x0a");
+  chunks : list of png_chunk;
+}
+  \end{lstlisting}
+
+  \pause
+  \begin{lstlisting}
+let input = input_of_filename "sstic.png" in
+let png = parse_png_file input in
+List.iter (fun c -> print_endline c.chunk_type) png.chunks
+  \end{lstlisting}
+\end{frame}
+
+
+\begin{frame}[fragile]{Enrichissement progressif du type}
+
+  \begin{lstlisting}
+struct compressed_text = {
+  keyword : nt_string;
+  compression_method : uint8;
+  text : ZLib.zlib_container of string;
+}
+
+union chunk_content [enrich] (UnparsedChunkContent) =
+| "IDAT" -> ImageData of binstring
+| "zTXt" -> CompressedText of compressed_text
+
+struct png_chunk = {
+  chunk_size : uint32;
+  chunk_type : string(4);
+  data : container(chunk_size) of chunk_content(chunk_type);
+  crc : uint32;
+}
+
+struct png_file = {
+  png_magic : magic("\x89\x50\x4e\x47\x0d\x0a\x1a\x0a");
+  chunks : list of png_chunk;
+}
+  \end{lstlisting}
+\end{frame}
+
+
+\begin{frame}{Conclusion}
+  \begin{itemize}
+  \item Pour comprendre un format ou un protocole, le mieux est de
+    l'implémenter
+  \item Parsifal permet de décrire rapidement des structures
+  \item Formats déjà implémentés
+    \begin{itemize}
+    \item X.509
+    \item SSL/TLS (la majorité des messages)
+    \item MRT
+    \item PE (code partiellement intégré)
+    \item Kerberos (code partiellement intégré)
+    \item TAR
+    \item DNS
+    \item PNG (stage en cours)
+    \item PCAP/IP/TCP/UDP (support rudimentaire)\\[.5cm]
+    \end{itemize}
+  \item Perspectives
+    \begin{itemize}
+    \item Documenter l'outil
+    \item Reprendre les tutoriels (DNS/TAR/PNG)
+    \item Animer les protocoles (TLS)
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Questions ?}
+  \vspace*{\stretch{1}}
+
+  \begin{center}
+    Merci de votre attention.
+
+    \vspace*{\stretch{3}}
+
+    \url{https://github.com/ANSSI-FR/parsifal}
+  \end{center}
+
+  \vspace*{\stretch{1}}
+\end{frame}
+
+
+\end{document}
+
+\begin{frame}{Quelques chiffres}
+  \begin{center}
+    \begin{tabular}{|l|c|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Module} & \bf LOCs \\
+      \hline
+      \hline
+      Extension syntaxique & 1~000 \\
+      \hline
+      Base & 3~000 \\
+      \hline
+      TAR & 100 \\
+      PE & 200 \\
+      DNS & 200 \\
+      MRT & 400 \\
+      PCAP + IP + TCP + UDP & 150 \\
+      \hline
+      X.509 & 900 \\
+      SSLv2 / TLS & 1700 \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Démonstrations}
+
+% \begin{frame}{Table des matières}
+%   \tableofcontents[currentsection]
+% \end{frame}
+
+% \begin{frame}{Démos}
+%   \begin{itemize}
+%   \item \texttt{asn1parse}
+%   \item \texttt{x509show}
+%   \item \texttt{mapAnswers}\\[.5cm]
+%   \item \texttt{extractSessions}\\[.5cm]
+%   \item Utilisations en mode interactif
+%   \end{itemize}
+% \end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Installation}
+
+\begin{frame}{Table des matières}
+  \tableofcontents[currentsection]
+\end{frame}
+
+\begin{frame}{Installation d'OCaml}
+  \begin{block}{}
+    \tt
+    \begin{tabular}{l}
+      apt-get install ocaml ocaml-findlib \\
+      apt-get install liblwt-ocaml-dev \\
+      apt-get install libcryptokit-ocaml-dev \\
+      apt-get install make \\
+      \\
+      apt-get install git openssh-client make \\
+    \end{tabular}
+  \end{block}
+\end{frame}
+
+\begin{frame}{Installation et compilation de Parsifal}
+  \begin{block}{Récupération depuis le dépôt git}
+    \tt
+    \begin{tabular}{l}
+      git clone https://github.com/ol-anssi/parsifal.git \\
+      cd parsifal \\
+    \end{tabular}
+  \end{block}
+
+  \begin{block}{Compilation}
+    \tt
+    \begin{tabular}{l} 
+      make \\
+      LIBDIR=\$HOME/.ocamlpath BINDIR=\$HOME/bin make install \\
+      export OCAMLPATH=\$HOME/.ocamlpath \\
+      PATH=\$HOME/bin:\$PATH \\
+    \end{tabular}
+  \end{block}
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Constructions }
+
+\begin{frame}{Table des matières}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}[fragile]{Principe}
+  À partir de descriptions courtes des types, génération automatique
+  des éléments suivants:
+  \begin{itemize}
+  \item type OCaml \texttt{t}
+  \item fonction \texttt{parse\_t} (et \texttt{lwt\_parse\_t})
+  \item fonction \texttt{dump\_t}
+  \item fonction \texttt{value\_of\_t}
+  \end{itemize}
+
+  \medskip
+
+  \begin{block}{Prototypes des fonctions}
+    \begin{lstlisting}
+      parse_t : string_input -> t
+      dump_t : t -> string
+      value_of_t : t -> value
+    \end{lstlisting}
+  \end{block}
+\end{frame}
+
+
+\begin{frame}[fragile]{Énumérations}
+  Objectif: bénéficier d'un type somme sans avoir à écrire les
+  fonctions de conversions vers les entiers
+
+{\footnotesize
+\begin{lstlisting}
+enum tls_version (16, UnknownVal V_Unknown) =
+  | 0x0002 -> V_SSLv2, "SSLv2"
+  | 0x0300 -> V_SSLv3, "SSLv3"
+  | 0x0301 -> V_TLSv1, "TLSv1.0"
+  | 0x0302 -> V_TLSv1_1, "TLSv1.1"
+  | 0x0303 -> V_TLSv1_2, "TLSv1.2"
+\end{lstlisting}
+}
+
+  Éléments supplémentaires produits:
+  \begin{itemize}
+  \item \texttt{int\_of\_tls\_version}
+  \item \texttt{string\_of\_tls\_version}
+  \item \texttt{tls\_version\_of\_int}
+  \item \texttt{tls\_version\_of\_string}
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Structures (1/2)}
+  Extrait de la RFC 5246 (TLSv1.2):
+{\footnotesize
+\begin{lstlisting}
+enum { warning(1), fatal(2), (255) } AlertLevel;
+
+enum {
+    close_notify(0),
+    unexpected_message(10),
+     ...
+    unsupported_extension(110),
+    (255)
+} AlertDescription;
+
+struct {
+    AlertLevel level;
+    AlertDescription description;
+} Alert;
+\end{lstlisting}
+}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Structures (2/2)}
+  Objectif: structure enchaînant des champs
+{\footnotesize
+\begin{lstlisting}
+enum tls_alert_level (8, UnknownVal AL_Unknown) =
+  | 1 -> AL_Warning, "Warning"
+  | 2 -> AL_Fatal, "Fatal"
+
+enum tls_alert_type (8, UnknownVal AT_Unknown) =
+  | 0 -> AT_CloseNotify, "CloseNotify"
+  | 10 -> AT_UnexpectedMessage, "UnexpectedMessage"
+    ...
+  | 110 -> AT_UnsupportedExtension, "UnsupportedExtension"
+
+struct tls_alert =
+{
+  alert_level : tls_alert_level;
+  alert_type : tls_alert_type
+}
+\end{lstlisting}
+}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Unions}
+  Objectif: en fonction d'un discriminant, produire un sous-type
+
+{\footnotesize
+\begin{lstlisting}
+union autonomous_system [enrich] (UnparsedAS) =
+  | 16 -> AS16 of uint16
+  | 32 -> AS32 of uint32
+
+struct bgp_as_path_segment [param as_size] =
+{
+  path_segment_type : uint8;
+  path_segment_length : uint8;
+  path_segment_value : list(path_segment_length) of
+                       autonomous_system(as_size)
+}
+\end{lstlisting}
+}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Alias}
+
+{\footnotesize
+\begin{lstlisting}
+alias ustar_magic = magic["ustar"]
+alias tar_file = list of tar_entry
+
+struct atv_content = {
+  attributeType : der_oid;
+  attributeValue : der_object
+}
+asn1_alias atv
+asn1_alias rdn = set_of atv
+asn1_alias distinguishedName = seq_of rdn
+\end{lstlisting}
+}
+
+\end{frame}
+
+\begin{frame}{Autres constructions}
+  \begin{itemize}
+  \item Notion de \texttt{containers} (base64, encapsulations ASN.1, contrainte de longueur)
+  \item \texttt{asn1\_union} (le discriminant est l'en-tête ASN.1)
+  \item \texttt{asn1\_struct} (raccourci pour \texttt{struct} et \texttt{asn1\_alias})
+  \item \texttt{bit\_field} (TODO)
+  \item Définition récursive des \texttt{struct} et \texttt{union} (TODO)
+  \item Amélioration des constructions existantes (TODO: plus d'options)
+  \end{itemize}
+\end{frame}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Pas-à-pas (TAR)}
+
+\begin{frame}{Table des matières}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}{Présentation du format TAR (1/3)}
+  Description d'une entrée TAR:
+  \begin{center}
+    \scriptsize
+
+    \begin{tabular}{|r|r|l|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Offset} &
+      \multicolumn{1}{c|}{\bf Long.} &
+      \multicolumn{1}{c|}{\bf Description} \\
+      \hline
+
+      \hline
+        0 & 512 & En-tête TAR, complété par des zéros \\
+      \hline
+      512 & \multicolumn{1}{c|}{\textit{«~Taille du fichier~»}} &
+      Contenu du fichier, complété par des zéros \\
+      & \multicolumn{1}{c|}{alignée à 512~octets} & \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+
+\begin{frame}{Présentation du format TAR (2/3)}
+  Description de l'en-tête TAR:
+  \begin{center}
+    \scriptsize
+
+    \begin{tabular}{|r|r|l|l|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Offset} &
+      \multicolumn{1}{c|}{\bf Long.} &
+      \multicolumn{2}{c|}{\bf Description} \\
+      & & \multicolumn{1}{c|}{\bf TAR} &
+      \multicolumn{1}{c|}{\bf \tt ustar} \\
+      \hline
+
+      \hline
+        0 & 100 & \multicolumn{2}{l|}{Nom du fichier} \\
+      \hline
+      100 &   8 & \multicolumn{2}{l|}{Permissions} \\
+      \hline
+      108 &   8 & \multicolumn{2}{l|}{UID} \\
+      \hline
+      116 &   8 & \multicolumn{2}{l|}{GID} \\
+      \hline
+      124 &  12 & \multicolumn{2}{l|}{Taille du fichier} \\
+      \hline
+      136 &  12 & \multicolumn{2}{l|}{\textit{Timestamp} de la dernière modification} \\
+      \hline
+      148 &   8 & \multicolumn{2}{l|}{Somme de contrôle de l'en-tête} \\
+      \hline
+      156 &   1 & Indicateur de lien & Type de fichier \\
+      \hline
+      157 & 100 & \multicolumn{2}{l|}{Nom du fichier pointé par le lien} \\
+      \hline
+      257 &   6	& \multicolumn{1}{c|}{-} & Indicateur \texttt{"ustar"} \\
+      \hline
+      263 &   2	& \multicolumn{1}{c|}{-} & Version \texttt{ustar} ("00") \\
+      \hline
+      265 &  32 & \multicolumn{1}{c|}{-} & Propriétaire \\
+      \hline
+      297 &  32 & \multicolumn{1}{c|}{-} & Groupe propriétaire \\
+      \hline
+      329 &   8 & \multicolumn{1}{c|}{-} & Numéro majeur du périphérique \\
+      \hline
+      337 &   8 & \multicolumn{1}{c|}{-} & Numéro mineur du périphérique \\
+      \hline
+      345 & 155 & \multicolumn{1}{c|}{-} & Préfixe \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}{Présentation du format TAR (3/3)}
+  Valeurs du champ «~Indicateur de lien/Type de fichier~»:
+  \begin{center}
+    \scriptsize
+    \begin{tabular}{|>{\tt}c|l|c|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Caractère} &
+      \multicolumn{1}{c|}{\bf Description} &
+      \multicolumn{1}{c|}{\bf Spécifique à \tt ustar} \\
+      \hline
+
+      \hline
+      <NUL>, 0 & fichier ordinaire & - \\
+      1 & lien dur & - \\
+      2 & lien symbolique & - \\
+      \hline
+      3 & périphérique en mode caractères & oui \\
+      4 & périphérique en mode blocs & oui \\
+      5 & répertoire & oui \\
+      6 & file FIFO & oui \\
+      7 & fichier contigu & oui \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+
+\begin{frame}{TAR v1}
+  \begin{itemize}
+  \item description du \texttt{file\_type} par un \texttt{enum}
+  \item description de l'en-tête \texttt{ustar} complet par un
+    \texttt{struct}
+  \item écriture d'une fonction \texttt{int\_of\_tarstring} pour
+    transformer en entier une chaîne encodant un entier en octal
+  \item description d'une entrée à l'aide de \texttt{struct}
+  \item écriture d'une fonction \texttt{main} pour afficher les
+    différentes entrées (au moins les noms des fichiers)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{TAR v2}
+  Mais l'en-tête \texttt{ustar} peut être optionel
+
+  \medskip
+
+  \begin{itemize}
+  \item encapsulation de l'en-tête dans un containeur
+  \item séparation de l'en-tête \texttt{ustar} dans une structure à
+    part
+  \item ajout de l'en-tête \texttt{ustar} comme un champ
+    \texttt{optional} de la structure \texttt{tar\_header}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{TAR v3}
+  Ces entiers encodés sous forme de chaînes de caractères pourraient
+  être mieux gérés
+
+  \medskip
+
+  \begin{itemize}
+  \item écriture d'un type à la main, \texttt{tar\_numstring} qui
+    implémente les entiers représentés par une chaîne de caractère
+    octale
+    \begin{itemize}
+    \item définition du type
+    \item écriture de \texttt{parse\_tar\_numstring}
+    \item écriture de \texttt{dump\_tar\_numstring}
+    \item écriture de \texttt{value\_of\_numstring}
+    \end{itemize}
+  \item utilisation du nouveau type
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{TAR v4/5}
+  A priori, les en-têtes \texttt{ustar} ne sont plus disséqués
+  correctement si on utilise les \texttt{tar\_numstring} pour gérer
+  les champs \texttt{device\_major} et \texttt{device\_minor}!
+
+  \begin{itemize}
+  \item solution 1: écrire à la main un nouveau type
+    \texttt{optional\_tar\_numstring}
+  \item solution 2: utilisation d'une union reposant sur
+    \texttt{file\_type} comme discriminant
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{TAR v6}
+  Ces chaînes de caractères remplies de zéros sont bien
+  disgracieuse. Écrivons un nouveau type \texttt{azt\_string} prenant
+  en argument une longueur
+
+  \begin{itemize}
+  \item écriture du nouveau type
+  \item utilisation du type où cela a un sens
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{TAR v7/8}
+  Depuis tout ce temps, le programme termine sur une erreur, puisque
+  le dernier en-tête est rempli de zéro
+
+  \begin{itemize}
+  \item solution 1: ajout d'un \texttt{try..with} dans la fonction \texttt{main}
+  \item solution 2: création d'un alias et d'un \texttt{checkpoint}
+    pour mettre fin à la lecture de la liste
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{TAR v9}
+  Utiliser \texttt{string\_input\_of\_filename} fonctionne avec une
+  petite archive, mais quid d'une archive de plusieurs giga-octets?
+
+  \begin{itemize}
+  \item utilisation de \texttt{lwt\_parse}
+  \item ajout des options nécessaires
+  \item réécriture de \texttt{main}
+  \end{itemize}
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Pas-à-pas (DNS)}
+
+\begin{frame}{Table des matières}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}{Présentation des messages DNS (1/4)}
+  Les puristes partiront de la RFC 1035 (augmentée par plusieurs RFC
+  pour diverses extensions, laissées en exercice\footnote{D'ailleurs,
+    je cherche des contributeurs...})
+
+  Description générale d'un message:
+  \begin{center}
+    \scriptsize
+
+    \begin{tabular}{|r|r|l|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Offset} &
+      \multicolumn{1}{c|}{\bf Long.} &
+      \multicolumn{1}{c|}{\bf Description} \\
+      \hline
+
+      \hline
+        0 &   2 & QId \\
+      \hline
+        2 &   2 & \textit{flags} \\
+      \hline
+        4 &   2 & Nombre de questions \\
+      \hline
+        6 &   2 & Nombre de réponses \\
+      \hline
+        8 &   2 & Nombre d'enregistrements faisant autorité \\
+      \hline
+       10 &   2 & Nombre d'enregistrements additionnels \\
+      \hline
+       12 &   ? & Questions \\
+      \hline
+        ? &   ? & Réponses \\
+      \hline
+        ? &   ? & Enregistrements faisant autorité \\
+      \hline
+        ? &   ? & Enregistrements additionnels \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}{Présentation des messages DNS (2/4)}
+  Description d'une question:
+  \begin{itemize}
+  \item un domaine,
+  \item suivi d'un entier~16~bits (\texttt{query\_type})
+  \item suivi d'un entier~16~bits (\texttt{query\_class})
+  \end{itemize}
+
+  \medskip
+
+  Un domaine est une suite de labels, sachant qu'un label est soit:
+  \begin{itemize}
+  \item un véritable label si les deux premiers bits sont à zéro,
+    auquel cas les 6~bits suivants donnent la taille du label
+  \item un label vide (un octet à zéro) pour terminer le domaine
+  \item un pointeur pour la compression (deux octets commençant par
+    deux bits à 1 et encodant dans les 14~bits restants l'adresse où
+    trouver la fin du domaine
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Présentation des messages DNS (3/4)}
+  Description d'un \texttt{Resource Record} (RR)
+  \begin{itemize}
+  \item un domaine (cf. planche précédente)
+  \item un entier~16~bits \texttt{rr\_type}
+  \item un entier~16~bits \texttt{rr\_class}
+  \item un entier~32~bits pour le TTL
+  \item un entier~16~bits définissant la taille des données du RR
+  \item les données du RR
+  \end{itemize}
+
+  \medskip
+
+  Exemples de données pour un RR
+  \begin{itemize}
+  \item \texttt{A} correspond à une adresse IPv4 (32~bits)
+  \item \texttt{CNAME} correspond à un domaine
+  \item \texttt{MX} correspond à une préférence (16~bits) et un
+    domaine
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Présentation des messages DNS (4/4)}
+  Quelques valeurs du champ \texttt{query\_type} / \texttt{rr\_type}:
+  \begin{center}
+    \scriptsize
+    \begin{tabular}{|>{\tt}c|>{\tt}l|c|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Caractère} &
+      \multicolumn{1}{c|}{\bf Description} &
+      \multicolumn{1}{c|}{\bf Défini pour \texttt{rr\_type}} \\
+      \hline
+
+      \hline
+      1 & A & oui \\
+      \hline
+      2 & NS & oui \\
+      \hline
+      5 & CNAME & oui \\
+      \hline
+      6 & SOA & oui \\
+      \hline
+      12 & PTR & oui \\
+      \hline
+      15 & MX & oui \\
+      \hline
+      255 & * & - \\
+      \hline
+    \end{tabular}
+  \end{center}
+
+  Quelques valeurs du champ \texttt{query\_class} / \texttt{rr\_class}:
+  \begin{center}
+    \scriptsize
+    \begin{tabular}{|>{\tt}c|>{\tt}l|c|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Caractère} &
+      \multicolumn{1}{c|}{\bf Description} &
+      \multicolumn{1}{c|}{\bf Défini pour \texttt{rr\_class}} \\
+      \hline
+
+      \hline
+      1 & Internet & oui \\
+      \hline
+      2 & CSNET & oui \\
+      \hline
+      3 & CHAOS & oui \\
+      \hline
+      4 & Hesiod & oui \\
+      \hline
+      255 & * & - \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+
+\begin{frame}{DNS: première implémentation}
+  \begin{itemize}
+  \item description des énumérations (type / classe)
+  \item écriture à la main du type \texttt{label}
+  \item écriture à la main du type \texttt{domain} comme une liste de \texttt{label}s
+  \item écriture des structures \texttt{question}, \texttt{rr} et
+    \texttt{dns\_message}
+  \item récupération d'une requête et d'une réponse d'exemple dans
+    \texttt{net/test/test\_dns.ml} pour les afficher dans un
+    \texttt{main}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{DNS: en route vers un vrai support du protocole}
+  \begin{itemize}
+  \item dissection de certaines données de RR (A, CNAME, MX)
+  \item réécriture de \texttt{domain} sans passer par des \texttt{label}s.
+  \item ajout d'un contexte pour \textit{parser} correctement les
+    domaines
+  \item micro-client DNS
+  \end{itemize}
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Perspectives}
+
+\begin{frame}{Table des matières}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}{Mais avant la conclusion, une page de pub}
+  \textit{Parsifal is good for you!}
+  \begin{itemize}
+  \item écriture incrémentale de parsers pour des formats divers
+  \item bon compromis entre flexibilité et rapidité
+    d'écriture
+  \item à partir de simples descriptions, de nombreuses fonctions sont
+    générées automatiquement:
+    \begin{itemize}
+    \item des \textit{parsers} bien évidemment
+    \item des fonctions d'affichage
+    \item des fonctions d'export (JSON)
+    \item un mécanisme de requête inspiré de celui de \texttt{tshark}
+    \end{itemize}
+  \item le tout avec des garanties fortes sur la robustesse du code
+    généré
+  \end{itemize}
+
+  \medskip
+
+  Les champs d'applications envisagés sont:
+  \begin{itemize}
+  \item outils d'analyse  (SSL, PE...)
+  \item outils de diagnostic (SSL, \textit{DNS}...)
+  \item outils fiables pour valider des formats binaires
+    (\textit{certificats} et \textit{CRLs} X.509, travaux sur des
+    \textit{formats d'image})
+  \item \textit{and many more?}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Outils connexes}
+  \begin{itemize}
+  \item Scapy
+  \item Hachoir
+  \item Bibliothèque OCaml \texttt{bitstring}
+  \item NetZob
+  \item Bro's binpac
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Formats et protocoles décrits à ce jour}
+  \begin{itemize}
+  \item X.509
+  \item TLS
+  \item MRT+BGP
+  \item TAR
+  \item PCAP/IP/TCP/UDP (version rudimentaire)
+  \item DNS
+  \item PE (travail en cours)
+  \item ExpROM (travail en cours)
+  \item Kerberos (travail en cours)
+  \item PNG (travail en cours)
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Et après ?}
+  Fonctionalités à venir:
+  \begin{itemize}
+  \item champs de bits
+  \item types récursifs
+  \item amélioration de la syntaxe
+  \item réflexions sur l'animation d'un protocole (problème dur)
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Feuille de route}
+  \begin{itemize}
+  \item v0.1 stabilisée en mars 2013
+  \item soumission courte au SSTIC 2013
+  \item publication du code sur Github début mai 2013
+  \end{itemize}
+
+  \medskip
+
+  \begin{itemize}
+  \item<2-> finalisation de quelques outils autour de SSL/X.509
+  \item<2-> animation propre du protocole SSL/TLS
+  \item<2-> amélioration et stabilisation de la syntaxe
+  \item<2-> documentation à mettre à jour et compléter (dont ce tutoriel)
+  \item<2-> conquête du monde grâce à OCaml et Parsifal
+  \item<2-> recrutement des contributeurs
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Questions ?}
+  \vspace*{\stretch{1}}
+
+  \begin{center}
+    Merci de votre attention.
+  \end{center}
+
+  \vspace*{\stretch{1}}
+\end{frame}
+
+
+
+
+\end{document}
