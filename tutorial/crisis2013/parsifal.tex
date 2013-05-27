@@ -1,0 +1,396 @@
+\documentclass{article}
+\usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+
+\usepackage{url}
+\usepackage{array}
+\usepackage{listings}
+\lstset{language=Caml, basicstyle=\scriptsize,
+  morekeywords={enum, alias, struct, union,
+                asn1_alias,
+                UnknownVal, with_lwt, Exception}}
+
+
+\title{Parsifal: writing efficient and robust binary parsers, quickly}
+\author{Olivier Levillain}
+
+
+\begin{document}
+
+\maketitle
+
+Parsers are pervasive software basic blocks: as soon as a program
+needs to communicate with another program or to read a file, a parser
+is involved. However, writing robust parsers can be hard, as is
+revealed by the amount of bugs and vulnerabilities linked to
+programming errors in parsers.  In particular, network analysis tools
+can be very tricky to code: for example, the Wireshark project
+regularly publishes security patches on its various dissectors.
+
+As security researchers, we need robust tools on which we could
+depend. The starting point of Parsifal was a study of large amounts of
+SSL data~\cite{acsac2012}. The data collected contained legitimate
+SSL~\cite{rfc5246} messages, but it also contained invalid messages
+and other protocols (HTTP, SSH). To face this challenge and extract
+relevant information, we wrote several parsers, using different
+languages, which resulted in Parsifal, an OCaml-based parsing
+engine. Writing parsers and analysing data helped us better understand
+SSL/TLS, but also X.509~\cite{rfc5280} and
+BGP/MRT~\cite{rfc4271,rfc6396}. More recently, we have begun studying
+Kerberos messages.
+
+The contribution of Parsifal to security can be twofold: provide sound
+tools to analyse complex file formats or network protocols, and
+implement robust detection/sanitization systems.  The goal of this
+tutorial is to present Parsifal and to use it to write a network
+protocol parser (DNS) and a file format parser (PNG). The PNG parser
+will then be used to begin a PNG sanitizer.
+
+
+
+\section{Project history}
+
+In 2010, the EFF scanned the Internet to find out how servers
+worldwide answered on the 443/TCP port~\cite{eff-observatory,
+  eckersley-obs1, eckersley-obs2}. We studied this important amount of
+data with custom tools, to gain thorough insight of the data
+collected~\cite{acsac2012}.
+
+Our first attempt to write a SSL parser was in Python, which was
+quickly written and allowed us to extract some information. However,
+this implementation was fondamently slow. The second parser was in
+C++, using templates and object-oriented programming; its goal was to
+be flexible and fast. Yet, the code was hard to debug, and contained
+too many lines.
+
+So a new version was written, in OCaml: it used a DSL\footnote{Domain
+  Specific Language.} close to Python to describe the structures
+studied. This third parser was as fast as the previous one, less
+error-prone, but still needed a lot of lines to code simple
+features. That is why we decided to use a preprocessor to do most of
+the work, letting the programmer only deal with what's important:
+structure description. This last implementation, Parsifal, had all the
+properties expected: efficient and robust parsers, written using few
+lines of code.
+
+Our work originally covered X.509 certificates and SSL/TLS messages,
+but we soon tried Parsifal on other network protocols (BGP/MRT, DNS,
+TCP/IP stack, Kerberos) and on some file formats (TAR, PE, PCAP,
+PNG). Some of these parsers are still at an early stage, but one of
+the strength of Parsifal is that it is easy to describe part of a
+protocol, only to insist on what really needs to be dissected.
+
+
+
+\section{Parsifal principle: PTypes}
+
+Basically, Parsifal allows you to use PTypes, which are OCaml types
+augmented by the presence of some manipulation functions: a PType
+\texttt{t} is composed of:
+\begin{itemize}
+\item the corresponding OCaml type \texttt{t};
+\item a \texttt{parse\_t} function, to transform a binary
+  representation of an object into the type \texttt{t};
+\item a \texttt{dump\_t} function, that does the reverse operation,
+  that is dumping a binary representation out of a constructed type
+  \texttt{t};
+\item a \texttt{value\_of\_t} function, to translate a constructed
+  type \texttt{t} into an abstrace representation, which can then be
+  printed, exported as JSON, or analysed using generic functions.
+\end{itemize}
+
+PTypes are usually built using new keywords: \texttt{enum},
+\texttt{struct}, \texttt{union}, etc. However, when dealing with
+unsupported cases, it is also possible to add custom PType, by writing
+directly the \texttt{t} type and the corresponding functions. A lot of
+basic PTypes are already present in the core library.
+
+
+\subsection{Examples of construction}
+
+Among the TLS messages, alerts are used to signal a problem during the
+session. Such messages are simply composed of an alert level (one byte
+with two possible values) and an alert type (another byte). An extract
+of the specification is given in figure~\ref{fig:tls-spec}. It is
+possible to describe such messages in Parsifal with the code given in
+figure~\ref{fig:tls-descr}. As a result, the preprocessor will
+generate three OCaml types, and some functions, as presented in
+figure~\ref{fig:tls-generated-code}.
+
+
+\begin{figure}[p]
+  \begin{center}\begin{minipage}{.32\linewidth}
+    {\scriptsize
+    \begin{verbatim}
+enum { warning(1), fatal(2), (255) } AlertLevel;
+
+enum {
+    close_notify(0),
+     ...
+    unsupported_extension(110),
+    (255)
+} AlertDescription;
+
+struct {
+    AlertLevel level;
+    AlertDescription description;
+} Alert;
+    \end{verbatim}}
+  \end{minipage}\end{center}
+  \caption{Specification of \texttt{tls\_alert} messages (from RFC~5246~\cite{rfc5246}).}
+  \label{fig:tls-spec}
+\end{figure}
+
+
+
+\begin{figure}[p]
+  \begin{center}\begin{minipage}{.52\linewidth}
+    \begin{lstlisting}
+enum tls_alert_level (8, UnknownVal AL_Unknown) =
+  | 1 -> AL_Warning, "Warning"
+  | 2 -> AL_Fatal, "Fatal"
+
+enum tls_alert_type (8, UnknownVal AT_Unknown) =
+  | 0 -> AT_CloseNotify, "CloseNotify"
+  ...
+  | 115 -> AT_UnknownPSKIdentity, "UnknownPSKIdentity"
+
+struct tls_alert = {
+  alert_level : tls_alert_level;
+  alert_type : tls_alert_type
+}
+    \end{lstlisting}
+  \end{minipage}\end{center}
+  \caption{Parsifal description of \texttt{tls\_alert} messages.}
+  \label{fig:tls-descr}
+\end{figure}
+
+
+\begin{figure}[p]
+  \begin{center}\begin{minipage}{.61\linewidth}
+    \begin{lstlisting}
+(* tls_alert_level *)
+
+type tls_alert_level =
+    AL_Warning
+  | AL_Fatal
+  | AL_Unknown of int
+
+(* Conversion functions to/from int/string *)
+val int_of_tls_alert_level : tls_alert_level -> int
+val string_of_tls_alert_level : tls_alert_level -> string
+val tls_alert_level_of_int : int -> tls_alert_level
+val tls_alert_level_of_string : string -> tls_alert_level
+
+(* parse/dump/value_of functions *)
+val parse_tls_alert_level : input -> tls_alert_level
+val dump_tls_alert_level : output -> tls_alert_level -> unit
+val value_of_tls_alert_level : tls_alert_level -> value
+
+
+(* tls_alert_type *)
+
+type tls_alert_type =
+    AT_CloseNotify
+  ...
+  | AT_Unknown of int
+
+(* 7 functions, similar to those relative to tls_alert_level *)
+
+
+(* tls_alert *)
+
+type tls_alert = {
+  alert_level : tls_alert_level;
+  alert_type : tls_alert_type;
+}
+val parse_tls_alert : input -> tls_alert
+val dump_tls_alert : output -> tls_alert -> unit
+val value_of_tls_alert : tls_alert -> value
+    \end{lstlisting}
+  \end{minipage}\end{center}
+  \caption{Corresponding OCaml code generated (extracts of the interface).}
+  \label{fig:tls-generated-code}
+\end{figure}
+
+
+The constructions available in Parsifal are:
+\begin{itemize}
+\item enumerations (\texttt{enum} keyword);
+\item records, possibly containing bit fields (\texttt{struct});
+\item choices, allowing for types depending of a parameter (\texttt{union});
+\item ASN.1 DER structures and choices (\texttt{asn1\_struct} and \texttt{asn1\_union});
+\item aliases (\texttt{alias} and \texttt{asn1\_alias}).
+\end{itemize}
+
+
+\subsection{Examples of base PTypes}
+
+Parsifal already understand some basic types: integers, string,
+IPv4/IPv6, lists, arrays, \emph{magic} numbers, and ASN.1 basic
+objects.
+
+Moreover, Parsifal provides an abstraction, the containers, allowing
+to wrap a PType using some processing. Here are some examples:
+\begin{itemize}
+\item \texttt{container(n) of t} reads \texttt{n} bytes and expects a
+  \texttt{t} object inside those bytes;
+\item \texttt{container[uint8] of t} consists of a byte \texttt{n},
+  which is the length of the container;
+\item \texttt{base64\_container} and \texttt{hex\_container} allow to
+  work with encoded types transparently;
+\item \texttt{deflate\_container} and \texttt{zlib\_container}
+  uncompress the output when parsing and compress when dumping;
+\item \texttt{pkcs1\_container} to decrypt the content of a PKCS\#1
+  value and read the enclosed type when given the corresponding
+  key\footnote{This proved to be useful to process smoothly Kerberos
+    PKINIT messages.}.
+\end{itemize}
+
+The idea of the core library is to provide most of the basic types and
+transformations used in protocols and file formats.
+
+One of the advantages of Parsifal is that it is easy to implement
+partially a protocol to only interpret the useful cases. It also
+allows for a progressive description of a format.
+
+As our initial goal was to handle a lot of data, including corrupted
+messages or data non conform to the specification, it is possible to
+implement either strict parsers or flexible ones. This proves useful
+for example when dissecting X.509 corrupted fields: an error deep in
+the certificate does not necessarily invalidates the whole certificate
+nor the TLS message containing it.
+
+
+
+\section{Related work}
+
+Parsifal may seem similar to two Python projects:
+\texttt{scapy}~\cite{scapy}, a toolbox to parse and forge network
+packets and \texttt{hachoir}~\cite{hachoir}, a generic framework for
+binary file manipulation library. However, as an OCaml development,
+Parsifal allows for better perfomance when compiled to native
+binaries. In our experience, it is as efficient as corresponding C
+implementations\footnote{For example, the time needed to parse
+  certificates is comparable with the \texttt{openssl x509}
+  command.}. What's more, OCaml is a well-defined sound language which
+brings some safety guarantees regarding memory management that C does
+not.
+
+Other preprocessors and libraries exist in the OCaml environment, but
+they do not offer a comprehensive framework to describe complex
+structures as Parsifal does. For example, the
+\texttt{bitstring}~\cite{bitstring} project adds pattern matching on
+bitsrings, which is only a part of the types handled by our tool.
+
+
+
+\section{Tutorial outline}
+
+Parsifal has already been presented internally and a version of this
+tutorial has been used to teach several people to using Parsifal. The
+overall tutorial was given over a 3-hour session. The content would
+consist on several parts, quickly described in the following sections.
+
+
+
+\subsection{Parsifal presentation}
+
+As was done in this short paper, the tuorials begins with a brief
+history of the project, and the motivation for writing robust and
+efficient parsers.
+
+Then, the principle behind Parsifal are presented: the PTypes and the
+methods to generate them automatically using a preprocessor. This part
+can be illustrated by several examples of constructions: how to write
+them and what kind of code is generated.
+
+
+\subsection{Downloading and installing Parsifal}
+
+After this short introduction, the tutorial consists of downloading
+Parsifal source code from the public repository on GitHub
+(\url{https://github.com/ANSSI-FR/parsifal}), installing it and using
+it to write parsers step-by-step.
+
+The people of the audience interested in manipulating on their
+computers would have to install the OCaml languages and the libraries
+on which Parsifal depends.
+
+
+\subsection{DNS step-by-step}
+
+The first parser proposed for the tuorial is DNS, which is a rather
+simple protocol, but contains some subtleties. That is why it is a
+good candidate to begin using Parsifal.
+
+After presenting DNS message formats, the implementation goes as
+follows:
+\begin{itemize}
+\item description of DNS enumerations (record types and classes);
+\item first implementation of labels and domains using structures;
+\item description of more structures (\texttt{question}, \texttt{rr}
+  and the overall \texttt{dns\_message} type);
+\begin{itemize}
+\item[-] at this point, it is possible to parse and print example
+  requests and responses;
+\end{itemize}
+\item progressive specification of the ressource records (A, CNAME,
+  MX) using an union;
+\item custom rewrite of labels and domains to handle the compression;
+\item implementation of the UDP connexion
+\begin{itemize}
+\item[-] at this point, it is possible to have a minimalistic DNS client.
+\end{itemize}
+\end{itemize}
+
+
+\subsection{PNG step-by-step}
+
+Another example can be written to parse PNG files. The different steps
+of the implementation would be:
+\begin{itemize}
+\item description of the outter structure of the image file
+  (essentially a list of chunks);
+\begin{itemize}
+\item[-] at this point, it is possible to implement a tool printing
+  the types of the chunks present in a given file;
+\item[-] it is also possible to write a basic PNG filter, rewriting
+  the file without the comment chunks (\texttt{tEXt} for example);
+\end{itemize}
+\item rewrite of the chunk container to generate automatically the
+  length and the CRC when dumping the chunk;
+\item as for DNS resource records, it is possible to use a union to
+  describe progressively the different chunk types, starting with the
+  mandatory ones (IHDR, PLTE, IDAT and IEND);
+\begin{itemize}
+\item[-] at this point, it is possible to write a simple PNG sanitizer
+  that combines all IDAT chunks into one, and rewrites the image file
+  uncompressed. This way, the compression is handled by
+  \texttt{zlib\_container}, a pure OCaml robust implementation, and
+  not by the end application, which may embed an out-of-date zlib.
+\end{itemize}
+\end{itemize}
+
+
+
+\section{Conclusion}
+
+For our needs, we wrote several parsers to analyse a lot of SSL/TLS
+data. As the collected messages were sometimes corrupted or invalid,
+standard tools did not allow for sound and robust
+dissection. Parsifal, an OCaml-based parsing engine, allowed us to
+gain insight into several important protocols. Parsifal also proved to
+be versatile and might be useful to the security community to write
+efficient and robust binary dissectors.
+
+The tutorial proposed aims at presenting the tool and illustrating its
+benefits on two simple cases: DNS message interpretation and PNG
+structure sanitization.
+
+
+\bibliographystyle{unsrt}
+\bibliography{biblio,rfc}
+
+\end{document}
