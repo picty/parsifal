@@ -1,5 +1,5 @@
 \documentclass{article}
-\usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+\usepackage[left=2.5cm,right=2.5cm,top=2cm,bottom=2cm]{geometry}
 \usepackage[latin1]{inputenc}
 \usepackage[T1]{fontenc}
 
@@ -14,6 +14,7 @@
 
 \title{Parsifal: writing efficient and robust binary parsers, quickly}
 \author{Olivier Levillain}
+\date{}
 
 
 \begin{document}
@@ -53,23 +54,23 @@ will then be used to begin a PNG sanitizer.
 
 In 2010, the EFF scanned the Internet to find out how servers
 worldwide answered on the 443/TCP port~\cite{eff-observatory,
-  eckersley-obs1, eckersley-obs2}. We studied this important amount of
-data with custom tools, to gain thorough insight of the data
+  eckersley-obs1, eckersley-obs2}. We studied this significant amount
+of data with custom tools, to gain thorough insight of the data
 collected~\cite{acsac2012}.
 
-Our first attempt to write a SSL parser was in Python, which was
+Our first attempt to write a SSL parser was in Python, and was
 quickly written and allowed us to extract some information. However,
-this implementation was fondamently slow. The second parser was in
+this implementation was fundamentally slow. The second parser was in
 C++, using templates and object-oriented programming; its goal was to
 be flexible and fast. Yet, the code was hard to debug, and contained
 too many lines.
 
 So a new version was written, in OCaml: it used a DSL\footnote{Domain
   Specific Language.} close to Python to describe the structures
-studied. This third parser was as fast as the previous one, less
+to be studied. This third parser was as fast as the previous one, less
 error-prone, but still needed a lot of lines to code simple
 features. That is why we decided to use a preprocessor to do most of
-the work, letting the programmer only deal with what's important:
+the work, letting the programmer deal only with what's important:
 structure description. This last implementation, Parsifal, had all the
 properties expected: efficient and robust parsers, written using few
 lines of code.
@@ -79,7 +80,7 @@ but we soon tried Parsifal on other network protocols (BGP/MRT, DNS,
 TCP/IP stack, Kerberos) and on some file formats (TAR, PE, PCAP,
 PNG). Some of these parsers are still at an early stage, but one of
 the strength of Parsifal is that it is easy to describe part of a
-protocol, only to insist on what really needs to be dissected.
+protocol, and insist only on what really needs to be dissected.
 
 
 
@@ -96,7 +97,7 @@ augmented by the presence of some manipulation functions: a PType
   that is dumping a binary representation out of a constructed type
   \texttt{t};
 \item a \texttt{value\_of\_t} function, to translate a constructed
-  type \texttt{t} into an abstrace representation, which can then be
+  type \texttt{t} into an abstract representation, which can then be
   printed, exported as JSON, or analysed using generic functions.
 \end{itemize}
 
@@ -120,7 +121,7 @@ figure~\ref{fig:tls-generated-code}.
 
 
 \begin{figure}[p]
-  \begin{center}\begin{minipage}{.32\linewidth}
+  \begin{center}\begin{minipage}{.35\linewidth}
     {\scriptsize
     \begin{verbatim}
 enum { warning(1), fatal(2), (255) } AlertLevel;
@@ -145,7 +146,7 @@ struct {
 
 
 \begin{figure}[p]
-  \begin{center}\begin{minipage}{.52\linewidth}
+  \begin{center}\begin{minipage}{.56\linewidth}
     \begin{lstlisting}
 enum tls_alert_level (8, UnknownVal AL_Unknown) =
   | 1 -> AL_Warning, "Warning"
@@ -168,7 +169,7 @@ struct tls_alert = {
 
 
 \begin{figure}[p]
-  \begin{center}\begin{minipage}{.61\linewidth}
+  \begin{center}\begin{minipage}{.65\linewidth}
     \begin{lstlisting}
 (* tls_alert_level *)
 
@@ -219,7 +220,7 @@ The constructions available in Parsifal are:
 \begin{itemize}
 \item enumerations (\texttt{enum} keyword);
 \item records, possibly containing bit fields (\texttt{struct});
-\item choices, allowing for types depending of a parameter (\texttt{union});
+\item choices, allowing for types depending on a parameter (\texttt{union});
 \item ASN.1 DER structures and choices (\texttt{asn1\_struct} and \texttt{asn1\_union});
 \item aliases (\texttt{alias} and \texttt{asn1\_alias}).
 \end{itemize}
@@ -227,7 +228,7 @@ The constructions available in Parsifal are:
 
 \subsection{Examples of base PTypes}
 
-Parsifal already understand some basic types: integers, string,
+Parsifal already understands some basic types: integers, string,
 IPv4/IPv6, lists, arrays, \emph{magic} numbers, and ASN.1 basic
 objects.
 
@@ -251,15 +252,15 @@ to wrap a PType using some processing. Here are some examples:
 The idea of the core library is to provide most of the basic types and
 transformations used in protocols and file formats.
 
-One of the advantages of Parsifal is that it is easy to implement
-partially a protocol to only interpret the useful cases. It also
+One of the advantages of Parsifal is that it is easy to partially
+implement a protocol to only interpret the useful cases. It also
 allows for a progressive description of a format.
 
 As our initial goal was to handle a lot of data, including corrupted
-messages or data non conform to the specification, it is possible to
+messages or data not conforming to the specification, it is possible to
 implement either strict parsers or flexible ones. This proves useful
 for example when dissecting X.509 corrupted fields: an error deep in
-the certificate does not necessarily invalidates the whole certificate
+the certificate does not necessarily invalidate the whole certificate
 nor the TLS message containing it.
 
 
@@ -274,7 +275,7 @@ Parsifal allows for better perfomance when compiled to native
 binaries. In our experience, it is as efficient as corresponding C
 implementations\footnote{For example, the time needed to parse
   certificates is comparable with the \texttt{openssl x509}
-  command.}. What's more, OCaml is a well-defined sound language which
+  command.}. What's more, OCaml is a well-defined, sound language which
 brings some safety guarantees regarding memory management that C does
 not.
 
@@ -291,13 +292,13 @@ bitsrings, which is only a part of the types handled by our tool.
 Parsifal has already been presented internally and a version of this
 tutorial has been used to teach several people to using Parsifal. The
 overall tutorial was given over a 3-hour session. The content would
-consist on several parts, quickly described in the following sections.
+consist of several parts, quickly described in the following sections.
 
 
 
 \subsection{Parsifal presentation}
 
-As was done in this short paper, the tuorials begins with a brief
+As was done in this short paper, the tutorial begins with a brief
 history of the project, and the motivation for writing robust and
 efficient parsers.
 
@@ -314,14 +315,14 @@ Parsifal source code from the public repository on GitHub
 (\url{https://github.com/ANSSI-FR/parsifal}), installing it and using
 it to write parsers step-by-step.
 
-The people of the audience interested in manipulating on their
+Members of the audience interested in manipulating on their
 computers would have to install the OCaml languages and the libraries
 on which Parsifal depends.
 
 
 \subsection{DNS step-by-step}
 
-The first parser proposed for the tuorial is DNS, which is a rather
+The first parser proposed for the tutorial is DNS, which is a rather
 simple protocol, but contains some subtleties. That is why it is a
 good candidate to begin using Parsifal.
 
@@ -337,7 +338,7 @@ follows:
   requests and responses;
 \end{itemize}
 \item progressive specification of the ressource records (A, CNAME,
-  MX) using an union;
+  MX) using a union;
 \item custom rewrite of labels and domains to handle the compression;
 \item implementation of the UDP connexion
 \begin{itemize}
@@ -359,10 +360,10 @@ of the implementation would be:
 \item[-] it is also possible to write a basic PNG filter, rewriting
   the file without the comment chunks (\texttt{tEXt} for example);
 \end{itemize}
-\item rewrite of the chunk container to generate automatically the
+\item rewrite of the chunk container to automatically generate the
   length and the CRC when dumping the chunk;
 \item as for DNS resource records, it is possible to use a union to
-  describe progressively the different chunk types, starting with the
+  progressively describe the different chunk types, starting with the
   mandatory ones (IHDR, PLTE, IDAT and IEND);
 \begin{itemize}
 \item[-] at this point, it is possible to write a simple PNG sanitizer
@@ -385,7 +386,7 @@ gain insight into several important protocols. Parsifal also proved to
 be versatile and might be useful to the security community to write
 efficient and robust binary dissectors.
 
-The tutorial proposed aims at presenting the tool and illustrating its
+The proposed tutorial aims at presenting the tool and illustrating its
 benefits on two simple cases: DNS message interpretation and PNG
 structure sanitization.
 
