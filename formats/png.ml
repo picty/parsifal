@@ -41,6 +41,8 @@ enum pixel_physical_unit (8, UnknownVal UnknownPixelPhysicalUnit) =
 
 alias color_definition = array(3) of uint8
 alias truecolor_definition = array(3) of uint16
+alias rgb_aplha_eight_bit = array(4) of uint8
+alias rgb_alpha_sixteen_bit = array(4) of uint16
 
 
 
@@ -79,7 +81,7 @@ struct image_header [param ctx] = {
 
 
 (* Image Data can not be treated as a chunk, since we must wait for *)
-(* the concatenation of IDAT chunks to uncomress the zlib container *)
+(* the concatenation of IDAT chunks to uncompress the zlib container *)
 
 
 
@@ -92,7 +94,7 @@ union image_transparency_type [enrich] (UnparsedChunkContent) =
 | Grayscale -> GrayscaleTransparency of uint16
 | Truecolor -> TruecolorTransparency of truecolor_definition
 | Indexedcolor -> IndexedcolorTransparency of list of uint8
-  (* One for each palette entry (default is 0xff [opaque] for the remaining) *)
+(* One for each palette entry (default is 0xff [opaque] for the remaining) *)
 
 
 (* Image Chromaticity *)
@@ -110,11 +112,10 @@ struct image_chromaticity = {
 
 
 (* Image embedded ICC profile *)
-(* TODO: should be uncompressed *)
 struct image_embedded_profile = {
-  embedded_profile_name : cstring;
+  embedded_profile_name : length_constrained_container(AtMost 80) of cstring;
   embedded_profile_compression_method : uint8;
-  _embedded_profile_compress : binstring;
+  embedded_profile_compress : ZLib.zlib_container of string;
 }
 
 
@@ -144,7 +145,6 @@ let value_of_image_textual_data t = VString (t.key_word ^ ": " ^ t.text, false)
 
 
 (* Image compressed textual data - Latin-1 *)
-(* TODO: Uncompress *)
 struct image_compressed_textual_data = {
   key_word : length_constrained_container(AtMost 80) of cstring;
   textual_compression_method : uint8;
@@ -165,6 +165,8 @@ struct image_international_textual_data = {
   text : string;
 }
 
+let value_of_image_international_textual_data t = VString (t.language_tag ^ "- " ^ t.key_word ^  "/" ^ t.translated_keyword ^ ": " ^ t.text, false)
+
 
 (* Image background color - background to apply *)
 union image_background_color_type [enrich] (UnparsedChunkContent) =
@@ -183,15 +185,27 @@ struct image_physical_pixel_dimension = {
 }
 
 (* Image suggested palette - used by the system when truecolor is not supported *)
-(*struct image_suggested_palette = {
+
+(*TODO: Shortest code for sPLT ?*)
+struct image_suggested_palette_list_8 = {
+  rgb : rgb_aplha_eight_bit;
+  frequency_channel : uint16;
+}
+
+struct image_suggested_palette_list_16 = {
+  rgb : rgb_alpha_sixteen_bit;
+  frequency_channel : uint16;
+}
+
+union image_suggested_palette_list [enrich] (UnparsedChunkContent) =
+| 0x08 -> ImageSuggestedPaletteList8 of image_suggested_palette_list_8
+| 0x10 -> ImageSuggestedPaletteList16 of image_suggested_palette_list_16
+
+struct image_suggested_palette = {
   palette_name : cstring;
-  bitdepth : uint8; (* 8 or 16 *)
-  red_composante : (* Depends on bitdepth: 1 or 2 bytes *)
-  green_composante : (* Depends on bitdepth: 1 or 2 bytes *)
-  blue_composante : (* Depends on bitdepth: 1 or 2 bytes *)
-  alpha_composante : (* Depends on bitdepth: 1 or 2 bytes *)
-  color_frequency : uint16;
-}*)
+  sampledepthsPLT : uint8;
+  sub_palette : list of image_suggested_palette_list (sampledepthsPLT);
+}
 
 
 (* Image time - Last modification date *)
@@ -225,7 +239,7 @@ union chunk_content [enrich;param ctx] (UnparsedChunkContent) =
 | "IDAT" -> ImageData of binstring
 | "IEND" -> ImageEnd
 | "PLTE" -> ImagePalette of list of color_definition
-| "gAMA" -> ImageGama of uint32 (* Image Gama - TODO: this should be divided by 10000 *)
+| "gAMA" -> ImageGama of uint32
 | "tRNS" -> ImageTransparency of image_transparency_type(ctx.ihdr_color_type)
 | "cHRM" -> ImageChromaticity of image_chromaticity
 | "iCCP" -> ImageEmbeddedProfile of image_embedded_profile
@@ -237,7 +251,7 @@ union chunk_content [enrich;param ctx] (UnparsedChunkContent) =
 | "bKGD" -> ImageBackgroundClour of image_background_color_type(ctx.ihdr_color_type)
 | "hIST" -> ImageHistogramme of list of uint16
 | "pHYs" -> ImagePhysicalPixelDimensions of image_physical_pixel_dimension
-(*| "sPLT" -> ImageSuggestedPalette of image_suggested_palette*)
+| "sPLT" -> ImageSuggestedPalette of image_suggested_palette
 | "tIME" -> ImageTime of image_time
 
 
