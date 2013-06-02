@@ -1,5 +1,5 @@
 LIBDIRS=syntax core net formats ssl kerby
-DIRS=net-tools ssl-tools tools
+DIRS=net-tools ssl-tools tools pci
 CHECK_DIRS=core/test core/unit net/test formats/test ssl/test
 
 all: libs
