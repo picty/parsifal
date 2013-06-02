@@ -103,6 +103,32 @@ let dump_uint24 buf v =
 let value_of_uint24 i = VInt (i, 24, BigEndian)
 
 
+type uint24le = int
+
+let parse_uint24le input =
+  if input.cur_offset + 3 <= input.cur_length then begin
+    let res =
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 2]) lsl 16) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset + 1]) lsl 8) lor
+      (int_of_char (input.str.[input.cur_base + input.cur_offset]))
+    in
+    input.cur_offset <- input.cur_offset + 3;
+    res
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
+
+let lwt_parse_uint24le input =
+  lwt_really_read input 3 >>= fun s ->
+  return (((int_of_char s.[2]) lsl 16) lor
+    ((int_of_char s.[1]) lsl 8) lor (int_of_char s.[0]))
+
+let dump_uint24le buf v =
+  POutput.add_byte buf ((v lsr 16) land 0xff);
+  POutput.add_byte buf ((v lsr 8) land 0xff);
+  POutput.add_byte buf (v land 0xff)
+
+let value_of_uint24le i = VInt (i, 24, BigEndian)
+
+
 
 type uint32 = int (* TODO? *)
 
