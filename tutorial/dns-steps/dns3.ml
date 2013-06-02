@@ -67,7 +67,7 @@ let value_of_domain d =
   VRecord [
     "@name", VString ("domain", false);
     "@string_of", VString (String.concat "." content, false);
-    "content", VList (List.map (value_of_string false) content)
+    "content", VList (List.map value_of_string content)
   ]
 
 

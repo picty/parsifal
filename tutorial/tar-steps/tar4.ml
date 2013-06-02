@@ -24,7 +24,7 @@ let parse_tar_numstring len input =
   with _ -> raise (ParsingException (CustomException "int_of_string", _h_of_si input))
 
 let dump_tar_numstring len buf v =
-  Printf.bprintf buf "%*.*o\x00" len len v
+  POutput.bprintf buf "%*.*o\x00" len len v
 
 let value_of_tar_numstring v = VSimpleInt v
 

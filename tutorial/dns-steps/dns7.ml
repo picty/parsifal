@@ -90,7 +90,7 @@ let rec dump_domain ctx buf = function
       try
 	dump_domain ctx buf (DomainPointer (Hashtbl.find ctx.reverse_resolver d))
       with Not_found ->
-	Hashtbl.replace ctx.reverse_resolver d (Buffer.length buf - ctx.output_offset);
+	Hashtbl.replace ctx.reverse_resolver d (POutput.length buf - ctx.output_offset);
 	dump_varlen_string dump_uint8 buf l;
 	dump_domain ctx buf r
     end else begin
@@ -108,7 +108,7 @@ let value_of_domain d =
   VRecord [
     "@name", VString ("domain", false);
     "@string_of", VString (String.concat "." content, false);
-    "content", VList (List.map (value_of_string false) content)
+    "content", VList (List.map value_of_string content)
   ]
 
 
