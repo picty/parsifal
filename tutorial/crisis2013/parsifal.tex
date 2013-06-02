@@ -16,7 +16,6 @@
 \author{Olivier Levillain}
 \date{}
 
-
 \begin{document}
 
 \maketitle
@@ -48,6 +47,13 @@ tutorial is to present Parsifal and to use it to write a network
 protocol parser (DNS) and a file format parser (PNG). The PNG parser
 will then be used to begin a PNG sanitizer.
 
+\medskip
+
+Olivier Levillain is head of the Network and Protocols Laboratory at
+the French Network and Information Security Agency (ANSSI). His
+current research interests are web browser security, network protocols
+(SSL/TLS in particular) and the (in)adequation of programming
+languages to security goals.
 
 
 \section{Project history}
@@ -216,14 +222,12 @@ val value_of_tls_alert : tls_alert -> value
 \end{figure}
 
 
-The constructions available in Parsifal are:
-\begin{itemize}
-\item enumerations (\texttt{enum} keyword);
-\item records, possibly containing bit fields (\texttt{struct});
-\item choices, allowing for types depending on a parameter (\texttt{union});
-\item ASN.1 DER structures and choices (\texttt{asn1\_struct} and \texttt{asn1\_union});
-\item aliases (\texttt{alias} and \texttt{asn1\_alias}).
-\end{itemize}
+The constructions available in Parsifal are enumerations
+(\texttt{enum} keyword), records (\texttt{struct}), choices allowing
+for types depending on a parameter (\texttt{union}), ASN.1 DER
+structures and choices (\texttt{asn1\_struct} and
+\texttt{asn1\_union}) and aliases (\texttt{alias} and
+\texttt{asn1\_alias}).
 
 
 \subsection{Examples of base PTypes}
@@ -233,28 +237,21 @@ IPv4/IPv6, lists, arrays, \emph{magic} numbers, and ASN.1 basic
 objects.
 
 Moreover, Parsifal provides an abstraction, the containers, allowing
-to wrap a PType using some processing. Here are some examples:
-\begin{itemize}
-\item \texttt{container(n) of t} reads \texttt{n} bytes and expects a
-  \texttt{t} object inside those bytes;
-\item \texttt{container[uint8] of t} consists of a byte \texttt{n},
-  which is the length of the container;
-\item \texttt{base64\_container} and \texttt{hex\_container} allow to
-  work with encoded types transparently;
-\item \texttt{deflate\_container} and \texttt{zlib\_container}
-  uncompress the output when parsing and compress when dumping;
-\item \texttt{pkcs1\_container} to decrypt the content of a PKCS\#1
-  value and read the enclosed type when given the corresponding
-  key\footnote{This proved to be useful to process smoothly Kerberos
-    PKINIT messages.}.
-\end{itemize}
+to wrap a PType using some processing. For example,
+\texttt{base64\_container} and \texttt{hex\_container} allow to work
+with encoded types transparently; \texttt{deflate\_container} and
+\texttt{zlib\_container} uncompress the output when parsing and
+compress when dumping. Finally, \texttt{pkcs1\_container} are an
+elegant way to decrypt the content of a PKCS\#1 value and read the
+enclosed type when given the corresponding key during parsing
+type\footnote{This proved to be useful to process smoothly Kerberos
+  PKINIT messages.}.
 
 The idea of the core library is to provide most of the basic types and
-transformations used in protocols and file formats.
-
-One of the advantages of Parsifal is that it is easy to partially
-implement a protocol to only interpret the useful cases. It also
-allows for a progressive description of a format.
+transformations used in protocols and file formats. One of the
+advantages of Parsifal is that it is easy to partially implement a
+protocol to only interpret the useful cases. It also allows for a
+progressive description of a format.
 
 As our initial goal was to handle a lot of data, including corrupted
 messages or data not conforming to the specification, it is possible to
@@ -287,18 +284,28 @@ bitsrings, which is only a part of the types handled by our tool.
 
 
 
-\section{Tutorial outline}
+\section{Tutorial goals and outline}
 
 Parsifal has already been presented internally and a version of this
 tutorial has been used to teach several people to using Parsifal. The
-overall tutorial was given over a 3-hour session. The content would
-consist of several parts, quickly described in the following sections.
+overall tutorial was given over a 3-hour session.
 
+The tutorial is intended for developpers and researchers who need to
+manipulate complex binary file formats or network protocols. The
+audience would need a basic background in functional programming
+(OCaml language preferably).
+
+There are three main goals for this tutorial:
+\begin{itemize}
+\item learn to use basic Parsifal constructions;
+\item write a simple DNS client;
+\item code a PNG sanitizer
+\end{itemize}
 
 
 \subsection{Parsifal presentation}
 
-As was done in this short paper, the tutorial begins with a brief
+As was done in this presentation, the tutorial begins with a brief
 history of the project, and the motivation for writing robust and
 efficient parsers.
 
