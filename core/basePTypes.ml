@@ -264,6 +264,11 @@ let lwt_parse_string n input = lwt_really_read input n
 let dump_string buf s = POutput.add_string buf s
 let value_of_string s = VString (s, false)
 
+let peek_string n input =
+  if input.cur_offset + n <= input.cur_length
+  then String.sub input.str (input.cur_base + input.cur_offset) n
+  else raise (ParsingException (OutOfBounds, _h_of_si input))
+
 
 type binstring = string
 let parse_binstring = parse_string
