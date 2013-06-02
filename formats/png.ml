@@ -4,25 +4,6 @@ open PTypes
 open BasePTypes
 
 
-(* TODO: Maybe this PType should be moved into parsifal_core? *)
-(* azt_string reads a string until a null character arises *)
-type azt_string = string
-
-(* TODO: Use a buffer instead *)
-let rec parse_azt_string input =
-  let next_char = parse_uint8 input in
-  if next_char = 0
-  then ""
-  else (String.make 1 (char_of_int next_char)) ^ (parse_azt_string input)
-
-let dump_azt_string buf s =
-  POutput.add_string buf s;
-  POutput.add_char buf '\x00'
-
-let value_of_azt_string s = VString (s, false)
-
-
-
 (***********************************)
 (* Enumerations and useful aliases *)
 (***********************************)
@@ -131,7 +112,7 @@ struct image_chromaticity = {
 (* Image embedded ICC profile *)
 (* TODO: should be uncompressed *)
 struct image_embedded_profile = {
-  embedded_profile_name : azt_string;
+  embedded_profile_name : cstring;
   embedded_profile_compression_method : uint8;
   _embedded_profile_compress : binstring;
 }
@@ -155,7 +136,7 @@ struct image_standard_rgb_profile = {
 
 (* Image textual data - Latin-1 *)
 struct image_textual_data = {
-  key_word : length_constrained_container(AtMost 80) of azt_string;
+  key_word : length_constrained_container(AtMost 80) of cstring;
   text : string;
 }
 
@@ -165,7 +146,7 @@ let value_of_image_textual_data t = VString (t.key_word ^ ": " ^ t.text, false)
 (* Image compressed textual data - Latin-1 *)
 (* TODO: Uncompress *)
 struct image_compressed_textual_data = {
-  key_word : length_constrained_container(AtMost 80) of azt_string;
+  key_word : length_constrained_container(AtMost 80) of cstring;
   textual_compression_method : uint8;
   text_compress : ZLib.zlib_container of string;
 }
@@ -176,18 +157,18 @@ let value_of_image_compressed_textual_data t = VString (t.key_word ^ ": " ^ t.te
 (* Image international textual data *)
 (* String: ...UTF-8... ? *)
 struct image_international_textual_data = {
-  key_word : length_constrained_container(AtMost 80) of azt_string;
+  key_word : length_constrained_container(AtMost 80) of cstring;
   compression_flag : compression_flag;
   compression_method : compression_method;
-  language_tag : azt_string;
-  translated_keyword : azt_string;
+  language_tag : cstring;
+  translated_keyword : cstring;
   text : string;
 }
 
 
 (* Image background color - background to apply *)
 union image_background_color_type [enrich] (UnparsedChunkContent) =
-| Grayscale -> GrayscaleBackgroundColor of uint16 (* the value uses 16 bits but only some of them may be signifiant *)
+| Grayscale -> GrayscaleBackgroundColor of uint16      (* the value uses 16 bits but only some of them may be signifiant *)
 | Truecolor -> TruecolorBackgroundColor of truecolor_definition
 | Indexedcolor -> IndexedcolorBackgroundColor of uint8 (* Palette index *)
 | GrayscaleWithAlphaChannel -> GrayscaleWithAlphaChannelBackgroundColor of uint16
@@ -203,7 +184,7 @@ struct image_physical_pixel_dimension = {
 
 (* Image suggested palette - used by the system when truecolor is not supported *)
 (*struct image_suggested_palette = {
-  palette_name : azt_string;
+  palette_name : cstring;
   bitdepth : uint8; (* 8 or 16 *)
   red_composante : (* Depends on bitdepth: 1 or 2 bytes *)
   green_composante : (* Depends on bitdepth: 1 or 2 bytes *)
@@ -244,7 +225,7 @@ union chunk_content [enrich;param ctx] (UnparsedChunkContent) =
 | "IDAT" -> ImageData of binstring
 | "IEND" -> ImageEnd
 | "PLTE" -> ImagePalette of list of color_definition
-| "gAMA" -> ImageGama of uint32 (*Image Gama -TODO: controle 4 octets - divisé par 10000*)
+| "gAMA" -> ImageGama of uint32 (* Image Gama - TODO: this should be divided by 10000 *)
 | "tRNS" -> ImageTransparency of image_transparency_type(ctx.ihdr_color_type)
 | "cHRM" -> ImageChromaticity of image_chromaticity
 | "iCCP" -> ImageEmbeddedProfile of image_embedded_profile

@@ -79,6 +79,9 @@ let value_of_magic s = VString (s, true)
 
 (* Null Terminated Strings *)
 
+(* nt_string(len) reads a string(len) unless a null character arises, *)
+(* then it checks the remaining characters are null ones.             *)
+
 type nt_string = string
 
 let parse_nt_string len input =
@@ -100,6 +103,31 @@ let dump_nt_string len buf s =
   POutput.add_string buf (String.make missing_len '\x00')
 
 let value_of_nt_string s = VString (s, false)
+
+
+(* cstring reads a string until a null character arises *)
+
+type cstring = string
+
+let parse_cstring input =
+  let res = Buffer.create 1024 in
+  let rec aux buf input =
+    let next_char = parse_uint8 input in
+    if next_char <> 0
+    then begin
+      Buffer.add_char buf (char_of_int next_char);
+      aux buf input
+    end
+  in
+  aux res input;
+  Buffer.contents res
+
+let dump_cstring buf s =
+  POutput.add_string buf s;
+  POutput.add_char buf '\x00'
+
+let value_of_cstring s = VString (s, false)
+
 
 
 
