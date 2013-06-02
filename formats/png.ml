@@ -262,16 +262,42 @@ union chunk_content [enrich;param ctx] (UnparsedChunkContent) =
 
 
 (* Chunk definition, with a context *)
-struct chunk [param ctx] = {
-  chunk_size : uint32;
-  chunk_type : string(4);
-  chunk_data : container(chunk_size) of chunk_content(ctx;chunk_type);
-  chunk_crc : uint32;
+type png_chunk = {
+  chunk_type : string;
+  chunk_data : chunk_content;
 }
+
+let parse_png_chunk ctx input =
+  let chunk_size = parse_uint32 input in
+  let chunk_raw_data = peek_string (chunk_size + 4) input in
+  let chunk_type = parse_string 4 input in
+  let chunk_data = parse_container chunk_size (parse_chunk_content ctx chunk_type) input in
+  let chunk_crc = parse_string 4 input in
+  let computed_crc = Crc.crc32 chunk_raw_data in
+  if computed_crc <> chunk_crc then emit_parsing_exception false (CustomException "Invalid CRC") input;
+  { chunk_type = chunk_type; chunk_data = chunk_data }
+
+let dump_png_chunk buf chunk =
+  let tmp_output = POutput.create () in
+  dump_chunk_content tmp_output chunk.chunk_data;
+  let len = POutput.length tmp_output in
+  let crc = Crc.crc32 (chunk.chunk_type ^ (POutput.contents tmp_output)) in
+  dump_uint32 buf len;
+  POutput.add_string buf chunk.chunk_type;
+  POutput.add_output buf tmp_output;
+  POutput.add_string buf crc
+
+let value_of_png_chunk chunk =
+  VRecord [
+    "@name", VString ("png_chunk", false);
+    "type", VString (chunk.chunk_type, false);
+    "data", VLazy (lazy (value_of_chunk_content chunk.chunk_data));
+  ]
+
 
 (* PNG global structure *)
 struct png_file = {
   parse_checkpoint ctx : png_context;
   png_magic : magic("\x89\x50\x4e\x47\x0d\x0a\x1a\x0a");
-  chunks : list of chunk(ctx);
+  chunks : list of png_chunk(ctx);
 }
