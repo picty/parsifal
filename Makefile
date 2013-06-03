@@ -12,6 +12,7 @@ all:
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C kerby all byte
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net-tools all
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl-tools all
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C tools all
 
 install::
 	$(MAKE) -C syntax install
@@ -25,8 +26,10 @@ install::
 	$(MAKE) -C ssl/test install
 	$(MAKE) -C net-tools install
 	$(MAKE) -C ssl-tools install
+	$(MAKE) -C tools install
 
 clean:
+	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C tools clean
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C ssl-tools clean
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C net-tools clean
 	OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C kerby clean
