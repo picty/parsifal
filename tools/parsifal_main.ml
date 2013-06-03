@@ -1,11 +1,15 @@
 open Parsifal
 open BasePTypes
 open PTypes
-open X509
 open Getopt
 
 
-let parser_type = ref ""
+(* TODO:
+   - Improve ASN.1 display
+   - Allow for multiple -g options
+*)
+
+let parser_type = ref "binstring"
 type container = NoContainer | HexContainer | Base64Container
 let container = ref NoContainer
 
@@ -59,7 +63,8 @@ let type_handlers : (string, string_input -> value) Hashtbl.t = Hashtbl.create 1
 let _ =
   Hashtbl.add type_handlers "string" (fun i -> value_of_string (parse_rem_string i));
   Hashtbl.add type_handlers "binstring" (fun i -> value_of_binstring (parse_rem_string i));
-  Hashtbl.add type_handlers "x509" (fun i -> value_of_certificate (parse_certificate i));
+  Hashtbl.add type_handlers "x509" (fun i -> X509.value_of_certificate (X509.parse_certificate i));
+  Hashtbl.add type_handlers "asn1" (fun i -> Asn1PTypes.value_of_der_object (Asn1PTypes.parse_der_object i));
   ()
 
 
