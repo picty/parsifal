@@ -42,9 +42,9 @@
 
   \item Les \textit{parser} binaires sont une brique de base de toute
     implémentation
-  \item En 2012, quelques vulnérabilités liées à des \textit{parsers}
+  \item Quelques vulnérabilités liées à des \textit{parsers}
     \begin{itemize}
-    \item \texttt{libpng}: CVE-2011-3045 et CVE-2011-3026 %\TODO{2011 à changer!}
+    \item \texttt{libpng}: CVE-2011-3045 et CVE-2011-3026
     \item \texttt{libtiff}: CVE-2012-5581, CVE-2012-4447 et CVE-2012-1173
     \item \texttt{wireshark}: CVE-2012-4048, CVE-2012-4296...
     \end{itemize}
@@ -55,18 +55,19 @@
 \begin{frame}{Outils existants pour analyser des formats binaires}
   \begin{itemize}
   \item Wireshark
-  \item Scapy\\[.5cm]
+  \item Scapy
+  \item Hachoir\\[.5cm]
 
   \item Avantages
     \begin{itemize}
     \item outils existants
-    \item de nombreux protocoles réseau déjà implémentés
-    \item Scapy très facilement extensible\\[.5cm]
+    \item de nombreux protocoles réseau et formats de fichiers déjà implémentés
+    \item Scapy (et Hachoir) facilement extensible\\[.5cm]
     \end{itemize}
 
   \item Limitations
     \begin{itemize}
-    \item outils limités au réseau
+    \item deux outils sont limités au réseau
     \item Wireshark difficile à étendre
     \item lenteur du python
     \end{itemize}
