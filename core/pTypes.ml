@@ -213,7 +213,7 @@ let extract_4bits input =
 
 let hexparse input =
   let len = input.cur_length - input.cur_offset in
-  if len mod 2 <> 1 then raise (ParsingException (InvalidHexString "odd-length string", _h_of_si input));
+  if len mod 2 <> 0 then raise (ParsingException (InvalidHexString "odd-length string", _h_of_si input));
   let res = String.make (len / 2) ' ' in
   for i = 0 to (len / 2) - 1 do
     let hibits = extract_4bits input in
