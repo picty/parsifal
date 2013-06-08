@@ -1,5 +1,5 @@
 # configurable section
-TARGETS = png1 png2 png3 png4 png5 # png6 # png7
+TARGETS = png1 png2 png3 png4 png5 png6 # png7
 
 png1_SRCS := png1.ml
 png2_SRCS := png2.ml
