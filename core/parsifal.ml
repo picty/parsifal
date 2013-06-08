@@ -895,9 +895,9 @@ let get_file_content filename =
     close_in fd;
     raise e
 
-let string_input_of_filename filename =
+let string_input_of_filename ?verbose:(verbose=false) ?enrich:(enrich=DefaultEnrich) filename =
   let content = get_file_content filename in
-  input_of_string filename content
+  input_of_string ~verbose:(verbose) ~enrich:(enrich) filename content
 
 let wrap f () =
   try return (f ())
