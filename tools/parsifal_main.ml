@@ -33,6 +33,7 @@ let path = ref ""
 
 let type_list = ref false
 let input_in_args = ref false
+let multiple_values = ref false
 
 
 let options = [
@@ -43,6 +44,7 @@ let options = [
   mkopt (Some 'L') "list-types" (Set type_list) "prints the list of supported types";
 
   mkopt (Some 'i') "input-args" (Set input_in_args) "consider args as data, not filenames";
+  mkopt (Some 'm') "multiple-values" (Set multiple_values) "each argument is in fact a sequence of values to parse";
 
   mkopt (Some 'a') "all" (TrivialFun (fun () -> action := All)) "show all the information";
   mkopt (Some 'g') "get" (StringFun (fun s -> action := Get; path := s; ActionDone)) "select the info to extract";
@@ -65,6 +67,10 @@ let _ =
   Hashtbl.add type_handlers "binstring" (fun i -> value_of_binstring (parse_rem_string i));
   Hashtbl.add type_handlers "x509" (fun i -> X509.value_of_certificate (X509.parse_certificate i));
   Hashtbl.add type_handlers "asn1" (fun i -> Asn1PTypes.value_of_der_object (Asn1PTypes.parse_der_object i));
+  Hashtbl.add type_handlers "png" (fun i -> Png.value_of_png_file (Png.parse_png_file i));
+  Hashtbl.add type_handlers "pe" (fun i -> Pe.value_of_pe_file (Pe.parse_pe_file i));
+  Hashtbl.add type_handlers "tar" (fun i -> Tar.value_of_tar_file (Tar.parse_tar_file i));
+  Hashtbl.add type_handlers "answer_dump" (fun i -> AnswerDump.value_of_answer_dump (AnswerDump.parse_answer_dump i));
   ()
 
 
@@ -75,14 +81,17 @@ let show_type_list error =
   usage "perceval" options error
 
 
-let parse_value input =
-  try
-    let raw_parse_fun = Hashtbl.find type_handlers !parser_type in
-    let parse_fun = match !container with
-      | NoContainer -> raw_parse_fun
-      | HexContainer -> parse_hex_container raw_parse_fun
-      | Base64Container -> Base64.parse_base64_container Base64.AnyHeader raw_parse_fun
-    in
+let mk_parse_value () =
+  let parse_fun =
+    try
+      let raw_parse_fun = Hashtbl.find type_handlers !parser_type in
+      match !container with
+	| NoContainer -> raw_parse_fun
+	| HexContainer -> parse_hex_container raw_parse_fun
+	| Base64Container -> Base64.parse_base64_container Base64.AnyHeader raw_parse_fun
+    with
+      Not_found -> show_type_list (Some "parser type not found.")
+  in fun input ->
     let v = parse_fun input in
     match !action with
     | All -> print_endline (print_value ~verbose:!verbose v)
@@ -91,18 +100,17 @@ let parse_value input =
       match get v !path with
       | Left err -> if !verbose then prerr_endline err
       | Right s -> print_endline s
-  with
-    Not_found -> show_type_list (Some "parser type not found.")
 
 
 let handle_stdin () = failwith "Not implemented"
-let handle_filename filename = string_input_of_filename filename
-let handle_inline data = input_of_string "(inline)" data
+let handle_filename filename = string_input_of_filename ~verbose:(!verbose) ~enrich:(!enrich_style) filename
+let handle_inline data = input_of_string ~verbose:!verbose ~enrich:!enrich_style "(inline)" data
 
 
 let _ =
   try
     let args = parse_args ~progname:"perceval" options Sys.argv in
+    let parse_value = mk_parse_value () in
     if !type_list then show_type_list None;  
     begin
       match args with
@@ -115,7 +123,10 @@ let _ =
 	in
 	let handle_one_input s =
 	  let input = f s in
-	  parse_value input
+	  parse_value input;
+	  while (!multiple_values) && not (eos input) do
+	    parse_value input
+	  done;
 	in
 	List.iter handle_one_input l
     end;
