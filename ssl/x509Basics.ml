@@ -154,7 +154,7 @@ let subjectPublicKeyType_of_algo algo =
     f algo.algorithmParams
   with Not_found -> SPK_Unknown
 
-union subjectPublicKey [enrich] (UnparsedPublicKey of der_object) =
+union subjectPublicKey [enrich] (UnparsedPublicKey of binstring) =
   | SPK_DSA _params -> DSA of DSAKey.dsa_public_key
   | SPK_DH _params -> DH of DHKey.dh_public_key
   | SPK_RSA -> RSA of RSAKey.rsa_public_key
