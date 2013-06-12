@@ -10,7 +10,7 @@ open Getopt
 *)
 
 let parser_type = ref "binstring"
-type container = NoContainer | HexContainer | Base64Container
+type container = NoContainer | HexContainer | Base64Container | PcapTCPContainer of int | PcapUDPContainer of int
 let container = ref NoContainer
 
 let verbose = ref false
@@ -52,6 +52,8 @@ let options = [
 
   mkopt (Some 'B') "base64" (TrivialFun (fun () -> container := Base64Container)) "the data is first decoded as base64";
   mkopt (Some 'H') "hex" (TrivialFun (fun () -> container := HexContainer)) "the data is first decoded as hexa";
+  mkopt None "pcap-tcp" (IntFun (fun p -> container := PcapTCPContainer p; ActionDone)) "the data is first extracted from a PCAP";
+  mkopt None "pcap-udp" (IntFun (fun p -> container := PcapUDPContainer p; ActionDone)) "the data is first extracted from a PCAP";
 
   mkopt None "always-enrich" (TrivialFun (fun () -> enrich_style := AlwaysEnrich)) "always enrich the structure parsed";
   mkopt None "never-enrich" (TrivialFun (fun () -> enrich_style := NeverEnrich)) "never enrich the structure parsed";
@@ -89,6 +91,8 @@ let mk_parse_value () =
 	| NoContainer -> raw_parse_fun
 	| HexContainer -> parse_hex_container raw_parse_fun
 	| Base64Container -> Base64.parse_base64_container Base64.AnyHeader raw_parse_fun
+	| PcapTCPContainer port -> fun i -> VList (PcapContainers.parse_tcp_container port raw_parse_fun i)
+	| PcapUDPContainer port -> fun i -> VList (PcapContainers.parse_udp_container port raw_parse_fun i)
     with
       Not_found -> show_type_list (Some "parser type not found.")
   in fun input ->

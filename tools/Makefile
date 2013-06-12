@@ -1,7 +1,7 @@
 # configurable section
 TARGETS = parsifal
 
-parsifal_SRCS := parsifal_main.ml
+parsifal_SRCS := pcapContainers.ml parsifal_main.ml
 
 # comment this line if not using camlp4
 # USE_CAMLP4 = yes
