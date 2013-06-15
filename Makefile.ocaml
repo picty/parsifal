@@ -74,12 +74,12 @@ real_all: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(META_TO_
 byte: builddir depends $(TARGETS:%=%.byte) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(META_TO_BUILD)
 
 # TODO: Improve this rule
-install: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(MLLIBS:%=$(BUILD_DIR)/%.a) $(TARGETS:%=%.byte) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(ALL_CMIS) $(META_TO_BUILD)
+install: builddir depends $(TARGETS) $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(MLLIBS:%=$(BUILD_DIR)/%.a) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(ALL_CMIS) $(META_TO_BUILD)
 	 @for f in $(MLLIBS:%=$(BUILD_DIR)/%.cmxa) $(MLLIBS:%=$(BUILD_DIR)/%.cma) $(MLLIBS:%=$(BUILD_DIR)/%.a) $(ALL_CMIS) $(META_TO_BUILD); do \
 	   echo "Installing $$(basename $$f) -> $(LIBDIR)/$(LIBNAME)/$$(basename $$f)"; \
 	   install -D -m 0644 "$$f" "$(LIBDIR)/$(LIBNAME)/$$(basename $$f)"; \
 	 done
-	 @for f in $(TARGETS) $(TARGETS:%=%.byte); do \
+	 @for f in $(TARGETS); do \
 	   echo "Installing $$(basename $$f) -> $(BINDIR)/$$(basename $$f)"; \
 	   install -D -m 0755 "$$f" "$(BINDIR)/$$(basename $$f)"; \
 	 done
