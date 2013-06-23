@@ -1,0 +1,13 @@
+= itu-t81.pdf =
+This is the first version of ITU jpeg.
+Appendix B describes the format structure.
+
+= jfif-1.pdf =
+The JFIF format allows for adding metadata (magic: APP0)
+
+= DC-008-2010_E.pdf =
+Chap.4
+EXIF format contains photo-oriented metadata (magic: APP1)
+
+= JPGALGO.TXT =
+Good summary
