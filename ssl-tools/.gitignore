@@ -21,3 +21,5 @@ extractSessions
 extractSessions.byte
 sslrevproxy
 sslrevproxy.byte
+ics2012todump
+ics2012todump.byte
