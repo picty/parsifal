@@ -61,6 +61,10 @@ let options = [
 ]
 
 
+let parse_tls_records_as_value i =
+  let recs, _, _ = TlsUtil.parse_all_records (!verbose) i in
+  VList (List.map Tls.value_of_tls_record recs)
+
 
 let type_handlers : (string, string_input -> value) Hashtbl.t = Hashtbl.create 10
 
@@ -73,7 +77,7 @@ let _ =
   Hashtbl.add type_handlers "pe" (fun i -> Pe.value_of_pe_file (Pe.parse_pe_file i));
   Hashtbl.add type_handlers "tar" (fun i -> Tar.value_of_tar_file (Tar.parse_tar_file i));
   Hashtbl.add type_handlers "answer_dump" (fun i -> AnswerDump.value_of_answer_dump (AnswerDump.parse_answer_dump i));
-  Hashtbl.add type_handlers "tls_record" (fun i -> Tls.value_of_tls_record (Tls.parse_tls_record None i));
+  Hashtbl.add type_handlers "tls_record" parse_tls_records_as_value;
   Hashtbl.add type_handlers "dns" (fun i -> Dns.value_of_dns_message (Dns.parse_dns_message i));
   Hashtbl.add type_handlers "pcap" (fun i -> Pcap.value_of_pcap_file (Pcap.parse_pcap_file i));
   ()
