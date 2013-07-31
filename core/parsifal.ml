@@ -331,7 +331,7 @@ let eos input =
 let check_empty_input fatal input =
   if not (eos input) then emit_parsing_exception fatal UnexpectedTrailingBytes input
 
-let try_parse ?exact:(exact=false) parse_fun input =
+let try_parse ?exact:(exact=false) ?report:(report=false) parse_fun input =
   if eos input then None else begin
     let saved_offset = input.cur_offset
     and saved_bitstate = input.cur_bitstate in
@@ -339,7 +339,8 @@ let try_parse ?exact:(exact=false) parse_fun input =
       let res = Some (parse_fun input) in
       if exact then check_empty_input true input;
       res
-    with ParsingException _ ->
+    with ParsingException (e, h) ->
+      if report then input.err_fun (string_of_exception e h);
       input.cur_offset <- saved_offset;
       input.cur_bitstate <- saved_bitstate;
       None
