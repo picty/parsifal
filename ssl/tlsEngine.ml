@@ -85,8 +85,30 @@ let write_record o record =
   let s = exact_dump_tls_record record in
   LwtUtil.really_write o s
 
+let split_record record size =
+  let ct = record.content_type
+  and v = record.record_version
+  and content = exact_dump_record_content record.record_content in
+  let len = String.length content in
+  let rec mk_records accu offset =
+    if offset >= len
+    then List.rev accu
+    else begin
+      let next_offset =
+	if offset + size >= len
+	then len
+	else offset + size
+      in
+      let next = { content_type = ct;
+		   record_version = v;
+		   record_content = Unparsed_Record (String.sub content offset (next_offset - offset)) } in
+      mk_records (next::accu) next_offset
+    end
+  in
+  mk_records [] 0
+
 let send_plain_record out record =
-  let recs = TlsUtil.split_record record !plaintext_chunk_size in
+  let recs = split_record record !plaintext_chunk_size in
   Lwt_list.iter_s (write_record out) recs
 
 (* TODO: compress/mac/encrypt the records *)

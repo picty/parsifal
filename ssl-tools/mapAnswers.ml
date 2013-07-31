@@ -12,7 +12,6 @@ open X509
 type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType | RecordTypes | Get
 let action = ref IP
 let verbose = ref false
-let raw_records = ref false
 let filter_ip = ref ""
 let junk_length = ref 16
 let path = ref []
@@ -40,8 +39,6 @@ let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
 
-  mkopt None "raw-records" (Set raw_records) "show raw records (do not try to reassemble them)";
-
   mkopt (Some 'a') "all" (TrivialFun (fun () -> action := All)) "show all the information and records of an answer";
   mkopt (Some 'I') "ip" (TrivialFun (fun () -> action := IP)) "only show the IP of the answers";
   mkopt (Some 'D') "dump" (TrivialFun (fun () -> action := Dump)) "dumps the answers";
@@ -64,79 +61,21 @@ let options = [
 ]
 
 
-let handle_exn f x =
-  try Some (f x)
-  with
-  | ParsingException (e, h) ->
-    if !verbose then prerr_endline (string_of_exception e h);
-    None
-  | e ->
-    if !verbose then prerr_endline (Printexc.to_string e);
-    None
+let parse_all_records answer =
+  let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_ipv4 answer.ip) answer.content in
+  TlsUtil.parse_all_records !verbose answer_input
 
 
-let parse_all_records enrich answer =
-  let rec read_records accu i =
-    if not (eos i)
-    then begin
-      match handle_exn (parse_tls_record None) i with
-      | Some next -> read_records (next::accu) i
-      | None -> List.rev accu, true
-    end else List.rev accu, false
-  in
-
-  (* TODO: Move this function in TlsUtil? *)
-  let rec split_records accu ctx str_input recs error = match str_input, recs with
-    | None, [] -> List.rev accu, ctx, error
-    | None, record::r ->
-      let record_input =
-	input_of_string ~verbose:(!verbose) ~enrich:enrich (string_of_ipv4 answer.ip)
-          (exact_dump_record_content record.record_content)
-      in
-      let cursor = record.content_type, record.record_version, record_input in
-      split_records accu ctx (Some cursor) r error
-    | Some (ct, v, i), _ ->
-      if eos i then split_records accu ctx None recs error
-      else begin
-        match handle_exn (parse_record_content ctx ct) i with
-        | Some next_content ->
-          let next_record = {
-            content_type = ct;
-            record_version = v;
-            record_content = next_content;
-          } in
-          begin
-            match ctx, next_content with
-              | None, Handshake {handshake_content = ServerHello sh} ->
-                let real_ctx = empty_context () in
-                TlsEngine.update_with_server_hello real_ctx sh;
-                split_records (next_record::accu) (Some real_ctx) str_input recs error
-              | Some c, Handshake {handshake_content = ServerKeyExchange ske} ->
-                TlsEngine.update_with_server_key_exchange c ske;
-                split_records (next_record::accu) ctx str_input recs error
-              | _ -> split_records (next_record::accu) ctx str_input recs error
-          end;
-        | None -> List.rev accu, ctx, true
-     end
-  in
-
-  let answer_input = input_of_string ~verbose:(!verbose) (string_of_ipv4 answer.ip) answer.content in
-  enrich_record_content := false;
-  let raw_recs, err = read_records [] answer_input in
-  if !raw_records
-  then raw_recs, None, err
-  else split_records [] None None (TlsUtil.merge_records ~verbose:(!verbose) ~enrich:NeverEnrich raw_recs) err
-
-let parse_all_ssl2_records enrich answer =
+let parse_all_ssl2_records answer =
   let rec read_ssl2_records accu i =
     if not (eos i)
     then begin
-      match handle_exn (parse_ssl2_record { cleartext = true }) i with
+      match try_parse (parse_ssl2_record { cleartext = true }) i with
       | Some next -> read_ssl2_records (next::accu) i
       | None -> List.rev accu, true
     end else List.rev accu, false
   in
-  let answer_input = input_of_string ~enrich:enrich ~verbose:(!verbose) (string_of_ipv4 answer.ip) answer.content in
+  let answer_input = input_of_string ~enrich:(!enrich_style) ~verbose:(!verbose) (string_of_ipv4 answer.ip) answer.content in
   enrich_record_content := false;
   let raw_recs, err = read_ssl2_records [] answer_input in
   raw_recs, None, err
@@ -176,15 +115,19 @@ let handle_answer answer =
       | Dump -> print_string (exact_dump_answer_dump answer)
       | All ->
         print_endline ip;
-        let records, _, error = parse_all_records !enrich_style answer in
-        List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_tls_record r))) records;
-        if error then begin
-          let records, _, error = parse_all_ssl2_records !enrich_style answer in
-          List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_ssl2_record r))) records;
-          if error then print_endline "  ERROR"
+	begin
+          match parse_all_records answer with
+	  | [], _, false -> ()
+	  | [], _, true ->
+            let records, _, error = parse_all_ssl2_records answer in
+            List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_ssl2_record r))) records;
+            if error then print_endline "  ERROR"
+	  | records, _, error ->
+            List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_tls_record r))) records;
+            if error then print_endline "  ERROR"
         end
       | Suite ->
-        let _, ctx, _ = parse_all_records !enrich_style answer in
+        let _, ctx, _ = parse_all_records answer in
         let cs = match ctx with
           | None -> if !verbose then (Some "ERROR") else None
           | Some ctx -> Some (string_of_ciphersuite ctx.future.s_ciphersuite.suite_name)
@@ -195,7 +138,7 @@ let handle_answer answer =
             | Some s -> Printf.printf "%s: %s\n" ip s
         end
       | SKE ->
-        let _, ctx, _ = parse_all_records !enrich_style answer in
+        let _, ctx, _ = parse_all_records answer in
         let ske = match ctx with
           | None -> if !verbose then (Some "ERROR") else None
           | Some { future = { s_server_key_exchange = (SKE_DHE { params = params } ) } } ->
@@ -210,7 +153,7 @@ let handle_answer answer =
             | Some s -> Printf.printf "%s: %s\n" ip s
         end
       | ServerRandom ->
-        let records, _, _ = parse_all_records !enrich_style answer in
+        let records, _, _ = parse_all_records answer in
         begin
           match records with
           | { content_type = CT_Handshake;
@@ -221,7 +164,7 @@ let handle_answer answer =
           | _ -> ()
         end;
       | Scapy ->
-        let records, _, _ = parse_all_records !enrich_style answer in
+        let records, _, _ = parse_all_records answer in
         let rec convert_to_scapy (len, ps) = function
           | [] -> List.rev ps
           | r::rs ->
@@ -234,7 +177,7 @@ let handle_answer answer =
         in
         Printf.printf "ps = [%s]\n" (String.concat ",\n  " (convert_to_scapy (0, []) records))
       | Pcap ->
-        let records, _, _ = parse_all_records !enrich_style answer in
+        let records, _, _ = parse_all_records answer in
         let rec convert_to_pcap len ps = function
           | [] -> ()
           | r::rs ->
@@ -246,11 +189,11 @@ let handle_answer answer =
         convert_to_pcap 0 [] records
       | AnswerType ->
         let records =
-          let tls_records, _, _ = parse_all_records !enrich_style answer in
+          let tls_records, _, _ = parse_all_records answer in
           if tls_records <> []
           then Right tls_records
           else begin
-            let ssl2_records, _, _ = parse_all_ssl2_records !enrich_style answer in
+            let ssl2_records, _, _ = parse_all_ssl2_records answer in
             Left ssl2_records
           end
         in
@@ -318,7 +261,7 @@ let handle_answer answer =
 	    end else Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
         end;
       | RecordTypes ->
-        let records, _, err = parse_all_records !enrich_style answer in
+        let records, _, err = parse_all_records answer in
         let rec get_type = function
           | [], false -> []
           | [], true -> ["ERROR"]
@@ -333,7 +276,7 @@ let handle_answer answer =
         let res = String.concat " " (get_type (records, err)) in
         Printf.printf "%s\t%s\n" ip res
       | Subject ->
-        let records, _, _ = parse_all_records !enrich_style answer in
+        let records, _, _ = parse_all_records answer in
         let rec extractSubjectOfFirstCert = function
           | [] -> None
           | { content_type = CT_Handshake;
@@ -359,7 +302,7 @@ let handle_answer answer =
             | Some subject -> Printf.printf "%s: %s\n" ip subject
         end;
       | Get ->
-        let records, _, _ = parse_all_records !enrich_style answer in
+        let records, _, _ = parse_all_records answer in
         let get_one_path p = 
           match get (VList (List.map value_of_tls_record records)) p with
           | Left err -> if !verbose then prerr_endline (ip ^ ": " ^ err); []

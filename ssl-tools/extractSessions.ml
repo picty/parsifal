@@ -108,64 +108,6 @@ let update_connection = function
   | _ -> ()
 
 
-
-
-let parse_all_records enrich input =
-  let rec read_records accu i =
-    if not (eos i)
-    then begin
-      match try_parse (parse_tls_record None) i with
-      | Some next -> read_records (next::accu) i
-      | None -> List.rev accu (* Signal error ?! *)
-    end else List.rev accu
-  in
-
-  (* TODO: Move this function in TlsUtil? *)
-  let rec split_records accu ctx str_input recs = match str_input, recs with
-    | None, [] -> List.rev accu, ctx
-    | None, record::r ->
-      let record_input =
-	input_of_string ~verbose:(!verbose) ~enrich:enrich (input.cur_name)
-	  (exact_dump_record_content record.record_content)
-      in
-      let cursor = record.content_type, record.record_version, record_input in
-      split_records accu ctx (Some cursor) r
-    | Some (ct, v, i), _ ->
-      if eos i then split_records accu ctx None recs
-      else begin
-        match try_parse (parse_record_content ctx ct) i with
-        | Some next_content ->
-          let next_record = {
-            content_type = ct;
-            record_version = v;
-            record_content = next_content;
-          } in
-          begin
-            match ctx, next_content with
-              | None, Handshake {handshake_content = ServerHello sh} ->
-                let real_ctx = empty_context () in
-                TlsEngine.update_with_server_hello real_ctx sh;
-                split_records (next_record::accu) (Some real_ctx) str_input recs
-              | Some c, Handshake {handshake_content = ServerKeyExchange ske} ->
-                TlsEngine.update_with_server_key_exchange c ske;
-                split_records (next_record::accu) ctx str_input recs
-              | _ -> split_records (next_record::accu) ctx str_input recs
-          end;
-        | None ->
-	  let remaining_stuff = {
-	    content_type = ct;
-	    record_version = v;
-	    record_content = Unparsed_Record (BasePTypes.parse_rem_string i)
-	  } in split_records (remaining_stuff::accu) ctx None recs
-      end
-  in
-
-  enrich_record_content := false;
-  let raw_recs = read_records [] input in
-  split_records [] None None (TlsUtil.merge_records ~verbose:(!verbose) ~enrich:NeverEnrich raw_recs)
-
-
-
 let print_all_connection k c =
   (* TODO: Improve this stuff... *)
   let rec trivial_aggregate = function
@@ -186,7 +128,8 @@ let print_all_connection k c =
 
   print_endline cname;
   let segs = String.concat "" (List.map snd (trivial_aggregate c.segments)) in
-  let records, _ = parse_all_records !enrich_style (input_of_string cname segs) in
+  let input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) cname segs in
+  let records, _, _ = TlsUtil.parse_all_records !verbose input in
   List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_tls_record r))) records;
   print_newline ()
 
