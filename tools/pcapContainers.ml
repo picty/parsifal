@@ -14,19 +14,13 @@ type connection_key = {
   destination : ipv4 * int;
 }
     
-type segment = direction * int * string
-
-type connection = {
-  first_src_seq : int;
-  first_dst_seq : int;
-  segments : segment list
-}
+type segment = direction * int * int * string
 
 
 type 'a tcp_container = 'a list
 
 let parse_tcp_container expected_dest_port parse_fun input = 
-  let connections : (connection_key, connection) Hashtbl.t = Hashtbl.create 100 in
+  let connections : (connection_key, segment list) Hashtbl.t = Hashtbl.create 100 in
 
   let update_connection = function
     | { ip_payload = TCPLayer {
@@ -41,33 +35,24 @@ let parse_tcp_container expected_dest_port parse_fun input =
 	  seq = seq; ack = ack;
 	  tcp_payload = payload } } ->
       begin
-	let key, src_seq, dst_seq, dir =
+	let key, dir =
 	  if dst_port = expected_dest_port
 	  then Some {source = src_ip, src_port;
 		     destination = dst_ip, dst_port},
-	    seq, ack, ClientToServer
+	    ClientToServer
 	  else if src_port = expected_dest_port
 	  then Some {source = dst_ip, dst_port;
 		     destination = src_ip, src_port},
-	    ack, seq, ServerToClient
-	  else None, 0, 0, ClientToServer
+	    ServerToClient
+	  else None, ClientToServer
 	in match key with
 	| None -> ()
 	| Some k -> begin
 	  try
 	    let c = Hashtbl.find connections k in
-	    (* TODO: We do NOT handle seq wrapping *)
-	    Hashtbl.replace connections k {
-	      first_src_seq = min c.first_src_seq src_seq;
-	      first_dst_seq = min c.first_dst_seq dst_seq;
-	      segments = c.segments@[dir, src_seq, payload]
-	    }
+	    Hashtbl.replace connections k (c@[dir, seq, ack, payload])
 	  with Not_found ->
-	    Hashtbl.replace connections k {
-	      first_src_seq = src_seq;
-	      first_dst_seq = dst_seq;
-	      segments = [dir, src_seq, payload]
-	    }
+	    Hashtbl.replace connections k [dir, seq, ack, payload]
 	end
       end
     | _ -> ()
@@ -82,16 +67,33 @@ let parse_tcp_container expected_dest_port parse_fun input =
 
   let result = ref [] in
 
+
   let handle_one_connection k c =
-    let rec trivial_aggregate = function
-      | [] -> []
-      | (dir, _, seg)::ss ->
-	match trivial_aggregate ss with
-	| [] -> [dir, seg]
-	| ((dir', seg')::r) as l ->
-	  if (dir = dir')
-	  then (dir, seg ^ seg')::r
-	  else (dir, seg)::l
+
+    (* TODO: Improve this function (it does not take segment overlapping into account *)
+    let aggregate segs =
+      let extract_first_segment = function
+	(* TODO: Other strategies are possible (by using SYN/SYN-ACK/ACK packets)... *)
+	| [] -> failwith "Internal error: segment list should not be empty"
+	| f::r -> f, r
+      in
+      let rec find_next_seg leftover accu ((cur_dir, next_seq, next_ack, cur_payload) as cur_seg) = function
+        (* TODO: What should we do with leftover here? *)
+	| [] -> List.rev ((cur_dir, cur_payload)::accu)
+	| ((dir, seq, ack, payload) as seg)::r ->
+	  if dir = cur_dir && next_seq = seq && next_ack = ack
+	  then find_next_seg [] accu
+	    (dir, seq + String.length payload, ack, cur_payload^payload)
+	    (List.rev_append leftover r)
+	  else if dir <> cur_dir && next_ack = seq && next_seq = ack
+	  then find_next_seg [] ((cur_dir, cur_payload)::accu)
+	    (dir, seq + String.length payload, ack, payload)
+	    (List.rev_append leftover r)
+	  else find_next_seg (seg::leftover) accu cur_seg r
+      in
+	
+      let (dir, seq, ack, p), other_segs = extract_first_segment segs in
+      find_next_seg [] [] (dir, seq + String.length p, ack, p) other_segs
     in
 
     let cname = Printf.sprintf "%s:%d -> %s:%d\n"
@@ -99,7 +101,7 @@ let parse_tcp_container expected_dest_port parse_fun input =
       (string_of_ipv4 (fst k.destination)) (snd k.destination)
     in
 
-    let segs = String.concat "" (List.map snd (trivial_aggregate c.segments)) in
+    let segs = String.concat "" (List.map snd (aggregate c)) in
     let new_input = get_in_container input cname segs in
     let res = parse_rem_list parse_fun new_input in
     check_empty_input true new_input;
