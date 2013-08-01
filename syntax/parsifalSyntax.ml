@@ -357,8 +357,8 @@ let mk_specific_funs _loc c =
 	  <:expr< $ <:expr< $uid:v$ >> $ $ <:expr< $lid:"i"$ >> $ >>,
 	  []
 	| Exception ->
-	  <:patt< _ >>,
-	  <:expr< Parsifal.value_not_in_enum $str:c.name$ $lid:"history"$ >>,
+	  <:patt< $lid:"i"$ >>,
+	  <:expr< Parsifal.value_not_in_enum $str:c.name$ $lid:"i"$ $lid:"history"$ >>,
 	  ["history", <:expr< $uid:"[]"$ >> ]
       in
       let cases = _cases@[last_p, last_e]

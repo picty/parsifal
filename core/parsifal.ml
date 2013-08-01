@@ -203,7 +203,7 @@ type parsing_exception =
   | InvalidBase64String of string
   | InvalidHexString of string
   | CustomException of string
-  | ValueNotInEnum of string
+  | ValueNotInEnum of string * int
   | NotImplemented of string
   | TooFewObjects of int * int
   | TooManyObjects of int * int
@@ -217,7 +217,8 @@ let print_parsing_exception = function
   | InvalidBase64String e -> "Invalid base64 string (" ^ e ^ ")"
   | InvalidHexString e -> "Invalid hex string (" ^ e ^ ")"
   | CustomException e -> e
-  | ValueNotInEnum e -> "Invalid " ^ e
+  | ValueNotInEnum (e, x) ->
+    Printf.sprintf "Invalid %s (%d)" e x
   | NotImplemented feat -> "Not implemented (" ^ feat ^ ")"
   | TooFewObjects (x, exp_x) ->
     Printf.sprintf "Too few objects (%d instead of %d)" x exp_x
@@ -227,7 +228,7 @@ let print_parsing_exception = function
 exception ParsingException of parsing_exception * history
 exception ParsingStop
 
-let value_not_in_enum s h = raise (ParsingException (ValueNotInEnum (String.copy s), h))
+let value_not_in_enum s x h = raise (ParsingException (ValueNotInEnum (String.copy s, x), h))
 
 let not_implemented s = raise (ParsingException (NotImplemented (String.copy s), []))
 let lwt_not_implemented s = fail (ParsingException (NotImplemented (String.copy s), []))
