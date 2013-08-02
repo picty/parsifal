@@ -1,4 +1,3 @@
-open Lwt
 open Parsifal
 open PTypes
 open Asn1PTypes

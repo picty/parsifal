@@ -1,13 +1,10 @@
-open Lwt
 open Parsifal
 open PTypes
-open Pcap
 open Asn1PTypes
 open Asn1Engine
 open X509Basics
 open Padata
 open KerberosTypes
-open Getopt
 
 let dest_port = ref 88
 
@@ -170,36 +167,3 @@ struct kerberos_udp_msg =
 {
   msg_content : kerberos_msg_type;
 }
-
-
-let print_connection (cname, l) =
-  let aux (dir, v) = Printf.printf "  %s : %s\n" (PcapContainers.string_of_direction dir) (print_value v) in
-  print_endline cname;
-  List.iter aux l;
-  print_newline ()
-
-let convert_msgs f (k, l) =
-  PcapContainers.string_of_connexion_key k, List.map (fun (dir, p) -> (dir, f p)) l
-
-let handle_one_file input =
-  let saved_offset = input.cur_offset in
-  let tcp_msgs = PcapContainers.parse_tcp_container !dest_port parse_kerberos_msg input in
-  let tcp_values = List.map (convert_msgs value_of_kerberos_msg) tcp_msgs in
-  input.cur_offset <- saved_offset;
-  let udp_msgs = PcapContainers.parse_udp_container !dest_port parse_kerberos_udp_msg input in
-  let udp_values = List.map (convert_msgs value_of_kerberos_udp_msg) udp_msgs in
-  List.iter print_connection tcp_values;
-  List.iter print_connection udp_values
-
-
-let _ =
-  try
-    let args = parse_args ~progname:"extractSessions" [] Sys.argv in
-    let open_files = match args with
-      | [] -> not_implemented "stdin"
-      | _ -> List.map string_input_of_filename args
-    in
-    List.iter handle_one_file open_files
-  with
-    | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
-    | e -> print_endline (Printexc.to_string e); exit 1
