@@ -180,14 +180,14 @@ struct pa_pk_as_rep =
 asn1_struct etype_info =
 {
   etype : cspe [0] of asn1 [(C_Universal, false, T_Integer)] of etype_type;
-  optional salt : cspe [1] of der_octetstring;
+  optional salt : cspe [1] of der_kerberos_string;
 }
 asn1_alias etype_infos = seq_of etype_info
 
 asn1_struct etype_info2 =
 {
   etype : cspe [0] of asn1 [(C_Universal, false, T_Integer)] of etype_type;
-  optional salt : cspe [1] of der_octetstring;
+  optional salt : cspe [1] of der_kerberos_string;
   optional s2kparams : cspe [2] of der_octetstring
 }
 asn1_alias etype_info2s = seq_of etype_info2
