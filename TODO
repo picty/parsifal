@@ -9,7 +9,7 @@ Ticket #1: Implement properly RSA/PKCS#1
  - create a crypto directory?
  - write a proper pkcs1_container
  - write test_pkcs1.ml to check RSA implementation (unit tests)
- - write some perf test to see whether cryptokit is needed
+ - write some perf test to see whether cryptokit is needed => should be added to prepare-release.sh
  - optionaly, try to simplify the RSA code to avoid the useless creation of a key object (however, this might need getting rid of cryptokit and take some performance hit)
 
 Ticket #2: Sort and document pTypes and pContainers
@@ -51,6 +51,7 @@ Ticket #8: Rewrite TLS context
  - merge tls_context and ssl2_context?
  - rethink tlsEngine / tls to incorporate context checks/updates in the description?
  - work on TlsEngine.update* functions
+ - merge TlsEngine and TlsUtil?
  - write the automata (client, server, transparent proxy, normalizing proxy)
  - add a automaton_state field in context
  - add a check_consistency field in context
@@ -134,6 +135,8 @@ Ticket #20: Rewrite Base64 implementation
 Ticket #21: Write PCAP helpers
  - the idea would be to automatically handle getopt base options, file processing and TCP/UDP connexion extraction
  - this would be appreciated for extractSessions and kerby
+ - Resolution: it has been done another way in pcapContainers and parsifal_main
+ - improve tcp/udp containers?
 
 Ticket #22: Be more cautious about int32 types...
  * THIS IS A BUG!
@@ -343,8 +346,6 @@ v0.4 (jun. 2013)
  - Think about a smart_dump function, which would auto-fill missing values (sizes, crcs...) => it could also be implemented using t_of_value and default/auto-fill information
  - Maybe add a lwt_dump_* function?
  - Propose a lwt_parse_wrapper, which stupidly tries to read byte by byte and give the result to parse? It could be improved when an input is rewindable or if OutOfBounds gave the number of bytes needed to continue (at least when some info is available)
- - Add cool containers where it is possible to specify the real type ( (int, string) either / int option )
-   => example : device_major in tar header?
  - X509
    * Add a test to really check if the idempotence was broken!
  - Tools

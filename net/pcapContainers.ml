@@ -8,18 +8,19 @@ open Pcap
 (*       because of lots of shortcuts in the current implementation *)
 
 type direction = ClientToServer | ServerToClient
+let string_of_direction = function ClientToServer -> "C->S" | ServerToClient -> "S->C"
 
 type connection_key = {
   source : ipv4 * int;
   destination : ipv4 * int;
 }
-    
+
 type segment = direction * int * int * string
 
 
-type 'a tcp_container = 'a list
+type 'a tcp_container = (connection_key * (direction * 'a) list) list
 
-let parse_tcp_container expected_dest_port parse_fun input = 
+let parse_tcp_container (expected_dest_port : int) (parse_fun : string_input -> 'a) (input : string_input) : 'a tcp_container = 
   let connections : (connection_key, segment list) Hashtbl.t = Hashtbl.create 100 in
 
   let update_connection = function
@@ -91,7 +92,7 @@ let parse_tcp_container expected_dest_port parse_fun input =
 	    (List.rev_append leftover r)
 	  else find_next_seg (seg::leftover) accu cur_seg r
       in
-	
+
       let (dir, seq, ack, p), other_segs = extract_first_segment segs in
       find_next_seg [] [] (dir, seq + String.length p, ack, p) other_segs
     in
@@ -101,29 +102,46 @@ let parse_tcp_container expected_dest_port parse_fun input =
       (string_of_ipv4 (fst k.destination)) (snd k.destination)
     in
 
-    let segs = String.concat "" (List.map snd (aggregate c)) in
-    let new_input = get_in_container input cname segs in
-    let res = parse_rem_list parse_fun new_input in
-    check_empty_input true new_input;
-    result := res@(!result)
+    let segs = aggregate c in
+    let parse_aggregate (dir, payload) =
+      let new_input = get_in_container input cname payload in
+      let res = parse_rem_list parse_fun new_input in
+      check_empty_input true new_input;
+      List.map (fun x -> dir, x) res
+    in
+    let conn_res = k, List.flatten (List.map parse_aggregate segs) in
+    result := conn_res::(!result)
   in
 
   let pcap = parse_pcap_file input in
   List.iter handle_one_packet pcap.packets;
   Hashtbl.iter handle_one_connection connections;
-  !result
+  List.rev !result
 
 
-let dump_tcp_container _dump_fun o = failwith "NotImplemented: dump_tcp_container"
+let dump_tcp_container _dump_fun _o = not_implemented "dump_tcp_container"
 
-let value_of_tcp_container = value_of_list
+let value_of_tcp_connexion value_of_fun (k, segs) =
+  let value_of_one_aggregate (d, p) = VRecord [
+    "@name", VString ("tcp_aggregate", false);
+    "direction", VString (string_of_direction d, false);
+    "payload", value_of_fun p
+  ] in VRecord [
+    "@name", VString ("tcp_connexion", false);
+    "src", value_of_ipv4 (fst k.source);
+    "src_port", VSimpleInt (snd k.source);
+    "dst", value_of_ipv4 (fst k.destination);
+    "dst_port", VSimpleInt (snd k.destination);
+    "data", VList (List.map value_of_one_aggregate segs)
+  ]
+
+let value_of_tcp_container value_of_fun = value_of_list (value_of_tcp_connexion value_of_fun)
 
 
 
+type 'a udp_container = (connection_key * (direction * 'a) list) list
 
-type 'a udp_container = 'a list
-
-let parse_udp_container expected_dest_port parse_fun input = 
+let parse_udp_container (expected_dest_port : int) (parse_fun : string_input -> 'a) (input : string_input) : 'a udp_container = 
   let connections : (connection_key, (direction * string) list) Hashtbl.t = Hashtbl.create 100 in
 
   let update_connection = function
@@ -181,22 +199,37 @@ let parse_udp_container expected_dest_port parse_fun input =
 	| ServerToClient -> s2c
       in
       let new_input = get_in_container input cname s in
-      let res = exact_parse parse_fun new_input in
+      let res = dir, exact_parse parse_fun new_input in
       check_empty_input true new_input;
       res
     in
-    result := (List.map handle_one_datagram c)@(!result)
+    let conn_res = k, List.map handle_one_datagram c in
+    result := conn_res::(!result)
   in
 
   enrich_udp_service := false;
   let pcap = parse_pcap_file input in
   List.iter handle_one_packet pcap.packets;
   Hashtbl.iter handle_one_connection connections;
-  !result
+  List.rev !result
 
 
-let dump_udp_container _dump_fun o = failwith "NotImplemented: dump_tcp_container"
+let dump_udp_container _dump_fun _o = not_implemented "NotImplemented: dump_tcp_container"
 
-let value_of_udp_container = value_of_list
+let value_of_udp_connexion value_of_fun (k, segs) =
+  let value_of_one_aggregate (d, p) = VRecord [
+    "@name", VString ("udp_datagram", false);
+    "direction", VString (string_of_direction d, false);
+    "payload", value_of_fun p
+  ] in VRecord [
+    "@name", VString ("udp_connexion", false);
+    "src", value_of_ipv4 (fst k.source);
+    "src_port", VSimpleInt (snd k.source);
+    "dst", value_of_ipv4 (fst k.destination);
+    "dst_port", VSimpleInt (snd k.destination);
+    "data", VList (List.map value_of_one_aggregate segs)
+  ]
+
+let value_of_udp_container value_of_fun = value_of_list (value_of_udp_connexion value_of_fun)
 
 

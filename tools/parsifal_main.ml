@@ -98,8 +98,12 @@ let mk_parse_value () =
 	| NoContainer -> raw_parse_fun
 	| HexContainer -> parse_hex_container raw_parse_fun
 	| Base64Container -> Base64.parse_base64_container Base64.AnyHeader raw_parse_fun
-	| PcapTCPContainer port -> fun i -> VList (PcapContainers.parse_tcp_container port raw_parse_fun i)
-	| PcapUDPContainer port -> fun i -> VList (PcapContainers.parse_udp_container port raw_parse_fun i)
+	| PcapTCPContainer port -> fun i ->
+	  PcapContainers.value_of_tcp_container (fun x -> x)
+	    (PcapContainers.parse_tcp_container port raw_parse_fun i)
+	| PcapUDPContainer port -> fun i ->
+	  PcapContainers.value_of_udp_container (fun x -> x)
+	    (PcapContainers.parse_udp_container port raw_parse_fun i)
     with
       Not_found -> show_type_list (Some "parser type not found.")
   in fun input ->
