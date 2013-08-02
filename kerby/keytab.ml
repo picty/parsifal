@@ -43,12 +43,3 @@ struct keytab_file =
   file_format_version : uint16;
   entries : list of container[uint32] of keytab_entry;
 }
-
-let rec handle_entry input =
-  let entry = parse_keytab_file input in
-  print_endline (print_value (value_of_keytab_file entry));
-  handle_entry input
-
-let _ =
-  let input = string_input_of_filename "test/sample-des-rc4.keytab" in
-  handle_entry input

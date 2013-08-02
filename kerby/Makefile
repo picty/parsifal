@@ -1,8 +1,11 @@
 # configurable section
-TARGETS = keytab padata kerby
+TARGETS = padata kerby
+MLLIBS = parsifal_kerby
+LIBNAME = parsifal_kerby
 
+parsifal_kerby_SRCS := keytab.ml
+# parsifal_kerby_SRCS := pkcs7.ml kerberosTypes.ml padata.ml kerby.ml keytab.ml
 kerby_SRCS := pkcs7.ml kerberosTypes.ml padata.ml kerby.ml
-keytab_SRCS := keytab.ml
 padata_SRCS := pkcs7.ml kerberosTypes.ml padata.ml
 
 # comment this line if not using camlp4
