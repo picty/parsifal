@@ -247,13 +247,4 @@ let handle_entry input =
 
 let _ = 
   let register_oids (name, oid) = register_oid oid name in
-    List.map register_oids kerberos_oids;
-
-(*
-let main () =
-  let input = string_input_of_filename "p7blob" in
-  handle_entry input
-*)
-(*
-let _ = main ()
-*)
+  List.map register_oids kerberos_oids

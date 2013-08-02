@@ -3,7 +3,7 @@ TARGETS = padata kerby
 MLLIBS = parsifal_kerby
 LIBNAME = parsifal_kerby
 
-parsifal_kerby_SRCS := keytab.ml
+parsifal_kerby_SRCS := pkcs7.ml kerberosTypes.ml padata.ml keytab.ml
 # parsifal_kerby_SRCS := pkcs7.ml kerberosTypes.ml padata.ml kerby.ml keytab.ml
 kerby_SRCS := pkcs7.ml kerberosTypes.ml padata.ml kerby.ml
 padata_SRCS := pkcs7.ml kerberosTypes.ml padata.ml
