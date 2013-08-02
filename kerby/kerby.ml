@@ -102,18 +102,6 @@ let update_connection = function
     end
   | _ -> ()
 
-
-enum msg_type (8, UnknownVal UnknownMsgType) =
-  | 10 -> AS_REQ
-  | 11 -> AS_REP
-  | 12 -> TGS_REQ
-  | 13 -> TGS_REP
-  | 14 -> AP_REQ
-  | 30 -> KRB_ERROR
-
-enum pvno (8, UnknownVal UnknownProtocolVersion) =
-  | 5 -> KerberosV5
-
 (* NOT USED *)
 enum padata_type (8, UnknownVal UnknownPreAuthenticationType) =
   | 1 -> PA_TGS_REQ
@@ -124,11 +112,6 @@ enum padata_type (8, UnknownVal UnknownPreAuthenticationType) =
   | 17 -> PA_PK_AS_REP
   | 18 -> PA_ETYPE_INFO_UNUSUED
   | 19 -> PA_ETYPE_INFO2
-
-enum principalname_type (8, UnknownVal UnknownPrincipalNameType) =
-  | 1 -> Principal
-  | 2 -> Service_and_Instance
-  | 3 -> Service_and_Host
 
 (*
 asn1_alias padata_value
@@ -167,71 +150,10 @@ struct err_padata_content =
 asn1_alias err_padata
 asn1_alias err_padatas = seq_of err_padata
 
-struct cname_content =
-{
-  (*name_type : cspe [0] of der_smallint;*)
-  name_type :   cspe [0] of asn1 [(C_Universal, false, T_Integer)] of principalname_type;
-  name_string : cspe [1] of seqkerbstring
-}
-asn1_alias cname
-alias sname = cname
 (* FIXME !!
 asn1_alias etypes = seq_of asn1 [(C_Universal, false, T_Integer)] of etype_type
 *)
 asn1_alias etypes = seq_of der_integer
-
-let kdc_options_values = [|
-  "RESERVED";
-  "FORWARDABLE";
-  "FORWARDED";
-  "PROXIABLE";
-  "PROXY";
-  "ALLOW_POSTDATE";
-  "POSTDATED";
-  "RESERVED";
-  "RENEWABLE";
-  "RESERVED";
-  "RESERVED";
-  "RESERVED_OPT_HW_AUTH";
-  "RESERVED";
-  "RESERVED";
-  "RESERVED_CONSTRAINED_DELEGATION";
-  "RESERVED_CANONICALIZE";
-  "RESERVED";
-  "RESERVED";
-  "RESERVED";
-  "RESERVED";
-  "RESERVED";
-  "RESERVED";
-  "RESERVED";
-  "RESERVED";
-  "RESERVED";
-  "RESERVED";
-  "DISABLE_TRANSITED_CHECK";
-  "RENEWABLE_OK";
-  "ENC_TKT_IN_SKEY";
-  "RESERVED";
-  "RENEW";
-  "VALIDATE"
-|]
-
-enum addr_type (8, UnknownVal UnknownAddrType) =
-  | 2 -> DIRECTIONNAL
-  | 3 -> CHAOSNET
-  | 5 -> XNS
-  | 7 -> ISO
-  | 12 -> DECNET_PHASE_IV
-  | 16 -> APPLETALK_DDP
-  | 20 -> NETBIOS
-  | 24 -> IPV6
-
-asn1_struct host_address =
-{
-  addr_type : cspe [0] of asn1 [(C_Universal, false, T_Integer)] of addr_type;
-  address : cspe [1] of der_octetstring
-}
-
-asn1_alias host_addresses = seq_of host_address
 
 struct req_body_content =
 {
@@ -271,14 +193,6 @@ struct enc_ticket_part_content =
 asn1_alias enc_ticket_part
 *)
 
-asn1_struct ticket =
-{
-  tkvno : cspe [0] of der_smallint;
-  realm : cspe [1] of der_kerberos_string;
-  sname : cspe [2] of sname;
-  enc_tkt_part : cspe [3] of encrypted_data;
-}
-
 (* AP_REQ *)
 (* defined in PADATA, because it can be used in PA_TGS_REQ *)
 
@@ -289,8 +203,6 @@ asn1_struct ap_rep =
   msg_type : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
   enc_part : 	cspe [2] of encrypted_data
 }
-
-
 
 (* AS_REQ *)
 asn1_struct as_req =
