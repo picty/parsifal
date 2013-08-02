@@ -130,24 +130,6 @@ enum principalname_type (8, UnknownVal UnknownPrincipalNameType) =
   | 2 -> Service_and_Instance
   | 3 -> Service_and_Host
 
-union padata_value [enrich] (UnparsedPaDataValueContent of binstring) =
-  | 1, true -> PA_TGS_REQ of binstring
-  | 2, true -> PA_ENC_TIMESTAMP of encrypted_data
-  | 3, true -> PA_PW_SALT of binstring
-  | 11, _ -> PA_ENCTYPE_INFO of etype_infos
-  | 14, true -> PA_PK_AS_REQ_OLD of binstring
-  | 15, true -> PA_PK_AS_REP_OLD of binstring
-  | 16, true -> PA_PK_AS_REQ of pa_pk_as_req (* FIXME Improve PKCS7 *)
-  | 17, true -> PA_PK_AS_REP of pa_pk_as_rep (* FIXME Improve PKCS7 *)
-  | 18, true -> PA_ENCTYPE_INFO_UNUSED of binstring
-  | 19,  _ -> PA_ENCTYPE_INFO2 of etype_info2s
-  | 128, true -> PA_PAC_REQUEST of binstring
-  | 133, _ -> Other_PA_DATA of string 		(* TODO Is it MIT only ? *)
-  | 136, true -> Other_PA_DATA of binstring
-  | 147, true -> Other_PA_DATA of binstring
-  | 149, true -> Other_PA_DATA of binstring
-  | _, false -> PA_NULL of binstring
-
 (*
 asn1_alias padata_value
 *)

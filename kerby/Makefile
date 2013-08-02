@@ -1,8 +1,8 @@
 # configurable section
 TARGETS = padata kerby
 
-kerby_SRCS := pkcs7.ml padata.ml kerberosTypes.ml kerby.ml
-padata_SRCS := pkcs7.ml padata.ml
+kerby_SRCS := pkcs7.ml kerberosTypes.ml padata.ml kerby.ml
+padata_SRCS := pkcs7.ml kerberosTypes.ml padata.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
