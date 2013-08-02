@@ -50,5 +50,5 @@ let rec handle_entry input =
   handle_entry input
 
 let _ =
-  let input = string_input_of_filename "test.keytab" in
+  let input = string_input_of_filename "test/sample-des-rc4.keytab" in
   handle_entry input
