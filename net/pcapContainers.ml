@@ -14,6 +14,10 @@ type connection_key = {
   source : ipv4 * int;
   destination : ipv4 * int;
 }
+let string_of_connexion_key k =
+  Printf.sprintf "%s:%d -> %s:%d\n"
+    (string_of_ipv4 (fst k.source)) (snd k.source)
+    (string_of_ipv4 (fst k.destination)) (snd k.destination)
 
 type segment = direction * int * int * string
 
@@ -97,11 +101,7 @@ let parse_tcp_container (expected_dest_port : int) (parse_fun : string_input -> 
       find_next_seg [] [] (dir, seq + String.length p, ack, p) other_segs
     in
 
-    let cname = Printf.sprintf "%s:%d -> %s:%d\n"
-      (string_of_ipv4 (fst k.source)) (snd k.source)
-      (string_of_ipv4 (fst k.destination)) (snd k.destination)
-    in
-
+    let cname = string_of_connexion_key k in
     let segs = aggregate c in
     let parse_aggregate (dir, payload) =
       let new_input = get_in_container input cname payload in
@@ -185,9 +185,7 @@ let parse_udp_container (expected_dest_port : int) (parse_fun : string_input -> 
   let result = ref [] in
 
   let handle_one_connection k c =
-    let c2s = Printf.sprintf "%s:%d -> %s:%d\n"
-      (string_of_ipv4 (fst k.source)) (snd k.source)
-      (string_of_ipv4 (fst k.destination)) (snd k.destination)
+    let c2s = string_of_connexion_key k
     and s2c = Printf.sprintf "%s:%d -> %s:%d\n"
       (string_of_ipv4 (fst k.destination)) (snd k.destination)
       (string_of_ipv4 (fst k.source)) (snd k.source)

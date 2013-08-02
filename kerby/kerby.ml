@@ -11,97 +11,6 @@ open Getopt
 
 let dest_port = ref 88
 
-
-type direction = ServerToClient | ClientToServer
-let string_of_dir = function ServerToClient -> "S->C" | ClientToServer -> "C->S"
-
-type connection_key = {
-  source : ipv4 * int;
-  destination : ipv4 * int;
-}
-    
-type segment = direction * int * string
-
-type connection = {
-  first_src_seq : int;
-  first_dst_seq : int;
-  segments : segment list
-}
-
-let connections : (connection_key, connection) Hashtbl.t = Hashtbl.create 100
-let udp_connections : (connection_key, (direction * string) list) Hashtbl.t = Hashtbl.create 100
-
-let update_connection = function
-  | { ip_payload = TCPLayer {
-    tcp_payload = "" } } -> ()
-    (* TODO: Handle SYN/SYN-ACK *)
-
-  | { source_ip = src_ip;
-      dest_ip = dst_ip;
-      ip_payload = TCPLayer {
-	source_port = src_port;
-	dest_port = dst_port;
-	seq = seq; ack = ack;
-	tcp_payload = payload } } ->
-    begin
-      let key, src_seq, dst_seq, dir =
-	if dst_port = !dest_port
-	then Some {source = src_ip, src_port;
-		   destination = dst_ip, dst_port},
-	  seq, ack, ClientToServer
-	else if src_port = !dest_port
-	then Some {source = dst_ip, dst_port;
-		   destination = src_ip, src_port},
-	   ack, seq, ServerToClient
-	else None, 0, 0, ClientToServer
-      in match key with
-       | None -> ()
-       | Some k -> begin
-        try
-         let c = Hashtbl.find connections k in
-         (* TODO: We do NOT handle seq wrapping *)
-         Hashtbl.replace connections k {
-           first_src_seq = min c.first_src_seq src_seq;
-           first_dst_seq = min c.first_dst_seq dst_seq;
-           segments = c.segments@[dir, src_seq, payload]
-         }
-        with Not_found ->
-         Hashtbl.replace connections k {
-           first_src_seq = src_seq;
-           first_dst_seq = dst_seq;
-         segments = [dir, src_seq, payload]
-         }
-      end
-    end
-   | { source_ip = src_ip;
-      dest_ip = dst_ip;
-      ip_payload = UDPLayer {
-	udp_source_port = src_port;
-	udp_dest_port = dst_port;
-	udp_payload = payload } } ->
-    begin
-      let key, dir =
-	if dst_port = !dest_port
-	then Some {source = src_ip, src_port;
-		   destination = dst_ip, dst_port},
-	  ClientToServer
-	else if src_port = !dest_port
-	then Some {source = dst_ip, dst_port;
-		   destination = src_ip, src_port},
-	   ServerToClient
-	else None, ClientToServer
-      in match key with
-      | None -> ()
-      | Some k -> begin
-	try
-	  let c = Hashtbl.find udp_connections k in
-	  Hashtbl.replace udp_connections k (c@[dir, exact_dump dump_udp_service payload])
-	with Not_found ->
-	  Hashtbl.replace udp_connections k [dir, exact_dump dump_udp_service payload]
-      end
-    end
-  | _ -> ()
-
 (* NOT USED *)
 enum padata_type (8, UnknownVal UnknownPreAuthenticationType) =
   | 1 -> PA_TGS_REQ
@@ -262,103 +171,35 @@ struct kerberos_udp_msg =
   msg_content : kerberos_msg_type;
 }
 
-let handle_connection k c =
-  let rec trivial_aggregate = function
-    | [] -> []
-    | (dir, _, seg)::ss ->
-      match trivial_aggregate ss with
-      | [] -> [dir, seg]
-      | ((dir', seg')::r) as l ->
-	if (dir = dir')
-	then (dir, seg ^ seg')::r
-	else (dir, seg)::l
-  in
 
-  let cname = Printf.sprintf "%s:%d -> %s:%d\n"
-    (string_of_ipv4 (fst k.source)) (snd k.source)
-    (string_of_ipv4 (fst k.destination)) (snd k.destination)
-  in
-
-(*
+let print_connection (cname, l) =
+  let aux (dir, v) = Printf.printf "  %s : %s\n" (PcapContainers.string_of_direction dir) (print_value v) in
   print_endline cname;
-  let segs = String.concat "" (List.map snd (trivial_aggregate c.segments)) in
-  let records, _ = parse_all_records !enrich_style (input_of_string cname segs) in
-  List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_tls_record r))) records;
-  print_newline ()
-*)
-
-  print_endline cname;
-  (*
-  let segs = String.concat "" (List.map snd (trivial_aggregate c.segments)) in
-  *)
-  let segs = trivial_aggregate c.segments in
-  let handle_one_seg (dir, content) =
-    let input = input_of_string "" content in
-    let kerberos_msg = parse_kerberos_msg input in
-    let str_value = print_value (value_of_kerberos_msg kerberos_msg) in
-    Printf.printf "  %s : %s\n" (string_of_dir dir) str_value
-  in
-  List.iter handle_one_seg segs;
+  List.iter aux l;
   print_newline ()
 
-let handle_udp_connection k c =
-  let rec trivial_aggregate = function
-    | [] -> []
-    | (dir, seg)::ss ->
-      match trivial_aggregate ss with
-      | [] -> [dir, seg]
-      | ((dir', seg')::r) as l ->
-	if (dir = dir')
-	then (dir, seg ^ seg')::r
-	else (dir, seg)::l
-  in
-
-  let cname = Printf.sprintf "%s:%d -> %s:%d\n"
-    (string_of_ipv4 (fst k.source)) (snd k.source)
-    (string_of_ipv4 (fst k.destination)) (snd k.destination)
-  in
-
-  print_endline cname;
-  let segs = trivial_aggregate c in
-  let handle_one_seg (dir, content) =
-    let input = input_of_string "" content in
-    let kerberos_udp_msg = parse_kerberos_udp_msg input in
-    let str_value = print_value (value_of_kerberos_udp_msg kerberos_udp_msg) in
-    Printf.printf "  %s : %s\n" (string_of_dir dir) str_value
-  in
-  List.iter handle_one_seg segs;
-  print_newline ()
-
-  (* Si tu as ecrit kerberos_msg, 
-     let msg = parse_kerberos_msg (input_of_string (string_of_dir dir) content) *)
- (* List.iter (fun (dir, content) -> Printf.printf "  %s :\n" (string_of_dir dir) (parse_as_req content)) segs ;
-
-  List.iter (fun (dir, content) -> Printf.printf "  %s : %s\n" (string_of_dir dir) (hexdump content)) segs ;
-  print_newline () *)
-
-let handle_one_packet packet = match packet.data with
-  | EthernetContent { ether_payload = IPLayer ip_layer }
-  | IPContent ip_layer ->
-    update_connection ip_layer
-  | _ -> ()
+let convert_msgs f (k, l) =
+  PcapContainers.string_of_connexion_key k, List.map (fun (dir, p) -> (dir, f p)) l
 
 let handle_one_file input =
-  lwt_parse_pcap_file input >>= fun pcap ->
-  List.iter handle_one_packet pcap.packets;
-  Hashtbl.iter handle_connection connections;
-  Hashtbl.iter handle_udp_connection udp_connections;
-
-  return ()
+  let saved_offset = input.cur_offset in
+  let tcp_msgs = PcapContainers.parse_tcp_container !dest_port parse_kerberos_msg input in
+  let tcp_values = List.map (convert_msgs value_of_kerberos_msg) tcp_msgs in
+  input.cur_offset <- saved_offset;
+  let udp_msgs = PcapContainers.parse_udp_container !dest_port parse_kerberos_udp_msg input in
+  let udp_values = List.map (convert_msgs value_of_kerberos_udp_msg) udp_msgs in
+  List.iter print_connection tcp_values;
+  List.iter print_connection udp_values
 
 
 let _ =
   try
     let args = parse_args ~progname:"extractSessions" [] Sys.argv in
-    let open_files = function
-      | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= fun x -> return [x]
-      | _ -> Lwt_list.map_s input_of_filename args
+    let open_files = match args with
+      | [] -> not_implemented "stdin"
+      | _ -> List.map string_input_of_filename args
     in
-    Lwt_unix.run (open_files args >>= Lwt_list.iter_s handle_one_file);
+    List.iter handle_one_file open_files
   with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> print_endline (Printexc.to_string e); exit 1
