@@ -61,26 +61,46 @@ let options = [
 ]
 
 
+let pretty_print_pubkey pk =
+  let pk_type = string_of_der_oid_content pk.algorithm.algorithmId
+  and pk_params = match pk.algorithm.algorithmParams with
+    | Some (NoParams ()) | None -> []
+    | Some p ->
+      Str.split (Str.regexp_string "\n") (print_value ~name:"params" (value_of_algorithmParams p))
+  and pk_value =
+    Str.split (Str.regexp_string "\n") (print_value ~name:"public key"(value_of_subjectPublicKey pk.subjectPublicKey))
+  in
+  ""::"Public key"::(List.map (fun s -> "  " ^ s) ((pk_type::pk_params)@pk_value))
+
+let pretty_print_extension indent e =
+  let _name = string_of_der_oid_content e.extnID in
+  let name = if e.critical = (Some true) then _name ^ " (critical)" else _name in
+  Str.split (Str.regexp_string "\n") (print_value ~indent:indent ~name:name (value_of_extnValue e.extnValue))
+
+let pretty_print_extensions = function
+  | None -> []
+  | Some es -> ""::"Extensions"::(List.flatten (List.map (pretty_print_extension "  ") es))
+
 let pretty_print_certificate cert =
   let tbs = cert.tbsCertificate in
   if tbs.signature <> cert.signatureAlgorithm
   then ();  (* TODO *)
   [
     (match tbs.version with
-    | None -> "Version: no version given"
-    | Some v -> Printf.sprintf "Version: %d" v);
+    | None -> "Version: no version given, 1 assumed"
+    | Some v -> Printf.sprintf "Version: %d" (v+1));
 
-    Printf.sprintf "Signature: %s " (string_of_oid tbs.signature.algorithmId); (* TODO: Params *)
-    Printf.sprintf "Issuer: %s " (string_of_distinguishedName tbs.issuer);
-    "Validity";
+    ""; Printf.sprintf "Signature: %s " (string_of_oid tbs.signature.algorithmId); (* TODO: Params *)
+    ""; Printf.sprintf "Issuer: %s " (string_of_distinguishedName tbs.issuer);
+    ""; "Validity";
     Printf.sprintf "    Not before: %s" (string_of_value (value_of_der_time tbs.validity.notBefore));
     Printf.sprintf "    Not after: %s" (string_of_value (value_of_der_time tbs.validity.notAfter));
-    Printf.sprintf "Subject: %s" (string_of_distinguishedName tbs.subject);
+    ""; Printf.sprintf "Subject: %s" (string_of_distinguishedName tbs.subject);
   ]@
-    (Str.split (Str.regexp_string "\n") (print_value
-	      (value_of_subjectPublicKeyInfo tbs.subjectPublicKeyInfo)))
-  @[
-  ]
+    (pretty_print_pubkey tbs.subjectPublicKeyInfo)@
+    (* TODO: unique issuer/subject identifiers? *)
+    (pretty_print_extensions tbs.extensions)
+
 
 let handle_input input =
   let parse_fun =
