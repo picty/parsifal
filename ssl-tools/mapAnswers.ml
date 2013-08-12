@@ -10,6 +10,7 @@ open X509Basics
 open X509
 
 type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType | RecordTypes | Get
+	      | VersionACSAC | SuiteACSAC
 let action = ref IP
 let verbose = ref false
 let filter_ip = ref ""
@@ -57,7 +58,10 @@ let options = [
   mkopt None "never-enrich" (TrivialFun (fun () -> enrich_style := NeverEnrich)) "never enrich the structure parsed";
   mkopt None "enrich-level" (IntFun set_enrich_level) "enrich the structure parsed up to a certain level";
 
-  mkopt None "filter-ip" (StringVal filter_ip) "only print info regarding this ip"
+  mkopt None "filter-ip" (StringVal filter_ip) "only print info regarding this ip";
+
+  mkopt None "versionACSAC" (TrivialFun (fun () -> action := VersionACSAC; update_enrich_level 3)) "only show the version chosen (ACSAC-style)";
+  mkopt None "ciphersuiteACSAC" (TrivialFun (fun () -> action := SuiteACSAC; update_enrich_level 3)) "only show the ciphersuite chosen (ACSAC-style)";
 ]
 
 
@@ -80,6 +84,24 @@ let parse_all_ssl2_records answer =
   let raw_recs, err = read_ssl2_records [] answer_input in
   raw_recs, None, err
 
+let parse_records_as_values answer =
+  match parse_all_records answer with
+  | [], _, false -> [], false
+  | [], _, true ->
+    let records, _, err = parse_all_ssl2_records answer in
+    List.map value_of_ssl2_record records, err
+  | records, _, err ->
+    List.map value_of_tls_record  records, err
+
+let rec get_one_of v = function
+  | [] -> None
+  | p::ps -> match get v p with
+    | Right s -> Some s
+    | Left _ -> get_one_of v ps
+
+let maybe_print ip = function
+  | None -> ()
+  | Some s -> Printf.printf "%s: %s\n" ip s
 
 
 let dump_extract s =
@@ -302,14 +324,35 @@ let handle_answer answer =
             | Some subject -> Printf.printf "%s: %s\n" ip subject
         end;
       | Get ->
-        let records, _, _ = parse_all_records answer in
+        let records, _ = parse_records_as_values answer in
         let get_one_path p = 
-          match get (VList (List.map value_of_tls_record records)) p with
+          match get (VList records) p with
           | Left err -> if !verbose then prerr_endline (ip ^ ": " ^ err); []
           | Right s -> [s]
         in
         let results = List.flatten (List.map get_one_path !path) in
         if results <> [] then Printf.printf "%s: %s\n" ip (String.concat ", " results)
+
+
+     | SuiteACSAC ->
+       begin
+	  match parse_records_as_values answer with
+	  | r::_, _ ->
+	    let result = get_one_of r ["record_content.handshake_content.ciphersuite";
+				       "record_content.ssl2_handshake_content.ssl2_server_cipher_specs.[0]"] in
+	    maybe_print ip result
+	  | _ -> ()
+	end
+      | VersionACSAC ->
+	begin
+	  match parse_records_as_values answer with
+	  | r::_, _ ->
+	    let result = get_one_of r ["record_content.handshake_content.server_version";
+				       "record_content.ssl2_handshake_content.ssl2_server_version";
+				       "record_version"] in
+	    maybe_print ip result
+	  | _ -> ()
+	end
   end;
   return again
 
