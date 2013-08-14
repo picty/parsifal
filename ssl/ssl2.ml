@@ -29,8 +29,15 @@ let parse_ssl2_cipher_spec input =
 
 let dump_ssl2_cipher_spec buf = function
   | SSL2CipherSpec x -> dump_pure_ssl2_cipher_spec buf x
-  | TLSCipherSpec x -> TlsEnums.dump_ciphersuite buf x
+  | TLSCipherSpec x ->
+    POutput.add_char buf '\x00';
+    TlsEnums.dump_ciphersuite buf x
   | UnparsedSSL2CipherSpec s -> POutput.add_string buf s
+
+let int_of_ssl2_cipher_spec = function
+  | SSL2CipherSpec x -> int_of_pure_ssl2_cipher_spec x
+  | TLSCipherSpec x -> TlsEnums.int_of_ciphersuite x
+  | UnparsedSSL2CipherSpec _ -> failwith "Impossible"
 
 
 (* TODO: Should it be SoftExceptions if they are ever implemented? *)
