@@ -62,8 +62,20 @@ let options = [
 
 
 let parse_tls_records_as_value i =
-  let recs, _, _ = TlsUtil.parse_all_records (!verbose) i in
-  VList (List.map Tls.value_of_tls_record recs)
+  match TlsUtil.parse_all_records (!verbose) i with
+  | [], _, false -> VUnit
+  | [], _, true ->
+    begin
+      match try_parse (Ssl2.parse_ssl2_record { Ssl2.cleartext = true }) i with
+      | None -> VError "No SSLv2 nor TLS message could be parsed"
+      | Some first ->
+	let next, _, _ = TlsUtil.parse_all_records (!verbose) i in
+	let values = (Ssl2.value_of_ssl2_record first)::(List.map Tls.value_of_tls_record next) in
+	VList values
+    end
+  | recs, _, _ ->
+    VList (List.map Tls.value_of_tls_record recs)
+
 
 
 let type_handlers : (string, string_input -> value) Hashtbl.t = Hashtbl.create 10
