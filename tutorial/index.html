@@ -13,7 +13,7 @@
     on <a href="https://github.com/ol-anssi/parsifal">GitHub</a>.</p>
 
     TODO: table of contents + different versions (1 HTML / many HTMLS
-    / ZIP with all the files)
+    / ZIP with all the files) + requirements!
 
 
     <h2>Origin of the project</h2>
@@ -45,9 +45,15 @@
 	<li>support for base types (integers, strings, lists, arrays,
 	etc.);</li>
 	<li>support for ASN.1 base types and useful container
-	implementations (Base64, Hexadecimal).</li>
+	implementations (Base64, hexadecimal, zlib).</li>
       </ul>
     </p>
+
+    <p>Originally designed to analyse a network protocol, SSL/TLS,
+    Parsifal can easily be used to analyse other protocols, or complex
+    binary file formats. Current work includes writing file sanitisers
+    using Parsifal (e.g.: a PNG cleaner) or reference implementation
+    (a working SSL/TLS stack).
 
     <p>Using Parsifal, several file formats and network protocols have
       already been implemented (at least partially):
@@ -57,7 +63,8 @@
 	<li>PCAP/IP/TCP/UDP rudimentary support;</li>
 	<li>DNS;</li>
 	<li>X.509 certificates;</li>
-	<li>SSLv2/TLS messages.</li>
+	<li>SSLv2/TLS messages;</li>
+	<li>PNG.</li>
       </ul>
     </p>
 
@@ -95,8 +102,39 @@
     into <code>/usr/lib/ocaml</code> and the programs
     into <code>/usr/local/bin</code>. Alternatively, environment
     variables <code>LIBDIR</code> and <code>BINDIR</code> can be set
-    before launching <code>make install</code>.</p>
+    before launching <code>make install</code> to avoid
+    using <code>root</code> privilege.</p>
 
+    <code>
+      export LIBDIR=$HOME/.ocamlpath<br/>
+      export BINDIR=$HOME/bin<br/>
+      make install
+    </code>
+
+    <p>Once installed, you can test existing tools, to inspect some
+    network packets or some certificates. If you installed the program
+    in a custom directory using the <code>BINDIR</code> variable,
+    don't forget to add the path to your <code>PATH</code>.</p>
+
+    <code>
+      export PATH=$HOME/bin:$PATH<br/>
+      sudo tcpdump -w /tmp/capture.pcap<br/>
+      parsifal -L<br/>
+      parsifal --pcap-udp=53 -T dns /tmp/capture.pcap<br/>
+      parsifal --pcap-udp=53 -T dns /tmp/capture.pcap -g "@size"<br/>
+      parsifal --pcap-udp=53 -T dns /tmp/capture.pcap -g "[0].@index"<br/>
+      parsifal --pcap-udp=53 -T dns /tmp/capture.pcap -g "[0].id"<br/>
+      parsifal --pcap-udp=53 -T dns /tmp/capture.pcap -g "[0].questions.[0].qname"<br/>
+      parsifal --pcap-udp=53 -T dns /tmp/capture.pcap -g "*.id"<br/>
+      parsifal --pcap-udp=53 -T dns /tmp/capture.pcap -g "*.qr"<br/>
+      parsifal --pcap-tcp=443 -T tls_record /tmp/capture.pcap --always-enrich<br/>
+      parsifal --pcap-tcp=443 -T tls_record /tmp/capture.pcap --always-enrich -g "**.ciphersuite"<br/>
+      parsifal --pcap-tcp=443 -T tls_record /tmp/capture.pcap --always-enrich -g "*.data.*.payload.*.record_content.handshake_content.[0].tbsCertificate.subject"<br/>
+      parsifal --pcap-tcp=443 -T tls_record /tmp/capture.pcap --always-enrich -g "**.[0].tbsCertificate.subject"<br/>
+      probe_server -H www.google.com -p 443 extract-certs<br/>
+      asn1parse www.google.com-0.pem<br/>
+      x509show www.google.com-0.pem
+    </code>
 
     <h2>Concepts: PTypes and constructions</h2>
 
@@ -114,7 +152,7 @@
 	<li><code>dump_t : Buffer.t -> t -> unit</code> to add the
 	string representation of a <code>t</code> value to a
 	buffer;</li>
-	<li>value_of_t : t -> value to convert a <code>t</code>
+	<li><code>value_of_t : t -> value</code> to convert a <code>t</code>
 	value to an abstract hierarchical value of type
 	<code>value</code>.</li>
       </ul>
@@ -250,6 +288,6 @@
 
     <hr width="85%"/>
 
-    <p align="center">Last modified May 11th 2013</p>
+    <p align="center">Last modified August 20th 2013</p>
   </body>
 </html>
