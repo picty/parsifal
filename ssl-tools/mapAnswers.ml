@@ -357,11 +357,20 @@ let handle_answer answer =
   return again
 
 let rec handle_one_file input =
-  lwt_try_parse lwt_parse_answer_dump input >>= function
-    | None -> return ()
-    | Some answer ->
-      handle_answer answer >>= fun again ->
-      if again then handle_one_file input else return ()
+  let saved_offset = input.lwt_offset
+  and saved_bitstate = input.lwt_bitstate in
+  let finalize_ok answer =
+    handle_answer answer >>= fun again ->
+    if again then handle_one_file input else return ()
+  and finalize_nok = function
+    | (ParsingException _) as e ->
+      if (input.lwt_offset = saved_offset)
+	&& (input.lwt_bitstate = saved_bitstate)
+      then return ()
+      else fail e
+    | e -> fail e
+  in try_bind (fun () -> lwt_parse_answer_dump input) finalize_ok finalize_nok
+
 
 let _ =
   try
@@ -375,5 +384,6 @@ let _ =
     Lwt_unix.run (open_files args >>= Lwt_list.iter_s handle_one_file);
   with
     | End_of_file -> ()
+    | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e)
 
