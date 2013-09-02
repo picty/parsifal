@@ -19,7 +19,7 @@
 \title{Parsifal: writing efficient and robust binary parsers, quickly}
 \author{
   \begin{tabular}{c}
-    Olivier Levillain\wu\wg, \qquad Hervé Debar\wg and \qquad Benjamin Morin\wu \\[3mm]
+    Olivier Levillain\wu\wg \qquad Hervé Debar\wg \qquad Benjamin Morin\wu \\[3mm]
     \footnotesize
     \begin{tabular}{ccc}
       {\wu}ANSSI{\ } & & {\wg}Télécom Sud Paris{\ } \\
@@ -29,6 +29,7 @@
     \end{tabular}
   \end{tabular}
 }
+\date{}
 
 \begin{document}
 
@@ -36,10 +37,10 @@
 
 Parsers are pervasive software basic blocks: as soon as a program
 needs to communicate with another program or to read a file, a parser
-is involved. However, writing robust parsers can be hard, as is
-revealed by the amount of bugs and vulnerabilities linked to
+is involved. However, writing robust parsers can be difficult, as is
+revealed by the amount of bugs and vulnerabilities related to
 programming errors in parsers.  In particular, network analysis tools
-can be very tricky to implement: for example, the Wireshark project
+can be very complex to implement: for example, the Wireshark project
 regularly publishes security patches on its various
 dissectors\footnote{Since the beginning of the 2013 year, 29~CVE have
   been published on Wireshark.}.
@@ -47,22 +48,23 @@ dissectors\footnote{Since the beginning of the 2013 year, 29~CVE have
 As security researchers, we need robust tools on which we can
 depend. The starting point of Parsifal was a study of large amounts of
 SSL data~\cite{acsac2012}. The data collected contained legitimate
-SSL~\cite{rfc5246} messages, but it also contained invalid messages
-and other protocols (HTTP, SSH). To face this challenge and extract
-relevant information, we wrote several parsers, using different
-languages, which resulted in Parsifal, an OCaml-based parsing
-engine. Writing parsers and analysing data helped us better understand
+SSL~\cite{rfc5246} messages, as well as invalid messages and other
+protocols (HTTP, SSH). To face this challenge and extract relevant
+information, we wrote several parsers, using different languages,
+which resulted in Parsifal, an OCaml-based parsing engine. Writing
+parsers and analysing data not only helped us better understand
 SSL/TLS, but also X.509~\cite{rfc5280} and
-BGP/MRT~\cite{rfc4271,rfc6396}. More recently, we have begun studying
-Kerberos messages.
+BGP/MRT~\cite{rfc4271,rfc6396}. More recently, we have started
+studying Kerberos messages.
 
-The contribution of Parsifal to security can be twofold: provide sound
-tools to analyse complex file formats or network protocols, and
-implement robust detection/sanitization systems.  The goal of this
-tutorial is to present Parsifal and to use it to write a network
-protocol parser (DNS) and a file format parser (PNG). The PNG parser
-will then be used to begin a PNG sanitizer. Alternatively, an X.509
-certificate signing request validator can be implemented.
+The contribution of Parsifal to security is twofold. First we provide
+sound tools to analyse complex file formats or network
+protocols. Secondly we implement robust detection/sanitization
+systems.  The goal of this tutorial is to present Parsifal and to use
+it to write a network protocol parser (DNS) and a file format parser
+(PNG). The PNG parser will then be used to build a PNG
+sanitizer. Alternatively, an X.509 certificate signing request
+validator can be implemented.
 
 \medskip
 
@@ -76,18 +78,18 @@ Pr. Hervé Debar and Dr. Benjamin Morin's advisory.
 
 \section{Project history}
 
-In 2010, the EFF scanned the Internet to find out how servers
-worldwide answered on the 443/TCP port~\cite{eff-observatory,
-  eckersley-obs1, eckersley-obs2}. We studied this significant amount
-of data with custom tools, to gain thorough insight of the data
-collected~\cite{acsac2012}.
+In 2010, the Electronic Frontier Foundation scanned the Internet to
+find out how servers answered on the 443/TCP
+port worldwide~\cite{eff-observatory, eckersley-obs1, eckersley-obs2}. We
+studied this significant amount of data with custom tools, to gain
+thorough insight of the data collected~\cite{acsac2012}.
 
-Our first attempt to write an SSL parser was in Python; it was
-quickly written and allowed us to extract some information. However,
-this implementation was fundamentally slow. The second parser was in
-C++, using templates and object-oriented programming; its goal was to
-be flexible and fast. Yet, the code was hard to debug, and contained
-too many lines.
+Our first attempt to write an SSL parser was with the Python language;
+it was quickly written and allowed us to extract some
+information. However, this implementation was unacceptedly slow. The
+second parser was in C++, using templates and object-oriented
+programming; its goal was to be flexible and fast. Yet, the code was
+hard to debug, and contained too many lines.
 
 So a new version was written, in OCaml: it used a DSL (Domain
   Specific Language) close to Python to describe the structures
@@ -104,13 +106,13 @@ but we soon tried Parsifal on other network protocols (BGP/MRT, DNS,
 TCP/IP stack, Kerberos) and on some file formats (TAR, PE, PCAP,
 PNG). Some of these parsers are still at an early stage, but one of
 the strength of Parsifal is that it is easy to describe part of a
-protocol, and insist only on what really needs to be dissected.
+protocol, and focus only on what really needs to be dissected.
 
 
 
 \section{Parsifal principle: PTypes}
 
-Basically, Parsifal allows you to use PTypes, which are OCaml types
+Parsifal basically allows one to use PTypes, which are OCaml types
 augmented by the presence of some manipulation functions: a PType
 \texttt{t} is composed of:
 \begin{itemize}
@@ -269,7 +271,7 @@ The idea of the core library is to provide most of the basic types and
 transformations used in protocols and file formats. One of the
 advantages of Parsifal is that it is easy to partially implement a
 protocol to only interpret the cases of interest. It also allows for a
-progressive description of a format.
+incremental description of a format.
 
 As our initial goal was to handle a lot of data, including corrupted
 messages or data not conforming to the specification, it is possible to
@@ -304,11 +306,10 @@ bitsrings, which is only a part of the types handled by our tool.
 
 \section{Tutorial goals and outline}
 
-Parsifal has already been presented internally and a version of this
-tutorial has been used to teach several people to using Parsifal. The
-overall tutorial was given over a 3-hour session. All the material
-(this short paper, the slides and the code snippets) will be available
-on the GitHub repository.
+A version of this tutorial has already been taught to teach several
+co-workers how to use Parsifal. The overall tutorial was given over a
+3-hour session. All the material (this short paper, the slides and the
+code snippets) will be available on the GitHub repository.
 
 The tutorial is intended for developpers and researchers who need to
 manipulate complex binary file formats or network protocols. The
@@ -409,7 +410,7 @@ of the implementation would be:
 
 \subsection{X.509 CSR validation}
 
-Another format worth implementing is X.509 Certificate Signing
+Another format that is worth implementing is X.509 Certificate Signing
 Request. In 2009, Moxie Marlinspike showed how to get a signed
 certificate for the wrong domain by sending a subject containing null
 characters~\cite{moxie_nullchar}. In all the cases, it might be useful
