@@ -12,9 +12,23 @@
                 UnknownVal, with_lwt, Exception}}
 
 
+\newcommand{\superscriptOL}[1]{\ensuremath{^{\textrm{#1}}}}
+\def\wu{\superscriptOL{*}}
+\def\wg{\superscriptOL{\dag}}
+
 \title{Parsifal: writing efficient and robust binary parsers, quickly}
-\author{Olivier Levillain}
-\date{}
+\author{
+  \begin{tabular}{c}
+    Olivier Levillain\wu\wg, \qquad Hervé Debar\wg and \qquad Benjamin Morin\wu \\[3mm]
+    \footnotesize
+    \begin{tabular}{ccc}
+      {\wu}ANSSI{\ } & & {\wg}Télécom Sud Paris{\ } \\
+      51 boulebard Latour Maubourg & & 9 rue Charles Fourier \\
+      Paris, France & & Evry, France \\
+      \texttt{first.last@ssi.gouv.fr} & & \texttt{first.last@telecom-sudparis.eu} \\
+    \end{tabular}
+  \end{tabular}
+}
 
 \begin{document}
 
@@ -25,10 +39,12 @@ needs to communicate with another program or to read a file, a parser
 is involved. However, writing robust parsers can be hard, as is
 revealed by the amount of bugs and vulnerabilities linked to
 programming errors in parsers.  In particular, network analysis tools
-can be very tricky to code: for example, the Wireshark project
-regularly publishes security patches on its various dissectors.
+can be very tricky to implement: for example, the Wireshark project
+regularly publishes security patches on its various
+dissectors\footnote{Since the beginning of the 2013 year, 29~CVE have
+  been published on Wireshark.}.
 
-As security researchers, we need robust tools on which we could
+As security researchers, we need robust tools on which we can
 depend. The starting point of Parsifal was a study of large amounts of
 SSL data~\cite{acsac2012}. The data collected contained legitimate
 SSL~\cite{rfc5246} messages, but it also contained invalid messages
@@ -45,7 +61,8 @@ tools to analyse complex file formats or network protocols, and
 implement robust detection/sanitization systems.  The goal of this
 tutorial is to present Parsifal and to use it to write a network
 protocol parser (DNS) and a file format parser (PNG). The PNG parser
-will then be used to begin a PNG sanitizer.
+will then be used to begin a PNG sanitizer. Alternatively, an X.509
+certificate signing request validator can be implemented.
 
 \medskip
 
@@ -53,7 +70,8 @@ Olivier Levillain is head of the Network and Protocols Laboratory at
 the French Network and Information Security Agency (ANSSI). His
 current research interests are web browser security, network protocols
 (SSL/TLS in particular) and the (in)adequation of programming
-languages to security goals.
+languages to security goals. He is currently a PhD student under
+Pr. Hervé Debar and Dr. Benjamin Morin's advisory.
 
 
 \section{Project history}
@@ -64,20 +82,20 @@ worldwide answered on the 443/TCP port~\cite{eff-observatory,
 of data with custom tools, to gain thorough insight of the data
 collected~\cite{acsac2012}.
 
-Our first attempt to write a SSL parser was in Python, and was
+Our first attempt to write an SSL parser was in Python; it was
 quickly written and allowed us to extract some information. However,
 this implementation was fundamentally slow. The second parser was in
 C++, using templates and object-oriented programming; its goal was to
 be flexible and fast. Yet, the code was hard to debug, and contained
 too many lines.
 
-So a new version was written, in OCaml: it used a DSL\footnote{Domain
-  Specific Language.} close to Python to describe the structures
+So a new version was written, in OCaml: it used a DSL (Domain
+  Specific Language) close to Python to describe the structures
 to be studied. This third parser was as fast as the previous one, less
 error-prone, but still needed a lot of lines to code simple
 features. That is why we decided to use a preprocessor to do most of
 the work, letting the programmer deal only with what's important:
-structure description. This last implementation, Parsifal, had all the
+structure description. This last implementation, Parsifal, has all the
 properties expected: efficient and robust parsers, written using few
 lines of code.
 
@@ -109,7 +127,7 @@ augmented by the presence of some manipulation functions: a PType
 
 PTypes are usually built using new keywords: \texttt{enum},
 \texttt{struct}, \texttt{union}, etc. However, when dealing with
-unsupported cases, it is also possible to add custom PType, by writing
+unsupported cases, it is also possible to add custom PTypes, by writing
 directly the \texttt{t} type and the corresponding functions. A lot of
 basic PTypes are already present in the core library.
 
@@ -233,7 +251,7 @@ structures and choices (\texttt{asn1\_struct} and
 \subsection{Examples of base PTypes}
 
 Parsifal already understands some basic types: integers, string,
-IPv4/IPv6, lists, arrays, \emph{magic} numbers, and ASN.1 basic
+IPv4/IPv6 addresses, lists, arrays, \emph{magic} numbers, and ASN.1 basic
 objects.
 
 Moreover, Parsifal provides an abstraction, the containers, allowing
@@ -250,14 +268,14 @@ type\footnote{This proved to be useful to process smoothly Kerberos
 The idea of the core library is to provide most of the basic types and
 transformations used in protocols and file formats. One of the
 advantages of Parsifal is that it is easy to partially implement a
-protocol to only interpret the useful cases. It also allows for a
+protocol to only interpret the cases of interest. It also allows for a
 progressive description of a format.
 
 As our initial goal was to handle a lot of data, including corrupted
 messages or data not conforming to the specification, it is possible to
-implement either strict parsers or flexible ones. This proves useful
+implement either strict parsers or flexible ones. This was useful
 for example when dissecting X.509 corrupted fields: an error deep in
-the certificate does not necessarily invalidate the whole certificate
+the certificate should not necessarily invalidate the whole certificate
 nor the TLS message containing it.
 
 
@@ -272,9 +290,9 @@ Parsifal allows for better perfomance when compiled to native
 binaries. In our experience, it is as efficient as corresponding C
 implementations\footnote{For example, the time needed to parse
   certificates is comparable with the \texttt{openssl x509}
-  command.}. What's more, OCaml is a well-defined, sound language which
-brings some safety guarantees regarding memory management that C does
-not.
+  command.}. What's more, OCaml is a well-defined, sound language
+which brings some safety guarantees regarding memory management that C
+or Python do not.
 
 Other preprocessors and libraries exist in the OCaml environment, but
 they do not offer a comprehensive framework to describe complex
@@ -288,7 +306,9 @@ bitsrings, which is only a part of the types handled by our tool.
 
 Parsifal has already been presented internally and a version of this
 tutorial has been used to teach several people to using Parsifal. The
-overall tutorial was given over a 3-hour session.
+overall tutorial was given over a 3-hour session. All the material
+(this short paper, the slides and the code snippets) will be available
+on the GitHub repository.
 
 The tutorial is intended for developpers and researchers who need to
 manipulate complex binary file formats or network protocols. The
@@ -302,12 +322,16 @@ There are three main goals for this tutorial:
 \item code a PNG sanitizer
 \end{itemize}
 
+\noindent
+Depending on the audience's interests, the DNS or PNG implementation
+could be replaced by an X.509 Certificate Signing Request validator.
+
 
 \subsection{Parsifal presentation}
 
-As was done in this presentation, the tutorial begins with a brief
-history of the project, and the motivation for writing robust and
-efficient parsers.
+As was done in the first part of this document, the tutorial begins
+with a brief history of the project, and the motivation for writing
+robust and efficient parsers.
 
 Then, the principle behind Parsifal are presented: the PTypes and the
 methods to generate them automatically using a preprocessor. This part
@@ -377,9 +401,38 @@ of the implementation would be:
   that combines all IDAT chunks into one, and rewrites the image file
   uncompressed. This way, the compression is handled by
   \texttt{zlib\_container}, a pure OCaml robust implementation, and
-  not by the end application, which may embed an out-of-date zlib.
+  not by the end application, which may embed an out-of-date and
+  flawed \texttt{zlib}.
 \end{itemize}
 \end{itemize}
+
+
+\subsection{X.509 CSR validation}
+
+Another format worth implementing is X.509 Certificate Signing
+Request. In 2009, Moxie Marlinspike showed how to get a signed
+certificate for the wrong domain by sending a subject containing null
+characters~\cite{moxie_nullchar}. In all the cases, it might be useful
+to constrain the CSR before it hits the certification authority:
+remove useless attributes, check the signature before-hand, clean up
+the subject to follow a given policy. Here is how it can be done using
+Parsifal:
+\begin{itemize}
+\item description of the ASN.1 structures corresponding to CSRs;
+\begin{itemize}
+\item[-] at this point, it is possible to implement a tool printing
+  CSRs;
+\end{itemize}
+\item filter out attributes;
+\item add a trivial policy on subjects (only one CN field, no null characters, etc.);
+\item check the signature and the size of the key;
+\begin{itemize}
+\item[-] at this point, it is possible to write a simple X.509 CSR
+  validator, that can be used as a gate keeper to validate requests.
+\end{itemize}
+\end{itemize}
+
+
 
 
 
@@ -393,9 +446,17 @@ gain insight into several important protocols. Parsifal also proved to
 be versatile and might be useful to the security community to write
 efficient and robust binary dissectors.
 
-The proposed tutorial aims at presenting the tool and illustrating its
-benefits on two simple cases: DNS message interpretation and PNG
-structure sanitization.
+
+
+\section*{Acknowledgment}
+
+
+The work in this paper has been partially sponsored by the EC 7th
+Framework Programme as part of the ICT Vis-Sense project (grant
+no. 257497). The authors would like to thank the Applied and
+Fundamental Research Division of the French Network and Information
+Security Agency (ANSSI) for their comments and suggestions.
+
 
 
 \bibliographystyle{unsrt}
