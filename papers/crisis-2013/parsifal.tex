@@ -1,5 +1,4 @@
-\documentclass{article}
-\usepackage[left=2.5cm,right=2.5cm,top=2cm,bottom=2cm]{geometry}
+\documentclass{IEEEtran}
 \usepackage[latin1]{inputenc}
 \usepackage[T1]{fontenc}
 
@@ -12,24 +11,11 @@
                 UnknownVal, with_lwt, Exception}}
 
 
-\newcommand{\superscriptOL}[1]{\ensuremath{^{\textrm{#1}}}}
-\def\wu{\superscriptOL{*}}
-\def\wg{\superscriptOL{\dag}}
-
 \title{Parsifal: writing efficient and robust binary parsers, quickly}
-\author{
-  \begin{tabular}{c}
-    Olivier Levillain\wu\wg \qquad Hervé Debar\wg \qquad Benjamin Morin\wu \\[3mm]
-    \footnotesize
-    \begin{tabular}{ccc}
-      {\wu}ANSSI{\ } & & {\wg}Télécom Sud Paris{\ } \\
-      51 boulebard Latour Maubourg & & 9 rue Charles Fourier \\
-      Paris, France & & Evry, France \\
-      \texttt{first.last@ssi.gouv.fr} & & \texttt{first.last@telecom-sudparis.eu} \\
-    \end{tabular}
-  \end{tabular}
-}
-\date{}
+\author{Olivier Levillain\IEEEauthorrefmark{1}\IEEEauthorrefmark{2},~Hervé Debar\IEEEauthorrefmark{2},~Bejamin Morin\IEEEauthorrefmark{1}%
+\thanks{\IEEEauthorrefmark{1} ANSSI, \texttt{first.last@ssi.gouv.fr}}%
+\thanks{\IEEEauthorrefmark{2} Télécom Sud Paris, \texttt{first.last@telecom-sudparis.eu}}}
+
 
 \begin{document}
 
@@ -147,9 +133,8 @@ figure~\ref{fig:tls-generated-code}.
 
 
 \begin{figure}[p]
-  \begin{center}\begin{minipage}{.35\linewidth}
-    {\scriptsize
-    \begin{verbatim}
+  \scriptsize
+  \begin{verbatim}
 enum { warning(1), fatal(2), (255) } AlertLevel;
 
 enum {
@@ -163,8 +148,7 @@ struct {
     AlertLevel level;
     AlertDescription description;
 } Alert;
-    \end{verbatim}}
-  \end{minipage}\end{center}
+  \end{verbatim}
   \caption{Specification of \texttt{tls\_alert} messages (from RFC~5246~\cite{rfc5246}).}
   \label{fig:tls-spec}
 \end{figure}
@@ -172,8 +156,7 @@ struct {
 
 
 \begin{figure}[p]
-  \begin{center}\begin{minipage}{.56\linewidth}
-    \begin{lstlisting}
+  \begin{lstlisting}
 enum tls_alert_level (8, UnknownVal AL_Unknown) =
   | 1 -> AL_Warning, "Warning"
   | 2 -> AL_Fatal, "Fatal"
@@ -187,16 +170,14 @@ struct tls_alert = {
   alert_level : tls_alert_level;
   alert_type : tls_alert_type
 }
-    \end{lstlisting}
-  \end{minipage}\end{center}
+  \end{lstlisting}
   \caption{Parsifal description of \texttt{tls\_alert} messages.}
   \label{fig:tls-descr}
 \end{figure}
 
 
 \begin{figure}[p]
-  \begin{center}\begin{minipage}{.65\linewidth}
-    \begin{lstlisting}
+  \begin{lstlisting}
 (* tls_alert_level *)
 
 type tls_alert_level =
@@ -223,8 +204,8 @@ type tls_alert_type =
   ...
   | AT_Unknown of int
 
-(* 7 functions, similar to those relative to tls_alert_level *)
-
+(* ... 7 functions, similar to those relative *)
+(*           to tls_alert_level ...           *)
 
 (* tls_alert *)
 
@@ -235,8 +216,7 @@ type tls_alert = {
 val parse_tls_alert : input -> tls_alert
 val dump_tls_alert : output -> tls_alert -> unit
 val value_of_tls_alert : tls_alert -> value
-    \end{lstlisting}
-  \end{minipage}\end{center}
+  \end{lstlisting}
   \caption{Corresponding OCaml code generated (extracts of the interface).}
   \label{fig:tls-generated-code}
 \end{figure}
@@ -274,17 +254,17 @@ protocol to only interpret the cases of interest. It also allows for a
 incremental description of a format.
 
 As our initial goal was to handle a lot of data, including corrupted
-messages or data not conforming to the specification, it is possible to
-implement either strict parsers or flexible ones. This was useful
-for example when dissecting X.509 corrupted fields: an error deep in
-the certificate should not necessarily invalidate the whole certificate
+messages or data not conforming to the specification, it is possible
+to implement either strict parsers or flexible ones. This was useful
+when dissecting X.509 corrupted fields: an error deep in the
+certificate should not necessarily invalidate the whole certificate
 nor the TLS message containing it.
 
 
 
 \section{Related work}
 
-Parsifal may seem similar to two Python projects:
+Parsifal may seem similar to two existing Python projects:
 \texttt{scapy}~\cite{scapy}, a toolbox to parse and forge network
 packets and \texttt{hachoir}~\cite{hachoir}, a generic framework for
 binary file manipulation library. However, as an OCaml development,
