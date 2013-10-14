@@ -1,0 +1,285 @@
+\documentclass{beamer}
+\usepackage{xcolor}
+\useoutertheme{infolines}
+\usepackage[frenchb]{babel}
+\usepackage[latin1]{inputenc}
+\usepackage{array}
+
+\colorlet{darkgreen}{green!50!black}
+\colorlet{darkblue}{blue!50!black}
+\colorlet{darkgrey}{white!20!black}
+
+\title[\url{https://github.com/ANSSI-FR/parsifal}]{Parsifal: une
+  solution pour écrire rapidement des \emph{parsers} binaires robustes
+  et efficaces}
+\author[O. Levillain]{\textbf{Olivier Levillain}}
+\institute[]{ANSSI}
+\date{8 janvier 2014}
+
+\begin{document}
+
+
+\begin{frame}
+  \maketitle
+\end{frame}
+
+
+\begin{frame}{Contexte}
+  \begin{itemize}
+  \item Pour comprendre un format ou un protocole, le mieux est de
+    l'implémenter\\[.5cm]
+
+  \item Chaque format/protocole repose sur des structures binaires qui
+    lui sont propres\\[.5cm]
+
+  \item Les \textit{parsers} binaires sont une brique de base de toute
+    implémentation
+  \item Quelques vulnérabilités liées à des \textit{parsers}
+    \begin{itemize}
+    \item \texttt{libpng}: CVE-2011-3045 et CVE-2011-3026
+    \item \texttt{libtiff}: CVE-2012-5581, CVE-2012-4447 et CVE-2012-1173
+    \item \texttt{wireshark}: CVE-2012-4048, CVE-2012-4296...
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Cas réel: analyse de données SSL}
+  SSL/TLS est un protocole réseau assurant la confidentialité,
+  l'intégrité et l'authentification des parties
+
+  \bigskip
+
+  \begin{itemize}
+  \item Analyse de captures réseau avec des messages SSL
+    \begin{itemize}
+    \item 180~Go de données brutes
+    \item Corpus intéressant, car c'est ce que \textit{voit} votre navigateur en permanence\\[.5cm]
+    \end{itemize}
+
+  \item<2-> Problèmes pour disséquer toutes ces données
+    \begin{itemize}
+    \item format de message complexe
+    \item données corrompues
+    \item protocole autre que SSL/TLS (en général HTTP ou SSH)
+    \item erreurs plus subtiles dans les messages\\[.5cm]
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Interlude concernant SSL}
+  Que répond un serveur si vous lui proposez les suites crypto
+  \textcolor{darkblue}{\texttt{AES128-SHA}} et \textcolor{darkgreen}{\texttt{DHE-RSA-AES128-SHA}}?
+  \begin{enumerate}
+  \item<2->[A] \textcolor{darkblue}{\texttt{AES128-SHA}}
+  \item<3->[B] \textcolor{darkgreen}{\texttt{DHE-RSA-AES128-SHA}}
+  \item<4->[C] une alerte
+  \item<5->[D] la réponse D (\textcolor{red}{\texttt{RC4\_MD5}})
+  \end{enumerate}
+\end{frame}
+
+
+\begin{frame}{Historique des outils}
+  Pour traiter ce volume de données, plusieurs \textit{parsers} TLS
+  ont été développés
+  \begin{itemize}
+  \item Python: rapide à écrire, mais lent à l'exécution\\[.5cm]
+  \item C++ (avec \textit{templates} et des objets): flexible, rapide,
+    mais verbeux et pénible à mettre au point\\[.5cm]
+  \item OCaml avec un préprocesseur \texttt{camlp4}: tous les indicateurs au vert
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Parsifal: plaquette publicitaire}
+  \begin{itemize}
+  \item \'Ecriture de \textit{parsers} grâce à du code \textbf{concis}
+  \item \textbf{Efficacité} des programmes produits
+  \item \textbf{Robustesse} des outils développés
+  \item Développement \textbf{incrémental} de \textit{parsers} flexibles\\[.5cm]
+
+  \item<2-> Parsifal permet de décrire des structures
+  \item<2-> Génération des fonctions \textit{parse} et \textit{dump}
+  \item<2-> Exemple: client DNS en 200~lignes\\[.5cm]
+
+  \item<3-> Usages possibles de Parsifal
+    \begin{itemize}
+    \item outils d'analyse robustes maîtrisés
+    \item brique de base pour des outils de dépollution
+    \item implémentations sécurisées de protocoles
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+
+\begin{frame}{Exemple: structure d'une image PNG (1/3)}
+
+{\tt
+\begin{tabular}{l}
+struct \only<1>{png\_file}\only<2->{\textcolor{red}{png\_file}} = \{ \\
+\quad png\_magic : magic("$\backslash$x89$\backslash$x50$\backslash$x4e$\backslash$x47$\backslash$x0d$\backslash$x0a$\backslash$x1a$\backslash$x0a"); \\
+\quad png\_content : binstring; \\
+\}
+\end{tabular}
+
+\bigskip
+
+\uncover<2->{
+\begin{tabular}{l}
+let input = input\_of\_filename "image.png" in \\
+let png = parse\_\textcolor{red}{png\_file} input in \\
+print\_value (value\_of\_\textcolor{red}{png\_file} png) \\
+\end{tabular}
+}
+}
+\bigskip
+\bigskip
+
+\uncover<3->{
+Sortie du programme:\\
+\tt \footnotesize \textcolor{darkgrey}{
+\begin{tabular}{>{\quad}l}
+value \{ \\
+\quad png\_magic: 89504e470d0a1a0a (8 bytes) \\
+\quad png\_content: 0000000d49484... (264 bytes) \\
+\} \\
+\end{tabular}
+}
+}
+
+\end{frame}
+
+
+
+\begin{frame}{Exemple: structure d'une image PNG (2/3)}
+
+{\tt
+\begin{tabular}{l}
+struct png\_file = \{ \\
+\quad png\_magic : magic("$\backslash$x89$\backslash$x50$\backslash$x4e$\backslash$x47$\backslash$x0d$\backslash$x0a$\backslash$x1a$\backslash$x0a"); \\
+\quad png\_content : list of \textcolor{red}{chunk}; \\
+\}
+\end{tabular}
+
+\bigskip
+
+\uncover<2->{
+\begin{tabular}{l}
+struct \textcolor{red}{chunk} = \{ \\
+\quad chunk\_size : uint32; \\
+\quad chunk\_type : string(4); \\
+\quad data : binstring(chunk\_size); \\
+\quad crc : uint32; \\
+\}
+\end{tabular}
+}
+}
+
+\end{frame}
+
+
+
+\begin{frame}{Exemple: structure d'une image PNG (2/3)}
+
+Sortie du programme:\\
+\tt \footnotesize \textcolor{darkgrey}{
+  \begin{tabular}{>{\quad}l}
+value \{ \\
+\quad png\_magic: 89504e470d0a1a0a (8 bytes) \\
+\quad chunks \{ \\
+\quad \quad chunks[0] \{ \\
+\quad \quad \quad chunk\_size: 13 (0x0000000d) \\
+\quad \quad \quad chunk\_type: "IHDR" (4 bytes) \\
+\quad \quad \quad data: 00000014000000160403000000 (13 bytes) \\
+\quad \quad \quad crc: 846176565 (0x326fa135) \\
+\quad \quad \} \\
+\quad ... 4 autres chunks ... \\
+\quad \} \\
+\}
+\end{tabular}
+}
+
+\end{frame}
+
+
+\begin{frame}{Constructions offertes par Parsifal}
+
+  \begin{itemize}
+  \item \texttt{struct} permet de décrire des enregistrements\\[.5cm]
+  \item<2-> \texttt{enum} pour les énumérations typées\\[.5cm]
+  \item<3-> \texttt{union} pour des types dépendant d'un discriminant\\[.5cm]
+  \item<4-> \texttt{asn1\_*} pour décrire des structures ASN.1 (comme les certificats)\\[.5cm]
+  \item<5-> gestion des champs de bits\\[.5cm]
+  \item<6-> notion de conteneurs pour gérer des transformations
+    \begin{itemize}
+    \item \texttt{ztext : zlib\_container of string;}\\[.5cm]
+    \end{itemize}
+  \item<7-> et de nombreux types de bases prédéfinis...
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Exemples de formats décrits}
+
+  \begin{center}
+    \begin{tabular}{|l|r|l|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Format} & \multicolumn{1}{c|}{\%} & \multicolumn{1}{c|}{Remarques} \\
+      \hline
+      X.509 & 90~\% & Encodage DER automatisé \\
+      SSL/TLS & 60~\% & Outils d'analyse de traces + automate (en cours) \\
+      PCAP & 25~\% & Support rudimentaire du format de traces réseau \\
+      \hline
+      TAR & 90~\% & Tutoriel \\
+      DNS & 75~\% & \textit{bit fields}, contexte pour la \textit{compression} \\
+      \hline
+      PNG & 80~\% & Compression DEFLATE \\
+      JPG & 30~\% & Format moins serein que PNG \\
+      \hline
+      \multicolumn{3}{|l|}{PE, Kerberos, OpenPGP, PKCS\#1, PKCS\#7...} \\
+      \hline
+      \multicolumn{3}{|l|}{\it Firmware UEFI, PDF...} \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+
+
+\begin{frame}{Conclusion}
+  Bilan après deux ans de développement:
+  \begin{itemize}
+  \item Parsifal permet de décrire \textbf{rapidement} des formats \textbf{complexes}
+  \item Les programmes obtenus sont \textbf{robustes} et \textbf{efficaces}
+  \item Le code est facilement \textbf{réutilisable}\\[.5cm]
+
+  \item Prise en main relativement facile\\[.5cm]
+
+  \item Code disponible sur GitHub\\[.5cm]
+
+  \item N'hésitez pas à venir en discuter~!
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Questions?}
+  \vspace*{\stretch{1}}
+
+  \begin{center}
+    Merci de votre attention
+
+    \bigskip
+ 
+    \url{https://github.com/ANSSI-FR/parsifal}   
+
+    \medskip
+
+    \texttt{olivier.levillain@ssi.gouv.fr}
+  \end{center}
+
+  \vspace*{\stretch{1}}
+\end{frame}
+
+\end{document}
