@@ -1,0 +1,8 @@
+*.nav
+*.toc
+*.snm
+*.aux
+*.log
+*.out
+*.vrb
+parsifal.pdf

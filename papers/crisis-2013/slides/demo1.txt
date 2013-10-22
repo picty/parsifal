@@ -1,0 +1,4 @@
+mapAnswers 108.dump | head   
+mapAnswers 108.dump --always-enrich --answer-type | less
+mapAnswers 108.dump --always-enrich -g "[2].record_content.handshake_content.params.dh_p" | head
+mapAnswers 108.dump --always-enrich -g "[2].record_content.handshake_content.params.dh_p" | cut -d: -f2 | sort | uniq -c | sort -g
