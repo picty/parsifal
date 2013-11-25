@@ -1,7 +1,15 @@
-TEXFILENAME=OlivierLevillain--Parsifal
+LONG=OlivierLevillain--Parsifal.pdf
+SHORT=OlivierLevillain--Parsifal--short.pdf
+BIBLIO=biblio.bib rfc.bib
 
-all:
-	pdflatex $(TEXFILENAME).tex && bibtex $(TEXFILENAME).aux && pdflatex $(TEXFILENAME).tex && pdflatex $(TEXFILENAME).tex
+
+all: $(LONG) $(SHORT)
+
+OlivierLevillain--Parsifal.pdf:	OlivierLevillain--Parsifal.tex $(BIBLIO)
+	pdflatex $< && bibtex OlivierLevillain--Parsifal.aux && pdflatex $< && pdflatex $<
+
+OlivierLevillain--Parsifal--short.pdf: OlivierLevillain--Parsifal--short.tex
+	pdflatex $< && pdflatex $<
 
 clean:
-	rm -f $(TEXFILENAME).aux $(TEXFILENAME).pdf $(TEXFILENAME).bbl $(TEXFILENAME).log $(TEXFILENAME).blg
+	rm -f *.aux *.bbl *.log *.bbl $(LONG) $(SHORT)
