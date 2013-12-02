@@ -1,8 +1,10 @@
 # configurable section
-TARGETS = test_random test_ssl2
+TARGETS = test_random test_ssl2 test_tls_client test_tls_server
 
 test_random_SRCS := test_random.ml
 test_ssl2_SRCS := test_ssl2.ml
+test_tls_client_SRCS := test_tls_client.ml
+test_tls_server_SRCS := test_tls_server.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
