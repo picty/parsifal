@@ -79,7 +79,7 @@ let send_hs_record o (t, content) =
 
 
 let rec print_msgs i =
-  TlsEngine.lwt_parse_tls_record None i >>= fun record ->
+  lwt_parse_wrapper (parse_tls_record None) i >>= fun record ->
   if !verbose then print_string (print_value (value_of_tls_record record));
   if record.content_type = CT_Handshake
   then print_msgs i
@@ -126,7 +126,7 @@ let send_hs o sh_version =
 
 let expect_clienthello s =
   input_of_fd "Socket" s >>= fun input ->
-  TlsEngine.lwt_parse_tls_record None input >>= fun record ->
+  lwt_parse_wrapper (parse_tls_record None) input >>= fun record ->
   if !verbose then print_string (print_value (value_of_tls_record record));
   let answer_thread = match record.record_content, !action with
     | _, FatalAlert -> send_alert s !alert_type

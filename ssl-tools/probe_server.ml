@@ -7,7 +7,98 @@ open Getopt
 open Parsifal
 open TlsEnums
 open Tls
-open TlsEngine
+
+
+
+(* Copy/paste from old TlsEngine *)
+
+let plaintext_chunk_size = ref 16384
+let timeout = ref 3.0
+
+let write_record o record =
+  let s = exact_dump_tls_record record in
+  LwtUtil.really_write o s
+
+let split_record record size =
+  let ct = record.content_type
+  and v = record.record_version
+  and content = exact_dump_record_content record.record_content in
+  let len = String.length content in
+  let rec mk_records accu offset =
+    if offset >= len
+    then List.rev accu
+    else begin
+      let next_offset =
+	if offset + size >= len
+	then len
+	else offset + size
+      in
+      let next = { content_type = ct;
+		   record_version = v;
+		   record_content = Unparsed_Record (String.sub content offset (next_offset - offset)) } in
+      mk_records (next::accu) next_offset
+    end
+  in
+  mk_records [] 0
+
+let send_plain_record out record =
+  let recs = split_record record !plaintext_chunk_size in
+  Lwt_list.iter_s (write_record out) recs
+
+(* TODO: handle_answer is probe-server oriented *)
+type 'a result_type =
+  | NothingSoFar
+  | Result of 'a
+  | FatalAlert of string
+  | EndOfFile
+  | Timeout
+  | Retry
+
+let catch_exceptions retry e =
+  if retry > 1
+  then return Retry
+  else match e with
+  | LwtUtil.Timeout -> return Timeout
+  | End_of_file -> return EndOfFile
+  | e -> fail e
+
+let handle_answer handle_hs handle_alert s =
+  let ctx = empty_context () in
+
+  let process_input parse_fun handle_fun input =
+    match try_parse parse_fun input with
+      | None -> NothingSoFar, input
+      | Some parsed_msg ->
+	let res = handle_fun parsed_msg in
+	let new_input = drop_used_string input in
+	res, new_input
+  in
+
+  let rec read_answers hs_in alert_in =
+    lwt_parse_wrapper (parse_tls_record None) s >>= fun record ->
+    let result, new_hs_in, new_alert_in = match record.content_type with
+      | CT_Handshake ->
+	let input = append_to_input hs_in (exact_dump_record_content record.record_content) in
+	let r, h = process_input (parse_handshake_msg (Some ctx)) (handle_hs ctx) input in
+	r, h, alert_in
+      | CT_Alert ->
+	let input = append_to_input alert_in (exact_dump_record_content record.record_content) in
+	let r, a = process_input parse_tls_alert handle_alert input in
+	r, hs_in, a
+      | _ -> FatalAlert "Unexpected content type", hs_in, alert_in
+    in match result with
+      | NothingSoFar -> timed_read_answers new_hs_in new_alert_in
+      | x -> return x
+  and timed_read_answers hs_in alert_in =
+    let t = read_answers hs_in alert_in in
+    pick [t; Lwt_unix.sleep !timeout >>= fun () -> return Timeout]
+  in
+
+  let hs_in = input_of_string "Handshake records" ""
+  and alert_in = input_of_string "Alert records" "" in
+  catch (fun () -> timed_read_answers hs_in alert_in) (catch_exceptions 0)
+
+(* End of Copy/paste from old TlsEngine *)
 
 
 
@@ -130,7 +221,7 @@ let print_hs ctx hs =
   match hs.handshake_type, hs.handshake_content with
   | HT_ServerHelloDone, _ -> Result ()
   | _, ServerHello { ciphersuite = cs } ->
-    ctx.future.s_ciphersuite <- find_csdescr cs;
+    ctx.future.proposed_ciphersuites <- [cs];
     NothingSoFar
   | _ -> NothingSoFar
 

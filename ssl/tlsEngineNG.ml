@@ -5,6 +5,10 @@ open Tls
 open Ssl2
 open Parsifal
 
+(* TODO: Rewrite TlsUtil.clean_records to parse the real records one
+   by one (to let TlsEngine handle the context evolution properly) *)
+
+
 (* Global context *)
 
 type tls_global_context = {
@@ -17,23 +21,24 @@ type tls_global_context = {
 (* Simple functions *)
 
 let update_with_client_hello ctx ch =
-  ctx.future.versions_proposed <- (V_SSLv3, ch.client_version);
+  (* TODO: Take the record version into account? *)
+  ctx.future.proposed_versions <- (V_SSLv3, ch.client_version);
   ctx.future.s_client_random <- ch.client_random;
   ctx.future.s_session_id <- ch.client_session_id;
-  ctx.future.ciphersuites_proposed <- ch.ciphersuites;
-  ctx.future.compressions_proposed <- ch.compression_methods;
+  ctx.future.proposed_ciphersuites <- ch.ciphersuites;
+  ctx.future.proposed_compressions <- ch.compression_methods;
   (* TODO: extensions *)
   match ch.client_extensions with
   | None | Some [] -> ()
   | _ -> () (* For now, all extensions are ignored *)
 
 let update_with_server_hello ctx sh =
-  (* Check? *)
-  ctx.future.s_version <- sh.server_version;
+  (* Checks? *)
+  ctx.future.proposed_versions <- (sh.server_version, sh.server_version);
+  ctx.future.proposed_ciphersuites <- [sh.ciphersuite];
+  ctx.future.proposed_compressions <- [sh.compression_method];
   ctx.future.s_server_random <- sh.server_random;
   ctx.future.s_session_id <- sh.server_session_id;
-  ctx.future.s_ciphersuite <- find_csdescr sh.ciphersuite;
-  ctx.future.s_compression_method <- sh.compression_method;
   (* TODO: exts *)
   match sh.server_extensions with
   | None | Some [] -> ()
@@ -45,7 +50,7 @@ let update_with_certificate ctx certs =
 
 let mk_alert_msg ctx alert_level alert_type = {
   content_type = CT_Alert;
-  record_version = ctx.future.s_version;
+  record_version = ctx.current_version;
   record_content = Alert {
     alert_level = alert_level;
     alert_type = alert_type;
@@ -54,7 +59,7 @@ let mk_alert_msg ctx alert_level alert_type = {
 
 let mk_handshake_msg ctx hs_type hs_msg = {
   content_type = CT_Handshake;
-  record_version = ctx.future.s_version;
+  record_version = ctx.current_version;
   record_content = Handshake {
     handshake_type = hs_type;
     handshake_content = hs_msg
@@ -77,12 +82,12 @@ let mk_client_hello ctx =
 let mk_server_hello ctx =
   (* TODO: Use ctx!!!! *)
   let sh = {
-    server_version = snd ctx.future.versions_proposed;
+    server_version = snd ctx.future.proposed_versions;
     (* Bouh !!! *)
     server_random = ctx.future.s_client_random;
     server_session_id = "";
-    ciphersuite = List.hd ctx.future.ciphersuites_proposed;
-    compression_method = List.hd ctx.future.compressions_proposed;
+    ciphersuite = List.hd ctx.future.proposed_ciphersuites;
+    compression_method = List.hd ctx.future.proposed_compressions;
     server_extensions = None
   } in
   update_with_server_hello ctx sh;

@@ -81,7 +81,7 @@ let write_record o record =
 
 
 let rec forward update_fun state i o =
-  TlsEngine.lwt_parse_tls_record None i >>= fun record ->
+  lwt_parse_wrapper (parse_tls_record None) i >>= fun record ->
 (*   print_string (print_value ~name:state.name (value_of_tls_record record)); *)
   write_record o record >>= fun () ->
   begin

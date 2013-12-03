@@ -73,7 +73,7 @@ let rec forward i o =
 
 let handle_client client_side =
   input_of_fd "Socket" client_side >>= fun input ->
-  TlsEngine.lwt_parse_tls_record None input >>= fun record ->
+  lwt_parse_wrapper (parse_tls_record None) input >>= fun record ->
   match record.record_content with
   | Handshake {handshake_content = ClientHello ch} ->
     let h, p = match ch.client_extensions with

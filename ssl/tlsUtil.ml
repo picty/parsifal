@@ -15,9 +15,9 @@ let clean_records ctx ?verbose:(verbose=false) ?enrich:(enrich=AlwaysEnrich) rec
 	    (* TODO: Write this somewhere else? *)
 	    match ctx, res with
 	    | Some c, Handshake {handshake_content = ServerHello sh} ->
-              TlsEngine.update_with_server_hello c sh
+	      c.future.proposed_ciphersuites <- [sh.ciphersuite]
             | Some c, Handshake {handshake_content = ServerKeyExchange ske} ->
-              TlsEngine.update_with_server_key_exchange c ske
+	      c.future.s_server_key_exchange <- ske
 	    | _ -> ()
 	  end;
 	  res

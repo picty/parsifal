@@ -158,7 +158,7 @@ let handle_answer answer =
         let _, ctx, _ = parse_all_records answer in
         let cs = match ctx with
           | None -> if !verbose then (Some "ERROR") else None
-          | Some ctx -> Some (string_of_ciphersuite ctx.future.s_ciphersuite.suite_name)
+          | Some ctx -> Some (string_of_ciphersuite (List.hd ctx.future.proposed_ciphersuites))
         in
         begin
           match cs with

@@ -1,6 +1,9 @@
 open TlsEnums
 open Tls
 
+(* TODO: add KX methods/AU methods/ENC methods/MAC methods here *)
+(*       and a simple interface? The SKE content should be there? *)
+
 let mk_csdescr cs kx au enc mac prf exp min max =
   let desc = {
     suite_name = cs;

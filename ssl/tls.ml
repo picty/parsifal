@@ -3,6 +3,34 @@ open PTypes
 open TlsEnums
 
 
+(* Suite description *)
+
+type ciphersuite_description = {
+  suite_name : TlsEnums.ciphersuite;
+  kx : key_exchange_algorithm;
+  au : authentication_algorithm;
+  enc : encryption_algorithm;
+  mac : integrity_algorithm;
+  prf : pseudo_random_function;
+  export : bool;
+  min_version : int;
+  max_version : int;
+}
+
+let ciphersuite_descriptions = Hashtbl.create 300
+
+let find_csdescr cs =
+  try Hashtbl.find ciphersuite_descriptions cs
+  with Not_found -> {
+    suite_name = cs;
+    kx = KX_Unknown; au = AU_Unknown;
+    enc = ENC_Unknown; mac = MAC_Unknown;
+    prf = PRF_Unknown;
+    export = false; min_version = 0; max_version = 0xffff;
+  }
+
+
+
 
 (* Simple TLS records *)
 
@@ -191,43 +219,37 @@ union server_key_exchange [enrich] (Unparsed_SKEContent) =
 
 
 
-type ciphersuite_description = {
-  suite_name : TlsEnums.ciphersuite;
-  kx : key_exchange_algorithm;
-  au : authentication_algorithm;
-  enc : encryption_algorithm;
-  mac : integrity_algorithm;
-  prf : pseudo_random_function;
-  export : bool;
-  min_version : int;
-  max_version : int;
-}
 
-type crypto_context = {
-  mutable versions_proposed : TlsEnums.tls_version * TlsEnums.tls_version;
-  mutable ciphersuites_proposed : TlsEnums.ciphersuite list;
-  mutable compressions_proposed : TlsEnums.compression_method list;
 
-  mutable s_version : TlsEnums.tls_version;
-  mutable s_ciphersuite : ciphersuite_description;
-  mutable s_compression_method : TlsEnums.compression_method;
+
+type future_crypto_context = {
+  mutable proposed_versions : TlsEnums.tls_version * TlsEnums.tls_version;
+  mutable proposed_ciphersuites : TlsEnums.ciphersuite list;
+  mutable proposed_compressions : TlsEnums.compression_method list;
 
   mutable s_certificates : (X509.certificate trivial_union) list;
-
-  mutable s_server_key_exchange : server_key_exchange;
-
+  mutable s_server_key_exchange : server_key_exchange; (* this should NOT be a server_key_exchange *)
   mutable s_client_random : string;
   mutable s_server_random : string;
   mutable s_session_id : string;
 }
 
 type tls_context = {
-  mutable expected_client_hs_msgs : hs_message_type list;
-  mutable expected_server_hs_msgs : hs_message_type list;
-  mutable present : crypto_context;
-  mutable future : crypto_context;
-}
+  mutable current_version : TlsEnums.tls_version;
+  mutable current_ciphersuite : ciphersuite_description;
+  mutable current_compression_method : TlsEnums.compression_method;
 
+  mutable current_randoms : string * string;
+  mutable current_master_secret : string;
+
+  mutable out_compress : string -> string;
+  mutable out_encrypt : string -> string;
+
+  mutable in_decrypt : string -> string;
+  mutable in_expand : string -> string;
+
+  future : future_crypto_context;
+}
 
 struct signature_and_hash_algorithm = {
   hash_algorithm : hash_algorithm;
@@ -243,6 +265,9 @@ struct certificate_request = {
       trivial_union(enrich_distinguishedName_in_certificate_request) of X509Basics.distinguishedName
 }
 
+let extract_future_kx = function
+  | Some {future = {proposed_ciphersuites = [cs]} } -> (find_csdescr cs).kx
+  | _ -> KX_Unknown
 
 union handshake_content [enrich; param context] (Unparsed_HSContent) =
   | HT_HelloRequest -> HelloRequest
@@ -251,7 +276,7 @@ union handshake_content [enrich; param context] (Unparsed_HSContent) =
  (* | HT_HelloVerifyRequest -> HelloVerifyRequest of *)
   | HT_NewSessionTicket -> NewSessionTicket of new_session_ticket
   | HT_Certificate -> Certificate of certificates
-  | HT_ServerKeyExchange -> ServerKeyExchange of server_key_exchange(match context with None -> KX_Unknown | Some ctx -> ctx.future.s_ciphersuite.kx)
+  | HT_ServerKeyExchange -> ServerKeyExchange of server_key_exchange(extract_future_kx context)
   | HT_CertificateRequest -> CertificateRequest of certificate_request
   | HT_ServerHelloDone -> ServerHelloDone
  (* | HT_CertificateVerify -> CertificateVerify of *)
@@ -293,43 +318,30 @@ struct tls_record [top; param context] = {
 
 
 
-let ciphersuite_descriptions = Hashtbl.create 300
-
-let find_csdescr cs =
-  try Hashtbl.find ciphersuite_descriptions cs
-  with Not_found -> {
-    suite_name = cs;
-    kx = KX_Unknown; au = AU_Unknown;
-    enc = ENC_Unknown; mac = MAC_Unknown;
-    prf = PRF_Unknown;
-    export = false; min_version = 0; max_version = 0xffff;
-  }
-
-let empty_crypto_context () = {
-  versions_proposed = TlsEnums.V_Unknown 0xffff, TlsEnums.V_Unknown 0;
-  ciphersuites_proposed = [];
-  compressions_proposed = [];
-
-  s_version = TlsEnums.V_Unknown 0;
-  s_ciphersuite = find_csdescr TlsEnums.TLS_NULL_WITH_NULL_NULL;
-  s_compression_method = TlsEnums.CM_Null;
+let empty_future_crypto_context (* TODO: prefs *) () = {
+  proposed_versions = V_SSLv3, V_TLSv1_2;
+  proposed_ciphersuites = [TLS_RSA_WITH_RC4_128_SHA];
+  proposed_compressions = [CM_Null];
 
   s_certificates = [];
-
   s_server_key_exchange = Unparsed_SKEContent "";
-
-  s_client_random = "";
-  s_server_random = "";
+  s_client_random = ""; s_server_random = "";
   s_session_id = "";
 }
 
-let empty_context () = {
-  expected_client_hs_msgs = [HT_ClientHello];
-  expected_server_hs_msgs = [];
-  present = empty_crypto_context ();
-  future = empty_crypto_context ();
+
+let id x = x
+
+let empty_context (* TODO: prefs *) () = {
+  current_version = V_TLSv1;
+  current_ciphersuite = find_csdescr TLS_NULL_WITH_NULL_NULL;
+  current_compression_method = CM_Null;
+
+  current_randoms = "", "";
+  current_master_secret = "";
+  out_compress = id; out_encrypt = id;
+  in_decrypt = id; in_expand = id;
+
+  future = empty_future_crypto_context ();
 }
 
-let check_record_version ctx record_version =
-  ctx.present.s_version = (TlsEnums.V_Unknown 0) ||
-  ctx.present.s_version = record_version
