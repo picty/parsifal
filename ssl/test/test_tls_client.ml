@@ -5,8 +5,8 @@ open TlsEnums
 open Tls
 open TlsEngineNG
 
-let test_client () =
-  let ctx = empty_context () in
+let test_client prefs =
+  let ctx = empty_context prefs in
   init_client_connection "localhost" 4433 >>= fun c_sock ->
   let ch = mk_client_hello ctx in
   c_sock.output <- exact_dump dump_tls_record ch;
@@ -20,4 +20,4 @@ let test_client () =
   return ()
 
 let _ =
-  Unix.handle_unix_error Lwt_unix.run (test_client ())
+  Unix.handle_unix_error Lwt_unix.run (test_client default_prefs)

@@ -6,7 +6,7 @@ open TlsEnums
 (* Suite description *)
 
 type ciphersuite_description = {
-  suite_name : TlsEnums.ciphersuite;
+  suite_name : ciphersuite;
   kx : key_exchange_algorithm;
   au : authentication_algorithm;
   enc : encryption_algorithm;
@@ -220,12 +220,25 @@ union server_key_exchange [enrich] (Unparsed_SKEContent) =
 
 
 
+type prefs = {
+  acceptable_versions : tls_version * tls_version;
+  acceptable_ciphersuites : ciphersuite list;
+  acceptable_compressions : compression_method list;
+  directive_behaviour : bool;
+}
+
+let default_prefs = {
+  acceptable_versions = (V_SSLv3, V_TLSv1_2);
+  acceptable_ciphersuites = [TLS_RSA_WITH_RC4_128_SHA];
+  acceptable_compressions = [CM_Null];
+  directive_behaviour = false;
+}
 
 
 type future_crypto_context = {
-  mutable proposed_versions : TlsEnums.tls_version * TlsEnums.tls_version;
-  mutable proposed_ciphersuites : TlsEnums.ciphersuite list;
-  mutable proposed_compressions : TlsEnums.compression_method list;
+  mutable proposed_versions : tls_version * tls_version;
+  mutable proposed_ciphersuites : ciphersuite list;
+  mutable proposed_compressions : compression_method list;
 
   mutable s_certificates : (X509.certificate trivial_union) list;
   mutable s_server_key_exchange : server_key_exchange; (* this should NOT be a server_key_exchange *)
@@ -235,9 +248,9 @@ type future_crypto_context = {
 }
 
 type tls_context = {
-  mutable current_version : TlsEnums.tls_version;
+  mutable current_version : tls_version;
   mutable current_ciphersuite : ciphersuite_description;
-  mutable current_compression_method : TlsEnums.compression_method;
+  mutable current_compression_method : compression_method;
 
   mutable current_randoms : string * string;
   mutable current_master_secret : string;
@@ -316,12 +329,10 @@ struct tls_record [top; param context] = {
 }
 
 
-
-
-let empty_future_crypto_context (* TODO: prefs *) () = {
-  proposed_versions = V_SSLv3, V_TLSv1_2;
-  proposed_ciphersuites = [TLS_RSA_WITH_RC4_128_SHA];
-  proposed_compressions = [CM_Null];
+let empty_future_crypto_context prefs = {
+  proposed_versions = prefs.acceptable_versions;
+  proposed_ciphersuites = prefs.acceptable_ciphersuites;
+  proposed_compressions = prefs.acceptable_compressions;
 
   s_certificates = [];
   s_server_key_exchange = Unparsed_SKEContent "";
@@ -332,8 +343,8 @@ let empty_future_crypto_context (* TODO: prefs *) () = {
 
 let id x = x
 
-let empty_context (* TODO: prefs *) () = {
-  current_version = V_TLSv1;
+let empty_context prefs = {
+  current_version = fst prefs.acceptable_versions;  (* And SSLv2? *)
   current_ciphersuite = find_csdescr TLS_NULL_WITH_NULL_NULL;
   current_compression_method = CM_Null;
 
@@ -342,6 +353,6 @@ let empty_context (* TODO: prefs *) () = {
   out_compress = id; out_encrypt = id;
   in_decrypt = id; in_expand = id;
 
-  future = empty_future_crypto_context ();
+  future = empty_future_crypto_context prefs;
 }
 

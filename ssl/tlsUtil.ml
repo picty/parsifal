@@ -70,6 +70,6 @@ let parse_all_records verbose input =
   if input.enrich = NeverEnrich
   then raw_recs, None, err
   else begin
-    let ctx = Some (empty_context ()) in
+    let ctx = Some (empty_context default_prefs) in
     clean_records ctx ~verbose:verbose ~enrich:(input.enrich) raw_recs, ctx, err
   end

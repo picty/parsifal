@@ -63,7 +63,7 @@ let catch_exceptions retry e =
   | e -> fail e
 
 let handle_answer handle_hs handle_alert s =
-  let ctx = empty_context () in
+  let ctx = empty_context default_prefs in
 
   let process_input parse_fun handle_fun input =
     match try_parse parse_fun input with
