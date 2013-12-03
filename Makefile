@@ -8,6 +8,13 @@ all: libs
 libs:
 	for i in $(LIBDIRS); do OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C $$i all byte || exit 1; done
 
+byte: libs-byte
+	for i in $(DIRS); do OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C $$i byte || exit 1; done
+
+libs-byte:
+	for i in $(LIBDIRS); do OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C $$i byte || exit 1; done
+
+
 install: all
 	for i in $(LIBDIRS) $(DIRS); do OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C $$i install || exit 1; done
 
