@@ -98,7 +98,7 @@ let update_with_server_hello ctx sh =
   (* TODO: exts *)
   match sh.server_extensions with
   | None | Some [] -> ()
-  | _ -> failwith "Extensions not supported for now"
+  | _ -> () (* "Extensions not supported for now" *)
 
 let update_with_certificate ctx certs =
   ctx.future.s_certificates <- certs

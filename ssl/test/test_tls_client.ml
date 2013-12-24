@@ -17,7 +17,7 @@ let test_client port prefs =
     | _ -> ()
   in
   List.iter print_certs ctx.future.s_certificates;
-  return ()
+  Lwt_unix.close c_sock.socket
 
 let _ =
   Unix.handle_unix_error Lwt_unix.run (test_client 8080 Tls.default_prefs)
