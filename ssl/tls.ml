@@ -150,7 +150,7 @@ struct server_dh_params = {
 
 struct ske_dhe_params = {
   params : server_dh_params;
-  signature : binstring (* TODO? *)
+  signature : binstring (* TODO? Beware of TLSv1.2 new meaning of "digitallySigned" *)
 }
 
 
@@ -209,7 +209,7 @@ struct server_ecdh_params = {
 (* TODO: Clean up this stupid prefix once field desambiguation is mainstream... *)
 struct ske_ecdhe_params = {
   ecdhe_params : server_ecdh_params;
-  ecdhe_signature : binstring (* TODO? *)
+  ecdhe_signature : binstring (* TODO? Beware of TLSv1.2 new meaning of "digitallySigned" *)
 }
 
 

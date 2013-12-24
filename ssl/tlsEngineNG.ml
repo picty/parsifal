@@ -1,3 +1,4 @@
+open BasePTypes
 open PTypes
 open Lwt
 open TlsEnums
@@ -5,11 +6,64 @@ open Tls
 open Ssl2
 open Parsifal
 
-(* TODO: Rewrite TlsUtil.clean_records to parse the real records one
-   by one (to let TlsEngine handle the context evolution properly) *)
+
+(**********************)
+(* Record preparation *)
+(**********************)
+
+let mk_rec ct v content = { content_type = ct; record_version = v; record_content = content }
+
+let extract_first_record ctx recs =
+  let rec produce_raw_first_record accu recs =
+    match accu, recs with
+    | _, [] -> accu, []
+    | None, r::rs ->
+      let content = POutput.create () in
+      dump_record_content content r.record_content;
+      produce_raw_first_record (Some (r.content_type, r.record_version, content)) rs
+    | Some (ct, v, content), r::rs ->
+      if r.content_type = ct && r.record_version = v
+      then begin
+	dump_record_content content r.record_content;
+	produce_raw_first_record accu rs
+      end else accu, rs
+  in
+
+  match produce_raw_first_record None recs with
+  | None, rs -> rs
+  | Some (ct, v, content), rs ->
+    let input_name = "Merged " ^ (string_of_tls_content_type ct) ^ " records" in
+    let rec_content = POutput.contents content in
+
+    (* Here, we try to enrich the first record from the merged messages *)
+    let old_enrich_record_content = !enrich_record_content in
+    enrich_record_content := true;
+    let new_input = input_of_string input_name rec_content in
+    let res = match try_parse ~report:false (parse_record_content ctx ct) new_input with
+      | None ->
+	let first = mk_rec ct v (Unparsed_Record rec_content) in
+	first::rs
+      | Some res ->
+	let first = mk_rec ct v res in
+	let next =
+	  if (eos new_input)
+	  then rs
+	  else begin
+	    (* If we have not used all the contents of the merged records, we must keep it *)
+	    let rem = parse_rem_binstring new_input in
+	    let next_record = mk_rec ct v (Unparsed_Record rem) in
+	    next_record::rs
+	  end
+	in first::next
+    in
+    enrich_record_content := old_enrich_record_content;
+    res
 
 
+
+(******************)
 (* Global context *)
+(******************)
 
 type tls_global_context = {
   certs : X509.certificate list;
@@ -18,7 +72,9 @@ type tls_global_context = {
 
 
 
+(********************)
 (* Simple functions *)
+(********************)
 
 let update_with_client_hello ctx ch =
   (* TODO: Take the record version into account? *)
@@ -47,6 +103,9 @@ let update_with_server_hello ctx sh =
 let update_with_certificate ctx certs =
   ctx.future.s_certificates <- certs
 
+let update_with_server_key_exchange ctx ske =
+  ctx.future.s_server_key_exchange <- ske
+
 
 let mk_alert_msg ctx alert_level alert_type = {
   content_type = CT_Alert;
@@ -67,13 +126,13 @@ let mk_handshake_msg ctx hs_type hs_msg = {
 }
 
 let mk_client_hello ctx =
-  (* TODO: Use ctx!!!! *)
+  (* TODO: Check the use of ctx!!!! *)
   let ch = {
-    client_version = V_TLSv1;
+    client_version = snd ctx.future.proposed_versions;
     client_random = String.make 32 '\x00';
     client_session_id = "";
-    ciphersuites = [TLS_RSA_WITH_RC4_128_SHA];
-    compression_methods = [CM_Null];
+    ciphersuites = ctx.future.proposed_ciphersuites;
+    compression_methods = ctx.future.proposed_compressions;
     client_extensions = None
   } in
   update_with_client_hello ctx ch;
@@ -98,7 +157,12 @@ let mk_certificate_msg ctx = mk_handshake_msg ctx HT_Certificate (Certificate []
 let mk_server_hello_done ctx = mk_handshake_msg ctx HT_ServerHelloDone ServerHelloDone
 
 
+
+(************************)
 (* Automata description *)
+(************************)
+
+exception ConnectionTimeout
 
 type automata_input =
   | InputSSL2Msg of ssl2_record
@@ -106,6 +170,7 @@ type automata_input =
   | Timeout
   | InternalMsgIn of string
   | Nothing
+  | EndOfFile
 
 type tls_client_state =
   | ClientNil
@@ -120,54 +185,72 @@ type tls_server_state =
   | ClientHelloReceived
 
 type automata_output =
+  | Abort
   | Wait
-  | ResetTimeoutAndWait
   | OutputSSL2Msgs of ssl2_record list
   | OutputTlsMsgs of tls_record list
   | InternalMsgOut of string
   | FatalAlert of tls_alert_type
 
 
-(* Automata input generators *)
+
+(************************************)
+(* Automata input/output generators *)
+(************************************)
+
+let catch_eof = function
+  | ParsingException (OutOfBounds, _)
+  | End_of_file -> return EndOfFile
+  | e -> fail e
+
+
+type connection_options = {
+  timeout : float option;
+  verbose : bool;
+  plaintext_chunk_size : int;
+}
+let default_options = {
+  timeout = Some 5.0;
+  verbose = false;
+  plaintext_chunk_size = 16384;
+}
 
 type connection = {
   socket : Lwt_unix.file_descr;
-  timeout : int option;
-  verbose : bool;
+  options : connection_options;
   mutable input : string_input;
+  (* TODO: Handle SSLv2 records? *)
   mutable input_records : tls_record list;
   mutable output : string;
 }
 
 type server_socket = {
   s_socket : Lwt_unix.file_descr;
-  s_timeout : int option;
-  s_verbose : bool;
+  s_options : connection_options;
 }
 
 
-let init_client_connection ?timeout:(timeout=Some 5) ?verbose:(verbose=true) host port =
+let init_client_connection ?options host port =
   let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   Lwt_unix.gethostbyname host >>= fun host_entry ->
   let inet_addr = host_entry.Unix.h_addr_list.(0) in
   let addr = Unix.ADDR_INET (inet_addr, port) in
   let t = Lwt_unix.connect s addr in
-  let timed_t = match timeout with
-    | None -> t
-    | Some timeout_val ->
-      pick [t; Lwt_unix.sleep (float_of_int timeout_val) >>= fun () -> fail (Failure "Timeout")]
+  let timed_t = match options with
+    | None | Some { timeout = None } -> t
+    | Some { timeout = Some timeout_val } ->
+      pick [t; Lwt_unix.sleep timeout_val >>= fun () -> fail ConnectionTimeout]
   in
   let peer_name = host^":"^(string_of_int port) in
   timed_t >>= fun () -> return {
     socket = s;
-    timeout = timeout; verbose = verbose;
+    options = pop_opt default_options options;
     input = input_of_string peer_name ""; input_records = [];
     output = "";
   }
 
 
-
-let init_server_connection ?bind_address:(bind_addr=None) ?backlog:(backlog=1024) ?timeout:(timeout=Some 5) ?verbose:(verbose=true) port =
+let init_server_connection ?options ?bind_address:(bind_addr=None) ?backlog:(backlog=1024) port =
   let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   let inet_addr = match bind_addr with
     | Some a -> Unix.inet_addr_of_string a
@@ -177,7 +260,7 @@ let init_server_connection ?bind_address:(bind_addr=None) ?backlog:(backlog=1024
   Lwt_unix.setsockopt s Unix.SO_REUSEADDR true;
   Lwt_unix.bind s local_addr;
   Lwt_unix.listen s backlog;
-  { s_socket = s; s_timeout = timeout; s_verbose = verbose } 
+  { s_socket = s; s_options = pop_opt default_options options }
 
 let accept_client s =
   Lwt_unix.accept s.s_socket >>= fun (sock, peer_info) ->
@@ -187,61 +270,102 @@ let accept_client s =
   in
   let i = input_of_string peer_name ""
   and o = "" in
-  return { socket = sock; verbose = s.s_verbose;
-	   timeout = s.s_timeout;
+  return { socket = sock; options = s.s_options;
 	   input = i; input_records = [];
 	   output = o }
 
 
 let get_next_automata_input ctx c =
+  let timeout_t = match c.options.timeout with
+    | None -> []
+    | Some t -> [Lwt_unix.sleep t >>= fun () -> return Timeout]
+  in
+
+  let rec input_fun () =
+    (* TODO: 4096 should be adjustable *)
+    let buf = String.make 4096 ' ' in
+    Lwt_unix.read c.socket buf 0 4096 >>= fun n_read ->
+    (* TODO: Handle n_read = 0 correctly *)
+    c.input <- append_to_input c.input (String.sub buf 0 n_read);
+    let rec parse_new_records new_record =
+      (* TODO: In fact, we are stuck if input enriches too much here  *)
+      (* TODO: Should we check for that? *)
+      match try_parse (parse_tls_record None) c.input with
+      | None -> new_record
+      | Some r ->
+	c.input <- drop_used_string c.input;
+	c.input_records <- c.input_records@[r];
+	parse_new_records true
+    in
+    enrich_new_records (parse_new_records false)
+
+  and enrich_new_records new_record_pending =
+    if new_record_pending then begin
+      match extract_first_record (Some ctx) c.input_records with
+      | [] | [ { record_content = Unparsed_Record _ } ] -> input_fun ()
+      | r::rs ->
+	c.input_records <- rs;
+	return (InputTlsMsg r)
+    end else input_fun ()
+  in
+
+  let output_fun () =
+    let len = String.length c.output in
+    Lwt_unix.write c.socket c.output 0 len >>= fun n_written ->
+    c.output <- String.sub c.output n_written (len - n_written);
+    return Nothing
+  in
+
   match c.input_records with
     | [] | { record_content = Unparsed_Record _ }::_ ->
-      let timeout_t = match c.timeout with
-	| None -> []
-	| Some t -> [Lwt_unix.sleep (float_of_int t) >>= fun () -> return Timeout]
-      in
-
-      let rec input_fun () =
-	(* TODO: 4096 should be adjustable *)
-	let buf = String.make 4096 ' ' in
-        (* TODO: Handle Unix exception *)
-	Lwt_unix.read c.socket buf 0 4096 >>= fun n_read ->
-	c.input <- append_to_input c.input (String.sub buf 0 n_read);
-	let rec parse_new_records new_record =
-	  match try_parse (parse_tls_record None) c.input with
-	  | None -> new_record
-	  | Some r ->
-	    c.input <- drop_used_string c.input;
-	    c.input_records <- c.input_records@[r];
-	    parse_new_records true
-	in
-	if parse_new_records false then begin
-	  match TlsUtil.clean_records ctx ~verbose:c.verbose ~enrich:AlwaysEnrich c.input_records with
-	  | [] | { record_content = Unparsed_Record _ }::_ -> input_fun ()
-	  | r::rs ->
-	    c.input_records <- rs;
-	    return (InputTlsMsg r)
-	end else input_fun ()
-      in
-      let input_t = [input_fun ()] in
-
-      let output_fun () =
-	let len = String.length c.output in
-	Lwt_unix.write c.socket c.output 0 len >>= fun n_written ->
-	c.output <- String.sub c.output n_written (len - n_written);
-	return Nothing
-      in
+      let input_t = if c.input_records = [] then [input_fun ()] else [enrich_new_records true] in
       let rec output_t =
 	if c.output = ""
 	then []
 	else [output_fun ()]
       in
-      pick (input_t@output_t@timeout_t)
+      try_bind (fun () -> pick (input_t@output_t@timeout_t)) return catch_eof
 
     | r::_ -> return (InputTlsMsg r)
 
 
+
+let output_record conn r =
+  let size =
+    if conn.options.plaintext_chunk_size > 0
+    then conn.options.plaintext_chunk_size
+    else 16384
+  in
+  let ct = r.content_type
+  and v = r.record_version
+  and content = exact_dump_record_content r.record_content in
+  let len = String.length content in
+  let result = POutput.create () in
+  POutput.add_string result conn.output;
+
+  let rec mk_records offset =
+    if offset < len then begin
+      let next_offset =
+	if offset + size >= len
+	then len
+	else offset + size
+      in
+      let next = { content_type = ct;
+		   record_version = v;
+		   record_content = Unparsed_Record (String.sub content offset (next_offset - offset)) } in
+      dump_tls_record result next;
+      mk_records next_offset
+    end
+  in
+
+  mk_records 0;
+  conn.output <- POutput.contents result
+
+
+
+(************)
 (* Automata *)
+(************)
 
 let client_automata state input _global_ctx ctx =
   match state, input with
@@ -251,7 +375,11 @@ let client_automata state input _global_ctx ctx =
   | ServerHelloReceived, InputTlsMsg { record_content = Handshake { handshake_content = Certificate certs } } ->
     update_with_certificate ctx certs;
     CertificateReceived, Wait
-  | CertificateReceived, InputTlsMsg { record_content = Handshake { handshake_content = ServerHelloDone } } ->
+  | CertificateReceived, InputTlsMsg { record_content = Handshake { handshake_content = ServerKeyExchange ske } } ->
+    update_with_server_key_exchange ctx ske;
+    SKEReceived, Wait
+  | (CertificateReceived | SKEReceived),
+    InputTlsMsg { record_content = Handshake { handshake_content = ServerHelloDone } } ->
     SHDReceived, FatalAlert AT_BadCertificate
   | _, Timeout -> ClientNil, FatalAlert AT_CloseNotify
   | _, Nothing -> state, Wait
@@ -273,19 +401,22 @@ let server_automata state input _global_ctx ctx =
 
 
 let rec run_automata automata state global_ctx ctx sock =
-  get_next_automata_input (Some ctx) sock >>= fun automata_input ->
+  get_next_automata_input ctx sock >>= fun automata_input ->
   let next_state, action = automata state automata_input global_ctx ctx in
   let again = match action with
     | OutputTlsMsgs rs ->
-      List.iter (fun r -> sock.output <- sock.output ^ (exact_dump_tls_record r)) rs;
+      List.iter (output_record sock) rs;
       true
     | FatalAlert at ->
       let r = mk_alert_msg ctx AL_Fatal at in
       sock.output <- sock.output ^ (exact_dump_tls_record r);
       false
     | Wait -> true
-    | _ -> print_endline "Something else to do"; false
+    | Abort -> false
+
+    | OutputSSL2Msgs _
+    | InternalMsgOut _ -> print_endline "Something else to do"; false
   in
   if again
   then run_automata automata next_state global_ctx ctx sock
-  else return ()
+  else return next_state
