@@ -256,9 +256,9 @@ type tls_context = {
   mutable current_master_secret : string;
 
   mutable out_compress : string -> string;
-  mutable out_encrypt : string -> string;
+  mutable out_encrypt : tls_version -> tls_content_type -> string -> string;
 
-  mutable in_decrypt : string -> string;
+  mutable in_decrypt : tls_version -> tls_content_type -> string -> string;
   mutable in_expand : string -> string;
 
   future : future_crypto_context;
@@ -341,7 +341,8 @@ let empty_future_crypto_context prefs = {
 }
 
 
-let id x = x
+let null_compress x = x
+let null_cipher _ _ x = x
 
 let empty_context prefs = {
   current_version = fst prefs.acceptable_versions;  (* And SSLv2? *)
@@ -350,8 +351,8 @@ let empty_context prefs = {
 
   current_randoms = "", "";
   current_master_secret = "";
-  out_compress = id; out_encrypt = id;
-  in_decrypt = id; in_expand = id;
+  out_compress = null_compress; out_encrypt = null_cipher;
+  in_decrypt = null_cipher; in_expand = null_compress;
 
   future = empty_future_crypto_context prefs;
 }

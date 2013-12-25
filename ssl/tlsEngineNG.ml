@@ -245,7 +245,7 @@ let init_client_connection ?options host port =
   timed_t >>= fun () -> return {
     socket = s;
     options = pop_opt default_options options;
-    input = input_of_string peer_name ""; input_records = [];
+    input = input_of_string ~enrich:NeverEnrich peer_name ""; input_records = [];
     output = "";
   }
 
@@ -268,7 +268,7 @@ let accept_client s =
     | Unix.ADDR_INET (a, p) -> (Unix.string_of_inet_addr a)^":"^(string_of_int p)
     | _ -> "Unknown peer info"
   in
-  let i = input_of_string peer_name ""
+  let i = input_of_string ~enrich:NeverEnrich peer_name ""
   and o = "" in
   return { socket = sock; options = s.s_options;
 	   input = i; input_records = [];
@@ -292,10 +292,12 @@ let get_next_automata_input ctx c =
       (* TODO: Should we check for that? *)
       match try_parse (parse_tls_record None) c.input with
       | None -> new_record
-      | Some r ->
+      | Some ({ record_version = v; content_type = ct; record_content = Unparsed_Record ciphertext } as r) ->
 	c.input <- drop_used_string c.input;
-	c.input_records <- c.input_records@[r];
+	let plaintext = ctx.in_expand (ctx.in_decrypt v ct ciphertext) in
+	c.input_records <- c.input_records@[{r with record_content = Unparsed_Record plaintext}];
 	parse_new_records true
+      | Some _ -> failwith "get_next_automata_input: unexpected early parsed record"
     in
     enrich_new_records (parse_new_records false)
 
@@ -330,7 +332,7 @@ let get_next_automata_input ctx c =
 
 
 
-let output_record conn r =
+let output_record ctx conn r =
   let size =
     if conn.options.plaintext_chunk_size > 0
     then conn.options.plaintext_chunk_size
@@ -350,9 +352,11 @@ let output_record conn r =
 	then len
 	else offset + size
       in
+      let plaintext = String.sub content offset (next_offset - offset) in
+      let ciphertext = ctx.out_encrypt v ct (ctx.out_compress plaintext) in
       let next = { content_type = ct;
 		   record_version = v;
-		   record_content = Unparsed_Record (String.sub content offset (next_offset - offset)) } in
+		   record_content = Unparsed_Record ciphertext } in
       dump_tls_record result next;
       mk_records next_offset
     end
@@ -405,7 +409,7 @@ let rec run_automata automata state global_ctx ctx sock =
   let next_state, action = automata state automata_input global_ctx ctx in
   let again = match action with
     | OutputTlsMsgs rs ->
-      List.iter (output_record sock) rs;
+      List.iter (output_record ctx sock) rs;
       true
     | FatalAlert at ->
       let r = mk_alert_msg ctx AL_Fatal at in

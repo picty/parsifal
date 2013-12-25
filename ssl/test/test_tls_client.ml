@@ -9,7 +9,7 @@ let test_client port prefs =
   let ctx = empty_context prefs in
   init_client_connection "localhost" port >>= fun c_sock ->
   let ch = mk_client_hello ctx in
-  output_record c_sock ch;
+  output_record ctx c_sock ch;
   run_automata client_automata ClientHelloSent "" ctx c_sock >>= fun _ ->
   let print_certs = function
     | Parsed cert ->
