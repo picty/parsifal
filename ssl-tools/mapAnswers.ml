@@ -178,9 +178,9 @@ let handle_answer answer =
         let _, ctx, _ = parse_all_tls_records answer in
         let ske = match ctx with
           | None -> if !verbose then (Some "ERROR") else None
-          | Some { future = { s_server_key_exchange = (SKE_DHE { params = params } ) } } ->
+          | Some { future = { f_server_key_exchange = (SKE_DHE { params = params } ) } } ->
             Some (Printf.sprintf "%s,%s,%s" (hexdump params.dh_p) (hexdump params.dh_g) (hexdump params.dh_Ys))
-          | Some { future = { s_server_key_exchange = (Unparsed_SKEContent "" ) } } ->
+          | Some { future = { f_server_key_exchange = (Unparsed_SKEContent "" ) } } ->
             if !verbose then (Some "NO_SKE") else None
           | Some _ -> if !verbose then (Some "NOT PARSED YET") else None
         in

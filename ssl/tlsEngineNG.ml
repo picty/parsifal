@@ -104,8 +104,8 @@ type tls_global_context = {
 let update_with_client_hello ctx ch =
   (* TODO: Take the record version into account? *)
   ctx.future.proposed_versions <- (V_SSLv3, ch.client_version);
-  ctx.future.s_client_random <- ch.client_random;
-  ctx.future.s_session_id <- ch.client_session_id;
+  ctx.future.f_client_random <- ch.client_random;
+  ctx.future.f_session_id <- ch.client_session_id;
   ctx.future.proposed_ciphersuites <- ch.ciphersuites;
   ctx.future.proposed_compressions <- ch.compression_methods;
   (* TODO: extensions *)
@@ -118,18 +118,18 @@ let update_with_server_hello ctx sh =
   ctx.future.proposed_versions <- (sh.server_version, sh.server_version);
   ctx.future.proposed_ciphersuites <- [sh.ciphersuite];
   ctx.future.proposed_compressions <- [sh.compression_method];
-  ctx.future.s_server_random <- sh.server_random;
-  ctx.future.s_session_id <- sh.server_session_id;
+  ctx.future.f_server_random <- sh.server_random;
+  ctx.future.f_session_id <- sh.server_session_id;
   (* TODO: exts *)
   match sh.server_extensions with
   | None | Some [] -> ()
   | _ -> () (* "Extensions not supported for now" *)
 
 let update_with_certificate ctx certs =
-  ctx.future.s_certificates <- certs
+  ctx.future.f_certificates <- certs
 
 let update_with_server_key_exchange ctx ske =
-  ctx.future.s_server_key_exchange <- ske
+  ctx.future.f_server_key_exchange <- ske
 
 
 let mk_alert_msg ctx alert_level alert_type = {
@@ -168,7 +168,7 @@ let mk_server_hello ctx =
   let sh = {
     server_version = snd ctx.future.proposed_versions;
     (* Bouh !!! *)
-    server_random = ctx.future.s_client_random;
+    server_random = ctx.future.f_client_random;
     server_session_id = "";
     ciphersuite = List.hd ctx.future.proposed_ciphersuites;
     compression_method = List.hd ctx.future.proposed_compressions;

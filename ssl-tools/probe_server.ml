@@ -238,7 +238,7 @@ let _ =
       end
     | ExtractCerts ->
       let ctx, _, _ = Lwt_unix.run (probe_server prefs !host !port) in
-      save_certs ctx.future.s_certificates
+      save_certs ctx.future.f_certificates
     | ScanSuites ->
       let rec next_step () =
 	let updated_prefs = { prefs with acceptable_ciphersuites = !suites } in

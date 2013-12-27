@@ -16,7 +16,7 @@ let test_client port prefs =
       print_endline (String.concat ", " (List.map X509Basics.string_of_atv (List.flatten cert.X509.tbsCertificate.X509.subject)))
     | _ -> ()
   in
-  List.iter print_certs ctx.future.s_certificates;
+  List.iter print_certs ctx.future.f_certificates;
   Lwt_unix.close c_sock.socket
 
 let _ =

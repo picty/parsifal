@@ -240,11 +240,12 @@ type future_crypto_context = {
   mutable proposed_ciphersuites : ciphersuite list;
   mutable proposed_compressions : compression_method list;
 
-  mutable s_certificates : (X509.certificate trivial_union) list;
-  mutable s_server_key_exchange : server_key_exchange; (* this should NOT be a server_key_exchange *)
-  mutable s_client_random : string;
-  mutable s_server_random : string;
-  mutable s_session_id : string;
+  mutable f_certificates : (X509.certificate trivial_union) list;
+  mutable f_server_key_exchange : server_key_exchange; (* this should NOT be a server_key_exchange *)
+  mutable f_client_random : string;
+  mutable f_server_random : string;
+  mutable f_session_id : string;
+  mutable pre_master_secret : string;
 }
 
 type tls_context = {
@@ -334,10 +335,10 @@ let empty_future_crypto_context prefs = {
   proposed_ciphersuites = prefs.acceptable_ciphersuites;
   proposed_compressions = prefs.acceptable_compressions;
 
-  s_certificates = [];
-  s_server_key_exchange = Unparsed_SKEContent "";
-  s_client_random = ""; s_server_random = "";
-  s_session_id = "";
+  f_certificates = [];
+  f_server_key_exchange = Unparsed_SKEContent "";
+  f_client_random = ""; f_server_random = "";
+  f_session_id = ""; pre_master_secret = "";
 }
 
 

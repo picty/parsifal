@@ -5,7 +5,7 @@ LIBNAME = parsifal_ssl
 
 parsifal_ssl_SRCS := dHKey.ml dSAKey.ml rSAKey.ml x509Basics.ml x509Extensions.ml cryptoUtil.ml \
                      randomEngine.ml pkcs1.ml x509.ml answerDump.ml \
-                     tlsEnums.ml tls.ml ssl2.ml tlsDatabase.ml tlsEngineNG.ml
+                     tlsEnums.ml tls.ml ssl2.ml tlsCrypto.ml tlsDatabase.ml tlsEngineNG.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
