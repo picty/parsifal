@@ -165,16 +165,37 @@ let mk_client_hello ctx =
   update_with_client_hello ctx ch;
   mk_handshake_msg ctx HT_ClientHello (ClientHello ch)
 
+let rec find_first_match preferred_list other_list =
+  match preferred_list with
+  | [] -> None
+  | x::xs ->
+    if List.mem x other_list
+    then Some x
+    else find_first_match xs other_list
+
 let mk_server_hello ctx =
-  (* TODO: Use ctx!!!! *)
+  let pref_cs, other_cs, pref_cm, other_cm =
+    if ctx.preferences.directive_behaviour
+    then ctx.preferences.acceptable_ciphersuites, ctx.future.proposed_ciphersuites,
+      ctx.preferences.acceptable_compressions, ctx.future.proposed_compressions
+    else ctx.future.proposed_ciphersuites, ctx.preferences.acceptable_ciphersuites,
+      ctx.future.proposed_compressions, ctx.preferences.acceptable_compressions
+  in
+  let cs = match find_first_match pref_cs other_cs with
+    | None -> failwith "TODO: Incompatible lists!"
+    | Some suite -> suite
+  and cm = match find_first_match pref_cm other_cm with
+    | None -> failwith "TODO: Incompatible lists!"
+    | Some compression -> compression
+  in
+
   let sh = {
     server_version = snd ctx.future.proposed_versions;
-    (* Bouh !!! *)
-    server_random = ctx.future.f_client_random;
-    server_session_id = "";
-    ciphersuite = List.hd ctx.future.proposed_ciphersuites;
-    compression_method = List.hd ctx.future.proposed_compressions;
-    server_extensions = None
+    server_random = ctx.future.f_client_random; (* TODO! *)
+    server_session_id = ""; (* TODO! *)
+    ciphersuite = cs;
+    compression_method = cm;
+    server_extensions = None (* TODO! *)
   } in
   update_with_server_hello ctx sh;
   mk_handshake_msg ctx HT_ServerHello (ServerHello sh)
