@@ -219,12 +219,21 @@ union server_key_exchange [enrich] (Unparsed_SKEContent) =
 
 
 
+alias cke_rsa_params [param _rsa_key] = binstring (* TODO *)
+
+union client_key_exchange [enrich; param rsa_key] (Unparsed_CKEContent) =
+  | KX_RSA -> CKE_RSA of cke_rsa_params(rsa_key)
+  | KX_DHE -> CKE_DHE of binstring (* TODO *)
+  | KX_ECDHE -> CKE_ECDHE of binstring (* TODO *)
+
+
 
 type prefs = {
   acceptable_versions : tls_version * tls_version;
   acceptable_ciphersuites : ciphersuite list;
   acceptable_compressions : compression_method list;
   directive_behaviour : bool;
+  available_certificates : (X509.certificate list * Pkcs1.rsa_private_key) list;
 }
 
 let default_prefs = {
@@ -232,6 +241,7 @@ let default_prefs = {
   acceptable_ciphersuites = [TLS_RSA_WITH_RC4_128_SHA];
   acceptable_compressions = [CM_Null];
   directive_behaviour = false;
+  available_certificates = []
 }
 
 
@@ -241,6 +251,7 @@ type future_crypto_context = {
   mutable proposed_compressions : compression_method list;
 
   mutable f_certificates : (X509.certificate trivial_union) list;
+  mutable f_private_key : Pkcs1.rsa_private_key option; (* this should be a sum type (None/RSA/DSA/ECDSA) *)
   mutable f_server_key_exchange : server_key_exchange; (* this should NOT be a server_key_exchange *)
   mutable f_client_random : string;
   mutable f_server_random : string;
@@ -249,6 +260,8 @@ type future_crypto_context = {
 }
 
 type tls_context = {
+  preferences : prefs;
+
   mutable current_version : tls_version;
   mutable current_ciphersuite : ciphersuite_description;
   mutable current_compression_method : compression_method;
@@ -258,7 +271,6 @@ type tls_context = {
 
   mutable out_compress : string -> string;
   mutable out_encrypt : tls_version -> tls_content_type -> string -> string;
-
   mutable in_decrypt : tls_version -> tls_content_type -> string -> string;
   mutable in_expand : string -> string;
 
@@ -283,6 +295,19 @@ let extract_future_kx = function
   | Some {future = {proposed_ciphersuites = [cs]} } -> (find_csdescr cs).kx
   | _ -> KX_Unknown
 
+let extract_future_key = function
+  | Some { future = { f_private_key = Some priv_key } } ->
+    Pkcs1.RSAPrivateKey priv_key
+
+  | Some { future = { f_certificates = (Parsed {
+      X509.tbsCertificate = {
+	X509.subjectPublicKeyInfo = {
+	  X509.subjectPublicKey = X509.RSA pk
+	}
+      }
+    })::_ } } -> Pkcs1.RSAPublicKey pk
+  | _ -> Pkcs1.NoRSAKey
+
 union handshake_content [enrich; param context] (Unparsed_HSContent) =
   | HT_HelloRequest -> HelloRequest
   | HT_ClientHello -> ClientHello of client_hello
@@ -294,7 +319,7 @@ union handshake_content [enrich; param context] (Unparsed_HSContent) =
   | HT_CertificateRequest -> CertificateRequest of certificate_request
   | HT_ServerHelloDone -> ServerHelloDone
  (* | HT_CertificateVerify -> CertificateVerify of *)
- (* | HT_ClientKeyExchange -> ClientKeyExchange of *)
+  | HT_ClientKeyExchange -> ClientKeyExchange of client_key_exchange(extract_future_key context; extract_future_kx context)
  (* | HT_Finished -> Finished of *)
   | HT_CertificateURL -> CertificateURL of certificate_url
  (* | HT_CertificateStatus -> CertificateStatus of *)
@@ -330,12 +355,12 @@ struct tls_record [top; param context] = {
 }
 
 
-let empty_future_crypto_context prefs = {
-  proposed_versions = prefs.acceptable_versions;
-  proposed_ciphersuites = prefs.acceptable_ciphersuites;
-  proposed_compressions = prefs.acceptable_compressions;
+let empty_future_crypto_context = {
+  proposed_versions = (V_Unknown 0, V_Unknown 0xffff);
+  proposed_ciphersuites = [];
+  proposed_compressions = [];
 
-  f_certificates = [];
+  f_certificates = []; f_private_key = None;
   f_server_key_exchange = Unparsed_SKEContent "";
   f_client_random = ""; f_server_random = "";
   f_session_id = ""; pre_master_secret = "";
@@ -346,6 +371,8 @@ let null_compress x = x
 let null_cipher _ _ x = x
 
 let empty_context prefs = {
+  preferences = prefs;
+
   current_version = fst prefs.acceptable_versions;  (* And SSLv2? *)
   current_ciphersuite = find_csdescr TLS_NULL_WITH_NULL_NULL;
   current_compression_method = CM_Null;
@@ -355,6 +382,6 @@ let empty_context prefs = {
   out_compress = null_compress; out_encrypt = null_cipher;
   in_decrypt = null_cipher; in_expand = null_compress;
 
-  future = empty_future_crypto_context prefs;
+  future = empty_future_crypto_context;
 }
 

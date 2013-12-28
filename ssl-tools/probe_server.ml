@@ -225,6 +225,7 @@ let _ =
       acceptable_ciphersuites = !suites;
       acceptable_compressions = !compressions;
       directive_behaviour = false;
+      available_certificates = []
     } in
     match cmd with
     | ProbeAndPrint ->

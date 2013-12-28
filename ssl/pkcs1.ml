@@ -1,6 +1,42 @@
+open Parsifal
+open BasePTypes
 open Asn1Engine
 open Asn1PTypes
 open CryptoUtil
+
+(*********)
+(* Types *)
+(*********)
+
+asn1_struct rsa_private_key = {
+  version : der_smallint;
+  modulus : der_integer;
+  publicExponent : der_integer;
+  privateExponent : der_integer;
+  prime1 : der_integer;
+  prime2 : der_integer;
+  exponent1 : der_integer;
+  exponent2 : der_integer;
+  coefficient : der_integer
+}
+
+asn1_struct rsa_public_key = {
+  p_modulus : der_integer;
+  p_publicExponent : der_integer
+}
+
+alias rsa_signature = der_integer_content
+
+type rsa_key =
+| NoRSAKey
+| RSAPublicKey of rsa_public_key
+| RSAPrivateKey of rsa_private_key
+
+
+
+(**************)
+(* Exceptions *)
+(**************)
 
 exception NotFound of string
 exception MessageTooLong
@@ -9,7 +45,9 @@ exception PaddingError
 exception InvalidSignature
 
 
-(* TODO: Define a private key / public key type? *)
+(******************)
+(* Hash functions *)
+(******************)
 
 let hash_funs : (int list, string -> string) Hashtbl.t = Hashtbl.create 10
 
@@ -25,6 +63,10 @@ let get_hash_fun_by_oid oid =
   with Not_found -> raise (NotFound ("Unknown hash oid " ^ (string_of_oid oid)))
 
 
+
+(********************)
+(* PKCS#1 functions *)
+(********************)
 
 let find_not_null s i =
   let s_len = String.length s in
@@ -77,7 +119,7 @@ let decrypt block_type expected_len ed n c =
   let d_start =
     try
       match block_type with
-	| 1
+	| 1 (* Check we only have 0xff characters? *)
 	| 2 -> begin
 	  let tmp = String.index_from encryption_block 2 '\x00' in
 	  if tmp < 10 then raise Not_found;
@@ -144,6 +186,33 @@ let raw_verify typ msg s n e =
     | Not_found | Parsifal.ParsingException _ -> false
 
 
+
+(********************)
+(* PKCS#1 Container *)
+(********************)
+
+type 'a pkcs1_container =
+| RSAEncrypted of string
+| RSADecrypted of 'a
+
+let parse_pkcs1_container key parse_fun input =
+  let encrypted_string = parse_rem_binstring input in
+  match input.enrich, key with
+  | NeverEnrich, _
+  | _, (NoRSAKey|RSAPublicKey _) -> RSAEncrypted encrypted_string
+  | _, RSAPrivateKey { modulus = n; privateExponent = d } ->
+    let decrypted_string = decrypt 2 None d n encrypted_string in
+    let new_input = get_in_container input "pkcs1_container" decrypted_string in
+    let res = parse_fun new_input in
+    check_empty_input true new_input;
+    res
+
+
+
+
+(************************)
+(* Directory population *)
+(************************)
 
 let hash_fun_list = [
   [42;840;113549;2;5], "md5", X509Basics.APT_Null, md5sum;

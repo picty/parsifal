@@ -151,14 +151,16 @@ let mk_handshake_msg ctx hs_type hs_msg = {
 }
 
 let mk_client_hello ctx =
-  (* TODO: Check the use of ctx!!!! *)
+  ctx.future.proposed_versions <- ctx.preferences.acceptable_versions;
+  ctx.future.proposed_ciphersuites <- ctx.preferences.acceptable_ciphersuites;
+  ctx.future.proposed_compressions <- ctx.preferences.acceptable_compressions;
   let ch = {
     client_version = snd ctx.future.proposed_versions;
-    client_random = String.make 32 '\x00';
-    client_session_id = "";
+    client_random = String.make 32 '\x00'; (* TODO! *)
+    client_session_id = ""; (* TODO? *)
     ciphersuites = ctx.future.proposed_ciphersuites;
     compression_methods = ctx.future.proposed_compressions;
-    client_extensions = None
+    client_extensions = None (* TODO! *)
   } in
   update_with_client_hello ctx ch;
   mk_handshake_msg ctx HT_ClientHello (ClientHello ch)

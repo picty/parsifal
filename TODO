@@ -36,9 +36,8 @@ Ticket #16: parsillade
 
 
 Ticket #1: Implement properly RSA/PKCS#1
- - merge pkcs1.ml and rSAKey.ml in rsa.ml
  - create a crypto directory?
- - write a proper pkcs1_container
+ - clean up PKCS1 module?
  - write test_pkcs1.ml to check RSA implementation (unit tests)
  - write some perf test to see whether cryptokit is needed => should be added to prepare-release.sh
  - optionaly, try to simplify the RSA code to avoid the useless creation of a key object (however, this might need getting rid of cryptokit and take some performance hit)

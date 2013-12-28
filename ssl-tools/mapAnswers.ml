@@ -91,6 +91,7 @@ let parse_all_tls_records answer =
     acceptable_ciphersuites = [];
     acceptable_compressions = [];
     directive_behaviour = false;
+    available_certificates = []
   } in
   let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_v2_ip answer.ip_addr) answer.content in
   parse_all_records answer_input prefs

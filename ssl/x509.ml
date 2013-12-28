@@ -6,6 +6,57 @@ open X509Basics
 open X509Extensions
 
 
+(************************)
+(* SubjectPublicKeyInfo *)
+(************************)
+
+type subjectPublicKeyType =
+  | SPK_DSA of DSAKey.dsa_params
+  | SPK_DH of DHKey.dh_params
+  | SPK_RSA
+  | SPK_Unknown
+
+let subjectPublicKeyType_directory : (int list, algorithmParams option -> subjectPublicKeyType) Hashtbl.t = Hashtbl.create 10
+let subjectPublicKeyType_of_algo algo =
+  try
+    let f = Hashtbl.find subjectPublicKeyType_directory algo.algorithmId in
+    f algo.algorithmParams
+  with Not_found -> SPK_Unknown
+
+union subjectPublicKey [enrich] (UnparsedPublicKey of binstring) =
+  | SPK_DSA _params -> DSA of DSAKey.dsa_public_key
+  | SPK_DH _params -> DH of DHKey.dh_public_key
+  | SPK_RSA -> RSA of Pkcs1.rsa_public_key
+
+asn1_struct subjectPublicKeyInfo = {
+  algorithm : algorithmIdentifier;
+  subjectPublicKey : bitstring_container of subjectPublicKey(subjectPublicKeyType_of_algo algorithm)
+}
+
+
+
+(*************)
+(* Signature *)
+(*************)
+
+type signatureType =
+  | ST_DSA
+  | ST_RSA
+  | ST_Unknown
+
+let signatureType_directory : (int list, algorithmParams option -> signatureType) Hashtbl.t = Hashtbl.create 10
+let signatureType_of_algo algo =
+  try
+    let f = Hashtbl.find signatureType_directory algo.algorithmId in
+    f algo.algorithmParams
+  with Not_found -> ST_Unknown
+
+union signature [enrich] (UnparsedSignature of binstring) =
+  | ST_DSA -> DSASignature of DSAKey.dsa_signature
+  | ST_RSA -> RSASignature of Pkcs1.rsa_signature
+
+
+
 (***********************)
 (* tbs and Certificate *)
 (***********************)
