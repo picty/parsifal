@@ -850,7 +850,7 @@ let rec get_value path v = match (realise_value v, path) with
 
   | VRecord l, field_name::r -> begin
     try get_value r (List.assoc field_name l)
-    with Not_found -> VError ("Unknwon field (" ^ field_name ^ ")")
+    with Not_found -> VError ("Unknown field (" ^ field_name ^ ")")
   end
 
   | VError _, _ -> v
