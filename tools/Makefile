@@ -15,7 +15,7 @@ OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal_syntax parsifal_core parsi
 # use the following variables to add extra flags (not guessed by ocamlfind)
 EXTRA_OCAMLOPT_CC_FLAGS =
 # EXTRA_OCAMLOPT_CC_FLAGS = -package parsifal_syntax
-EXTRA_OCAMLOPT_LD_FLAGS =
+EXTRA_OCAMLOPT_LD_FLAGS = -cclib -lmylzma -ccopt -Lbuild/
 EXTRA_OCAMLC_CC_FLAGS =
 # EXTRA_OCAMLC_CC_FLAGS = -package parsifal_syntax
 EXTRA_OCAMLC_LD_FLAGS =

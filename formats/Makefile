@@ -16,10 +16,11 @@ OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal_syntax parsifal_core parsi
 
 # use the following variables to add extra flags (not guessed by ocamlfind)
 EXTRA_OCAMLOPT_CC_FLAGS = -package parsifal_syntax
-EXTRA_OCAMLOPT_LD_FLAGS = -I build lzma.cmxa
+EXTRA_OCAMLOPT_LD_FLAGS = -I build mylzma.cmxa
 EXTRA_OCAMLC_CC_FLAGS = -package parsifal_syntax
-EXTRA_OCAMLC_LD_FLAGS = build/lzma.cmo build/liblzma_stubs.o build/unlzma.o
-EXTRA_CMXA_LD_FLAGS = build/liblzma_stubs.a build/lzma.cmx
+# XXX we add the .cma here to force it appear *before* uefi_fv (see end of this file)
+EXTRA_OCAMLC_LD_FLAGS = build/mylzma.cma
+EXTRA_CMXA_LD_FLAGS = build/lzma.cmx
 
 BUILD_DIR = build
 
@@ -31,32 +32,22 @@ build/unlzma.o: unlzma.c unlzma.h
 build/lzma_stubs.o: lzma_stubs.c
 	$(OCAMLC) -o $@ -c -g $^ && mv $(@F) $@
 
-build/liblzma_stubs.a: build/lzma_stubs.o build/unlzma.o
-	ocamlmklib -oc lzma_stubs $^ && mv liblzma_stubs.a dlllzma_stubs.so build/
+build/libmylzma.a: build/lzma_stubs.o build/unlzma.o build/lzma.cmx
+	ocamlmklib -o mylzma -Lbuild/ $^ && \
+		mv libmylzma.a dllmylzma.so mylzma.a mylzma.cmxa build/
 
-#lzma.cmi: lzma.mli lzma.ml
-#	ocamlc -g -c lzma.mli
+build/dllmylzma.so: build/libmylzma.a
+build/mylzma.a: build/libmylzma.a
+build/mylzma.cmxa: build/libmylzma.a
 
-#lzma.cmo: lzma.ml lzma.cmi
-#	ocamlc -g -c lzma.ml
+build/mylzma.cma: build/lzma.cmo build/dllmylzma.so
+	$(OCAMLC) -a -o $@ $< -dllib -lmylzma -cclib -lmylzma -ccopt -Lbuild/ -I build/
 
-#lzma.cmx: lzma.ml lzma.cmi
-#	ocamlopt -g -c lzma.ml
-
+# extra dependencies
 build/lzma.cmo: build/lzma.cmi
 build/lzma.cmx: build/lzma.cmi
 
-build/lzma.cma: build/lzma.cmo build/liblzma_stubs.a
-	$(OCAMLC) -g -a -o $@ -dllib -llzma_stubs $<
-
-build/lzma.a: build/liblzma_stubs.a build/lzma.cmx
-	ocamlmklib -o lzma -Lbuild/ -llzma_stubs $< && \
-		mv lzma.a lzma.cmxa build/
-
-build/lzma.cmxa: build/lzma.a
-
-build/lzma.cmxs: build/lzma.cmxa
-	$(OCAMLOPT) -g -shared -linkall -o $@ $<
-
-build/parsifal_formats.cma: build/lzma.cmo
-#build/parsifal_formats.cmxa: build/lzma.cmx build/liblzma_stubs.a
+# XXX problem: the .cma file here is added *after* uefi_fv
+build/parsifal_formats.cma: build/mylzma.cma
+# XXX problem: the .cmx file here is added *after* uefi_fv
+build/parsifal_formats.cmxa:
