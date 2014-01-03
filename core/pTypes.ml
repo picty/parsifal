@@ -348,6 +348,19 @@ let lwt_parse_seek_offset offset input =
       return ()
   in try_bind (set_offset) (fun () -> return ()) handle_unix_error
 
+let parse_seek_offsetrel offset input = input.cur_offset <- (input.cur_offset + offset)
+let lwt_parse_seek_offsetrel offset input =
+  let handle_unix_error = function
+    | Unix.Unix_error (Unix.ESPIPE, "lseek", "") -> return ()
+    | e -> fail e
+  and set_offset () =
+    let new_offset = Int64.add (Int64.of_int input.lwt_offset) (Int64.of_int offset) in
+    Lwt_io.set_position input.lwt_ch new_offset >>= fun _ ->
+    (* TODO: Warning, integer overflow is possible! *)
+      input.lwt_offset <- (input.lwt_offset + offset);
+      return ()
+  in try_bind (set_offset) (fun () -> return ()) handle_unix_error
+
 
 type raw_value = string option
 let parse_raw_value offset input =
