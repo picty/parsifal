@@ -94,6 +94,8 @@ let _ =
   Hashtbl.add type_handlers "pcap" (fun i -> Pcap.value_of_pcap_file (Pcap.parse_pcap_file i));
   Hashtbl.add type_handlers "dvi" (fun i -> Dvi.value_of_dvi_file (Dvi.parse_dvi_file i));
 
+  Hashtbl.add type_handlers "fv" (fun i -> Uefi_fv.value_of_fv_volume (Uefi_fv.parse_fv_volume i));
+
   (*
   Hashtbl.add type_handlers "keytab" (fun i -> Keytab.value_of_keytab_file (Keytab.parse_keytab_file i));
   Hashtbl.add type_handlers "kerb_pkcs7" (fun i -> Padata.value_of_kerb_pkcs7 (Padata.parse_kerb_pkcs7 i));

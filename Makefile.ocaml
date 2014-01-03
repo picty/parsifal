@@ -53,7 +53,7 @@ $(foreach prog,$(TARGETS),$(eval $(call TARGET_template,$(prog))))
 define MLLIB_template
  $(1)_OBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmx)
  $(1)_CMIS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmi)
- $(BUILD_DIR)/$(1).cmxa: $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -a -o $$@ $$^
+ $(BUILD_DIR)/$(1).cmxa: $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -a -o $$@ $(EXTRA_CMXA_LD_FLAGS) $$^
 
  $(1)_BOBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmo)
  $(BUILD_DIR)/$(1).cma: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -a -o $$@ $(OCAMLC_LD) $$^
