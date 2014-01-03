@@ -3,7 +3,7 @@ TARGETS =
 MLLIBS = parsifal_formats
 LIBNAME = parsifal_formats
 
-parsifal_formats_SRCS := pe.ml tar.ml png.ml dvi.ml
+parsifal_formats_SRCS := pkcs7.ml pe.ml tar.ml png.ml dvi.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
@@ -12,7 +12,7 @@ CC = gcc
 
 # use the following lines to guess .cmxa files from libs names.
 # remember, libs are always lowercase
-OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal_syntax parsifal_core
+OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal_syntax parsifal_core parsifal_net parsifal_ssl
 
 # use the following variables to add extra flags (not guessed by ocamlfind)
 EXTRA_OCAMLOPT_CC_FLAGS = -package parsifal_syntax

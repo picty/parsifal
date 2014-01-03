@@ -94,10 +94,12 @@ let _ =
   Hashtbl.add type_handlers "pcap" (fun i -> Pcap.value_of_pcap_file (Pcap.parse_pcap_file i));
   Hashtbl.add type_handlers "dvi" (fun i -> Dvi.value_of_dvi_file (Dvi.parse_dvi_file i));
 
+  (*
   Hashtbl.add type_handlers "keytab" (fun i -> Keytab.value_of_keytab_file (Keytab.parse_keytab_file i));
   Hashtbl.add type_handlers "kerb_pkcs7" (fun i -> Padata.value_of_kerb_pkcs7 (Padata.parse_kerb_pkcs7 i));
   Hashtbl.add type_handlers "kerberos_tcp" (fun i -> Kerby.value_of_kerberos_msg (Kerby.parse_kerberos_msg i));
   Hashtbl.add type_handlers "kerberos_udp" (fun i -> Kerby.value_of_kerberos_udp_msg (Kerby.parse_kerberos_udp_msg i));
+  *)
   ()
 
 

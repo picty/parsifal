@@ -1,5 +1,24 @@
 open BasePTypes
 open PTypes
+open Pkcs7
+
+enum w_cert_type_t [with_lwt; little_endian] (16, UnknownVal W_CERT_TYPE_UNKNOWN) =
+  | 0x0002  -> W_CERT_TYPE_PKCS_SIGNED_DATA
+  | 0x0EF0  -> W_CERT_TYPE_EFI_PKCS115
+  | 0x0EF1  -> W_CERT_TYPE_EFI_GUID
+
+struct win_certificate = {
+  wcrt_length : uint32le;
+  wcrt_revision : uint16le;
+  wcrt_certtype : w_cert_type_t;
+  wcrt_bcertificate : pkcs7;
+  junk : binstring
+}
+
+struct data_directory_entry [with_lwt] = {
+  virtualaddress : uint32le;
+  size : uint32le
+}
 
 
 struct msdos_header [with_lwt] = {
@@ -116,12 +135,9 @@ struct optpe64_header [with_lwt] = {
   sizeofheapreserve : uint64le;
   sizeofheapcommit : uint64le;
   loaderflags : uint32le;
-  numberofrvaandsizes : uint32le
-}
+  numberofrvaandsizes : uint32le;
 
-struct data_directory_entry [with_lwt] = {
-  virtualaddress : uint32le;
-  size : uint32le
+  datadirectory : array(numberofrvaandsizes) of data_directory_entry
 }
 
 struct pe_file [with_lwt] = {
@@ -133,6 +149,4 @@ struct pe_file [with_lwt] = {
   pe_header : pe_header;
 
   optpe_header : optpe64_header;
-
-  datadirectory : array(16) of data_directory_entry
 }
