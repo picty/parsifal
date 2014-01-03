@@ -732,7 +732,7 @@ let list_of_fields l =
   List.rev (List.fold_left add_field [] l)
 
 
-let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="value") = function
+let rec print_value ?maxlen:(maxlen=Some 70) ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="value") = function
   | VUnit ->  Printf.sprintf "%s%s\n" indent name
   | VBool b -> Printf.sprintf "%s%s: %b\n" indent name b
   | VSimpleInt i -> Printf.sprintf "%s%s: %d\n" indent name i
@@ -748,9 +748,17 @@ let rec print_value ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="va
   | VString ("", _) ->
     Printf.sprintf "%s%s: \"\" (0 byte)\n" indent name
   | VString (s, true) ->
-    Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (hexdump s) (String.length s)
+    let real_s = match maxlen with
+      | Some l -> if String.length s < l then s else (String.sub s 0 l) ^ ""
+      | None -> s
+    in
+    Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (hexdump real_s) (String.length s)
   | VString (s, false) ->
-    Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (quote_string s) (String.length s)
+    let real_s = match maxlen with
+      | Some l -> if String.length s < l then s else (String.sub s 0 l) ^ "..."
+      | None -> s
+    in
+    Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (quote_string real_s) (String.length s)
 
   | VList l ->
     let print_subvalue i x = print_value ~verbose:verbose ~indent:(indent ^ "  ") ~name:(name ^ "[" ^ string_of_int i ^ "]") x in
