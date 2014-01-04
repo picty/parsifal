@@ -4,6 +4,7 @@ open PTypes
 
 open Guid
 open Lzma
+open Tiano
 
 let align4 l =
   (lnot 3) land (l + 3)
@@ -91,16 +92,34 @@ union optional_section_header [enrich] (UnparsedOptSectionHeader of binstring(0)
   | Efi_Section_Firmware_Volume_Image -> Hdr_Section_Firmware_Volume_Image
   | Efi_Section_Raw -> Hdr_Section_Raw
 
-union section_contentWithParam [enrich] (UnparsedSectionContent) =
-  | Efi_Section_Compression -> Section_Compressed of lzma_container of binstring
-  | Efi_Section_PE32 -> Section_PE32 of binstring
-  | Efi_Section_Firmware_Volume_Image -> Section_Firmware_Volume_Image of binstring
-
 struct efi_file_section_header = {
   section_size : uint24le;
   section_type : section_type_t;
   section_rem  : optional_section_header (section_type);
 }
+
+type 'a compressed_container = 'a
+
+let parse_compressed_container section_hdr name parse_fun input =
+  match section_hdr.section_rem with
+  | Hdr_Section_Compressed hsc ->
+      begin
+        match hsc.compression_type with
+        | Efi_Not_Compressed         -> (parse_rem_binstring input)
+        | Efi_Standard_Compression   -> (parse_tiano_container name parse_fun input)
+        | Efi_Customized_Compression -> (parse_lzma_container name parse_fun input)
+        | _ -> failwith "Unsupported compresion type"
+      end
+  | _ -> failwith "Unsupported compresion type"
+
+let dump_compressed_container _ buf _ = failwith "dump_compressed_container not implemented"
+
+let value_of_compressed_container = value_of_container
+
+union section_contentWithParam [enrich; param section_hdr] (UnparsedSectionContent) =
+  | Efi_Section_Compression -> Section_Compressed of compressed_container(section_hdr) of binstring
+  | Efi_Section_PE32 -> Section_PE32 of binstring
+  | Efi_Section_Firmware_Volume_Image -> Section_Firmware_Volume_Image of binstring
 
 (* end SECTION *)
 
@@ -163,10 +182,10 @@ let parse_end_marker zero input =
   end
 
 type print_offset = unit
-let parse_print_offset input = Printf.printf "Pouet %d\n" input.cur_offset
+let parse_print_offset input = Printf.printf "DEBUG %d\n" input.cur_offset
 
-type debug_str_int
-let parse_debug_int (s,i) input = Printf.printf "Pouet %s %d / cur: %d\n" s i input.cur_offset
+type debug_str = unit
+let parse_debug_str (s,i) input = Printf.printf "DEBUG %s %d / cur: %d\n" s i input.cur_offset
 
 struct ffs_section = {
   (* section headers are 4-bytes aligned with the parent's file image *)
@@ -177,7 +196,7 @@ struct ffs_section = {
   parse_checkpoint section_base : save_offset;
   section_hdr : efi_file_section_header;
 
-  section_content : container(section_hdr.section_size - (input.cur_offset - section_base)) of section_contentWithParam(section_hdr.section_type);
+  section_content : container(section_hdr.section_size - (input.cur_offset - section_base)) of section_contentWithParam(section_hdr; section_hdr.section_type);
 }
 
 union ffs_file_content [enrich; exhaustive] (UnparsedFileContent) =

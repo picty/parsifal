@@ -16,11 +16,11 @@ OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal_syntax parsifal_core parsi
 
 # use the following variables to add extra flags (not guessed by ocamlfind)
 EXTRA_OCAMLOPT_CC_FLAGS = -package parsifal_syntax
-EXTRA_OCAMLOPT_LD_FLAGS = -I build mylzma.cmxa
+EXTRA_OCAMLOPT_LD_FLAGS = -I build mylzma.cmxa mytiano.cmxa
 EXTRA_OCAMLC_CC_FLAGS = -package parsifal_syntax
 # XXX we add the .cma here to force it appear *before* uefi_fv (see end of this file)
-EXTRA_OCAMLC_LD_FLAGS = build/mylzma.cma
-EXTRA_CMXA_LD_FLAGS = build/lzma.cmx
+EXTRA_OCAMLC_LD_FLAGS = build/mylzma.cma build/mytiano.cma
+EXTRA_CMXA_LD_FLAGS = build/lzma.cmx build/tiano.cmx
 
 BUILD_DIR = build
 
@@ -29,8 +29,8 @@ include ../Makefile.ocaml
 build/unlzma.o: unlzma.c unlzma.h
 	$(CC) -o $@ -c -g -fPIC $<
 
-build/lzma_stubs.o: lzma_stubs.c
-	$(OCAMLC) -o $@ -c -g $^ && mv $(@F) $@
+build/lzma_stubs.o: lzma_stubs.c unlzma.h
+	$(OCAMLC) -o $@ -c -g $< && mv $(@F) $@
 
 build/libmylzma.a: build/lzma_stubs.o build/unlzma.o build/lzma.cmx
 	ocamlmklib -o mylzma -Lbuild/ $^ && \
@@ -43,11 +43,31 @@ build/mylzma.cmxa: build/libmylzma.a
 build/mylzma.cma: build/lzma.cmo build/dllmylzma.so
 	$(OCAMLC) -a -o $@ $< -dllib -lmylzma -cclib -lmylzma -ccopt -Lbuild/ -I build/
 
+build/EfiTianoDecompress.o: EfiTianoDecompress.c EfiTianoDecompress.h basetypes.h
+	$(CC) -o $@ -c -g -fPIC $<
+
+build/tiano_stubs.o: tiano_stubs.c EfiTianoDecompress.h basetypes.h
+	$(OCAMLC) -o $@ -c -g $< && mv $(@F) $@
+
+build/libmytiano.a: build/tiano_stubs.o build/EfiTianoDecompress.o build/tiano.cmx
+	ocamlmklib -o mytiano -Lbuild/ $^ && \
+		mv libmytiano.a dllmytiano.so mytiano.a mytiano.cmxa build/
+
+build/dllmytiano.so: build/libmytiano.a
+build/mytiano.a: build/libmytiano.a
+build/mytiano.cmxa: build/libmytiano.a
+
+build/mytiano.cma: build/tiano.cmo build/dllmytiano.so
+	$(OCAMLC) -a -o $@ $< -dllib -lmytiano -cclib -lmytiano -ccopt -Lbuild/ -I build/
+
 # extra dependencies
 build/lzma.cmo: build/lzma.cmi
 build/lzma.cmx: build/lzma.cmi
 
+build/tiano.cmo: build/tiano.cmi
+build/tiano.cmx: build/tiano.cmi
+
 # XXX problem: the .cma file here is added *after* uefi_fv
-build/parsifal_formats.cma: build/mylzma.cma
+build/parsifal_formats.cma: build/mylzma.cma build/mytiano.cma
 # XXX problem: the .cmx file here is added *after* uefi_fv
 build/parsifal_formats.cmxa:

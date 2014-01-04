@@ -157,13 +157,18 @@ let rec extract_section_compressed current_dir section =
   let raw_content = content_from_section section in
   let input_name = current_dir ^ "/compressed" in
   (* the decompressed image is then interpreted as a section stream *)
-  let input = input_of_string input_name raw_content in
-  let dummy = BasePTypes.parse_rem_list "list" parse_ffs_section input in
-  (* extract all sections *)
-  list_iteri (fun i x ->
-    Printf.printf "[%d] %s\n" i (print_value ~verbose:!verbose (value_of_ffs_section x));
-    extract_section_from_file new_dir i x
-  ) dummy
+  try
+    let input = input_of_string input_name raw_content in
+    let dummy = BasePTypes.parse_rem_list "list" parse_ffs_section input in
+    (* extract all sections *)
+    list_iteri (fun i x ->
+      Printf.printf "[%d] %s\n" i (print_value ~verbose:!verbose (value_of_ffs_section x));
+      extract_section_from_file new_dir i x
+    ) dummy
+  with
+  | ParsingException (e, h) -> flush_all ();
+      prerr_endline "*** Warning: could not parse sections from compressed stream";
+      prerr_endline (string_of_exception e h)
 
 
 and extract_section_guid_defined current_dir section =
@@ -311,6 +316,6 @@ let _ =
     in
     ()
   with
-  | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
+  | ParsingException (e, h) -> flush_all (); prerr_endline (string_of_exception e h); exit 1
   | e -> prerr_endline (Printexc.to_string e); exit 1
 
