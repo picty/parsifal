@@ -174,10 +174,13 @@ let parse_ffs_header_size hdr _ =
   (hdr.size - (sizeof_hdr + sizeof_tail))
 
 
+(* If we are at empty space in the end of volume
+ * i.e if the header is only made of zeroes
+ *)
 let parse_end_marker zero input =
   if not (eos input) then begin
-    let m = peek_string 16 input in
-    if m = String.make 16 zero
+    let m = peek_string 24 input in
+    if m = String.make 24 zero
     then drop_rem_bytes input
   end
 
