@@ -145,6 +145,7 @@ let content_from_section section =
   let section_type = string_of_section_type_t section.section_hdr.section_type in
   match content with
   | Section_Compressed s -> s
+  | Section_Guid_Defined s -> s
   | Section_PE32 s -> s
   | Section_Firmware_Volume_Image s -> s
   | UnparsedSectionContent s -> s
@@ -283,8 +284,8 @@ and extract_firmware_volume current_dir fv =
   let new_dir = current_dir ^ "/" ^ guid_str in
   try_mkdir new_dir;
   match printable_name_of_guid fv.fs_guid with
-  | "EFI_FIRMWARE_FILE_SYSTEM_GUID" ->
-      extract_ffs new_dir fv
+  | "EFI_FIRMWARE_FILE_SYSTEM_GUID" -> extract_ffs new_dir fv
+  | "EFI_FIRMWARE_FILE_SYSTEM2_GUID" -> extract_ffs new_dir fv
   | _ -> failwith "Unknown FS GUID in firmware image"
 
 

@@ -105,19 +105,42 @@ let parse_compressed_container section_hdr name parse_fun input =
   | Hdr_Section_Compressed hsc ->
       begin
         match hsc.compression_type with
-        | Efi_Not_Compressed         -> (parse_rem_binstring input)
+        | Efi_Not_Compressed         -> (parse_fun input)
         | Efi_Standard_Compression   -> (parse_tiano_container name parse_fun input)
         | Efi_Customized_Compression -> (parse_lzma_container name parse_fun input)
         | _ -> failwith "Unsupported compresion type"
       end
-  | _ -> failwith "Unsupported compresion type"
+  | _ -> failwith "Invalid header for compression section"
 
 let dump_compressed_container _ buf _ = failwith "dump_compressed_container not implemented"
 
 let value_of_compressed_container = value_of_container
 
+type 'a guid_defined_container = 'a
+
+let parse_guid_defined_container section_hdr name parse_fun input =
+  match section_hdr.section_rem with
+  | Hdr_Section_Guid_Defined hsgd ->
+      begin
+        let guid = hsgd.section_definition_guid in
+        let guid_name = printable_name_of_guid guid in
+        match guid_name with
+        | "CRC32_GUID"          -> parse_rem_binstring input
+        | "LZMA_COMPRESS_GUID"  -> parse_lzma_container name parse_fun input
+        | "TIANO_COMPRESS_GUID" -> parse_tiano_container name parse_fun input
+        | _ -> flush_all ();
+               print_endline ("Unsupported guid defined section " ^ (string_of_guid guid) ^ "\n");
+               parse_fun input
+      end
+  | _ -> failwith "Invalid header for guid_defined section"
+
+let dump_guid_defined_container _ buf _ = failwith "dump_guid_defined_container not implemented"
+
+let value_of_guid_defined_container = value_of_container
+
 union section_contentWithParam [enrich; param section_hdr] (UnparsedSectionContent) =
   | Efi_Section_Compression -> Section_Compressed of compressed_container(section_hdr) of binstring
+  | Efi_Section_Guid_Defined -> Section_Guid_Defined of guid_defined_container(section_hdr) of binstring
   | Efi_Section_PE32 -> Section_PE32 of binstring
   | Efi_Section_Firmware_Volume_Image -> Section_Firmware_Volume_Image of binstring
 
@@ -225,6 +248,7 @@ let zero_from_header attr =
 
 union fv_file_system [enrich; param fv_attr] (UnknownFVFileSystem) =
   | "EFI_FIRMWARE_FILE_SYSTEM_GUID" -> FFS of list of ffs_file(zero_from_header fv_attr)
+  | "EFI_FIRMWARE_FILE_SYSTEM2_GUID" -> FFS of list of ffs_file(zero_from_header fv_attr)
 
 
 let get_fs_length fv_length header_length =
