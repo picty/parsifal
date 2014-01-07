@@ -16,7 +16,13 @@ let parse_mpint input =
     let bytes_count = (n + 7)/8 in
     parse_string bytes_count input
 
-let dump_mpint _buf _i = failwith "Not implemented"
+let dump_mpint buf i =
+    let strlen = String.length i in
+    let fst_char = int_of_char (String.get i 0) in
+    let order_of_fst_char = int_of_float (ceil (log (float_of_int fst_char)) /. (log 2.) )  in
+    let bit_counter = ((strlen - 1) * 8) + order_of_fst_char in
+    dump_uint16 buf bit_counter ;
+    dump_string buf i
 
 let value_of_mpint i =
     VBigInt (i, BigEndian)
@@ -24,41 +30,160 @@ let value_of_mpint i =
 (* §3.5 *)
 alias timefield = uint32
 
-(* TODO §3.6
-type keyring = list of keys;
-*)
+(* §9.1 *)
+enum pubkey_algo (8, UnknownVal UnknownPubKeyAlgo) =
+    | 1     ->  RSAEncryptAndSign_PubKeyAlgo, "RSA Encrypt and Sign"
+    | 2     ->  RSAEncryptOnly_PubKeyAlgo, "RSA Encrypt Only"
+    | 3     ->  RSASignOnly_PubKeyAlgo, "RSA Sign Only"
+    | 16    ->  Elgamal_PubKeyAlgo, "Elgamal"
+    | 17    ->  DSA_PubKeyAlgo, "DSA"
+    | 18    ->  EllipticCurve_PubKeyAlgo, "Elliptic Curve (Reserved)" (* Reserved only *)
+    | 19    ->  ECDSA_PubKeyAlgo, "ECDSA (Reserved)" (* Reserved only *)
+    | 20    ->  OldElgamal_PubKeyAlgo, "Elgamal (formerly Elgamal Encrypt or Sign)" (* formerly Elgamal Encrypt or Sign *)
+    | 21    ->  DH_PubKeyAlgo, "Diffie-Hellman (X9.42)" (* Reserved only, X9.42 *)
+(* TODO no longer handling Private algorithm ; should implement that in the various pubkey_* enum types *)
+
+(* §9.1 *)
+enum pubkey_signonly_algo (8, UnknownVal NotSignOnlyAlgo) =
+    | 3     ->  RSASignOnly_SigOnlyAlgo, "RSA Sign Only"
+    | 17    ->  DSA_SignOnlyAlgo, "DSA"
+    | 18    ->  EllipticCurve_SigOnlyAlgo, "Elliptic Curve (Reserved)" (* Reserved only *)
+    | 19    ->  ECDSA_SignOnlyAlgo, "ECDSA (Reserved)" (* Reserved only *)
+
+(* §9.1 *)
+enum pubkey_enconly_algo (8, UnknownVal NotEncOnlyAlgo) =
+    | 2     ->  RSAEncryptOnly_EncOnlyAlgo, "RSA Encrypt Only"
+    | 16    ->  Elgamal_EncOnlyAlgo, "Elgamal"
+    | 21    ->  DH_EncOnlyAlgo, "Diffie-Hellman (X9.42)" (* Reserved only, X9.42 *)
+
+(* §9.1 *)
+enum pubkey_unspecifiedusage_algo (8, UnknownVal UnknownPubkeyAlgo) =
+    | 1     ->  RSAEncryptAndSign_UnspecAlgo, "RSA Encrypt and Sign"
+    | 20    ->  OldElgamal_UnspecAlgo, "Elgamal (formerly Elgamal Encrypt or Sign)" (* formerly Elgamal Encrypt or Sign *)
+
+(* §9.1 *)
+enum pubkey_sig_algo (8, UnknownVal UnknownPubKeySigAlgo) =
+    | 3     ->  RSASignOnly_SigAlgo, "RSA Sign Only"
+    | 17    ->  DSA_SigAlgo, "DSA"
+    | 18    ->  EllipticCurve_SigAlgo, "Elliptic Curve (Reserved)" (* Reserved only *)
+    | 19    ->  ECDSA_SigAlgo, "ECDSA (Reserved)" (* Reserved only *)
+    | 1     ->  RSAEncryptAndSign_SigAlgo, "RSA Encrypt and Sign"
+    | 20    ->  OldElgama_SiglAlgo, "Elgamal (formerly Elgamal Encrypt or Sign)" (* formerly Elgamal Encrypt or Sign *)
+
+(* §9.1 *)
+enum pubkey_enc_algo (8, UnknownVal UnknownPubKeyEncAlgo) =
+    | 2     ->  RSAEncryptOnly_EncAlgo, "RSA Encrypt Only"
+    | 16    ->  Elgamal_EncAlgo, "Elgamal"
+    | 21    ->  DH_EncAlgo, "Diffie-Hellman (X9.42)" (* Reserved only, X9.42 *)
+    | 1     ->  RSAEncryptAndSign_EncAlgo, "RSA Encrypt and Sign"
+    | 20    ->  OldElgamal_EncAlgo, "Elgamal (formerly Elgamal Encrypt or Sign)" (* formerly Elgamal Encrypt or Sign *)
+
+(*
+(* §9.1 *)
+type pubkey_algo =
+    | PubkeySignOnlyAlgo of pubkey_signonly_algo
+    | PubkeyEncOnlyAlgo of pubkey_enconly_algo
+    | PubkeyUnspecifiedUsageAlgo of pubkey_unspecifiedusage_algo
+    | PubkeyPrivateOrExperimentalAlgo of uint8
+
+(* §9.1 *)
+let parse_pubkey_algo input =
+    let value = parse_uint8 input in
+    if (value >= 100 && value <= 110) then
+        PubkeyPrivateOrExperimentalAlgo value
+    else
+        let signonly_algo = pubkey_signonly_algo_of_int value in
+        match signonly_algo with
+        | NotSignOnlyAlgo _ ->
+            let enconly_algo = pubkey_enconly_algo_of_int value in
+            (
+                match enconly_algo with
+                | NotEncOnlyAlgo _ -> PubkeyUnspecifiedUsageAlgo (pubkey_unspecifiedusage_algo_of_int value)
+                | _ -> PubkeyEncOnlyAlgo enconly_algo
+            )
+        | _ -> PubkeySignOnlyAlgo signonly_algo
+
+(* §9.1 *)
+let dump_pubkey_algo buf i =
+    match i with
+    | PubkeyPrivateOrExperimentalAlgo x -> dump_uint8 buf x
+    | PubkeySignOnlyAlgo x -> dump_pubkey_signonly_algo buf x
+    | PubkeyEncOnlyAlgo x -> dump_pubkey_enconly_algo buf x
+    | PubkeyUnspecifiedUsageAlgo x -> dump_pubkey_unspecifiedusage_algo buf x
 
 
 (* §9.1 *)
-(* XXX how to divide them into to list: those for signing only, those for encrypting only, and those for both? a type = | Sig of sign_algo | Enc of enc_algo? *)
-enum pubkey_algo (8, UnknownVal UnknownPubKeyAlgo) =
-    | 1     ->  RSAEncryptAndSignAlgo, "RSA Encrypt and Sign"
-    | 2     ->  RSAEncryptOnlyAlgo, "RSA Encrypt Only"
-    | 3     ->  RSASignOnlyAlgo, "RSA Sign Only"
-    | 16    ->  ElgamalAlgo, "Elgamal"
-    | 17    ->  DSAAlgo, "DSA"
-    | 18    ->  EllipticCurveAlgo, "Elliptic Curve (Reserved)" (* Reserved only *)
-    | 19    ->  ECDSAAlgo, "ECDSA (Reserved)" (* Reserved only *)
-    | 20    ->  OldElgamalAlgo, "Elgamal (formerly Elgamal Encrypt or Sign)" (* formerly Elgamal Encrypt or Sign *)
-    | 21    ->  DHAlgo, "Diffie-Hellman (X9.42)" (* Reserved only, X9.42 *)
-    | 100   ->  PrivateAlgo
-    | 101   ->  PrivateAlgo
-    | 102   ->  PrivateAlgo
-    | 103   ->  PrivateAlgo
-    | 104   ->  PrivateAlgo
-    | 105   ->  PrivateAlgo
-    | 106   ->  PrivateAlgo
-    | 107   ->  PrivateAlgo
-    | 108   ->  PrivateAlgo
-    | 109   ->  PrivateAlgo
-    | 110   ->  PrivateAlgo
+let value_of_pubkey_algo i =
+    match i with
+    | PubkeyPrivateOrExperimentalAlgo x -> VSimpleInt x
+    | PubkeySignOnlyAlgo x -> value_of_pubkey_signonly_algo x
+    | PubkeyEncOnlyAlgo x -> value_of_pubkey_enconly_algo x
+    | PubkeyUnspecifiedUsageAlgo x -> value_of_pubkey_unspecifiedusage_algo x
 
-type algo_type = Enc | Sig | Unspecified
 
-let algo_type_of_pubkey_algo = function
-  | RSAEncryptAndSignAlgo | RSAEncryptOnlyAlgo -> Enc
-  | RSASignOnlyAlgo | ElgamalAlgo | DSAAlgo (* ... *) -> Sig
-  | _ -> Unspecified
+
+
+(* §9.1 *)
+type pubkey_sig_algo =
+    | PubkeySigSignOnlyAlgo of pubkey_signonly_algo
+    | PubkeySigUnspecifiedUsageAlgo of pubkey_unspecifiedusage_algo
+    | PubkeySigPrivateOrExperimentalAlgo of uint8
+
+
+(* §9.1 *)
+let parse_pubkey_sig_algo input =
+    let value = parse_pubkey_algo input in
+    match value with
+    | PubkeyEncOnlyAlgo _ -> failwith "DIE" (* TODO *)
+    | PubkeySignOnlyAlgo x -> PubkeySigSignOnlyAlgo x
+    | PubkeyUnspecifiedUsageAlgo x -> PubkeySigUnspecifiedUsageAlgo x
+    | PubkeyPrivateOrExperimentalAlgo x -> PubkeySigPrivateOrExperimentalAlgo x
+
+(* §9.1 *)
+let dump_pubkey_sig_algo buf i =
+    match i with
+    | PubkeySigSignOnlyAlgo x -> dump_pubkey_signonly_algo buf x
+    | PubkeySigUnspecifiedUsageAlgo x -> dump_pubkey_unspecifiedusage_algo buf x
+    | PubkeySigPrivateOrExperimentalAlgo x -> dump_uint8 buf x
+
+(* §9.1 *)
+let value_of_pubkey_sig_algo i =
+    match i with
+    | PubkeySigSignOnlyAlgo x -> value_of_pubkey_signonly_algo x
+    | PubkeySigUnspecifiedUsageAlgo x -> value_of_pubkey_unspecifiedusage_algo x
+    | PubkeySigPrivateOrExperimentalAlgo x -> VSimpleInt x
+
+
+
+(* §9.1 *)
+type pubkey_enc_algo =
+    | PubkeyEncEncOnlyAlgo of pubkey_enconly_algo
+    | PubkeyEncUnspecifiedUsageAlgo of pubkey_unspecifiedusage_algo
+    | PubkeyEncPrivateOrExperimentalAlgo of uint8
+
+(* §9.1 *)
+let parse_pubkey_enc_algo input =
+    let value = parse_pubkey_algo input in
+    match value with
+    | PubkeyEncOnlyAlgo x -> PubkeyEncEncOnlyAlgo x
+    | PubkeySignOnlyAlgo _ -> failwith "DIE" (* TODO *)
+    | PubkeyUnspecifiedUsageAlgo x -> PubkeyEncUnspecifiedUsageAlgo x
+    | PubkeyPrivateOrExperimentalAlgo x -> PubkeyEncPrivateOrExperimentalAlgo x
+
+(* §9.1 *)
+let dump_pubkey_enc_algo buf i =
+    match i with
+    | PubkeyEncEncOnlyAlgo x -> dump_pubkey_enconly_algo buf x
+    | PubkeyEncUnspecifiedUsageAlgo x -> dump_pubkey_unspecifiedusage_algo buf x
+    | PubkeyEncPrivateOrExperimentalAlgo x -> dump_uint8 buf x
+
+(* §9.1 *)
+let value_of_pubkey_enc_algo i =
+    match i with
+    | PubkeyEncEncOnlyAlgo x -> value_of_pubkey_enconly_algo x
+    | PubkeyEncUnspecifiedUsageAlgo x -> value_of_pubkey_unspecifiedusage_algo x
+    | PubkeyEncPrivateOrExperimentalAlgo x -> VSimpleInt x
+*)
 
 (* §9.2 *)
 enum privkey_algo (8, UnknownVal UnknownPrivKeyAlgo) =
@@ -168,12 +293,16 @@ let parse_iteration_counter input =
     let expbias = 6 in
     (16 + (c land 15)) lsl ((c lsr 4) + expbias)
 
-let dump_iteration_counter buf _iteration_counter =
-  let encoded_value = failwith "TODO" in
-  dump_uint8 buf encoded_value
+let dump_iteration_counter buf iteration_counter =
+    let expbias = 6 in
+    let unbiased_it_cnt = iteration_counter lsr expbias in
+    let order_of_cnt = int_of_float (ceil (log (float_of_int unbiased_it_cnt) /. (log 2.) ) ) in
+    let exponent = max 0 (order_of_cnt - 5) in
+    let c = (exponent lsl 4) lor ((unbiased_it_cnt lsr exponent) land 0xf) in
+    dump_uint8 buf c
 
-let value_of_iteration_counter iteraction_counter =
-  VSimpleInt iteraction_counter
+let value_of_iteration_counter iteration_counter =
+  VSimpleInt iteration_counter
 
 (* §3.7.1.3 *)
 struct iterated_salted_s2k_payload = {
@@ -370,50 +499,21 @@ let dump_packet_len _buf _ = not_implemented "dump_packet_len" (* TODO *)
 let value_of_packet_len l = VSimpleInt l
 
 
-(*let parse_packet_len tag input =
-    if tag land 0x40 != 0 then begin (* New format Packet *)
-        let firstByte = parse_string 1 input in
-        let firstVal = Scanf.sscanf firstByte "%x" (fun x -> x) in
-        if firstVal <= 191 then (* One byte Body Len Header *)
-            firstVal
-        else if firstVal >= 192 and firstVal <= 223 then begin (* Two bytes Body Len Header *)
-            let bodyLen = firstByte ^ (parse_string 1 input) in
-            Scanf.sscanf bodyLen "%x" (fun x -> x)
-        end else if firstVal == 255 then begin (* 5 bytes Body Len Header *)
-            let bodyLen = parse_string 4 input in
-            Scanf.sscanf bodyLen "%x" (fun x -> x)
-        end else begin (* Partial Body Len *)
-            (* TODO First Partial Body Len MUST NOT be less than 512 *)
-            (* TODO Last Length cannot by Partial Body Len *)
-            1 lsl (firstVal land 0x1F)
-    end else (* Old format Packet *)
-        let len =
-            match (tag land 0x3) with
-            | 0 -> parse_string 1 input
-            | 1 -> parse_string 2 input
-            | 2 -> parse_string 4 input
-            | _ -> "0" (* indefinite length *)
-            in
-        Scanf.sscanf len "%x" (fun x -> x)
-*)
-
-
 union public_key_encrypted_data [enrich] (UnparsedPublicKeyEncryptedData) =
-    | RSAEncryptAndSignAlgo  ->    RSAEncryptedData of mpint
-    | RSAEncryptOnlyAlgo     ->    RSAEncryptedData of mpint
-    | ElgamalAlgo            ->    ElgamalEncryptedData of list(2) of mpint
+    | RSAEncryptOnly_EncAlgo     ->    RSAEncryptedData of mpint
+    | RSAEncryptAndSign_EncAlgo  ->    RSAEncryptedData of mpint
+    | Elgamal_EncAlgo            ->    ElgamalEncryptedData of list(2) of mpint
 
 union signed_data [enrich] (UnparsedSignedData) =
-    | RSAEncryptAndSignAlgo ->  RSASignedData of mpint
-    | RSASignOnlyAlgo       ->  RSASignedData of mpint
-    | DSAAlgo               ->  DSASignedData of list(2) of mpint
+    | RSASignOnly_SigAlgo       ->  RSASignedData of mpint
+    | RSAEncryptAndSign_SigAlgo ->  RSASignedData of mpint
+    | DSA_SigAlgo               ->  DSASignedData of list(2) of mpint
 
 (* §5.1 *)
 struct public_key_encrypted_session_key_packet_content = {
     version :   magic("\x03");
     keyid   :   pgp_keyid;
-    cipher  :   pubkey_algo;
-(*     parse_checkpoint _check_encryption : stop_if(algo_type_of_pubkey_algo cipher <> Enc); *)
+    cipher  :   pubkey_enc_algo;
     key     :   public_key_encrypted_data(cipher)
 }
 
@@ -502,7 +602,7 @@ struct subpacket_revocation_key_data = {
     srkd_magic1 : bit_magic(true);
     sensitive   : bit_bool;
     srkd_stuff  : bit_int[6];
-    sig_algo    : pubkey_algo;
+    sig_algo    : pubkey_sig_algo;
     fingerprint : binstring(get_hash_len SHA1Algo input)
 }
 
@@ -571,7 +671,7 @@ struct subpacket_features_data = {
 
 (* §5.2.3.25 *)
 struct subpacket_signature_target_data = {
-    sig_algo    :   pubkey_algo;
+    sig_algo    :   pubkey_sig_algo;
     hash_algo   :   hash_algo;
     digest      :   string(get_hash_len hash_algo input)
 }
@@ -634,7 +734,7 @@ struct signature_packet_content_version_3 = {
     sig_type                : signature_type;
     creation_time           : timefield;
     keyid                   : pgp_keyid;
-    sig_algo                : pubkey_algo;
+    sig_algo                : pubkey_sig_algo;
     hash_algo               : hash_algo;
     signed_hash_val_check   : uint16;
     signature               : signed_data(sig_algo);
@@ -647,7 +747,7 @@ let no_sig_creation_time l =
 
 struct signature_packet_content_version_4 = {
     sig_type                : signature_type;
-    sig_algo                : pubkey_algo;
+    sig_algo                : pubkey_sig_algo;
     hash_algo               : hash_algo;
     hashed_subpackets_len   : uint16;
     hashed_subpackets       : container(hashed_subpackets_len) of list of signature_subpacket;
@@ -682,7 +782,7 @@ struct one_pass_signature_packet_content = {
     version     : magic("\x03");
     sig_type    : signature_type;
     hash_algo   : hash_algo;
-    sig_algo    : pubkey_algo;
+    sig_algo    : pubkey_sig_algo;
     keyid       : pgp_keyid;
     not_nested  : byte_boolean;
 }
@@ -719,11 +819,11 @@ struct elgamal_public_key_elements = {
 
 (* §5.5.2 *)
 union public_key [enrich] (UnparsedPublicKey) =
-    | RSAEncryptAndSignAlgo -> RSAPublicKey of rsa_public_key_elements
-    | RSAEncryptOnlyAlgo    -> RSAPublicKey of rsa_public_key_elements
-    | RSASignOnlyAlgo       -> RSAPublicKey of rsa_public_key_elements
-    | ElgamalAlgo           -> ElgamalPublicKey of elgamal_public_key_elements
-    | DSAAlgo               -> DSAPublicKey of dsa_public_key_elements
+    | RSAEncryptAndSign_PubKeyAlgo -> RSAPublicKey of rsa_public_key_elements
+    | RSAEncryptOnly_PubKeyAlgo    -> RSAPublicKey of rsa_public_key_elements
+    | RSASignOnly_PubKeyAlgo       -> RSAPublicKey of rsa_public_key_elements
+    | Elgamal_PubKeyAlgo           -> ElgamalPublicKey of elgamal_public_key_elements
+    | DSA_PubKeyAlgo               -> DSAPublicKey of dsa_public_key_elements
 
 
 (* §5.5.2 *)
@@ -769,11 +869,11 @@ struct rsa_private_key_elements = {
 
 (* §5.5.3 *)
 union private_key [enrich] (UnparsedPrivateKey) =
-    | RSAEncryptAndSignAlgo -> RSAPublicKey of rsa_private_key_elements
-    | RSAEncryptOnlyAlgo    -> RSAPublicKey of rsa_private_key_elements
-    | RSASignOnlyAlgo       -> RSAPublicKey of rsa_private_key_elements
-    | ElgamalAlgo           -> ElgamalPublicKey of mpint
-    | DSAAlgo               -> DSAPublicKey of mpint
+    | RSAEncryptAndSign_PubKeyAlgo -> RSAPublicKey of rsa_private_key_elements
+    | RSAEncryptOnly_PubKeyAlgo    -> RSAPublicKey of rsa_private_key_elements
+    | RSASignOnly_PubKeyAlgo       -> RSAPublicKey of rsa_private_key_elements
+    | Elgamal_PubKeyAlgo           -> ElgamalPublicKey of mpint
+    | DSA_PubKeyAlgo               -> DSAPublicKey of mpint
 
 
 
