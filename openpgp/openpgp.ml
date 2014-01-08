@@ -364,28 +364,28 @@ let value_of_bit_magic = value_of_bit_bool
 
 (* §4.2 & §4.3 *)
 enum packet_type_enum (8, UnknownVal UnknownPacketType) =
-    | 0  ->  ReservedPacketType
-    | 1  ->  PublicKeyEncryptedSessionKeyPacketType
-    | 2  ->  SignaturePacketType
-    | 3  ->  SymmetricKeyEncryptedSessionKeyPacketType
-    | 4  ->  OnePassSignaturePacketType
-    | 5  ->  SecretKeyPacketType
-    | 6  ->  PublicKeyPacketType
-    | 7  ->  SecretSubKeyPacketType
-    | 8  ->  CompressedDataPacketType
-    | 9  ->  SymmetricallyEncryptedDataPacketType
-    | 10 ->  MarkerPacketType
-    | 11 ->  LiteralDataPacketType
-    | 12 ->  TrustPacketType
-    | 13 ->  UserIDPacketType
-    | 14 ->  PublicSubKeyPacketType
-    | 17 ->  UserAttributePacketType
-    | 18 ->  SymmetricallyEncryptedAndIntegrityProtectedPacketType
-    | 19 ->  ModificationDetectionCodePacketType
-    | 60 ->  PrivatePacketType
-    | 61 ->  PrivatePacketType
-    | 62 ->  PrivatePacketType
-    | 63 ->  PrivatePacketType
+    | 0  ->  ReservedPacketType, "Reserved Packet Type"
+    | 1  ->  PublicKeyEncryptedSessionKeyPacketType, "Public Key-Encrypted Session Key Packet"
+    | 2  ->  SignaturePacketType, "Signature Packet"
+    | 3  ->  SymmetricKeyEncryptedSessionKeyPacketType, "Symmetric Key-Encrypted Session Key Packet"
+    | 4  ->  OnePassSignaturePacketType, "One-Pass Signature Packet"
+    | 5  ->  SecretKeyPacketType, "Secret Key Packet"
+    | 6  ->  PublicKeyPacketType, "Public Key Packet"
+    | 7  ->  SecretSubKeyPacketType, "Secret Subkey Packet"
+    | 8  ->  CompressedDataPacketType, "Compressed Data Packet"
+    | 9  ->  SymmetricallyEncryptedDataPacketType, "Symmetrically-encrypted Data Packet"
+    | 10 ->  MarkerPacketType, "Marker Packet"
+    | 11 ->  LiteralDataPacketType, "Literal Data Packet"
+    | 12 ->  TrustPacketType, "Trust Packet"
+    | 13 ->  UserIDPacketType, "UserID Packet"
+    | 14 ->  PublicSubKeyPacketType, "Public Subkey Packet"
+    | 17 ->  UserAttributePacketType, "User Attribute Packet"
+    | 18 ->  SymmetricallyEncryptedAndIntegrityProtectedPacketType, "Symmetrically-encrypted and integrity-protected packet"
+    | 19 ->  ModificationDetectionCodePacketType, "Modification Detection Packet"
+    | 60 ->  PrivatePacketType, "Private Packet Type"
+    | 61 ->  PrivatePacketType, "Private Packet Type"
+    | 62 ->  PrivatePacketType, "Private Packet Type"
+    | 63 ->  PrivatePacketType, "Private Packet Type"
 
 
 (* §4.2 & §4.3 *)
@@ -402,7 +402,7 @@ let dump_packet_type packet_version buf packet_type =
     dump_bit_int n buf (int_of_packet_type_enum packet_type)
 
 (* §4.2 & §4.3 *)
-let value_of_packet_type packet_type =
+let value_of_packet_type packet_type =  (* XXX Why do we not simply use (value_of_packet_type_enum packet_type) *)
     VEnum (string_of_packet_type_enum packet_type,
            int_of_packet_type_enum packet_type, 0, Parsifal.BigEndian)
 
@@ -414,89 +414,54 @@ struct packet_tag = {
     packet_length_type : conditional_container(not packet_version) of bit_int[2];
 }
 
-
-(*type packet_tag =
-    | UnknownPacketType of uint8
-    | ReservedPacketType of uint8
-    | PublicKeyEncryptedSessionKeyPacketType of uint8
-    | SignaturePacketType of uint8
-    | SymmetricKeyEncryptedSessionKeyPacketType of uint8
-    | OnePassSignaturePacketType of uint8
-    | SecretKeyPacketType of uint8
-    | PublicKeyPacketType of uint8
-    | SecretSubKeyPacketType of uint8
-    | CompressedDataPacketType of uint8
-    | SymmetricallyEncryptedDataPacketType of uint8
-    | MarkerPacketType of uint8
-    | LiteralDataPacketType of uint8
-    | TrustPacketType of uint8
-    | UserIDPacketType of uint8
-    | PublicSubKeyPacketType of uint8
-    | UserAttributePacketType of uint8
-    | SymmetricallyEncryptedAndIntegrityProtectedPacketType of uint8
-    | ModificationDetectionCodePacketType of uint8
-    | PrivatePacketType of uint8
-
-
-let parse_packet_tag input =
-    let ptag = parse_byte input in
-    if (ptag land 0x80) != 0 then
-        (* bit_magic? *)
-        raise (ParsingException (CustomException "Packet Tag 0x80 bit must be one", _h_of_si input)) ;
-    let ptype =
-        if (ptag land 0x40) != 0 then
-            (* New format *)
-            ptag land 0x3f
-        else
-            (* Old format *)
-            ((ptag lsr 2) land 0x0F)
-    in
-    match ptype with
-    | 0  ->  raise(ParsingException (CustomException "Packet Type 0 is reserved and MUST NOT be used", _h_of_si input))
-    | 1  ->  PublicKeyEncryptedSessionKeyPacketType ptag
-    | 2  ->  SignaturePacketType ptag
-    | 3  ->  SymmetricKeyEncryptedSessionKeyPacketType ptag
-    | 4  ->  OnePassSignaturePacketType ptag
-    | 5  ->  SecretKeyPacketType ptag
-    | 6  ->  PublicKeyPacketType ptag
-    | 7  ->  SecretSubKeyPacketType ptag
-    | 8  ->  CompressedDataPacketType ptag
-    | 9  ->  SymmetricallyEncryptedDataPacketType ptag
-    | 10 ->  MarkerPacketType ptag
-    | 11 ->  LiteralDataPacketType ptag
-    | 12 ->  TrustPacketType ptag
-    | 13 ->  UserIDPacketType ptag
-    | 14 ->  PublicSubKeyPacketType ptag
-    | 17 ->  UserAttributePacketType ptag
-    | 18 ->  SymmetricallyEncryptedAndIntegrityProtectedPacketType ptag
-    | 19 ->  ModificationDetectionCodePacketType ptag
-    | 60 | 61 | 62 | 63 ->  PrivatePacketType ptag
-    | _ -> UnknownPacketType ptag
-*)
-
 (* §4.2.1 & §4.2.2 *)
-type packet_len = uint32
+type packet_len = uint32 option
 
 let parse_packet_len packet_tag input =
     match packet_tag.packet_version, packet_tag.packet_length_type with
-    | false, Some 0 -> parse_uint8 input
-    | false, Some 1 -> parse_uint16 input
-    | false, Some 2 -> parse_uint32 input
-    | false, Some 3 -> failwith "DIE!"
+    | false, Some 0 -> Some (parse_uint8 input)
+    | false, Some 1 -> Some (parse_uint16 input)
+    | false, Some 2 -> Some (parse_uint32 input)
+    | false, Some 3 -> None
     | true, None ->
         let first = parse_uint8 input in
-        if first <= 191 then first
-        else if first <= 223 then (((first - 192) lsl 8) lor (parse_uint8 input)) + 192
-        else if first = 255 then parse_uint32 input
-        else not_implemented "Partial Body Lengths 4.2.2.4"
-            (* 1 lsl ( land 0x1F) *)
-            (* TODO First Partial Body Len MUST NOT be less than 512 *)
-            (* TODO Last Length cannot by Partial Body Len *)
+        if first <= 191 then Some first
+        else if first <= 223 then Some ((((first - 192) lsl 8) lor (parse_uint8 input)) + 192)
+        else if first = 255 then Some (parse_uint32 input)
+        else Some (1 lsl (first land 0x1F))
     | _ -> failwith "Inconsistent values for version/length type"
 
-let dump_packet_len _buf _ = not_implemented "dump_packet_len" (* TODO *)
+let dump_packet_len packet_tag buf packet_len =
+    match packet_len with
+    | None        -> ()
+    | Some len    ->
+        (
+            match packet_tag.packet_version with
+            | false -> (* Old-stype Len Format *)
+                if len <= ((2 lsl 8) - 1) then
+                    dump_uint8 buf len
+                else if len <= ((2 lsl 16) - 1) then
+                    dump_uint16 buf len
+                else
+                    dump_uint32 buf len
+            | true -> (* New-style Len Format *)
+                if len <= 191 then
+                    dump_uint8 buf len
+                else if len <= 8383 then
+                        let sublen = len - 192 in
+                        let value = ((sublen land 0xFF00) + (192 lsl 8)) lor (sublen land 0xFF) in
+                        dump_uint16 buf value
+                else begin
+                    dump_uint8 buf 255 ;
+                    dump_uint32 buf (len land 0xFFFFFFFF)
+                end
+                (* TODO Partial Body Len; Problem is Partial Body len can encode values ranging from 1 to 2^30 so using the len value is not enough. We need to know whether there is a list of packet_content or a single packet_content in this packet *)
+        )
 
-let value_of_packet_len l = VSimpleInt l
+let value_of_packet_len l =
+    match l with
+    | Some x -> VString(string_of_int x, false)
+    | None -> VString("Undeterminate len", false)
 
 
 union public_key_encrypted_data [enrich] (UnparsedPublicKeyEncryptedData) =
@@ -526,7 +491,17 @@ let parse_subpacket_len input =
     else if first <= 254 then (((first - 192) lsl 8) lor (parse_uint8 input)) + 192
     else parse_uint32 input
 
-let dump_subpacket_len _buf _ = not_implemented "dump_subpacket_len" (* TODO *)
+let dump_subpacket_len buf subpacket_len =
+    if subpacket_len <= 191 then
+        dump_uint8 buf subpacket_len
+    else if subpacket_len <= 16319 then (* 16319 is [254;255], the maximum value encoded on two bytes with this format *)
+        let sublen = subpacket_len - 192 in
+        let value = ((sublen land 0xFF00) + (192 lsl 8)) lor (sublen land 0xFF) in
+        dump_uint16 buf value
+    else begin
+        dump_uint8 buf 255 ;
+        dump_uint32 buf (subpacket_len land 0xFFFFFFFF)
+    end
 
 let value_of_subpacket_len l = VSimpleInt l
 
@@ -578,7 +553,6 @@ enum subpacket_type (7, UnknownVal UnknownSubpacketType) =
     | 109   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
     | 110   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
 
-
 type byte_boolean = bool
 let parse_byte_boolean input =
     match (parse_uint8 input) with
@@ -587,7 +561,6 @@ let parse_byte_boolean input =
 let dump_byte_boolean buf b =
     dump_uint8 buf (if b then 1 else 0)
 let value_of_byte_boolean b = VBool b
-
 
 struct subpacket_trust_signature_data = {
     depth        : uint8;
@@ -599,51 +572,51 @@ alias subpacket_regular_expression_data = cstring
 
 (* §5.2.3.15 *)
 struct subpacket_revocation_key_data = {
-    srkd_magic1 : bit_magic(true);
-    sensitive   : bit_bool;
-    srkd_stuff  : bit_int[6];
-    sig_algo    : pubkey_sig_algo;
-    fingerprint : binstring(get_hash_len SHA1Algo input)
+    srkd_magic1         : bit_magic(true);
+    sensitive           : bit_bool;
+    srkd_unparsed_flags : bit_int[6];
+    sig_algo            : pubkey_sig_algo;
+    fingerprint         : binstring(get_hash_len SHA1Algo input)
 }
 
 (* §5.2.3.16 *)
 struct subpacket_notation_data_data = {
-    human_readable : bit_bool;
-    sndd_placeholder : bit_int[31];
-    namelen : uint16;
-    vallen  : uint16;
-    name    : string(namelen);
-    value   : string(vallen);
+    human_readable      : bit_bool;
+    sndd_placeholder    : bit_int[31];
+    namelen             : uint16;
+    vallen              : uint16;
+    name                : string(namelen);
+    value               : string(vallen);
 }
 
 (* §5.2.3.18 *)
 
 struct subpacket_key_server_prefs_data = {
-  no_modify : bit_bool;
-  skspd_placeholder : list(7) of bit_magic(false); (* TODO OL: bit_int_magic(length, expected_value) *)
-  skspd_placeholder2 : binstring;
+  no_modify             : bit_bool;
+  skspd_placeholder     : list(7) of bit_magic(false); (* TODO OL: bit_int_magic(length, expected_value) *)
+  skspd_placeholder2    : binstring;
 }
 
 
 (* §5.2.3.21 *)
 struct subpacket_key_flags_data = {
-    groupPrivKey : bit_bool; (* XXX TODO should be placed only on direct sign of self-sig *)
-    skfd_placeholder : bit_bool;
-    authOKKey : bit_bool;
-    splitPrivKey : bit_bool; (* XXX TODO should be placed only on direct sign of self-sig *)
-    storageEncryptionUsage : bit_bool;
-    communicationEncryptionUsage : bit_bool;
-    signUsage : bit_bool;
-    certificationUsage : bit_bool;
+    groupPrivKey            : bit_bool; (* XXX TODO should be placed only on direct sign of self-sig *)
+    skfd_placeholder        : bit_bool;
+    authOKKey               : bit_bool;
+    splitPrivKey            : bit_bool; (* XXX TODO should be placed only on direct sign of self-sig *)
+    storageEncUsage         : bit_bool;
+    communicationEncUsage   : bit_bool;
+    signUsage               : bit_bool;
+    certificationUsage      : bit_bool;
 }
 
 (* §5.2.3.23 *)
 enum revocation_code (8, UnknownVal UnknownRevocCode) =
-    | 0     ->  NoReason
-    | 1     ->  KeySuperseded
-    | 2     ->  KeyCompromised
-    | 3     ->  KeyRetired
-    | 32    ->  UserIDObsoleted
+    | 0     ->  NoReason, "No Reason Specified"
+    | 1     ->  KeySuperseded, "Key is superseded"
+    | 2     ->  KeyCompromised, "Key was compromised"
+    | 3     ->  KeyRetired, "Key is retired"
+    | 32    ->  UserIDObsoleted, "UserID is no longer valid"
     | 100   ->  PrivateUse
     | 101   ->  PrivateUse
     | 102   ->  PrivateUse
@@ -664,16 +637,16 @@ struct subpacket_revocation_reason_data = {
 
 (* §5.2.3.24 *)
 struct subpacket_features_data = {
-    sfd_placeholder : bit_int[7];
-    modification_detection : bit_bool;
-    sfd_placeholder2 : binstring;
+    sfd_placeholder         : bit_int[7];
+    modification_detection  : bit_bool;
+    sfd_placeholder2        : binstring;
 }
 
 (* §5.2.3.25 *)
 struct subpacket_signature_target_data = {
-    sig_algo    :   pubkey_sig_algo;
-    hash_algo   :   hash_algo;
-    digest      :   string(get_hash_len hash_algo input)
+    sig_algo    : pubkey_sig_algo;
+    hash_algo   : hash_algo;
+    digest      : string(get_hash_len hash_algo input)
 }
 
 (* §5.2.3.1 *)
@@ -745,13 +718,14 @@ let no_sig_creation_time l =
     let new_l = List.filter (fun sp -> sp.pcktType = SigCreationTime) l in
     new_l = []
 
+(* §5.2.3 *)
 struct signature_packet_content_version_4 = {
     sig_type                : signature_type;
     sig_algo                : pubkey_sig_algo;
     hash_algo               : hash_algo;
     hashed_subpackets_len   : uint16;
     hashed_subpackets       : container(hashed_subpackets_len) of list of signature_subpacket;
-(*    parse_checkpoint _check_sig_creation_time : stop_if (no_sig_creation_time hashed_subpackets); *)
+    parse_checkpoint _check_sig_creation_time : stop_if (no_sig_creation_time hashed_subpackets); (* at least one SigCreationTime Subpacket must be in the hashed_subpackets *)
     unhashed_subpackets_len : uint16;
     unhashed_subpackets     : container(unhashed_subpackets_len) of list of signature_subpacket;
     signed_hash_val_check   : uint16;
@@ -852,7 +826,6 @@ struct public_key_packet_content = {
 }
 
 (* §5.5.1.2 *)
-(* XXX This type is an alias of public_key_packet_content as they have the exact same definition in the RFC and are told to be duplicates on purpose. I choose to create an alias just in case of future changes and to keep "inline" the different meaning *)
 alias public_sub_key_packet_content = public_key_packet_content
 
 (* §5.5.1.3 *)
@@ -877,8 +850,6 @@ union private_key [enrich] (UnparsedPrivateKey) =
 
 
 
-(* TODO: Move this somewhere relevant? *)
-
 (* Secret-Key Encryption § 3.7.2.1 *)
 alias iv [param cipher] = binstring(get_privkeyalgo_block_size cipher)
 
@@ -892,14 +863,13 @@ struct s2k_and_secret_data = {
 }
 
 (* Secret-Key Encryption § 3.7.2.1 *)
-(* XXX On a le droit d'utiliser un constructeur d'enum comme UnknownVal ? *)
 enum secret_key_encryption_algo (8, UnknownVal PrivKeyAlgo) =
     | 0     ->  UnencryptedSecretData
     | 254   ->  S2K
     | 255   ->  S2K
 
 union secret_key_encryption_data [enrich; exhaustive] (UnparsedSecretKeyEncryptionData) =
-    | UnencryptedSecretData  ->  SymmetricEncryptedSessionKeyPacket of symmetric_key_encrypted_session_key_packet_content (* (PlainTextAlgo) (*XXX cipher null, trouver comment passer une constante*) *)
+    | UnencryptedSecretData  ->  SymmetricEncryptedSessionKeyPacket of symmetric_key_encrypted_session_key_packet_content
     | S2K                    ->  S2KAndSecretData of s2k_and_secret_data
     | PrivKeyAlgo _algorithm ->  CipheredSecretData of binstring (* TODO ciphered_secret_data(privkey_algo_of_int _algorithm) *)
 
@@ -907,9 +877,6 @@ struct secret_key_encryption = {
     algorithm   : secret_key_encryption_algo;
     data        : secret_key_encryption_data(algorithm);
 }
-
-(* TODO: End of move *)
-
 
 
 (* §5.5.1.3 *)
@@ -951,41 +918,42 @@ struct literal_data_packet_content = {
     time_value      : timefield;
     data            : string;
 }
+
 (* §5.12 *)
 enum user_attribute_subpacket_type(8, UnknownVal UnknownUserAttributeSubpacketType) =
-    | 1     ->  ImageAttribute
-    | 100   ->  PrivateOrExperimental
-    | 101   ->  PrivateOrExperimental
-    | 102   ->  PrivateOrExperimental
-    | 103   ->  PrivateOrExperimental
-    | 104   ->  PrivateOrExperimental
-    | 105   ->  PrivateOrExperimental
-    | 106   ->  PrivateOrExperimental
-    | 107   ->  PrivateOrExperimental
-    | 108   ->  PrivateOrExperimental
-    | 109   ->  PrivateOrExperimental
-    | 110   ->  PrivateOrExperimental
+    | 1     ->  ImageAttribute, "Image Attribute"
+    | 100   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
+    | 101   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
+    | 102   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
+    | 103   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
+    | 104   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
+    | 105   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
+    | 106   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
+    | 107   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
+    | 108   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
+    | 109   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
+    | 110   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
 
 
 (* §5.12.1 *)
 enum user_attribute_image_header_1_encoding(8, UnknownVal UnknownUserAttributeImageHeader1Encoding) =
-    | 1     -> UserAttributeImageHeader1EncodingJPEG
-    | 100   -> PrivateOrExperimental
-    | 101   -> PrivateOrExperimental
-    | 102   -> PrivateOrExperimental
-    | 103   -> PrivateOrExperimental
-    | 104   -> PrivateOrExperimental
-    | 105   -> PrivateOrExperimental
-    | 106   -> PrivateOrExperimental
-    | 107   -> PrivateOrExperimental
-    | 108   -> PrivateOrExperimental
-    | 109   -> PrivateOrExperimental
-    | 110   -> PrivateOrExperimental
+    | 1     -> UserAttributeImageHeader1EncodingJPEG, "User Attribute Image Header => JPEG"
+    | 100   -> PrivateOrExperimental, "Private or Experimental Encoding"
+    | 101   -> PrivateOrExperimental, "Private or Experimental Encoding"
+    | 102   -> PrivateOrExperimental, "Private or Experimental Encoding"
+    | 103   -> PrivateOrExperimental, "Private or Experimental Encoding"
+    | 104   -> PrivateOrExperimental, "Private or Experimental Encoding"
+    | 105   -> PrivateOrExperimental, "Private or Experimental Encoding"
+    | 106   -> PrivateOrExperimental, "Private or Experimental Encoding"
+    | 107   -> PrivateOrExperimental, "Private or Experimental Encoding"
+    | 108   -> PrivateOrExperimental, "Private or Experimental Encoding"
+    | 109   -> PrivateOrExperimental, "Private or Experimental Encoding"
+    | 110   -> PrivateOrExperimental, "Private or Experimental Encoding"
 
 (* §5.12.1 *)
 struct user_attribute_image_header_1 = {
     encoding    : user_attribute_image_header_1_encoding;
-    placeholder : magic("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+    placeholder : list(12) of magic("\x00");
 }
 
 (* §5.12.1 *)
@@ -1001,7 +969,7 @@ struct user_attribute_image_subpacket = {
     parse_checkpoint structure_start : save_offset;
     len             : uint16le;
     header_version  : user_attribute_image_header_version;
-    header          : container(len - (input.cur_offset - structure_start)) of user_attribute_image_header_content(header_version);
+    header          : container(len - (input.cur_offset - structure_start)) of user_attribute_image_header_content(header_version); (* len includes its own length... *)
     image           : binstring;
 }
 
@@ -1036,22 +1004,29 @@ union packet_content [enrich] (UnparsedPacket) =
     | MarkerPacketType                                          ->  MarkerPacketContent of magic("PGP") (* §5.8 *)
     | LiteralDataPacketType                                     ->  LiteralDataPacketContent of literal_data_packet_content
     | TrustPacketType                                           ->  TrustPacketContent of binstring (* §5.10 *) (* TODO Is just an opaque implementation-dependant blob ; see if this is used by some softwares like GnuPG and reverse the format *)
-    | UserIDPacketType                                          ->  UserIDPacketContent of string (* §5.11 *) (* XXX UTF-8 : is there a specific data type *)
+    | UserIDPacketType                                          ->  UserIDPacketContent of string (* §5.11 *)
     | PublicSubKeyPacketType                                    ->  PublicSubKeyPacketContent of public_sub_key_packet_content
     | UserAttributePacketType                                   ->  UserAttributePacketContent of list of user_attribute_subpacket (* §5.12 *)
     | SymmetricallyEncryptedAndIntegrityProtectedPacketType     ->  SymmetricallyEncryptedAndIntegrityProtectedPacketContent of symmetrically_encrypted_and_integrity_protected_packet_content
     | ModificationDetectionCodePacketType                       ->  ModificationDetectionCodePacketContent of binstring(get_hash_len SHA1Algo input) (* §5.14 *) (* SHA1 is hardcoded in the RFC... *)
 
 (* §4.2 *)
-struct packet_len_and_content [param tag] = {
-    len     : packet_len(tag);
-    content : container(len) of packet_content(tag.packet_type);
+union packet_content_container [param packet_type ; enrich ; exhaustive] (UnparsedPacketContentContainer) =
+    | Some x    -> PacketContentContainer of container(x) of packet_content(packet_type)
+    | None      -> PacketContentOfIndeterminateLen of packet_content(packet_type)
+
+(* §4.2 *)
+struct packet_len_and_content [both_param tag] = {
+    len     : packet_len[tag];
+    content : packet_content_container(tag.packet_type ; len);
 }
 
 (* § 4.1 *)
 struct packet = {
     tag             : packet_tag;
-    lenAndContent   : packet_len_and_content(tag); (* TODO OL (partial body lengths) list of packet_len_and_content(tag); *)
+    lenAndContent   : packet_len_and_content(tag; DUMP packet.tag); (* TODO OL (partial body lengths) list of packet_len_and_content(tag); *)
+            (* TODO First Partial Body Len MUST NOT be less than 512 *)
+            (* TODO Last Length cannot by Partial Body Len *)
 }
 
 (* §4.1 *)
