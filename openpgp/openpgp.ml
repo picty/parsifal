@@ -30,6 +30,10 @@ let value_of_mpint i =
 (* §3.5 *)
 alias timefield = uint32
 
+let value_of_timefield t =
+    let value = (Unix.localtime (float_of_int t)) in
+    VString( (Printf.sprintf "%02d/%02d/%04d %02d:%02d:%02d" value.Unix.tm_mday value.Unix.tm_mon (value.Unix.tm_year + 1900) value.Unix.tm_hour value.Unix.tm_min value.Unix.tm_sec), false)
+
 (* §9.1 *)
 enum pubkey_algo (8, UnknownVal UnknownPubKeyAlgo) =
     | 1     ->  RSAEncryptAndSign_PubKeyAlgo, "RSA Encrypt and Sign"
@@ -1040,8 +1044,8 @@ alias openpgp_message = list of packet
 let _ =
     try
         let input = string_input_of_filename Sys.argv.(1) in
-        let msg = parse_packet input in
-        print_endline (print_value (value_of_packet msg))
+        let msg = parse_openpgp_message input in
+        print_endline (print_value (value_of_openpgp_message msg))
     with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1
