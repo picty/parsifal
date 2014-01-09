@@ -406,39 +406,50 @@ let dump_packet_type packet_version buf packet_type =
     dump_bit_int n buf (int_of_packet_type_enum packet_type)
 
 (* §4.2 & §4.3 *)
-let value_of_packet_type packet_type =  (* XXX Why do we not simply use (value_of_packet_type_enum packet_type) *)
-    VEnum (string_of_packet_type_enum packet_type,
-           int_of_packet_type_enum packet_type, 0, Parsifal.BigEndian)
+let value_of_packet_type =  value_of_packet_type_enum
+
+alias packet_version = bit_bool
+
+(*
+let value_of_packet_version packet_version =
+    match packet_version with
+    | false -> VString("Old-style Packet", false)
+    | true -> VString("New-style Packet", false)
+*)
 
 (* §4.2 & §4.3 *)
 struct packet_tag = {
     packet_magic : bit_magic (true);
-    packet_version : bit_bool;
+    packet_version : packet_version;
     packet_type : packet_type(packet_version; DUMP packet_tag.packet_version);   (* TODO OL: Fix this *)
     packet_length_type : conditional_container(not packet_version) of bit_int[2];
 }
 
 (* §4.2.1 & §4.2.2 *)
-type packet_len = uint32 option
+type packet_len =
+    | FixedLen of uint32
+    | UndeterminateLen
+    | PartialLen of uint32
 
 let parse_packet_len packet_tag input =
     match packet_tag.packet_version, packet_tag.packet_length_type with
-    | false, Some 0 -> Some (parse_uint8 input)
-    | false, Some 1 -> Some (parse_uint16 input)
-    | false, Some 2 -> Some (parse_uint32 input)
-    | false, Some 3 -> None
+    | false, Some 0 -> FixedLen (parse_uint8 input)
+    | false, Some 1 -> FixedLen (parse_uint16 input)
+    | false, Some 2 -> FixedLen (parse_uint32 input)
+    | false, Some 3 -> UndeterminateLen
     | true, None ->
         let first = parse_uint8 input in
-        if first <= 191 then Some first
-        else if first <= 223 then Some ((((first - 192) lsl 8) lor (parse_uint8 input)) + 192)
-        else if first = 255 then Some (parse_uint32 input)
-        else Some (1 lsl (first land 0x1F))
+        if first <= 191 then FixedLen (first)
+        else if first <= 223 then FixedLen ((((first - 192) lsl 8) lor (parse_uint8 input)) + 192)
+        else if first = 255 then FixedLen (parse_uint32 input)
+        (*XXX else PartialLen (1 lsl (first land 0x1F))*)
+        else PartialLen (1 lsl (first land 0x1F))
     | _ -> failwith "Inconsistent values for version/length type"
 
 let dump_packet_len packet_tag buf packet_len =
     match packet_len with
-    | None        -> ()
-    | Some len    ->
+    | UndeterminateLen -> ()
+    | FixedLen len     ->
         (
             match packet_tag.packet_version with
             | false -> (* Old-stype Len Format *)
@@ -459,13 +470,15 @@ let dump_packet_len packet_tag buf packet_len =
                     dump_uint8 buf 255 ;
                     dump_uint32 buf (len land 0xFFFFFFFF)
                 end
-                (* TODO Partial Body Len; Problem is Partial Body len can encode values ranging from 1 to 2^30 so using the len value is not enough. We need to know whether there is a list of packet_content or a single packet_content in this packet *)
         )
+    | PartialLen len    ->
+        dump_uint8 buf (224 + (int_of_float (ceil (log (float_of_int len) /. (log 2.) ) ) ) )
+
 
 let value_of_packet_len l =
     match l with
-    | Some x -> VString(string_of_int x, false)
-    | None -> VString("Undeterminate len", false)
+    | FixedLen x | PartialLen x -> VString(string_of_int x, false)
+    | UndeterminateLen          -> VString("Undeterminate len", false)
 
 
 union public_key_encrypted_data [enrich] (UnparsedPublicKeyEncryptedData) =
@@ -1014,21 +1027,58 @@ union packet_content [enrich] (UnparsedPacket) =
     | SymmetricallyEncryptedAndIntegrityProtectedPacketType     ->  SymmetricallyEncryptedAndIntegrityProtectedPacketContent of symmetrically_encrypted_and_integrity_protected_packet_content
     | ModificationDetectionCodePacketType                       ->  ModificationDetectionCodePacketContent of binstring(get_hash_len SHA1Algo input) (* §5.14 *) (* SHA1 is hardcoded in the RFC... *)
 
+
+type 'a partial_len_container = 'a
+
+let parse_partial_len_container tag first_partial_len name parse_fun input =
+    let rec gather_residual_content buf input =
+        match (parse_packet_len tag input) with
+        | FixedLen x -> begin
+(*    Printf.printf "Got last len of %d (%d) \n" x (POutput.length buf); *)
+            POutput.add_string buf (parse_string x input) ;
+            POutput.contents buf
+            end
+        | PartialLen x -> begin
+(*    Printf.printf "Got intermediate len of %d (%d) \n" x (POutput.length buf); *)
+            POutput.add_string buf (parse_string x input) ;
+            gather_residual_content buf input
+            end
+        | UndeterminateLen ->
+            POutput.add_string buf (parse_rem_string input) ;
+            POutput.contents buf
+    in
+    let buf = POutput.create () in
+    let str = parse_string first_partial_len input in
+(*    Printf.printf "Got initial partial len of %d\n" first_partial_len; *)
+    POutput.add_string buf str ;
+    let new_input = get_in_container input name (gather_residual_content buf input) in
+    let res = parse_fun tag.packet_type new_input in
+    check_empty_input true new_input;
+    res
+
+
+let dump_partial_len_container (* _tag _first_partial_len *) _dump_fun _buf _o =
+    not_implemented "yeah, sure, someday"
+
+let value_of_partial_len_container = value_of_container
+
 (* §4.2 *)
-union packet_content_container [param packet_type ; enrich ; exhaustive] (UnparsedPacketContentContainer) =
-    | Some x    -> PacketContentContainer of container(x) of packet_content(packet_type)
-    | None      -> PacketContentOfIndeterminateLen of packet_content(packet_type)
+union packet_content_container [param tag ; enrich ; exhaustive] (UnparsedPacketContentContainer) =
+    | FixedLen length   -> PacketContentContainer of container(length) of packet_content(tag.packet_type)
+    | PartialLen length -> PacketContentContainer of partial_len_container(tag ; length) of packet_content
+    | UndeterminateLen  -> PacketContentOfIndeterminateLen of packet_content(tag.packet_type)
 
 (* §4.2 *)
 struct packet_len_and_content [both_param tag] = {
     len     : packet_len[tag];
-    content : packet_content_container(tag.packet_type ; len);
+    content : packet_content_container(tag ; len);
 }
 
 (* § 4.1 *)
 struct packet = {
-    tag             : packet_tag;
-    lenAndContent   : packet_len_and_content(tag; DUMP packet.tag); (* TODO OL (partial body lengths) list of packet_len_and_content(tag); *)
+    tag                     : packet_tag;
+    len_and_content         : packet_len_and_content(tag ; DUMP packet.tag);
+            (* TODO OL (partial body lengths) list of packet_len_and_content(tag); *)
             (* TODO First Partial Body Len MUST NOT be less than 512 *)
             (* TODO Last Length cannot by Partial Body Len *)
 }
@@ -1036,7 +1086,6 @@ struct packet = {
 (* §4.1 *)
 (* TODO §5.1 "0 or more public key encrypted session key packets and/or symmetric key encrypted session key packet may precede symmetrically encrypted data packet" *)
 alias openpgp_message = list of packet
-
 
 
 (* XXX TODO develop radix-64 and ASCII Armoring containers *)
