@@ -1,9 +1,10 @@
 # configurable section
-TARGETS = test_tar test_pe test_png
+TARGETS = test_tar test_pe test_png test_dvi
 
 test_tar_SRCS := test_tar.ml
 test_pe_SRCS := test_pe.ml
 test_png_SRCS := test_png.ml
+test_dvi_SRCS := test_dvi.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
