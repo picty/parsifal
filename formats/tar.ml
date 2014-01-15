@@ -5,8 +5,7 @@ open PTypes
 (* TODO: Mark ustar as one possible extra header *)
 
 enum file_type (8, UnknownVal UnknownFileType) =
-  | 0 -> NormalFile
-  | 0x30 -> NormalFile
+  | 0x30 | 0 -> NormalFile
   | 0x31 -> HardLink
   | 0x32 -> SymbolicLink
   | 0x33 -> CharacterSpecial

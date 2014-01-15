@@ -131,12 +131,7 @@ enum opcode (8, UnknownVal OP_Opcode) =
 | 247 -> OP_pre, "pre"
 | 248 -> OP_post, "post"
 | 249 -> OP_post_post, "post_post"
-| 250 -> OP_Undefined, "Undefined opcode"
-| 251 -> OP_Undefined, "Undefined opcode"
-| 252 -> OP_Undefined, "Undefined opcode"
-| 253 -> OP_Undefined, "Undefined opcode"
-| 254 -> OP_Undefined, "Undefined opcode"
-| 255 -> OP_Undefined, "Undefined opcode"
+| 250, 255 -> OP_Undefined, "Undefined opcode"
 
 
 type dvi_string = int * string
