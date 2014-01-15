@@ -1097,27 +1097,33 @@ let parse_junk_to_armor input =
     let rec locate_armor offset input = (* returns the offset of the opening banner *)
         if String.sub input.str offset 5 = "-----" then
             offset
-        else
-            locate_armor (1 + String.index_from input.str offset '\n') input
+        else begin
+            let next_offset =
+                try
+                    1 + String.index_from input.str offset '\n'
+                with Not_found ->
+                    raise (ParsingException (CustomException "Cannot find start of armor before end of buffer", _h_of_si input))
+            in
+            locate_armor next_offset input
+        end
     in
     let waste_length = (locate_armor input.cur_offset input) - input.cur_offset in
     parse_string waste_length input
 
-alias whitespace = string
-
-let parse_whitespace input =
-    let rec parse_ws_util predicate buf input =
-        let c = peek_uint8 input in
-        if predicate c then
-            begin
-            Buffer.add_char buf (char_of_int (parse_uint8 input)) ;
-            parse_ws_util predicate buf input
-            end
-        else
-        Buffer.contents buf
+alias conditional_string = string
+let parse_conditional_string predicate input =
+    let rec parse_ignored_string_aux acc predicate input =
+        let next_char = (peek_uint8 input) in
+        if (predicate next_char) then begin
+            POutput.add_char acc (char_of_int (parse_uint8 input)) ;
+            parse_ignored_string_aux acc predicate input
+        end else
+           POutput.contents acc
     in
-    let buf = Buffer.create 1024 in
-    parse_ws_util (fun x -> match x with 0x20 | 0x9 -> true | _ -> false) buf input
+    let buf = POutput.create () in
+    parse_ignored_string_aux buf predicate input
+
+alias whitespace = conditional_string(fun x -> match x with | 0x20 | 0x9 -> true | _ -> false)
 
 alias message_type = string
 
@@ -1144,31 +1150,25 @@ let parse_message_type input =
     with Not_found ->
         failwith "Incomplete header"
 
-let checkit input =
-    print_endline "blip:";
-    print_endline (string_of_int input.cur_offset) ;
-    print_endline (String.sub input.str input.cur_offset 10) ;
-    false
-
 struct opening_title_banner = {
-    dash1           : list(5) of magic("-");
+    dash1           : magic("-----");
     ws1             : whitespace;
     begin_pgp       : magic("BEGIN PGP ");
     msg_type_begin  : message_type;
     ws2             : whitespace;
-    dash2           : list(5) of magic("-");
+    dash2           : magic("-----");
     ws3             : whitespace;
     lf              : magic("\x0A");
 }
 
 struct ending_title_banner [param title] = {
-    dash1       : list(5) of magic("-");
+    dash1       : magic("-----");
     ws1         : whitespace;
     end_pgp     : magic("END PGP ");
     msg_type_end: message_type;
     parse_checkpoint : stop_if(title.msg_type_begin <> msg_type_end);
     ws2         : whitespace;
-    dash2       : list(5) of magic("-");
+    dash2       : magic("-----");
     ws3         : whitespace;
     lf          : magic("\x0A");
 }
@@ -1177,7 +1177,12 @@ type 'a radix64_body_container = 'a
 
 let parse_radix64_body_container name parse_fun input =
     let checksum_pattern = Str.regexp "\n=" in
-    let pattern_offset = Str.search_forward checksum_pattern input.str input.cur_offset in
+    let pattern_offset =
+        try
+            Str.search_forward checksum_pattern input.str input.cur_offset
+        with Not_found ->
+            raise (ParsingException (CustomException "Cannot find checksum magic before end of input", _h_of_si input))
+    in
     let new_input = get_in_container input name (parse_string (pattern_offset - input.cur_offset) input) in
     let res = parse_fun new_input in
     check_empty_input true new_input ;
@@ -1203,34 +1208,17 @@ let parse_radix64_checksum input =
     let buf = POutput.create () in
     let listval = (build_list_val 4 [] input) in
     let _ = Base64.decode_rev_chunk buf listval in
-Printf.printf "%02X%02X%02X\n" (POutput.byte_at buf 0) (POutput.byte_at buf 1) (POutput.byte_at buf 2) ;
-
     ((POutput.byte_at buf 0) lsl 16) lor ((POutput.byte_at buf 1) lsl 8) lor (POutput.byte_at buf 2)
+
+let dump_radix64_checksum _buf _radix64_checksum = not_implemented "yeah"
 
 alias base64_openpgp_message = openpgp_message (* TODO: Why not directly base64_container of message? *)
 let parse_base64_openpgp_message input =
     Base64.parse_base64_container Base64.NoHeader "base64_openpgp_message" parse_openpgp_message input
 
-let rec parse_char_until delimiter buf input =
-    let next_char = char_of_int (peek_uint8 input) in
-    if next_char = delimiter then
-        Buffer.contents buf
-    else
-        let _ = parse_uint8 input in
-        Buffer.add_char buf next_char ;
-        parse_char_until delimiter buf input
+alias armor_header_name = conditional_string((fun x -> not (x = 0x3a))) (* parse until ':' *)
 
-alias armor_header_name = string
-
-let parse_armor_header_name input =
-    let buf = Buffer.create 1024 in
-    parse_char_until ':' buf input
-
-alias armor_header_value = string
-
-let parse_armor_header_value input =
-    let buf = Buffer.create 1024 in
-    parse_char_until '\n' buf input
+alias armor_header_value = conditional_string((fun x -> not (x = 0xa))) (* parse until lf *)
 
 struct armor_header = {
     parse_checkpoint : stop_if( (peek_uint8 input) = (int_of_char '\n') ) ; (* detect a empty line *)
@@ -1247,7 +1235,6 @@ struct armored_openpgp_message = {
     headers_sep : magic("\n");
     body : radix64_body_container of base64_openpgp_message ;
     body_sep : magic("\x0A=");
-    parse_checkpoint: stop_if(checkit input);
     checksum : radix64_checksum ;
     checksum_sep : magic("\x0A");
     trailer : ending_title_banner(title) ;
@@ -1258,7 +1245,7 @@ let _ =
     try
         let input = string_input_of_filename Sys.argv.(1) in
         let msg = parse_armored_openpgp_message input in
-        print_endline (print_value (value_of_armored_openpgp_message msg))
+        print_endline (Json.json_of_value (value_of_armored_openpgp_message msg))
     with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1
