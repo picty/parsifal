@@ -1,2 +1,6 @@
+2014-01-15 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+	* Issue 11: Allow for more flexible enum patterns
+          (multiple and range patterns)
+
 2014-01-11 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* Initial Changelog

@@ -11,6 +11,11 @@ let pop_option def = function
   | None -> def
   | Some x -> x
 
+let rec rev_range accu first last =
+  if first > last
+  then accu
+  else rev_range (first::accu) (first+1) last
+
 
 (***************************)
 (* Common camlp4 functions *)

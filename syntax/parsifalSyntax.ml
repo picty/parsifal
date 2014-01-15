@@ -130,15 +130,24 @@ let opts_of_seq_expr expr =
 
 (* Enum choices *)
 
+let rec choices_of_patterns loc cons str accu = function
+  | <:patt< $int:i$ >> -> (loc, cons, (i, str))::accu
+  | <:patt< $p1$ | $p2$ >> ->
+    let new_accu = choices_of_patterns loc cons str accu p1 in
+    choices_of_patterns loc cons str new_accu p2
+  | PaTup (_, PaCom (_, <:patt< $int:i1$ >>, <:patt< $int:i2$ >>)) ->
+    List.map (fun i -> (loc, cons, (string_of_int i, str))) (rev_range [] (int_of_string i1) (int_of_string i2))
+  | p -> Loc.raise (loc_of_patt p) (Failure "Invalid choice for an enum pattern")
+
+
 let rec choices_of_match_cases = function
   | McNil _ -> []
   | McOr (_, m1, m2) ->
     (choices_of_match_cases m1)@(choices_of_match_cases m2)
-  | McArr (_loc, <:patt< $int:i$ >>, <:expr< >>,
-	   ExTup (_, ExCom (_, <:expr< $uid:c$ >>, <:expr< $str:s$ >> ))) ->
-    [_loc, c, (i, s)]
-  | McArr (_loc, <:patt< $int:i$ >>, <:expr< >>, <:expr< $uid:c$ >> ) ->
-    [_loc, c, (i, c)]
+  | McArr (_loc, p, <:expr< >>, ExTup (_, ExCom (_, <:expr< $uid:c$ >>, <:expr< $str:s$ >> ))) ->
+    List.rev (choices_of_patterns _loc c s [] p)
+  | McArr (_loc, p, <:expr< >>, <:expr< $uid:c$ >> ) ->
+    List.rev (choices_of_patterns _loc c c [] p)
   | mc -> Loc.raise (loc_of_match_case mc) (Failure "Invalid choice for an enum")
 
 
