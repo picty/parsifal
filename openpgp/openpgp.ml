@@ -2,6 +2,16 @@ open Parsifal
 open BasePTypes
 open PTypes
 
+type 'a lbl_container = 'a
+
+let parse_lbl_container name n _name parse_fun input =
+  let new_input = get_in input (match name with | None -> "container" | Some s -> s ^ "_container") n in
+  let res = parse_fun new_input in
+  get_out input new_input;
+  res
+
+let dump_lbl_container dump_fun buf i = dump_fun buf i
+let value_of_lbl_container = value_of_container
 (*open Big_int*)
 
 (* §3.3 *)
@@ -625,6 +635,7 @@ struct subpacket_key_flags_data = {
     communicationEncUsage   : bit_bool;
     signUsage               : bit_bool;
     certificationUsage      : bit_bool;
+    placeholder             : rem_binstring;
 }
 
 (* §5.2.3.23 *)
@@ -694,10 +705,11 @@ union subpacket_data [enrich] (UnparsedSubpacketData) =
 
 (* §5.2.3.1 *)
 struct signature_subpacket = {
-    pcktLen     : subpacket_len; (* data len is this len minus the subpacket_type len *)
-    critical    : bit_bool;
-    pcktType    : subpacket_type;
-    data        : container(pcktLen - 1) of subpacket_data(pcktType)
+    pckt_len     : subpacket_len; (* data len is this len minus the subpacket_type len *)
+    critical     : bit_bool;
+    pckt_type    : subpacket_type;
+    (*DEBUG parse_checkpoint _blah: stop_if( (fun () -> print_endline (print_value (value_of_subpacket_type pckt_type)) ; false) () ) ;*)
+    data         : lbl_container(Some "signature_subpacket_data" ; (pckt_len - 1)) of subpacket_data(pckt_type)
 }
 
 (* §5.2.1 *)
@@ -732,7 +744,7 @@ struct signature_packet_content_version_3 = {
 
 (* §5.2.3 *)
 let no_sig_creation_time l =
-    let new_l = List.filter (fun sp -> sp.pcktType = SigCreationTime) l in
+    let new_l = List.filter (fun sp -> sp.pckt_type = SigCreationTime) l in
     new_l = []
 
 (* §5.2.3 *)
@@ -741,10 +753,10 @@ struct signature_packet_content_version_4 = {
     sig_algo                : pubkey_sig_algo;
     hash_algo               : hash_algo;
     hashed_subpackets_len   : uint16;
-    hashed_subpackets       : container(hashed_subpackets_len) of list of signature_subpacket;
+    hashed_subpackets       : lbl_container(Some "signature_packet_content_version_4_hashed_subpackets" ; hashed_subpackets_len) of list of signature_subpacket;
     parse_checkpoint _check_sig_creation_time : stop_if (no_sig_creation_time hashed_subpackets); (* at least one SigCreationTime Subpacket must be in the hashed_subpackets *)
     unhashed_subpackets_len : uint16;
-    unhashed_subpackets     : container(unhashed_subpackets_len) of list of signature_subpacket;
+    unhashed_subpackets     : lbl_container(Some "signature_packet_content_version_4_unhashed_subpackets" ; unhashed_subpackets_len) of list of signature_subpacket;
     signed_hash_val_check   : uint16;
     signature               : signed_data(sig_algo);
 }
@@ -986,7 +998,7 @@ struct user_attribute_image_subpacket = {
     parse_checkpoint structure_start : save_offset;
     len             : uint16le;
     header_version  : user_attribute_image_header_version;
-    header          : container(len - (input.cur_offset - structure_start)) of user_attribute_image_header_content(header_version); (* len includes its own length... *)
+    header          : lbl_container(Some "user_attibute_image_subpacket_header" ; len - (input.cur_offset - structure_start)) of user_attribute_image_header_content(header_version); (* len includes its own length... *)
     image           : binstring;
 }
 
@@ -998,7 +1010,7 @@ union user_attribute_subpacket_content [enrich] (UnparsedUserAttributeSubpacketC
 struct user_attribute_subpacket = {
     len             : subpacket_len;
     subpacket_type  : user_attribute_subpacket_type;
-    data            : container(len) of user_attribute_subpacket_content(subpacket_type);
+    data            : lbl_container(Some "user_attribute_subpacket_data" ; len) of user_attribute_subpacket_content(subpacket_type);
 }
 
 (* §5.13 *)
@@ -1064,7 +1076,7 @@ let value_of_partial_len_container = value_of_container
 
 (* §4.2 *)
 union packet_content_container [param tag ; enrich ; exhaustive] (UnparsedPacketContentContainer) =
-    | FixedLen length   -> PacketContentContainer of container(length) of packet_content(tag.packet_type)
+    | FixedLen length   -> PacketContentContainer of lbl_container(Some "packet_content_container_fixedlen" ; length) of packet_content(tag.packet_type)
     | PartialLen length -> PacketContentContainer of partial_len_container(tag ; length) of packet_content
     | UndeterminateLen  -> PacketContentOfIndeterminateLen of packet_content(tag.packet_type)
 
@@ -1162,15 +1174,15 @@ struct opening_title_banner = {
 }
 
 struct ending_title_banner [param title] = {
-    dash1       : magic("-----");
-    ws1         : whitespace;
-    end_pgp     : magic("END PGP ");
-    msg_type_end: message_type;
-    parse_checkpoint : stop_if(title.msg_type_begin <> msg_type_end);
-    ws2         : whitespace;
-    dash2       : magic("-----");
-    ws3         : whitespace;
-    lf          : magic("\x0A");
+    dash1               : magic("-----");
+    ws1                 : whitespace;
+    end_pgp             : magic("END PGP ");
+    msg_type_end        : message_type;
+    parse_checkpoint    : stop_if(title.msg_type_begin <> msg_type_end);
+    ws2                 : whitespace;
+    dash2               : magic("-----");
+    optional ws3        : whitespace;
+    optional lf         : magic("\x0A");
 }
 
 type 'a radix64_body_container = 'a
@@ -1241,11 +1253,14 @@ struct armored_openpgp_message = {
     placeholder2 : rem_binstring
 }
 
+
 let _ =
     try
-        let input = string_input_of_filename Sys.argv.(1) in
+        (* let input = string_input_of_filename Sys.argv.(1) in *)
+        let input = string_input_of_stdin () in
         let msg = parse_armored_openpgp_message input in
         print_endline (Json.json_of_value (value_of_armored_openpgp_message msg))
     with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1
+
