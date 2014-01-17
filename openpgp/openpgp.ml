@@ -839,6 +839,7 @@ struct public_key_packet_content_version4 = {
 
 (* §5.5.2 *)
 union public_key_packet_content2 [enrich] (UnparsedPublicKeyPacketContent) =
+    | 2 -> PublicKeyPacketContentVersion3 of public_key_packet_content_version3
     | 3 -> PublicKeyPacketContentVersion3 of public_key_packet_content_version3
     | 4 -> PublicKeyPacketContentVersion4 of public_key_packet_content_version4
 
@@ -1009,8 +1010,9 @@ union user_attribute_subpacket_content [enrich] (UnparsedUserAttributeSubpacketC
 (* §5.12 *)
 struct user_attribute_subpacket = {
     len             : subpacket_len;
+    parse_checkpoint structure_start : save_offset;
     subpacket_type  : user_attribute_subpacket_type;
-    data            : lbl_container(Some "user_attribute_subpacket_data" ; len) of user_attribute_subpacket_content(subpacket_type);
+    data            : lbl_container(Some "user_attribute_subpacket_data" ; (len - (input.cur_offset - structure_start))) of user_attribute_subpacket_content(subpacket_type);
 }
 
 (* §5.13 *)
@@ -1258,8 +1260,10 @@ let _ =
     try
         (* let input = string_input_of_filename Sys.argv.(1) in *)
         let input = string_input_of_stdin () in
-        let msg = parse_armored_openpgp_message input in
-        print_endline (Json.json_of_value (value_of_armored_openpgp_message msg))
+        (*let msg = parse_armored_openpgp_message input in
+        print_endline (Json.json_of_value (value_of_armored_openpgp_message msg))*)
+        let msg = parse_openpgp_message input in
+        print_endline (Json.json_of_value (value_of_openpgp_message msg))
     with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1
