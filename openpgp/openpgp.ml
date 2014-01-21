@@ -206,8 +206,7 @@ enum privkey_algo (8, UnknownVal UnknownPrivKeyAlgo) =
     | 2     ->  TripleDESAlgo, "DES-EDE" (* Must implement *)
     | 3     ->  CAST5Algo, "CAST5" (* Should implement *)
     | 4     ->  BlowfishAlgo, "Blowfish"
-    | 5     ->  ReservedAlgo
-    | 6     ->  ReservedAlgo
+    | 5 | 6 ->  ReservedAlgo
     | 7     ->  AES128Algo, "AES-128" (* Should implement *)
     | 8     ->  AES192Algo, "AES-192"
     | 9     ->  AES256Algo, "AES-256"
@@ -215,17 +214,7 @@ enum privkey_algo (8, UnknownVal UnknownPrivKeyAlgo) =
     | 11    ->  Camellia128Algo, "CAMELLIA-128" (* RFC5581 §3 *)
     | 12    ->  Camellia192Algo, "CAMELLIA-192" (* RFC5581 §3 *)
     | 13    ->  Camellia256Algo, "CAMELLIA-256" (* RFC5581 §3 *)
-    | 100   ->  PrivateAlgo
-    | 101   ->  PrivateAlgo
-    | 102   ->  PrivateAlgo
-    | 103   ->  PrivateAlgo
-    | 104   ->  PrivateAlgo
-    | 105   ->  PrivateAlgo
-    | 106   ->  PrivateAlgo
-    | 107   ->  PrivateAlgo
-    | 108   ->  PrivateAlgo
-    | 109   ->  PrivateAlgo
-    | 110   ->  PrivateAlgo
+    | 100, 110 ->  PrivateAlgo
 
 let get_privkeyalgo_block_size = function
     | IDEAAlgo | TripleDESAlgo | CAST5Algo | BlowfishAlgo ->  8
@@ -238,42 +227,19 @@ enum compression_algo (8, UnknownVal UnknownCompressionAlgo) =
     | 1     ->  ZIPAlgo, "ZIP"
     | 2     ->  ZLIBAlgo, "ZLIB"
     | 3     ->  BZIP2Algo, "BZip2"
-    | 100   ->  PrivateAlgo
-    | 101   ->  PrivateAlgo
-    | 102   ->  PrivateAlgo
-    | 103   ->  PrivateAlgo
-    | 104   ->  PrivateAlgo
-    | 105   ->  PrivateAlgo
-    | 106   ->  PrivateAlgo
-    | 107   ->  PrivateAlgo
-    | 108   ->  PrivateAlgo
-    | 109   ->  PrivateAlgo
-    | 110   ->  PrivateAlgo
+    | 100, 110 ->  PrivateAlgo
 
 (* §9.4 *)
 enum hash_algo (8, UnknownVal UnknownHashAlgo) =
     | 1     ->  MD5Algo, "MD5" (* Deprecated *)
     | 2     ->  SHA1Algo, "SHA-1" (* Must implement *)
     | 3     ->  RIPEMD160Algo, "RIPEMD160"
-    | 4     ->  ReservedAlgo
-    | 5     ->  ReservedAlgo
-    | 6     ->  ReservedAlgo
-    | 7     ->  ReservedAlgo
+    | 4, 7  ->  ReservedAlgo
     | 8     ->  SHA256Algo, "SHA-256"
     | 9     ->  SHA384Algo, "SHA-384"
     | 10    ->  SHA512Algo, "SHA-512"
     | 11    ->  SHA224Algo, "SHA-224"
-    | 100   ->  PrivateAlgo
-    | 101   ->  PrivateAlgo
-    | 102   ->  PrivateAlgo
-    | 103   ->  PrivateAlgo
-    | 104   ->  PrivateAlgo
-    | 105   ->  PrivateAlgo
-    | 106   ->  PrivateAlgo
-    | 107   ->  PrivateAlgo
-    | 108   ->  PrivateAlgo
-    | 109   ->  PrivateAlgo
-    | 110   ->  PrivateAlgo
+    | 100, 110 ->  PrivateAlgo
 
 let get_hash_len algo input = match algo with
     | MD5Algo                       ->  16
@@ -396,10 +362,7 @@ enum packet_type_enum (8, UnknownVal UnknownPacketType) =
     | 17 ->  UserAttributePacketType, "User Attribute Packet"
     | 18 ->  SymmetricallyEncryptedAndIntegrityProtectedPacketType, "Symmetrically-encrypted and integrity-protected packet"
     | 19 ->  ModificationDetectionCodePacketType, "Modification Detection Packet"
-    | 60 ->  PrivatePacketType, "Private Packet Type"
-    | 61 ->  PrivatePacketType, "Private Packet Type"
-    | 62 ->  PrivatePacketType, "Private Packet Type"
-    | 63 ->  PrivatePacketType, "Private Packet Type"
+    | 60, 63 ->  PrivatePacketType, "Private Packet Type"
 
 
 (* §4.2 & §4.3 *)
@@ -535,15 +498,7 @@ let value_of_subpacket_len l = VSimpleInt l
 
 (* §5.2.3.1 *)
 enum subpacket_type (7, UnknownVal UnknownSubpacketType) =
-    | 0     -> ReservedSubpacketType, "Reserved Subpacket Type"
-    | 1     -> ReservedSubpacketType, "Reserved Subpacket Type"
-    | 8     -> ReservedSubpacketType, "Reserved Subpacket Type"
-    | 13    -> ReservedSubpacketType, "Reserved Subpacket Type"
-    | 14    -> ReservedSubpacketType, "Reserved Subpacket Type"
-    | 15    -> ReservedSubpacketType, "Reserved Subpacket Type"
-    | 17    -> ReservedSubpacketType, "Reserved Subpacket Type"
-    | 18    -> ReservedSubpacketType, "Reserved Subpacket Type"
-    | 19    -> ReservedSubpacketType, "Reserved Subpacket Type"
+    | 0 | 1 | 8 | 13 | 14 | 15 | 17 | 18 | 19 -> ReservedSubpacketType, "Reserved Subpacket Type"
     | 2     -> SigCreationTime, "Signature Creation Time"
     | 3     -> SigExpirationTime, "Signature Expiration Time"
     | 4     -> ExportableCertif, "Exportable Certification"
@@ -568,17 +523,7 @@ enum subpacket_type (7, UnknownVal UnknownSubpacketType) =
     | 30    -> Features, "Features"
     | 31    -> SigTarget, "Signature Target"
     | 32    -> EmbeddedSig, "Embedded Signature"
-    | 100   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
-    | 101   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
-    | 102   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
-    | 103   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
-    | 104   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
-    | 105   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
-    | 106   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
-    | 107   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
-    | 108   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
-    | 109   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
-    | 110   -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
+    | 100,110 -> PrivateOrExperimental, "Private or Experimenal Subpacket Type"
 
 type byte_boolean = bool
 let parse_byte_boolean input =
@@ -645,17 +590,7 @@ enum revocation_code (8, UnknownVal UnknownRevocCode) =
     | 2     ->  KeyCompromised, "Key was compromised"
     | 3     ->  KeyRetired, "Key is retired"
     | 32    ->  UserIDObsoleted, "UserID is no longer valid"
-    | 100   ->  PrivateUse
-    | 101   ->  PrivateUse
-    | 102   ->  PrivateUse
-    | 103   ->  PrivateUse
-    | 104   ->  PrivateUse
-    | 105   ->  PrivateUse
-    | 106   ->  PrivateUse
-    | 107   ->  PrivateUse
-    | 108   ->  PrivateUse
-    | 109   ->  PrivateUse
-    | 110   ->  PrivateUse
+    | 100, 110 ->  PrivateUse
 
 (* §5.2.3.23 *)
 struct subpacket_revocation_reason_data = {
@@ -952,33 +887,13 @@ struct literal_data_packet_content = {
 (* §5.12 *)
 enum user_attribute_subpacket_type(8, UnknownVal UnknownUserAttributeSubpacketType) =
     | 1     ->  ImageAttribute, "Image Attribute"
-    | 100   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
-    | 101   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
-    | 102   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
-    | 103   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
-    | 104   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
-    | 105   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
-    | 106   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
-    | 107   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
-    | 108   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
-    | 109   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
-    | 110   ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
+    | 100, 110 ->  PrivateOrExperimental, "Private or Experimental User Attribute Subpacket"
 
 
 (* §5.12.1 *)
 enum user_attribute_image_header_1_encoding(8, UnknownVal UnknownUserAttributeImageHeader1Encoding) =
     | 1     -> UserAttributeImageHeader1EncodingJPEG, "User Attribute Image Header => JPEG"
-    | 100   -> PrivateOrExperimental, "Private or Experimental Encoding"
-    | 101   -> PrivateOrExperimental, "Private or Experimental Encoding"
-    | 102   -> PrivateOrExperimental, "Private or Experimental Encoding"
-    | 103   -> PrivateOrExperimental, "Private or Experimental Encoding"
-    | 104   -> PrivateOrExperimental, "Private or Experimental Encoding"
-    | 105   -> PrivateOrExperimental, "Private or Experimental Encoding"
-    | 106   -> PrivateOrExperimental, "Private or Experimental Encoding"
-    | 107   -> PrivateOrExperimental, "Private or Experimental Encoding"
-    | 108   -> PrivateOrExperimental, "Private or Experimental Encoding"
-    | 109   -> PrivateOrExperimental, "Private or Experimental Encoding"
-    | 110   -> PrivateOrExperimental, "Private or Experimental Encoding"
+    | 100, 110 -> PrivateOrExperimental, "Private or Experimental Encoding"
 
 (* §5.12.1 *)
 struct user_attribute_image_header_1 = {
