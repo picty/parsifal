@@ -53,9 +53,9 @@ info "Trying to install parsifal"
 BINDIR="$TMPDIR/bin" LIBDIR="$TMPDIR/lib" make install
 
 info "Checking whether the tutorial compiles"
-OCAMLPATH="$TMPDIR/lib" make -C tutorial/dns-steps
-OCAMLPATH="$TMPDIR/lib" make -C tutorial/tar-steps
-OCAMLPATH="$TMPDIR/lib" make -C tutorial/png-steps
+OCAMLPATH="$TMPDIR/lib" make -C tutorial/dns-steps byte
+OCAMLPATH="$TMPDIR/lib" make -C tutorial/tar-steps byte
+OCAMLPATH="$TMPDIR/lib" make -C tutorial/png-steps byte
 
 echo "Seems OK to me..."
 
