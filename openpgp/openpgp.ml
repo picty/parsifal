@@ -1090,11 +1090,175 @@ alias openpgp_message = list of packet
 
 (* XXX TODO develop radix-64 and ASCII Armoring containers *)
 
+
+alias junk_to_armor = string
+
+let parse_junk_to_armor input =
+    let rec locate_armor offset input = (* returns the offset of the opening banner *)
+        if String.sub input.str offset 5 = "-----" then
+            offset
+        else
+            locate_armor (1 + String.index_from input.str offset '\n') input
+    in
+    let waste_length = (locate_armor input.cur_offset input) - input.cur_offset in
+    parse_string waste_length input
+
+alias whitespace = string
+
+let parse_whitespace input =
+    let rec parse_ws_util predicate buf input =
+        let c = peek_uint8 input in
+        if predicate c then
+            begin
+            Buffer.add_char buf (char_of_int (parse_uint8 input)) ;
+            parse_ws_util predicate buf input
+            end
+        else
+        Buffer.contents buf
+    in
+    let buf = Buffer.create 1024 in
+    parse_ws_util (fun x -> match x with 0x20 | 0x9 -> true | _ -> false) buf input
+
+alias message_type = string
+
+let parse_message_type input =
+    let rtrim s =
+        let rec rtrim_aux pos s =
+            if pos < 0 then
+                ""
+            else
+                let chr = String.get s pos in
+                match int_of_char chr with
+                | 0x20 | 0x9 -> rtrim_aux (pos - 1) s
+                | _ -> Str.string_before s (pos+1)
+        in
+        rtrim_aux ((String.length s) - 1) s
+    in
+    try
+        let end_offset = String.index_from input.str input.cur_offset '-' in
+        let len = end_offset - input.cur_offset in
+        let title = String.sub input.str input.cur_offset len in
+        let trimmed_title = rtrim title in
+        let trimmed_len = String.length trimmed_title in
+        parse_string trimmed_len input
+    with Not_found ->
+        failwith "Incomplete header"
+
+let checkit input =
+    print_endline "blip:";
+    print_endline (string_of_int input.cur_offset) ;
+    print_endline (String.sub input.str input.cur_offset 10) ;
+    false
+
+struct opening_title_banner = {
+    dash1           : list(5) of magic("-");
+    ws1             : whitespace;
+    begin_pgp       : magic("BEGIN PGP ");
+    msg_type_begin  : message_type;
+    ws2             : whitespace;
+    dash2           : list(5) of magic("-");
+    ws3             : whitespace;
+    lf              : magic("\x0A");
+}
+
+struct ending_title_banner [param title] = {
+    dash1       : list(5) of magic("-");
+    ws1         : whitespace;
+    end_pgp     : magic("END PGP ");
+    msg_type_end: message_type;
+    parse_checkpoint : stop_if(title.msg_type_begin <> msg_type_end);
+    ws2         : whitespace;
+    dash2       : list(5) of magic("-");
+    ws3         : whitespace;
+    lf          : magic("\x0A");
+}
+
+type 'a radix64_body_container = 'a
+
+let parse_radix64_body_container name parse_fun input =
+    let checksum_pattern = Str.regexp "\n=" in
+    let pattern_offset = Str.search_forward checksum_pattern input.str input.cur_offset in
+    let new_input = get_in_container input name (parse_string (pattern_offset - input.cur_offset) input) in
+    let res = parse_fun new_input in
+    check_empty_input true new_input ;
+    res
+
+let dump_radix64_body_container dump_fun buf i =
+    dump_fun buf i
+
+let value_of_radix64_body_container val_fun i =
+    val_fun i
+
+alias radix64_checksum = uint32
+
+let parse_radix64_checksum input =
+    let rec build_list_val cnt l input =
+        if cnt <= 0 then
+            l
+        else
+            let c = parse_uint8 input in
+            let v = Base64.reverse_base64_chars.(c) in
+            build_list_val (cnt - 1) (v::l) input
+    in
+    let buf = POutput.create () in
+    let listval = (build_list_val 4 [] input) in
+    let _ = Base64.decode_rev_chunk buf listval in
+Printf.printf "%02X%02X%02X\n" (POutput.byte_at buf 0) (POutput.byte_at buf 1) (POutput.byte_at buf 2) ;
+
+    ((POutput.byte_at buf 0) lsl 16) lor ((POutput.byte_at buf 1) lsl 8) lor (POutput.byte_at buf 2)
+
+alias base64_openpgp_message = openpgp_message (* TODO: Why not directly base64_container of message? *)
+let parse_base64_openpgp_message input =
+    Base64.parse_base64_container Base64.NoHeader "base64_openpgp_message" parse_openpgp_message input
+
+let rec parse_char_until delimiter buf input =
+    let next_char = char_of_int (peek_uint8 input) in
+    if next_char = delimiter then
+        Buffer.contents buf
+    else
+        let _ = parse_uint8 input in
+        Buffer.add_char buf next_char ;
+        parse_char_until delimiter buf input
+
+alias armor_header_name = string
+
+let parse_armor_header_name input =
+    let buf = Buffer.create 1024 in
+    parse_char_until ':' buf input
+
+alias armor_header_value = string
+
+let parse_armor_header_value input =
+    let buf = Buffer.create 1024 in
+    parse_char_until '\n' buf input
+
+struct armor_header = {
+    parse_checkpoint : stop_if( (peek_uint8 input) = (int_of_char '\n') ) ; (* detect a empty line *)
+    name : armor_header_name;
+    separator : magic(": ");
+    value : armor_header_value;
+    eol : magic("\n");
+}
+
+struct armored_openpgp_message = {
+    placeholder : junk_to_armor ;
+    title : opening_title_banner ;
+    headers : list of armor_header;
+    headers_sep : magic("\n");
+    body : radix64_body_container of base64_openpgp_message ;
+    body_sep : magic("\x0A=");
+    parse_checkpoint: stop_if(checkit input);
+    checksum : radix64_checksum ;
+    checksum_sep : magic("\x0A");
+    trailer : ending_title_banner(title) ;
+    placeholder2 : rem_binstring
+}
+
 let _ =
     try
         let input = string_input_of_filename Sys.argv.(1) in
-        let msg = parse_openpgp_message input in
-        print_endline (print_value (value_of_openpgp_message msg))
+        let msg = parse_armored_openpgp_message input in
+        print_endline (print_value (value_of_armored_openpgp_message msg))
     with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1
