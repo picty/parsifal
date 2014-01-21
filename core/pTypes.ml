@@ -311,13 +311,13 @@ let dump_safe_asn1_union dump_fun buf u = dump_fun buf u
 let value_of_safe_asn1_union = value_of_container
 
 
-type 'a conditionnal_container = 'a option
-let parse_conditionnal_container condition _name parse_fun input =
+type 'a conditional_container = 'a option
+let parse_conditional_container condition _name parse_fun input =
   if condition
   then Some (parse_fun input)
   else None
-let dump_conditionnal_container dump_fun buf o = try_dump dump_fun buf o
-let value_of_conditionnal_container value_of_fun o = try_value_of value_of_fun o
+let dump_conditional_container dump_fun buf o = try_dump dump_fun buf o
+let value_of_conditional_container value_of_fun o = try_value_of value_of_fun o
 
 type 'a trivial_union = Parsed of 'a | Unparsed of binstring
 let parse_trivial_union condition _name parse_fun input =
