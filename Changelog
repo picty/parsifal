@@ -1,4 +1,7 @@
 2014-01-20 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+	* New helper in core: string_input_of_stdin
+
+2014-01-20 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* Issue 14: Improve debug info on parsing errors
 	  (the name used for a container is now the name of
 	  the struct field or the PType [union/alias])

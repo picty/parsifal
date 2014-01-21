@@ -901,6 +901,21 @@ let string_input_of_filename ?verbose:(verbose=false) ?enrich:(enrich=DefaultEnr
   let content = get_file_content filename in
   input_of_string ~verbose:(verbose) ~enrich:(enrich) filename content
 
+let string_input_of_stdin () =
+   let input_string = Buffer.create 4096 in
+   let buf = String.create 4096 in
+   let rec read_more () =
+     try
+       let n = input stdin buf 0 4096 in
+         if n <> 0 then begin
+           Buffer.add_substring input_string buf 0 n;
+           read_more ()
+         end else
+           Buffer.contents input_string
+     with Sys_error _ -> ""
+  in
+  input_of_string "(stdin)" (read_more ())
+
 let wrap f () =
   try return (f ())
   with e -> fail e
