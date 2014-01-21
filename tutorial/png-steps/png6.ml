@@ -46,7 +46,7 @@ let parse_png_chunk input =
   let chunk_size = parse_uint32 input in
   let chunk_raw_data = peek_string (chunk_size + 4) input in
   let chunk_type = parse_string 4 input in
-  let chunk_data = parse_container chunk_size (parse_chunk_content chunk_type) input in
+  let chunk_data = parse_container chunk_size "chunk_data" (parse_chunk_content chunk_type) input in
   let chunk_crc = parse_string 4 input in
   let computed_crc = Crc.crc32 chunk_raw_data in
   if computed_crc <> chunk_crc then emit_parsing_exception false (CustomException "Invalid CRC") input;

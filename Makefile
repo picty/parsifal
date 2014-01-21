@@ -15,4 +15,4 @@ check: all
 	for i in $(CHECK_DIRS); do OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C $$i check || exit 1; done
 
 clean:
-	for i in $(DIRS) $(LIBDIRS); do OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C $$i clean || exit 1; done
+	for i in $(DIRS) $(LIBDIRS) $(CHECK_DIRS); do OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C $$i clean || exit 1; done

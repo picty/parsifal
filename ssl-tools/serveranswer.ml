@@ -169,7 +169,7 @@ let _ =
     then begin
       let parse_fun =
 	if !base64
-	then Base64.parse_base64_container Base64.AnyHeader X509.parse_certificate
+	then Base64.parse_base64_container Base64.AnyHeader "base64_container" X509.parse_certificate
 	else X509.parse_certificate
       in
       certcontent := exact_dump X509.dump_certificate (exact_parse parse_fun (string_input_of_filename !certfile))

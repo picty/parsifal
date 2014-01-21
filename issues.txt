@@ -5,6 +5,8 @@ v0.2	3	Describe DNS step by step				open	yeye	doc
 v0.2	4	Write a tutorial					open	yeye	doc
 v0.2	5	Create a Changelog					closed	yeye	doc
 v0.2	6	Described the formats and protocols implemented		open	yeye	doc
+v0.2	13	Debug features: use container real names		closed	yeye	stdlib,enhancement
+v0.2	15*	Add string_input_of_stdin				open	yeye	stdlib,enhancement
 
 v0.3	7	Write a white paper   	  	    			open	yeye	doc
 v0.3	8	Write some HTML to provide a decent website		open	yeye	doc
@@ -12,5 +14,7 @@ v0.3	9	Create a mailing list	     	    			open	yeye
 v0.3	10	New option "prefix" for enum/union constructors		open	yeye	preprocessor,enhancement
 v0.3	11	Allow for more flexible enum patterns			closed	yeye	preprocessor,enhancement
 v0.3	12	Allow direct access to fields in dump functions		open	yeye	preprocessor,bug
+v0.3	16*	Debug features: give better info on partial parsings	open	yeye	preprocessor,enhancement
+v0.3	17*	Debug features: add an hex tool to interpret histories	open	yeye	enhancement
 
--	13	Allow for non-constant constructors in enum		open	yeye	preprocessor,enhancement
+-	14	Allow for non-constant constructors in enum		open	yeye	preprocessor,enhancement

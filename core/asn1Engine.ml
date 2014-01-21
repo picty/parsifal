@@ -149,7 +149,7 @@ let check_header ((exp_c, exp_isC, exp_t) as exp_hdr) input ((c, isC, t) as hdr)
   if hdr <> exp_hdr
   then fatal_error (UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t))) input
 
-let _extract_der_object name header_constraint parse_content input =
+let _extract_der_object header_constraint name parse_content input =
   let offset = input.cur_base + input.cur_offset in
   let old_cur_offset = input.cur_offset in
   let c, isC, t = extract_der_header input in
@@ -170,8 +170,8 @@ let _extract_der_object name header_constraint parse_content input =
   get_out input new_input;
   res, der_info, raw_string
 
-let extract_der_object name header_constraint parse_content input =
-  let res, _, _ = _extract_der_object name header_constraint parse_content input in
+let extract_der_object header_constraint name parse_content input =
+  let res, _, _ = _extract_der_object header_constraint name parse_content input in
   res
 
 
@@ -246,7 +246,7 @@ let lwt_extract_der_length input =
     in aux 0 (first land 0x7f)
   end
 
-let _lwt_extract_der_object name header_constraint parse_content input =
+let _lwt_extract_der_object header_constraint name parse_content input =
   let offset = input.lwt_offset in
   lwt_extract_der_header input >>= fun (c, isC, t) ->
   let fake_input = {
@@ -278,31 +278,31 @@ let _lwt_extract_der_object name header_constraint parse_content input =
   lwt_get_out input new_input >>= fun () ->
   return (res, der_info, raw_string)
 
-let lwt_extract_der_object name header_constraint parse_content input =
-  _lwt_extract_der_object name header_constraint parse_content input >>= fun (res, _, _) ->
+let lwt_extract_der_object header_constraint name parse_content input =
+  _lwt_extract_der_object header_constraint name parse_content input >>= fun (res, _, _) ->
   return res
 
 
 (* Sequence/Set of *)
 
 (* TODO: min/max *)
-let extract_der_seqof name header_constraint (* min max *) parse_content input =
+let extract_der_seqof header_constraint (* min max *) name parse_content input =
   let rec parse_aux accu input =
     if eos input
     then List.rev accu
     else
       let next = parse_content input in
       parse_aux (next::accu) input
-  in extract_der_object name header_constraint (parse_aux []) input
+  in extract_der_object header_constraint name (parse_aux []) input
 
-let lwt_extract_der_seqof name header_constraint (* min max *) lwt_parse_content input =
+let lwt_extract_der_seqof header_constraint (* min max *) name lwt_parse_content input =
   let rec lwt_parse_aux accu input =
     if eos input
     then return (List.rev accu)
     else
       lwt_parse_content input >>= fun next ->
       lwt_parse_aux (next::accu) input
-  in lwt_extract_der_object name header_constraint (lwt_parse_aux []) input
+  in lwt_extract_der_object header_constraint name (lwt_parse_aux []) input
 
 let produce_der_seqof hdr dump_content buf l =
   let dump_der_list_aux b l = List.iter (dump_content b) l in

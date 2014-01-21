@@ -1,3 +1,8 @@
+2014-01-20 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+	* Issue 14: Improve debug info on parsing errors
+	  (the name used for a container is now the name of
+	  the struct field or the PType [union/alias])
+
 2014-01-15 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* Issue 11: Allow for more flexible enum patterns
           (multiple and range patterns)

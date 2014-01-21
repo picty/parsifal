@@ -58,7 +58,7 @@ let mk_one_b64_test header_type len =
     | HeaderInList _ | NoHeader -> "test_noheader", header_type
   in
   let rnd_str = random_string len in
-  let parse = parse_base64_container header_type parse_rem_string
+  let parse = parse_base64_container header_type "base64_container" parse_rem_string
   (* and lwt_parse = lwt_parse_base64_container header_type parse_rem_string *)
   and dump = dump_base64_container dump_hdr dump_string in
   [(prefix ^ "_idem_pod_" ^ (string_of_int len)) >:: ntimes !n (test_idem_pod (str_wrap parse) dump rnd_str)]

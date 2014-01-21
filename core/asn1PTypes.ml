@@ -9,7 +9,7 @@ open Lwt
 type der_boolean_content = bool
 
 let parse_der_boolean_content input =
-  let value = parse_rem_list parse_uint8 input in
+  let value = parse_rem_list "der_boolean" parse_uint8 input in
   match value with
     | [] ->
       warning BooleanNotInNormalForm input;
@@ -564,17 +564,17 @@ and value_of_der_object_content = function
 (* ASN.1 Containers *)
 
 type 'a asn1 = 'a
-let parse_asn1 h = extract_der_object (print_header h) h
+let parse_asn1 h = extract_der_object h
 let dump_asn1 = produce_der_object
 let value_of_asn1 = value_of_container
 
 
 type 'a bitstring_container = 'a
 
-let parse_bitstring_container parse_fun input =
+let parse_bitstring_container name parse_fun input =
   let (_nbits, content) = parse_der_bitstring input in
   (* TODO:    if nbits <> 0 then *)
-  let new_input = get_in_container input "bitstring_container" content in
+  let new_input = get_in_container input name content in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   res
@@ -591,9 +591,9 @@ let value_of_bitstring_container = value_of_container
 
 type 'a octetstring_container = 'a
 
-let parse_octetstring_container parse_fun input =
+let parse_octetstring_container name parse_fun input =
   let content = parse_der_octetstring input in
-  let new_input = get_in_container input "bitstring_container" content in
+  let new_input = get_in_container input name content in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   res

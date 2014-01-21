@@ -93,13 +93,13 @@ let value_of_protobuf_key (wt, fn) =
 
 type 'a length_delimited_container = 'a
 
-let parse_length_delimited_container parse_fun input =
+let parse_length_delimited_container name parse_fun input =
   let len = parse_varint input in
-  parse_container len parse_fun input
+  parse_container len name parse_fun input
 
-let lwt_parse_length_delimited_container parse_fun lwt_input =
+let lwt_parse_length_delimited_container name parse_fun lwt_input =
   lwt_parse_varint lwt_input >>= fun len ->
-  lwt_parse_container len parse_fun lwt_input
+  lwt_parse_container len name parse_fun lwt_input
 
 let dump_length_delimited_container dump_fun buf v =
   dump_varlen_container dump_varint dump_fun buf v
@@ -153,7 +153,7 @@ let rec parse_rec_protobuf input =
     | Fixed64bit s -> R_Fixed64bit s
     | LengthDelimited s -> begin
       let new_input = input_of_string ("Field number " ^ (string_of_int (snd protobuf.key))) s in
-      try R_List (parse_rem_list parse_rec_protobuf new_input)
+      try R_List (parse_rem_list "Protobuf field" parse_rec_protobuf new_input)
       with _ -> R_String s
     end
     | StartGroup -> R_StartGroup
@@ -171,7 +171,7 @@ let lwt_parse_rec_protobuf lwt_input =
       | Fixed64bit s -> R_Fixed64bit s
       | LengthDelimited s -> begin
         let new_input = input_of_string ("Field number " ^ (string_of_int (snd protobuf.key))) s in
-        try R_List (parse_rem_list parse_rec_protobuf new_input)
+        try R_List (parse_rem_list "Protobuf field" parse_rec_protobuf new_input)
         with _ -> R_String s
       end
       | StartGroup -> R_StartGroup

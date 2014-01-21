@@ -156,7 +156,7 @@ let handle_length_constraint input len = function
 
 type 'a length_constrained_container = 'a
 
-let parse_length_constrained_container len_cons parse_fun input =
+let parse_length_constrained_container len_cons _name parse_fun input =
   let old_offset = input.cur_offset in
   let content = parse_fun input in
   let len = input.cur_offset - old_offset in
@@ -172,7 +172,7 @@ let value_of_length_constrained_container = value_of_container
 
 type 'a enrich_blocker = 'a
 
-let parse_enrich_blocker level parse_fun input =
+let parse_enrich_blocker level _name parse_fun input =
   let enrich_value = if level > 1 then EnrichLevel level else NeverEnrich in
   let new_input = { input with enrich = enrich_value } in
   let res = parse_fun new_input in
@@ -222,9 +222,9 @@ let hexparse input =
   done;
   res
 
-let parse_hex_container parse_fun input =
+let parse_hex_container name parse_fun input =
   let content = hexparse input in
-  let new_input = get_in_container input "hex_container" content in
+  let new_input = get_in_container input name content in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   res
@@ -258,9 +258,9 @@ let lwt_hexparse input =
   lwt_hexparse_aux buf input >>= fun () ->
   return (POutput.contents buf)
 
-let lwt_parse_hex_container parse_fun input =
+let lwt_parse_hex_container name parse_fun input =
   lwt_hexparse input >>= fun content ->
-  let new_input = lwt_get_in_container input "hex_container" content in
+  let new_input = lwt_get_in_container input name content in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   return res
@@ -271,14 +271,14 @@ let dump_hex_container dump_fun buf o =
   dump_fun tmp_buf o;
   POutput.add_string buf (hexdump (POutput.contents tmp_buf))
 
-let value_of_base64_container = value_of_container
+let value_of_hex_container = value_of_container
 
 
 
 (* Safe union handling *)
 
 type 'a safe_union = 'a
-let parse_safe_union discriminator fallback_discriminator parse_fun input =
+let parse_safe_union discriminator fallback_discriminator _name parse_fun input =
   match try_parse (parse_fun discriminator) input with
   | None -> parse_fun fallback_discriminator input
   | Some res -> res
@@ -289,7 +289,7 @@ let value_of_safe_union = value_of_container
 
 
 type 'a exact_safe_union = 'a
-let parse_exact_safe_union discriminator fallback_discriminator parse_fun input =
+let parse_exact_safe_union discriminator fallback_discriminator _name parse_fun input =
   match try_parse ~exact:true (parse_fun discriminator) input with
   | None -> parse_fun fallback_discriminator input
   | Some res -> res
@@ -299,7 +299,7 @@ let value_of_exact_safe_union = value_of_container
 
 
 type 'a safe_asn1_union = 'a
-let parse_safe_asn1_union parse_fun input =
+let parse_safe_asn1_union _name parse_fun input =
   match try_parse parse_fun input with
   | Some res -> res
   | None ->
@@ -312,7 +312,7 @@ let value_of_safe_asn1_union = value_of_container
 
 
 type 'a conditionnal_container = 'a option
-let parse_conditionnal_container condition parse_fun input =
+let parse_conditionnal_container condition _name parse_fun input =
   if condition
   then Some (parse_fun input)
   else None
@@ -320,7 +320,7 @@ let dump_conditionnal_container dump_fun buf o = try_dump dump_fun buf o
 let value_of_conditionnal_container value_of_fun o = try_value_of value_of_fun o
 
 type 'a trivial_union = Parsed of 'a | Unparsed of binstring
-let parse_trivial_union condition parse_fun input =
+let parse_trivial_union condition _name parse_fun input =
   if should_enrich condition input.enrich
   then Parsed (parse_fun input)
   else Unparsed (parse_rem_binstring input)

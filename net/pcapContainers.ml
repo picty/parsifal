@@ -24,7 +24,9 @@ type segment = direction * int * int * string
 
 type 'a tcp_container = (connection_key * (direction * 'a) list) list
 
-let parse_tcp_container (expected_dest_port : int) (parse_fun : string_input -> 'a) (input : string_input) : 'a tcp_container = 
+let parse_tcp_container (expected_dest_port : int) (_name : string)
+                        (parse_fun : string_input -> 'a)
+                        (input : string_input) : 'a tcp_container =
   let connections : (connection_key, segment list) Hashtbl.t = Hashtbl.create 100 in
 
   let update_connection = function
@@ -105,7 +107,7 @@ let parse_tcp_container (expected_dest_port : int) (parse_fun : string_input -> 
     let segs = aggregate c in
     let parse_aggregate (dir, payload) =
       let new_input = get_in_container input cname payload in
-      let res = parse_rem_list parse_fun new_input in
+      let res = parse_rem_list "tcp_container" parse_fun new_input in
       check_empty_input true new_input;
       List.map (fun x -> dir, x) res
     in
@@ -141,7 +143,9 @@ let value_of_tcp_container value_of_fun = value_of_list (value_of_tcp_connexion 
 
 type 'a udp_container = (connection_key * (direction * 'a) list) list
 
-let parse_udp_container (expected_dest_port : int) (parse_fun : string_input -> 'a) (input : string_input) : 'a udp_container = 
+let parse_udp_container (expected_dest_port : int) (_name : string)
+                        (parse_fun : string_input -> 'a)
+                        (input : string_input) : 'a udp_container =
   let connections : (connection_key, (direction * string) list) Hashtbl.t = Hashtbl.create 100 in
 
   let update_connection = function

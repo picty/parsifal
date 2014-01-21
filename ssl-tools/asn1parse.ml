@@ -166,8 +166,8 @@ let _ =
   let args = parse_args ~progname:"asn1parse" options Sys.argv in
   let parse_fun =
     match !input_style with
-    | Hex -> lwt_parse_hex_container (parse 0 0)
-    | PEM -> lwt_parse_base64_container !base64_header (parse 0 0)
+    | Hex -> lwt_parse_hex_container "hex_container" (parse 0 0)
+    | PEM -> lwt_parse_base64_container !base64_header "base64_container" (parse 0 0)
     | Raw -> lwt_parse
   in
   let t = match args with

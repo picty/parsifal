@@ -254,10 +254,10 @@ let compress buf s =
 
 type 'a deflate_container = 'a
 
-let parse_deflate_container parse_fun input =
+let parse_deflate_container name parse_fun input =
   let content_buf = decompress input in
   drop_remaining_bits input;
-  let new_input = get_in_container input "deflate_container" (Buffer.contents content_buf) in
+  let new_input = get_in_container input name (Buffer.contents content_buf) in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   res
@@ -294,9 +294,9 @@ struct zlib_stream = {
 
 type 'a zlib_container = 'a
 
-let parse_zlib_container parse_fun input =
+let parse_zlib_container name parse_fun input =
   let stream = parse_zlib_stream input in
-  let new_input = get_in_container input "zlib_container" stream.zlib_data in
+  let new_input = get_in_container input name stream.zlib_data in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   res

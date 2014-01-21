@@ -105,7 +105,7 @@ let pretty_print_certificate cert =
 let handle_input input =
   let parse_fun =
     if !base64
-    then lwt_parse_base64_container AnyHeader parse_certificate
+    then lwt_parse_base64_container AnyHeader "base64_container" parse_certificate
     else lwt_parse_certificate
   in
   parse_fun input>>= fun certificate ->

@@ -217,7 +217,7 @@ let to_base64 title buf bin_buf =
 
 type 'a base64_container = 'a
 
-let parse_base64_container header_expected parse_fun input =
+let parse_base64_container header_expected name parse_fun input =
   let content = match header_expected with
     | NoHeader ->
       let res = POutput.create () in
@@ -226,12 +226,12 @@ let parse_base64_container header_expected parse_fun input =
     | AnyHeader -> string_of_base64_title None input
     | HeaderInList l -> string_of_base64_title (Some l) input
   in
-  let new_input = get_in_container input "base64_container" content in
+  let new_input = get_in_container input name content in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   res
 
-let lwt_parse_base64_container title parse_fun lwt_input =
+let lwt_parse_base64_container title name parse_fun lwt_input =
   begin
     match title with
     | NoHeader ->
@@ -241,7 +241,7 @@ let lwt_parse_base64_container title parse_fun lwt_input =
     | AnyHeader -> lwt_string_of_base64_title None lwt_input
     | HeaderInList l -> lwt_string_of_base64_title (Some l) lwt_input
   end >>= fun content ->
-  let new_input = lwt_get_in_container lwt_input "base64_container" content in
+  let new_input = lwt_get_in_container lwt_input name content in
   let res = parse_fun new_input in
   check_empty_input true new_input;
   return res

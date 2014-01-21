@@ -373,7 +373,7 @@ let lwt_drop_rem_bytes input =
 (* List and container *)
 (**********************)
 
-let parse_list n parse_fun input =
+let parse_list n _name parse_fun input =
   let rec aux accu = function
     | 0 -> List.rev accu
     | i ->
@@ -381,7 +381,7 @@ let parse_list n parse_fun input =
       aux (x::accu) (i-1)
   in aux [] n
 
-let lwt_parse_list n lwt_parse_fun input =
+let lwt_parse_list n _name lwt_parse_fun input =
   let rec aux accu = function
     | 0 -> return (List.rev accu)
     | i ->
@@ -396,7 +396,7 @@ let value_of_list sub_fun l = VList (List.map sub_fun l)
 
 type 'a rem_list = 'a list
 
-let parse_rem_list parse_fun input =
+let parse_rem_list _name parse_fun input =
   let rec aux accu =
     if eos input
     then List.rev accu
@@ -414,7 +414,7 @@ let parse_rem_list parse_fun input =
     end
   in aux []
 
-let lwt_parse_rem_list lwt_parse_fun input =
+let lwt_parse_rem_list _name lwt_parse_fun input =
   let rec aux accu =
     if lwt_eos input
     then return (List.rev accu)
@@ -444,17 +444,17 @@ let value_of_rem_list = value_of_list
 
 type 'a varlen_list = 'a list
 
-let parse_varlen_list len_fun parse_fun input =
+let parse_varlen_list len_fun name parse_fun input =
   let n = len_fun input in
-  let new_input = get_in input "list" n in
-  let res = parse_rem_list parse_fun new_input in
+  let new_input = get_in input name n in
+  let res = parse_rem_list name parse_fun new_input in
   get_out input new_input;
   res
 
-let lwt_parse_varlen_list len_fun parse_fun input =
+let lwt_parse_varlen_list len_fun name parse_fun input =
   len_fun input >>= fun n ->
-  lwt_get_in input "list" n >>= fun str_input ->
-  wrap2 parse_rem_list parse_fun str_input >>= fun res ->
+  lwt_get_in input name n >>= fun str_input ->
+  wrap3 parse_rem_list name parse_fun str_input >>= fun res ->
   lwt_get_out input str_input >>= fun () ->
   return res
 
@@ -475,14 +475,14 @@ let value_of_varlen_list = value_of_list
 
 type 'a container = 'a
 
-let parse_container n parse_fun input =
-  let new_input = get_in input "container" n in
+let parse_container n name parse_fun input =
+  let new_input = get_in input name n in
   let res = parse_fun new_input in
   get_out input new_input;
   res
 
-let lwt_parse_container n parse_fun input =
-  lwt_get_in input "container" n >>= fun str_input ->
+let lwt_parse_container n name parse_fun input =
+  lwt_get_in input name n >>= fun str_input ->
   wrap1 parse_fun str_input >>= fun res ->
   lwt_get_out input str_input >>= fun () ->
   return res
@@ -494,13 +494,13 @@ let value_of_container value_of_fun x = value_of_fun x
 
 type 'a varlen_container = 'a
 
-let parse_varlen_container len_fun parse_fun input =
+let parse_varlen_container len_fun name parse_fun input =
   let n = len_fun input in
-  parse_container n parse_fun input
+  parse_container n name parse_fun input
 
-let lwt_parse_varlen_container len_fun parse_fun input =
+let lwt_parse_varlen_container len_fun name parse_fun input =
   len_fun input >>= fun n ->
-  lwt_parse_container n parse_fun input
+  lwt_parse_container n name parse_fun input
 
 let dump_varlen_container len_fun dump_fun buf content =
   let tmp_buf = POutput.create () in
@@ -516,12 +516,12 @@ let value_of_varlen_container = value_of_container
 (* Array *)
 (*********)
 
-let parse_array n parse_fun input =
+let parse_array n _name parse_fun input =
   Array.init n (fun _ -> parse_fun input)
 
 (* TODO: Is it possible to do better? *)
-let lwt_parse_array n lwt_parse_fun input =
-  lwt_parse_list n lwt_parse_fun input >>= fun l ->
+let lwt_parse_array n name lwt_parse_fun input =
+  lwt_parse_list n name lwt_parse_fun input >>= fun l ->
   return (Array.of_list l)
 
 let dump_array dump_fun buf a =

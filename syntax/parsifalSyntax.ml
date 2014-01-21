@@ -404,7 +404,8 @@ let rec parse_fun_of_ptype lwt_fun _loc name t =
       apply_exprs _loc (exp_qname _loc m (prefix ^ n)) (filter_params ParseParam prefix e)
     | PT_CustomContainer (m, n, e, subtype, lwt_subparse) ->
       apply_exprs _loc (exp_qname _loc m (prefix ^ n))
-	((filter_params ParseParam prefix e)@[parse_fun_of_ptype (lwt_subparse && lwt_fun) _loc name subtype])
+	((filter_params ParseParam prefix e)@
+	    [ <:expr< $str:name$ >> ; parse_fun_of_ptype (lwt_subparse && lwt_fun) _loc name subtype])
 
 
 
@@ -487,7 +488,7 @@ let mk_parse_fun lwt_fun _loc c =
       and parse_content = parse_fun_of_ptype false _loc (c.name ^ "_content") alias.aatype in
       let meta_f_name = if alias.aalist then "extract_der_seqof" else "extract_der_object" in
       let meta_f = exp_qname _loc (Some "Asn1Engine") (prefix ^ meta_f_name) in
-      [ <:expr< $meta_f$ $str:c.name$ $header_constraint$ $parse_content$ input >> ]
+      [ <:expr< $meta_f$ $header_constraint$ $str:c.name$ $parse_content$ input >> ]
 
     | ASN1Union union ->
       let mk_case (_loc, cons, (p, t)) =
