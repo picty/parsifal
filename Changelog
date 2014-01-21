@@ -1,3 +1,6 @@
+2014-01-21 Florian Maury <florian.maury@ssi.gouv.fr>
+	* First description of OpenPGP messages
+
 2014-01-20 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* New helper in core: string_input_of_stdin
 
