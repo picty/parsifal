@@ -44,7 +44,7 @@ else tar xf "../archive.tar"
 fi
 
 info "Building parsifal project"
-make -j 4
+make
 
 info "Checking parsifal"
 make check
