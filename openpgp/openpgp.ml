@@ -843,7 +843,8 @@ union packet_content [enrich] (UnparsedPacket) =
 type 'a partial_len_container = 'a
 
 let parse_partial_len_container tag first_partial_len name parse_fun input =
-    let rec gather_residual_content buf input =
+    let buf = POutput.create () in
+    let rec gather_residual_content input =
         match (parse_packet_len tag input) with
         | FixedLen x -> begin
 (*    Printf.printf "Got last len of %d (%d) \n" x (POutput.length buf); *)
@@ -853,18 +854,17 @@ let parse_partial_len_container tag first_partial_len name parse_fun input =
         | PartialLen x -> begin
 (*    Printf.printf "Got intermediate len of %d (%d) \n" x (POutput.length buf); *)
             POutput.add_string buf (parse_string x input) ;
-            gather_residual_content buf input
+            gather_residual_content input
             end
         | UndeterminateLen ->
             POutput.add_string buf (parse_rem_string input) ;
             POutput.contents buf
     in
-    let buf = POutput.create () in
     let str = parse_string first_partial_len input in
 (*    Printf.printf "Got initial partial len of %d\n" first_partial_len; *)
     POutput.add_string buf str ;
-    let new_input = get_in_container input name (gather_residual_content buf input) in
-    let res = parse_fun tag.packet_type new_input in
+    let new_input = get_in_container input name (gather_residual_content input) in
+    let res = parse_fun new_input in
     check_empty_input true new_input;
     res
 
@@ -877,7 +877,7 @@ let value_of_partial_len_container = value_of_container
 (* §4.2 *)
 union packet_content_container [param tag ; enrich ; exhaustive] (UnparsedPacketContentContainer) =
     | FixedLen length   -> PacketContentContainer of container(length) of packet_content(tag.packet_type)
-    | PartialLen length -> PacketContentContainer of partial_len_container(tag ; length) of packet_content
+    | PartialLen length -> PacketContentContainer of partial_len_container(tag ; length) of packet_content(tag.packet_type)
     | UndeterminateLen  -> PacketContentOfIndeterminateLen of packet_content(tag.packet_type)
 
 (* §4.2 *)
