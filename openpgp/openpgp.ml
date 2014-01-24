@@ -1141,9 +1141,7 @@ let parse_radix64_checksum input =
 
 let dump_radix64_checksum _buf _radix64_checksum = not_implemented "yeah"
 
-alias base64_openpgp_message = openpgp_message (* TODO: Why not directly base64_container of message? *)
-let parse_base64_openpgp_message input =
-    Base64.parse_base64_container Base64.NoHeader "base64_openpgp_message" parse_openpgp_message input
+alias base64_openpgp_message = Base64.base64_container[Base64.NoHeader] of openpgp_message
 
 alias armor_header_name = conditional_string((fun x -> not (x = 0x3a))) (* parse until ':' *)
 
