@@ -6,7 +6,7 @@ let rec json_of_value ?verbose:(verbose=false) ?indent:(indent="") = function
   | VSimpleInt i | VInt (i, _, _) -> string_of_int i
   | VBigInt (s, _) | VString (s, true) -> "\"" ^ (hexdump s) ^ "\""
   | VString (s, false) -> quote_string s
-  | VEnum (s, _, _, _) -> s
+  | VEnum (s, _, _, _) -> quote_string s
 
   | VList l ->
     let new_indent = indent ^ "  " in
