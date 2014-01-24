@@ -3,6 +3,7 @@
 Maintainer: Olivier Levillain
 
 Contributors:
- - Pierre Chifflier (PE, PKCS#7)
+ - Pierre Chifflier (PE, PKCS#7, UEFI)
  - Thomas Calderon (Kerberos)
  - Anthony Albert (PNG)
+ - Florian Maury (OpenPGP)
