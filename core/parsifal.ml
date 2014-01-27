@@ -268,6 +268,7 @@ let input_of_string ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name 
 
 let get_in input name len =
   let new_history = _h_of_si input in
+  if len < 0 then raise (ParsingException (OutOfBounds, new_history)) ;
   if input.cur_offset + len <= input.cur_length
   then {
     str = input.str;
