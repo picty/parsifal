@@ -49,54 +49,35 @@ let string_split c s =
 
 let quote_string s =
   let n = String.length s in
+  let res = Buffer.create (2 * n) in
 
-  let estimate_len_char c =
+  let mk_two_char c =
+    Buffer.add_char res '\\';
+    Buffer.add_char res c
+  in
+  let write_char c =
     match c with
-      | '\n' | '\t' | '\\' | '"' -> 2
-      | c -> let x = int_of_char c in
-	     if x >= 32 && x < 128 then 1 else 4
-  in
-  let rec estimate_len accu offset =
-    if offset = n then accu
-    else estimate_len (accu + estimate_len_char (s.[offset])) (offset + 1)
-  in
-
-  let newlen = estimate_len 2 0 in
-  let res = String.make newlen '"' in
-
-  let mk_two_char c offset =
-    res.[offset] <- '\\';
-    res.[offset + 1] <- c;
-    offset + 2
-  in
-  let write_char c offset =
-    match c with
-      | '\n' -> mk_two_char 'n' offset
-      | '\t' -> mk_two_char 't' offset
-      | '\\' -> mk_two_char '\\' offset
-      | '"' -> mk_two_char '"' offset
+      | '\n' -> mk_two_char 'n'
+      | '\t' -> mk_two_char 't'
+      | '\\' -> mk_two_char '\\'
+      | '"' -> mk_two_char '"'
       | c ->
 	let x = int_of_char c in
 	if x >= 32 && x < 128
-	then begin
-	  res.[offset] <- c;
-	  offset + 1
-	end else begin
-	  res.[offset] <- '\\';
-	  res.[offset + 1] <- 'x';
-	  res.[offset + 2] <- hexa_char.[x lsr 4];
-	  res.[offset + 3] <- hexa_char.[x land 15];
-	  offset + 4
+	then Buffer.add_char res c
+	else begin
+	  mk_two_char 'x';
+	  Buffer.add_char res hexa_char.[x lsr 4];
+	  Buffer.add_char res hexa_char.[x land 15]
 	end
   in
-  let rec write_string src_offset dst_offset =
-    if src_offset < n then begin
-      let new_offset = write_char s.[src_offset] dst_offset in
-      write_string (src_offset + 1) (new_offset)
-    end
-  in
-  write_string 0 1;
-  res
+
+  Buffer.add_char res '"';
+  for i = 0 to (n-1) do
+    write_char s.[i]
+  done;
+  Buffer.add_char res '"';
+  Buffer.contents res
 
 
 let mapi f l =
