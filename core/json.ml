@@ -5,7 +5,11 @@ let rec json_of_value ?verbose:(verbose=false) ?indent:(indent="") = function
   | VBool b -> string_of_bool b
   | VSimpleInt i | VInt (i, _, _) -> string_of_int i
   | VBigInt (s, _) | VString (s, true) -> "\"" ^ (hexdump s) ^ "\""
-  | VString (s, false) -> quote_string s
+  | VString (s, false) ->
+    (* TODO: Sordid hack to produce valid JSON structures
+             To clean that up, some work is needed on VString constructor
+             to keep trace of the source encoding. *)
+    Str.global_replace (Str.regexp "\\\\x") "\\u00" (quote_string s)
   | VEnum (s, _, _, _) -> quote_string s
 
   | VList l ->
