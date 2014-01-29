@@ -410,6 +410,8 @@ let lwt_really_read_no_update input len =
   in try_bind _really_read finalize_ok finalize_nok
 
 let lwt_get_in input name len =
+  let new_history = [input.lwt_name, input.lwt_offset, None] in
+  if len < 0 then raise (ParsingException (OutOfBounds, new_history)) ;
   lwt_really_read_no_update input len >>= fun s ->
   return {
     str = s;
@@ -419,7 +421,7 @@ let lwt_get_in input name len =
     cur_bitstate = NoBitState;
     cur_length = len;
     enrich = update_enrich input.lwt_enrich;
-    history = [input.lwt_name, input.lwt_offset, None];
+    history = new_history;
     err_fun = input.lwt_err_fun
   }
 
