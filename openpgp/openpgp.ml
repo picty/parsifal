@@ -503,7 +503,7 @@ union subpacket_data [enrich] (UnparsedSubpacketData) =
     | TrustSig          -> TrustSigData of subpacket_trust_signature_data
     | RegExp            -> RegExpData of subpacket_regular_expression_data
     | Revocable         -> RevocableData of byte_boolean
-    | KeyExpirationTime -> KeyExpirationTimeData of timefield
+    | KeyExpirationTime -> KeyExpirationTimeData of uint32
     | PrefPrivkeyAlgo   -> PrefPrivkeyAlgoData of list of privkey_algo
     | RevocationKey     -> RevocationKeyData of subpacket_revocation_key_data
     | Issuer            -> IssuerData of pgp_keyid
