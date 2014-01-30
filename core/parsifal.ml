@@ -709,7 +709,7 @@ let cleanup_result init l =
 
 let list_of_fields l =
   let add_field accu (n, v) =
-    if String.length n > 1 && n.[0] <> '@'
+    if String.length n >= 1 && n.[0] <> '@'
     then v::accu
     else accu
   in

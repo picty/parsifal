@@ -30,7 +30,7 @@ let rec json_of_value ?verbose:(verbose=false) ?indent:(indent="") = function
 	| _, VUnit -> accu
 	| _, VOption None -> accu
 	| name, v ->
-	  if verbose || (String.length name > 1 && name.[0] <> '@')
+	  if verbose || (String.length name >= 1 && name.[0] <> '@')
 	  then
 	    (Printf.sprintf "%s: %s" (quote_string name)
 	       (json_of_value ~verbose:verbose ~indent:new_indent v))::accu
