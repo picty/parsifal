@@ -44,7 +44,7 @@ alias timefield = uint32
 
 let value_of_timefield t =
     let value = (Unix.localtime (float_of_int t)) in
-    VString( (Printf.sprintf "%02d/%02d/%04d %02d:%02d:%02d" value.Unix.tm_mday value.Unix.tm_mon (value.Unix.tm_year + 1900) value.Unix.tm_hour value.Unix.tm_min value.Unix.tm_sec), false)
+    VString( (Printf.sprintf "%02d/%02d/%04d %02d:%02d:%02d" value.Unix.tm_mday (value.Unix.tm_mon+1) (value.Unix.tm_year + 1900) value.Unix.tm_hour value.Unix.tm_min value.Unix.tm_sec), false)
 
 (* §9.1 *)
 enum pubkey_algo (8, UnknownVal UnknownPubKeyAlgo) =
