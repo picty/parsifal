@@ -667,10 +667,36 @@ let get_algo_from_public_key_packet_content2 = function
     | _ -> failwith "Should not happen ?"
 
 
+(* §12.2 *)
+type computed_keyid = binstring
+
+let parse_computed_keyid structure_start content input =
+    (*sanity checks*)
+    if input.cur_offset < structure_start then 
+        raise (ParsingException (CustomException "Start offset of keyid computation is after the cur_offset; should not happen!", _h_of_si input)) ;
+
+    match content with 
+    | PublicKeyPacketContentVersion3 p3 -> 
+        String.sub p3.rsa_modulus ((String.length p3.rsa_modulus) - 8) 8
+    | PublicKeyPacketContentVersion4 _ -> 
+        let len = (input.cur_offset - structure_start) in
+	let buf = POutput.create () in
+	POutput.add_byte buf 0x99 ;
+	POutput.add_byte buf ((len lsr 8) land 0xFF) ; 
+	POutput.add_byte buf (len land 0xFF) ;
+	POutput.add_substring buf input.str (input.cur_base + structure_start) len ;
+        let dgst = CryptoUtil.sha1sum (POutput.contents buf) in
+        String.sub dgst ((String.length dgst) - 8) 8
+    | _ -> raise (ParsingException (CustomException "Unsupported version number", _h_of_si input)) 
+
+let value_of_computed_keyid = value_of_binstring
+
 (* §5.5.1.1 *)
 struct public_key_packet_content = {
+    parse_checkpoint structure_start : save_offset ;
     version : uint8;
     content : public_key_packet_content2(version);
+    parse_field keyid : computed_keyid(structure_start ; content);
 }
 
 (* §5.5.1.2 *)
