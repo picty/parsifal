@@ -135,81 +135,28 @@ union ssl2_content [enrich] (SSL2EncryptedMessage) =
   | { cleartext = true } -> SSL2Handshake of ssl2_handshake
 
 
-type ssl2_record = {
-  ssl2_short_header : bool;
-  ssl2_is_escape : bool;
-  ssl2_padding_length : int;
-  ssl2_total_length : int;
-  ssl2_content : ssl2_content
+struct ssl2_long_header = {
+  ssl2_is_escape : bit_bool;
+  ssl2_total_len : bit_int[14];
+  ssl2_pad_len : uint8;
 }
 
+union ssl2_header [enrich; exhaustive] (UnparsedSSL2Header) =
+  | true -> SSL2ShortHeader of bit_int[15]
+  | false -> SSL2LongHeader of ssl2_long_header
 
+let pad_len_of_hdr = function
+  | SSL2LongHeader h -> h.ssl2_pad_len
+  | _ -> 0
 
-let parse_ssl2_record context input =
-  let parse_fun = parse_ssl2_content context
-  and x = parse_uint16 input in
-  if (x land 0x8000) = 0x8000 then
-    let len = (x land 0x7fff) in
-    { ssl2_short_header = true;
-      ssl2_is_escape = false;
-      ssl2_padding_length = 0;
-      ssl2_total_length = len;
-      ssl2_content = parse_container len "ssl2_content" parse_fun input }
-  else begin
-    let len = x land 0x3fff in
-    let pad_len = parse_uint8 input in
-    let real_len = if context.cleartext then (len - pad_len) else len
-    and real_pad_len = if context.cleartext then pad_len else 0 in
-    let msg = parse_container real_len "ssl2_content" parse_fun input in
-    drop_bytes real_pad_len input;
-    { ssl2_short_header = false;
-      ssl2_is_escape = (x land 0x4000) = 0x4000;
-      ssl2_padding_length = pad_len;
-      ssl2_total_length = len;
-      ssl2_content = msg }
-  end
+let msg_len_of_hdr = function
+  | SSL2LongHeader h -> h.ssl2_total_len - h.ssl2_pad_len
+  | SSL2ShortHeader l -> l
+  | _ -> 0 (* TODO: Erreur *)
 
-let lwt_parse_ssl2_record context input =
-  let parse_fun = parse_ssl2_content context in
-  lwt_parse_uint16 input >>= fun x ->
-  if (x land 0x8000) = 0x8000 then begin
-    let len = x land 0x7fff in
-    lwt_parse_container len "ssl2_content" parse_fun input >>= fun content ->
-    return { ssl2_short_header = false;
-	     ssl2_is_escape = false;
-	     ssl2_padding_length = 0;
-	     ssl2_total_length = len;
-	     ssl2_content = content }
-  end else begin
-    let len = x land 0x3fff in
-    lwt_parse_uint8 input >>= fun pad_len ->
-    let real_len = if context.cleartext then (len - pad_len) else len
-    and real_pad_len = if context.cleartext then pad_len else 0 in
-    lwt_parse_container real_len "ssl2_content" parse_fun input >>= fun content ->
-    lwt_drop_bytes real_pad_len input >>= fun _ ->
-    return { ssl2_short_header = true;
-      ssl2_is_escape = (x land 0x4000) = 0x4000;
-      ssl2_padding_length = pad_len;
-      ssl2_total_length = len;
-      ssl2_content = content }
-  end
-
-let dump_ssl2_record buf record =
-  if record.ssl2_short_header
-  then dump_uint16 buf (0x8000 lor (record.ssl2_total_length))
-  else begin
-    dump_uint16 buf (if record.ssl2_is_escape then 0x4000 lor record.ssl2_total_length else record.ssl2_total_length);
-    dump_uint8 buf record.ssl2_padding_length
-  end;
-  dump_ssl2_content buf record.ssl2_content;
-  POutput.add_string buf (String.make record.ssl2_padding_length '\x00')
-
-let value_of_ssl2_record record =
-  VRecord [
-    "@name", VString ("ssl2_record", false);
-    "short_header", VBool record.ssl2_short_header;
-    "is_escape", VBool record.ssl2_is_escape;
-    "padding_len", VSimpleInt record.ssl2_padding_length;
-    "total_len", VSimpleInt record.ssl2_total_length;
-    "record_content", VLazy (lazy (value_of_ssl2_content record.ssl2_content))
-  ]
+struct ssl2_record [param context] = {
+  ssl2_short_header : bit_bool;
+  ssl2_header : ssl2_header(ssl2_short_header);
+  ssl2_content : container(msg_len_of_hdr ssl2_header) of ssl2_content(context);
+  ssl2_padding : binstring(pad_len_of_hdr ssl2_header);
+}
