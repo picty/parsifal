@@ -136,7 +136,7 @@ union ssl2_content [enrich] (SSL2EncryptedMessage) =
 
 
 type ssl2_record = {
-  ssl2_long_header : bool;
+  ssl2_short_header : bool;
   ssl2_is_escape : bool;
   ssl2_padding_length : int;
   ssl2_total_length : int;
@@ -150,7 +150,7 @@ let parse_ssl2_record context input =
   and x = parse_uint16 input in
   if (x land 0x8000) = 0x8000 then
     let len = (x land 0x7fff) in
-    { ssl2_long_header = false;
+    { ssl2_short_header = true;
       ssl2_is_escape = false;
       ssl2_padding_length = 0;
       ssl2_total_length = len;
@@ -162,7 +162,7 @@ let parse_ssl2_record context input =
     and real_pad_len = if context.cleartext then pad_len else 0 in
     let msg = parse_container real_len "ssl2_content" parse_fun input in
     drop_bytes real_pad_len input;
-    { ssl2_long_header = true;
+    { ssl2_short_header = false;
       ssl2_is_escape = (x land 0x4000) = 0x4000;
       ssl2_padding_length = pad_len;
       ssl2_total_length = len;
@@ -175,7 +175,7 @@ let lwt_parse_ssl2_record context input =
   if (x land 0x8000) = 0x8000 then begin
     let len = x land 0x7fff in
     lwt_parse_container len "ssl2_content" parse_fun input >>= fun content ->
-    return { ssl2_long_header = false;
+    return { ssl2_short_header = false;
 	     ssl2_is_escape = false;
 	     ssl2_padding_length = 0;
 	     ssl2_total_length = len;
@@ -187,7 +187,7 @@ let lwt_parse_ssl2_record context input =
     and real_pad_len = if context.cleartext then pad_len else 0 in
     lwt_parse_container real_len "ssl2_content" parse_fun input >>= fun content ->
     lwt_drop_bytes real_pad_len input >>= fun _ ->
-    return { ssl2_long_header = true;
+    return { ssl2_short_header = true;
       ssl2_is_escape = (x land 0x4000) = 0x4000;
       ssl2_padding_length = pad_len;
       ssl2_total_length = len;
@@ -195,7 +195,7 @@ let lwt_parse_ssl2_record context input =
   end
 
 let dump_ssl2_record buf record =
-  if record.ssl2_long_header
+  if record.ssl2_short_header
   then dump_uint16 buf (0x8000 lor (record.ssl2_total_length))
   else begin
     dump_uint16 buf (if record.ssl2_is_escape then 0x4000 lor record.ssl2_total_length else record.ssl2_total_length);
@@ -207,7 +207,7 @@ let dump_ssl2_record buf record =
 let value_of_ssl2_record record =
   VRecord [
     "@name", VString ("ssl2_record", false);
-    "long_header", VBool record.ssl2_long_header;
+    "short_header", VBool record.ssl2_short_header;
     "is_escape", VBool record.ssl2_is_escape;
     "padding_len", VSimpleInt record.ssl2_padding_length;
     "total_len", VSimpleInt record.ssl2_total_length;
