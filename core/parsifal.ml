@@ -9,6 +9,7 @@ let default_buffer_size = ref 1024
 type output_options = {
   oo_verbose : bool;
   unfold_aliases : bool;
+  maxlen : int option;
   indent : string;
   indent_increment : string;
 }
@@ -16,6 +17,7 @@ type output_options = {
 let default_output_options = {
   oo_verbose = false;
   unfold_aliases = true;
+  maxlen = Some 70;
   indent = "";
   indent_increment = "  ";
 }
@@ -734,7 +736,7 @@ let list_of_fields l =
   List.rev (List.fold_left add_field [] l)
 
 
-let rec print_value ?maxlen:(maxlen=Some 70) ?options:(options=default_output_options) ?name:(name="value") = function
+let rec print_value ?options:(options=default_output_options) ?name:(name="value") = function
   | VUnit ->  Printf.sprintf "%s%s\n" options.indent name
   | VBool b -> Printf.sprintf "%s%s: %b\n" options.indent name b
   | VSimpleInt i -> Printf.sprintf "%s%s: %d\n" options.indent name i
@@ -750,13 +752,13 @@ let rec print_value ?maxlen:(maxlen=Some 70) ?options:(options=default_output_op
   | VString ("", _) ->
     Printf.sprintf "%s%s: \"\" (0 byte)\n" options.indent name
   | VString (s, true) ->
-    let real_s = match maxlen with
-      | Some l -> if String.length s < l then s else (String.sub s 0 l)
-      | None -> s
+    let real_s, dots = match options.maxlen with
+      | Some l -> if String.length s < l then s, "" else (String.sub s 0 l), "..."
+      | None -> s, ""
     in
-    Printf.sprintf "%s%s: %s (%d bytes)\n" options.indent name (hexdump real_s) (String.length s)
+    Printf.sprintf "%s%s: %s%s (%d bytes)\n" options.indent name (hexdump real_s) dots (String.length s)
   | VString (s, false) ->
-    let real_s = match maxlen with
+    let real_s = match options.maxlen with
       | Some l -> if String.length s < l then s else (String.sub s 0 l) ^ "..."
       | None -> s
     in
