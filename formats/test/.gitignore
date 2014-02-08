@@ -6,3 +6,5 @@ test_png
 test_png.byte
 test_dvi
 test_dvi.byte
+test_uefi_fv
+test_uefi_fv.byte
