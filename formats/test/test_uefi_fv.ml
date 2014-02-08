@@ -23,22 +23,22 @@ let options = [
   mkopt (Some 'v') "verbose" (Set verbose) "increase verbosity"
 ]
 
-let type_of_value = function
-  | VUnit -> "VUnit"
-  | VBool _ -> "VBool"
-  | VSimpleInt _ -> "VSimpleInt"
-  | VInt (_, _, _) -> "Vint"
-  | VBigInt (_, _) -> "VBigInt"
-  | VString (_, false) -> "VString(_,false)"
-  | VString (_, true) -> "VString(_,true)"
-  | VEnum (_, _, _, _) -> "VEnum"
-  | VList _ -> "VList"
-  | VRecord _ -> "VRecord"
-  | VOption None -> "VOption None"
-  | VOption (Some _) -> "VOption(Some _)"
-  | VError s -> "Error: " ^ s
-  | VLazy _ -> "VLazy"
-  | VUnparsed _ -> "VUnparsed"
+(* let type_of_value = function *)
+(*   | VUnit -> "VUnit" *)
+(*   | VBool _ -> "VBool" *)
+(*   | VSimpleInt _ -> "VSimpleInt" *)
+(*   | VInt (_, _, _) -> "Vint" *)
+(*   | VBigInt (_, _) -> "VBigInt" *)
+(*   | VString (_, false) -> "VString(_,false)" *)
+(*   | VString (_, true) -> "VString(_,true)" *)
+(*   | VEnum (_, _, _, _) -> "VEnum" *)
+(*   | VList _ -> "VList" *)
+(*   | VRecord _ -> "VRecord" *)
+(*   | VOption None -> "VOption None" *)
+(*   | VOption (Some _) -> "VOption(Some _)" *)
+(*   | VError s -> "Error: " ^ s *)
+(*   | VLazy _ -> "VLazy" *)
+(*   | VUnparsed _ -> "VUnparsed" *)
 
 let print_either g =
   match g with
@@ -160,10 +160,11 @@ let rec extract_section_compressed current_dir section =
   (* the decompressed image is then interpreted as a section stream *)
   try
     let input = input_of_string input_name raw_content in
+    let opts = { default_output_options with oo_verbose = !verbose } in
     let dummy = BasePTypes.parse_rem_list "list" parse_ffs_section input in
     (* extract all sections *)
     list_iteri (fun i x ->
-      Printf.printf "[%d] %s\n" i (print_value ~verbose:!verbose (value_of_ffs_section x));
+      Printf.printf "[%d] %s\n" i (print_value ~options:opts (value_of_ffs_section x));
       extract_section_from_file new_dir i x
     ) dummy
   with
@@ -186,10 +187,11 @@ and extract_section_guid_defined current_dir section =
   string_to_file "" (new_dir ^ "/" ^ guid_str);
   (* the image is then interpreted as a section stream *)
   let input = input_of_string input_name raw_content in
+  let opts = { default_output_options with oo_verbose = !verbose } in
   let dummy = BasePTypes.parse_rem_list "list" parse_ffs_section input in
   (* extract all sections *)
   list_iteri (fun i x ->
-    Printf.printf "[%d] %s\n" i (print_value ~verbose:!verbose (value_of_ffs_section x));
+    Printf.printf "[%d] %s\n" i (print_value ~options:opts (value_of_ffs_section x));
     extract_section_from_file new_dir i x
   ) dummy
   (* XXX TODO if GUID is well known, iterate through section list, match sections of type
@@ -224,7 +226,8 @@ and extract_section_from_file current_dir idx section =
   let new_dir = current_dir ^ "/section_" ^ (Printf.sprintf "%.3d" idx) in
   try_mkdir new_dir;
   (* save the section header *)
-  let header_str = print_value ~verbose:!verbose (value_of_efi_file_section_header section.section_hdr) in
+  let opts = { default_output_options with oo_verbose = !verbose } in
+  let header_str = print_value ~options:opts (value_of_efi_file_section_header section.section_hdr) in
   string_to_file header_str (new_dir ^ "/header");
   (* XXX debug: save content to file *)
   let raw_content = content_from_section section in
@@ -258,7 +261,8 @@ and extract_ffs_file current_dir idx file =
   let file_type = string_of_efi_fv_filetype_t file.header.filetype in
   string_to_file "" (new_dir ^ "/" ^ file_type);
   (* save the file header *)
-  let header_str = print_value ~verbose:!verbose (value_of_ffs_file_header file.header) in
+  let opts = { default_output_options with oo_verbose = !verbose } in
+  let header_str = print_value ~options:opts (value_of_ffs_file_header file.header) in
   string_to_file header_str (new_dir ^ "/header");
   (* save all sections *)
   match file.sections with

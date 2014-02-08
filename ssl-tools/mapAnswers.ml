@@ -137,15 +137,16 @@ let handle_answer answer =
       | Dump -> print_string (exact_dump_answer_dump answer)
       | All ->
         print_endline ip;
+	let opts = { default_output_options with oo_verbose = !verbose; indent = "  " } in
 	begin
           match parse_all_records answer with
 	  | [], _, false -> ()
 	  | [], _, true ->
             let records, _, error = parse_all_ssl2_records answer in
-            List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_ssl2_record r))) records;
+            List.iter (fun r -> print_endline (print_value ~options:opts (value_of_ssl2_record r))) records;
             if error then print_endline "  ERROR"
 	  | records, _, error ->
-            List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_tls_record r))) records;
+            List.iter (fun r -> print_endline (print_value ~options:opts (value_of_tls_record r))) records;
             if error then print_endline "  ERROR"
         end
       | Suite ->

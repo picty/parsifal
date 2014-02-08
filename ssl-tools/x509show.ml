@@ -72,14 +72,16 @@ let pretty_print_pubkey pk =
   in
   ""::"Public key"::(List.map (fun s -> "  " ^ s) ((pk_type::pk_params)@pk_value))
 
-let pretty_print_extension indent e =
+let pretty_print_extension opts e =
   let _name = string_of_der_oid_content e.extnID in
   let name = if e.critical = (Some true) then _name ^ " (critical)" else _name in
-  Str.split (Str.regexp_string "\n") (print_value ~indent:indent ~name:name (value_of_extnValue e.extnValue))
+  Str.split (Str.regexp_string "\n") (print_value ~options:opts ~name:name (value_of_extnValue e.extnValue))
 
 let pretty_print_extensions = function
   | None -> []
-  | Some es -> ""::"Extensions"::(List.flatten (List.map (pretty_print_extension "  ") es))
+  | Some es ->
+    let opts = incr_indent default_output_options in
+    ""::"Extensions"::(List.flatten (List.map (pretty_print_extension opts) es))
 
 let pretty_print_certificate cert =
   let tbs = cert.tbsCertificate in

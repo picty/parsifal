@@ -129,10 +129,11 @@ let mk_parse_value () =
     with
       Not_found -> show_type_list (Some "parser type not found.")
   in fun input ->
+    let opts = { default_output_options with oo_verbose = !verbose } in
     let v = parse_fun input in
     match !action with
-    | All -> print_endline (print_value ~verbose:!verbose v)
-    | JSon -> print_endline (Json.json_of_value ~verbose:!verbose v)
+    | All -> print_endline (print_value ~options:opts v)
+    | JSon -> print_endline (Json.json_of_value ~options:opts v)
     | Get ->
       match get v !path with
       | Left err -> if !verbose then prerr_endline err

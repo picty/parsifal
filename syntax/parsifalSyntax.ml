@@ -664,10 +664,10 @@ let mk_value_of_fun _loc c =
   | ASN1Union union ->
     let mk_case = function
       | _loc, cons, (_, PT_Empty) ->
-	<:match_case< $ <:patt< $uid:cons$ >> $ -> Parsifal.VUnit >>
+	<:match_case< $ <:patt< $uid:cons$ >> $ -> Parsifal.VAlias ( $str:cons$, Parsifal.VUnit ) >>
       | (_loc, cons, (_, t)) ->
 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
-	$ <:expr< $value_of_fun_of_ptype _loc t$ x >> $ >>
+	$ <:expr< Parsifal.VAlias ( $str:cons$, $value_of_fun_of_ptype _loc t$ x ) >> $ >>
     in
     let last_case =
       <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
@@ -677,13 +677,13 @@ let mk_value_of_fun _loc c =
     <:expr< (fun [ $list:cases$ ]) $lid:c.name$ >>
 
   | Alias atype ->
-    <:expr< $value_of_fun_of_ptype _loc atype$ $lid:c.name$ >>
+    <:expr< Parsifal.VAlias ( $str:c.name$, $value_of_fun_of_ptype _loc atype$ $lid:c.name$ ) >>
 
   | ASN1Alias alias ->
     let value_of_content = value_of_fun_of_ptype _loc alias.aatype in
     if alias.aalist
-    then <:expr< BasePTypes.value_of_list $value_of_content$ $lid:c.name$ >>
-    else <:expr< $value_of_content$ $lid:c.name$ >>
+    then <:expr< Parsifal.VAlias ( $str:c.name$, BasePTypes.value_of_list $value_of_content$ $lid:c.name$ ) >>
+    else <:expr< Parsifal.VAlias ( $str:c.name$, $value_of_content$ $lid:c.name$ ) >>
 
   in [ mk_multiple_args_fun _loc ("value_of_" ^ c.name) [c.name] body ]
 

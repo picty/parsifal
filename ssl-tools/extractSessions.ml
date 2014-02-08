@@ -127,10 +127,11 @@ let print_all_connection k c =
   in
 
   print_endline cname;
+  let opts = { default_output_options with oo_verbose = !verbose; indent = "  " } in
   let segs = String.concat "" (List.map snd (trivial_aggregate c.segments)) in
   let input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) cname segs in
   let records, _, _ = TlsUtil.parse_all_records !verbose input in
-  List.iter (fun r -> print_endline (print_value ~verbose:!verbose ~indent:"  " (value_of_tls_record r))) records;
+  List.iter (fun r -> print_endline (print_value ~options:opts (value_of_tls_record r))) records;
   print_newline ()
 
 

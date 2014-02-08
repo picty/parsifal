@@ -6,6 +6,22 @@ open Lwt
 
 let default_buffer_size = ref 1024
 
+type output_options = {
+  oo_verbose : bool;
+  unfold_aliases : bool;
+  indent : string;
+  indent_increment : string;
+}
+
+let default_output_options = {
+  oo_verbose = false;
+  unfold_aliases = true;
+  indent = "";
+  indent_increment = "  ";
+}
+
+let incr_indent o = { o with indent = o.indent ^ o.indent_increment }
+
 
 (*********************)
 (* Trivial functions *)
@@ -112,6 +128,7 @@ type value =
   | VError of string
   | VLazy of value Lazy.t
   | VUnparsed of value
+  | VAlias of string * value
 
 
 
@@ -688,6 +705,7 @@ let rec string_of_value = function
   | VOption (Some v) -> string_of_value v
   | VError s -> "Error: " ^ s
   | VLazy v -> string_of_value (Lazy.force v)
+  | VAlias (_, v) -> string_of_value v
   | VUnparsed v -> "[Unparsed]_" ^ string_of_value v
 
 
@@ -716,65 +734,69 @@ let list_of_fields l =
   List.rev (List.fold_left add_field [] l)
 
 
-let rec print_value ?maxlen:(maxlen=Some 70) ?verbose:(verbose=false) ?indent:(indent="") ?name:(name="value") = function
-  | VUnit ->  Printf.sprintf "%s%s\n" indent name
-  | VBool b -> Printf.sprintf "%s%s: %b\n" indent name b
-  | VSimpleInt i -> Printf.sprintf "%s%s: %d\n" indent name i
+let rec print_value ?maxlen:(maxlen=Some 70) ?options:(options=default_output_options) ?name:(name="value") = function
+  | VUnit ->  Printf.sprintf "%s%s\n" options.indent name
+  | VBool b -> Printf.sprintf "%s%s: %b\n" options.indent name b
+  | VSimpleInt i -> Printf.sprintf "%s%s: %d\n" options.indent name i
   | VInt (i, sz, _) ->
     let n_chars = sz / 4 in
-    Printf.sprintf "%s%s: %d (0x%*.*x)\n" indent name i n_chars n_chars i
+    Printf.sprintf "%s%s: %d (0x%*.*x)\n" options.indent name i n_chars n_chars i
   | VBigInt (s, _) ->
-    Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (hexdump s) (String.length s)
+    Printf.sprintf "%s%s: %s (%d bytes)\n" options.indent name (hexdump s) (String.length s)
   | VEnum (s, i, sz, _) -> 
     let n_chars = sz / 4 in
-    Printf.sprintf "%s%s: %s (0x%*.*x)\n" indent name s n_chars n_chars i
+    Printf.sprintf "%s%s: %s (0x%*.*x)\n" options.indent name s n_chars n_chars i
 
   | VString ("", _) ->
-    Printf.sprintf "%s%s: \"\" (0 byte)\n" indent name
+    Printf.sprintf "%s%s: \"\" (0 byte)\n" options.indent name
   | VString (s, true) ->
     let real_s = match maxlen with
-      | Some l -> if String.length s < l then s else (String.sub s 0 l) ^ ""
+      | Some l -> if String.length s < l then s else (String.sub s 0 l)
       | None -> s
     in
-    Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (hexdump real_s) (String.length s)
+    Printf.sprintf "%s%s: %s (%d bytes)\n" options.indent name (hexdump real_s) (String.length s)
   | VString (s, false) ->
     let real_s = match maxlen with
       | Some l -> if String.length s < l then s else (String.sub s 0 l) ^ "..."
       | None -> s
     in
-    Printf.sprintf "%s%s: %s (%d bytes)\n" indent name (quote_string real_s) (String.length s)
+    Printf.sprintf "%s%s: %s (%d bytes)\n" options.indent name (quote_string real_s) (String.length s)
 
   | VList l ->
-    let print_subvalue i x = print_value ~verbose:verbose ~indent:(indent ^ "  ") ~name:(name ^ "[" ^ string_of_int i ^ "]") x in
-    (Printf.sprintf "%s%s {\n" indent name) ^
+    let print_subvalue i x = print_value ~options:(incr_indent options) ~name:(name ^ "[" ^ string_of_int i ^ "]") x in
+    (Printf.sprintf "%s%s {\n" options.indent name) ^
       (String.concat "" (mapi print_subvalue l)) ^
-      (Printf.sprintf "%s}\n" indent)
+      (Printf.sprintf "%s}\n" options.indent)
   | VRecord l -> begin
     try
-      if verbose
+      if options.oo_verbose
       then raise Not_found
-      else Printf.sprintf "%s%s: %s\n" indent name (string_of_value (List.assoc "@string_of" l))
+      else Printf.sprintf "%s%s: %s\n" options.indent name (string_of_value (List.assoc "@string_of" l))
     with Not_found -> begin
-      let new_indent = indent ^ "  " in
+      let new_options = incr_indent options in
       let handle_field accu (name, raw_v) = match (name, realise_value raw_v) with
 	| _, VUnit -> accu
 	| _, VOption None -> accu
 	| name, v ->
-	  if verbose || (String.length name >= 1 && name.[0] <> '@')
-	  then (print_value ~verbose:verbose ~indent:new_indent ~name:name v)::accu
+	  if options.oo_verbose || (String.length name >= 1 && name.[0] <> '@')
+	  then (print_value ~options:new_options ~name:name v)::accu
 	  else accu
       in
-      (Printf.sprintf "%s%s {\n" indent name) ^
+      (Printf.sprintf "%s%s {\n" options.indent name) ^
 	(String.concat "" (List.rev (List.fold_left handle_field [] l))) ^
-	(Printf.sprintf "%s}\n" indent)
+	(Printf.sprintf "%s}\n" options.indent)
     end
   end
-  | VOption None -> Printf.sprintf "%s%s\n" indent name
-  | VOption (Some v) -> print_value ~verbose:verbose ~indent:indent ~name:name v
+  | VOption None -> Printf.sprintf "%s%s\n" options.indent name
+  | VOption (Some v) -> print_value ~options:options ~name:name v
 
-  | VError err -> Printf.sprintf "%s%s: ERROR (%s)\n" indent name err
-  | VLazy v -> print_value ~verbose:verbose ~indent:indent ~name:name (Lazy.force v)
-  | VUnparsed v -> print_value ~verbose:verbose ~indent:indent ~name:("[Unparsed]_" ^ name) v
+  | VError err -> Printf.sprintf "%s%s: ERROR (%s)\n" options.indent name err
+  | VLazy v -> print_value ~options:options ~name:name (Lazy.force v)
+  | VAlias (n, v) ->
+    if options.unfold_aliases
+    then print_value ~options:options ~name:name (VRecord [n, v])
+    else print_value ~options:options ~name:name v
+  | VUnparsed v -> print_value ~options:options ~name:("[Unparsed]_" ^ name) v
 
 
 let rec get_value path v = match (realise_value v, path) with
@@ -847,6 +869,7 @@ let rec get_value path v = match (realise_value v, path) with
 
   | VError _, _ -> v
   | VLazy v, _ -> get_value path (Lazy.force v)
+  | VAlias (_, v), _ -> get_value path v
   | VUnparsed v, _ -> get_value path v
 
   | _, _ -> VError ("Path not fully interpreted (" ^ (String.concat "." path) ^ ")")

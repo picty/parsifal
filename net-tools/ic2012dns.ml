@@ -113,7 +113,7 @@ let _ =
           try
             let answer = parse_quoted_printable_container parse_dns_message input in
             match !action with
-            | All -> print_endline (print_value ~name:ip ~indent:"  " (value_of_dns_message answer))
+            | All -> print_endline (print_value ~name:ip ~options:(incr_indent default_output_options) (value_of_dns_message answer))
             | Dig ->
               print_endline ip;
               display_dns_message answer;
