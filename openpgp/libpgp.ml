@@ -2,8 +2,35 @@ open Parsifal
 open BasePTypes
 open PTypes
 
+type 'a safe_parse_container = SafeParsed of 'a | SafeUnparsed of binstring*string
+
+let parse_safe_parse_container _name parse_fun input =
+    let saved_offset = input.cur_offset
+    and saved_bitstate = input.cur_bitstate in
+    try
+        let res = SafeParsed (parse_fun input) in
+        check_empty_input true input;
+        res
+    with
+    | ParsingException (e, h) -> 
+        let s = string_of_exception e h in
+        prerr_endline s ; 
+        input.cur_offset <- saved_offset;
+        input.cur_bitstate <- saved_bitstate;
+
+        SafeUnparsed ((parse_rem_binstring input),s)
+
+let dump_safe_parse_container dump_fun buf = function
+  | SafeParsed x -> dump_fun buf x
+  | SafeUnparsed (s,_) -> dump_binstring buf s
+
+let value_of_safe_parse_container value_of_fun = function
+  | SafeParsed x -> value_of_fun x
+  | SafeUnparsed (s,e) -> VRecord [ "content", value_of_binstring s; 
+                                    "@exception", VString(e, false) ;
+                                  ]
+
 (* §3.3 *)
-(* type does not define the parse_* functions *)
 alias pgp_keyid = uint64
 
 (* §3.2 *)
@@ -881,7 +908,7 @@ union packet_content [enrich] (UnparsedPacket) =
     | SymmetricallyEncryptedAndIntegrityProtectedPacketType     ->  SymmetricallyEncryptedAndIntegrityProtectedPacketContent of symmetrically_encrypted_and_integrity_protected_packet_content
     | ModificationDetectionCodePacketType                       ->  ModificationDetectionCodePacketContent of binstring(get_hash_len SHA1Algo input) (* §5.14 *) (* SHA1 is hardcoded in the RFC... *)
 
-
+ 
 type 'a partial_len_container = 'a
 
 let parse_partial_len_container tag first_partial_len name parse_fun input =
@@ -918,8 +945,8 @@ let value_of_partial_len_container = value_of_container
 
 (* §4.2 *)
 union packet_content_union [param tag ; enrich ; exhaustive] (UnparsedPacketContentContainer) =
-    | FixedLen length   -> PacketContentContainer of container(length) of packet_content(tag.packet_type)
-    | PartialLen length -> PacketContentContainer of partial_len_container(tag ; length) of packet_content(tag.packet_type)
+    | FixedLen length   -> PacketContentContainer of container(length) of safe_parse_container of packet_content(tag.packet_type)
+    | PartialLen length -> PacketContentContainer of partial_len_container(tag ; length) of safe_parse_container of packet_content(tag.packet_type)
     | UndeterminateLen  -> PacketContentOfIndeterminateLen of packet_content(tag.packet_type)
 
 
