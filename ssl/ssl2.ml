@@ -17,7 +17,7 @@ enum pure_ssl2_cipher_spec (24, UnknownVal UnknownSSL2CipherSpec) =
   | 0x060040 -> SSL2_CK_DES_64_CBC_WITH_MD5
   | 0x0700C0 -> SSL2_CK_DES_192_EDE3_CBC_WITH_MD5	
 
-union ssl2_cipher_spec [enrich; exhaustive] (UnparsedSSL2CipherSpec) =
+union ssl2_cipher_spec [enrich; exhaustive; noalias] (UnparsedSSL2CipherSpec) =
   | true -> SSL2CipherSpec of pure_ssl2_cipher_spec
   | false -> TLSCipherSpec of TlsEnums.ciphersuite
 

@@ -17,6 +17,7 @@ type parsifal_option =
   | DoLwt
   | LittleEndian
   | ExactParser
+  | NoAlias
   | EnrichByDefault
   | ExhaustiveChoices
   | Param of (param_type * string) list
@@ -115,6 +116,7 @@ let opts_of_seq_expr expr =
     | <:expr< $lid:"top"$ >>        -> [_loc, DoLwt; _loc, ExactParser]
     | <:expr< $lid:"enrich"$ >>     -> [_loc, EnrichByDefault]
     | <:expr< $lid:"exhaustive"$ >> -> [_loc, ExhaustiveChoices]
+    | <:expr< $lid:"noalias"$ >>    -> [_loc, NoAlias]
     | <:expr< $lid:"parse_param"$ $e$ >>
     | <:expr< $lid:"param"$ $e$ >>  ->
       [_loc, Param (List.map (fun e -> (ParseParam, lid_of_expr e)) (list_of_com_expr e))]
@@ -662,12 +664,16 @@ let mk_value_of_fun _loc c =
 
   | Union union
   | ASN1Union union ->
-    let mk_case = function
-      | _loc, cons, (_, PT_Empty) ->
+    let mk_case case = match case, c <.> NoAlias with
+      | (_loc, cons, (_, PT_Empty)), false ->
 	<:match_case< $ <:patt< $uid:cons$ >> $ -> Parsifal.VAlias ( $str:cons$, Parsifal.VUnit ) >>
-      | (_loc, cons, (_, t)) ->
+      | (_loc, cons, (_, PT_Empty)), true ->
+	<:match_case< $ <:patt< $uid:cons$ >> $ -> Parsifal.VUnit >>
+      | (_loc, cons, (_, t)), false ->
 	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
 	$ <:expr< Parsifal.VAlias ( $str:cons$, $value_of_fun_of_ptype _loc t$ x ) >> $ >>
+      | (_loc, cons, (_, t)), true ->
+	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) -> $ <:expr< $value_of_fun_of_ptype _loc t$ x >> $ >>
     in
     let last_case =
       <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
@@ -706,6 +712,8 @@ let check_options construction options =
 
     | (Enum _|Struct _|Alias _|ASN1Alias _), (_loc, EnrichByDefault)::_ ->
       Loc.raise _loc (Failure "enrich is only allowed for unions.")
+    | (Enum _|Struct _|Alias _|ASN1Alias _), (_loc, NoAlias)::_ ->
+      Loc.raise _loc (Failure "noalias is only allowed for unions.")
     | (Enum _|Struct _|Alias _|ASN1Alias _), (_loc, ExhaustiveChoices)::_ ->
       Loc.raise _loc (Failure "exhaustive is only allowed for unions.")
 
