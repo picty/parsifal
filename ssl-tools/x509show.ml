@@ -1,4 +1,3 @@
-open Lwt
 open Parsifal
 open Asn1PTypes
 open RSAKey
@@ -107,10 +106,10 @@ let pretty_print_certificate cert =
 let handle_input input =
   let parse_fun =
     if !base64
-    then lwt_parse_base64_container AnyHeader "base64_container" parse_certificate
-    else lwt_parse_certificate
+    then parse_base64_container AnyHeader "base64_container" parse_certificate
+    else parse_certificate
   in
-  parse_fun input>>= fun certificate ->
+  let certificate = parse_fun input in
   let display = match !action with
     | Serial -> [hexdump certificate.tbsCertificate.serialNumber]
     | CheckSelfSigned ->
@@ -140,48 +139,42 @@ let handle_input input =
       | Right s -> [s]
   in
   match !print_names with
-    | Default -> lwt_not_implemented "handle_input can not determine wether filenames should be printed"
+    | Default ->
+      not_implemented "handle_input can not determine wether filenames should be printed"
     | PrintName ->
-      let print_line l = Printf.printf "%s:%s\n" input.lwt_name l in
-      List.iter print_line display;
-      return ()
+      let print_line l = Printf.printf "%s:%s\n" input.cur_name l in
+      List.iter print_line display
     | DoNotPrintName ->
-      List.iter print_endline display;
-      return ()
-
-
-let catch_exceptions e =
-  if !keep_going
-  then begin
-    prerr_endline (Printexc.to_string e);
-    return ()
-  end else fail e
+      List.iter print_endline display
 
 let rec iter_on_names = function
-  | [] -> return ()
+  | [] -> ()
   | f::r ->
-    let t = input_of_filename f >>= handle_input in
-    catch (fun () -> t) catch_exceptions >>= fun () ->
+    let i = string_input_of_filename f in
+    begin
+      try handle_input i
+      with e ->
+	if !keep_going
+	then prerr_endline (Printexc.to_string e)
+	else raise e
+    end;
     iter_on_names r
 
 
 
 let _ =
   let args = parse_args ~progname:"x509show" options Sys.argv in
-  let t = match args with
+  try
+    match args with
     | [] ->
       if !print_names = Default then print_names := DoNotPrintName;
-      input_of_channel "(stdin)" Lwt_io.stdin >>= handle_input
+      handle_input (string_input_of_stdin ())
     | [_] ->
       if !print_names = Default then print_names := DoNotPrintName;
       iter_on_names args
     | _ ->
       if !print_names = Default then print_names := PrintName;
       iter_on_names args
-  in
-  try
-    Lwt_unix.run t;
-    exit 0
   with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1

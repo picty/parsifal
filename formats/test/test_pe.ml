@@ -1,4 +1,5 @@
 open Lwt
+open LwtUtil
 open Parsifal
 open Pe
 open Getopt
@@ -27,14 +28,8 @@ let parse_secdir_entry filename entry =
   return ()
 
 
-(*
 let parse_file filename =
-  input_of_filename filename >>= lwt_parse_pe_file >>= fun pe_file ->
-    print_endline (print_value (value_of_pe_file pe_file));
-    return ()
-*)
-let parse_file filename =
-  input_of_filename filename >>= lwt_parse_pe_file >>= fun pe_file ->
+  input_of_filename filename >>= lwt_parse_wrapper parse_pe_file >>= fun pe_file ->
     print_endline (print_value (value_of_pe_file pe_file));
     let secdir_entry = pe_file.optpe_header.datadirectory.(4) in
     print_endline (print_value (value_of_data_directory_entry secdir_entry));

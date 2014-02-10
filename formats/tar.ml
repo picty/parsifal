@@ -66,7 +66,7 @@ struct tar_header = {
 let padding_size file_size =
   (512 - (file_size mod 512)) mod 512
 
-struct tar_entry [with_lwt] = {
+struct tar_entry = {
   header : container(512) of tar_header;
   file_content : binstring(header.file_size);
   file_padding : binstring(padding_size header.file_size)
@@ -74,4 +74,4 @@ struct tar_entry [with_lwt] = {
   (*                                   file_content, file_padding); *)
 }
 
-alias tar_file [with_lwt] = list of tar_entry
+alias tar_file = list of tar_entry

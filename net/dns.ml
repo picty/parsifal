@@ -211,7 +211,7 @@ enum rcode (4, UnknownVal UnkownRCode) =
   | 5 -> RC_Refused, "REFUSED"
 
 
-struct dns_message [with_exact] = {
+struct dns_message [top] = {
   parse_checkpoint ctx : dns_pcontext;
   dump_checkpoint ctx : dns_dcontext;
   id : uint16;

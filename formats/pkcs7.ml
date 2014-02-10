@@ -73,7 +73,7 @@ struct pkcs7_content = {
   (*p7_content : pkcs7_content*)
   p7_signed_data : asn1 [(C_ContextSpecific, true, T_Unknown 0)] of pkcs7_signed_data
 }
-asn1_alias pkcs7[with_lwt]
+asn1_alias pkcs7
 
 
 let pkcs_oids = [

@@ -1,4 +1,3 @@
-open Lwt
 open Parsifal
 
 
@@ -14,8 +13,6 @@ let peek_uint8 input =
   if input.cur_offset < input.cur_length then begin
     int_of_char (input.str.[input.cur_base + input.cur_offset])
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
-
-let lwt_parse_uint8 = lwt_parse_byte
 
 let dump_uint8 buf v = POutput.add_byte buf (v land 0xff)
 
@@ -41,10 +38,6 @@ let peek_uint16 input =
       (int_of_char (input.str.[input.cur_base + input.cur_offset + 1]))
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
-let lwt_parse_uint16 input =
-  lwt_really_read input 2 >>= fun s ->
-  return (((int_of_char s.[0]) lsl 8) lor (int_of_char s.[1]))
-
 let dump_uint16 buf v =
   POutput.add_byte buf ((v lsr 8) land 0xff);
   POutput.add_byte buf (v land 0xff)
@@ -64,10 +57,6 @@ let parse_uint16le input =
     input.cur_offset <- input.cur_offset + 2;
     res
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
-
-let lwt_parse_uint16le input =
-  lwt_really_read input 2 >>= fun s ->
-  return (((int_of_char s.[1]) lsl 8) lor (int_of_char s.[0]))
 
 let dump_uint16le buf v =
   POutput.add_byte buf (v land 0xff);
@@ -90,11 +79,6 @@ let parse_uint24 input =
     res
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
-let lwt_parse_uint24 input =
-  lwt_really_read input 3 >>= fun s ->
-  return (((int_of_char s.[0]) lsl 16) lor
-    ((int_of_char s.[1]) lsl 8) lor (int_of_char s.[2]))
-
 let dump_uint24 buf v =
   POutput.add_byte buf ((v lsr 16) land 0xff);
   POutput.add_byte buf ((v lsr 8) land 0xff);
@@ -115,11 +99,6 @@ let parse_uint24le input =
     input.cur_offset <- input.cur_offset + 3;
     res
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
-
-let lwt_parse_uint24le input =
-  lwt_really_read input 3 >>= fun s ->
-  return (((int_of_char s.[2]) lsl 16) lor
-    ((int_of_char s.[1]) lsl 8) lor (int_of_char s.[0]))
 
 let dump_uint24le buf v =
   POutput.add_byte buf ((v lsr 16) land 0xff);
@@ -144,11 +123,6 @@ let parse_uint32 input =
     res
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
-let lwt_parse_uint32 input =
-  lwt_really_read input 4 >>= fun s ->
-  return (((int_of_char s.[0]) lsl 24) lor ((int_of_char s.[1]) lsl 16)
-    lor ((int_of_char s.[2]) lsl 8) lor (int_of_char s.[3]))
-
 let dump_uint32 buf v =
   POutput.add_byte buf ((v lsr 24) land 0xff);
   POutput.add_byte buf ((v lsr 16) land 0xff);
@@ -172,11 +146,6 @@ let parse_uint32le input =
     input.cur_offset <- input.cur_offset + 4;
     res
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
-
-let lwt_parse_uint32le input =
-  lwt_really_read input 4 >>= fun s ->
-  return (((int_of_char s.[3]) lsl 24) lor ((int_of_char s.[2]) lsl 16)
-    lor ((int_of_char s.[1]) lsl 8) lor (int_of_char s.[0]))
 
 let dump_uint32le buf v =
   POutput.add_byte buf (v land 0xff);
@@ -207,15 +176,6 @@ let parse_uint64 input =
     input.cur_offset <- input.cur_offset + 8;
     Int64.logor (Int64.shift_left (Int64.of_int res2) 32) (Int64.of_int res1)
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
-
-let lwt_parse_uint64 input =
-  lwt_really_read input 8 >>= fun s ->
-    let r1 = (((int_of_char s.[4]) lsl 24) lor ((int_of_char s.[5]) lsl 16)
-      lor ((int_of_char s.[6]) lsl 8) lor (int_of_char s.[7])) in
-    let r2 = (((int_of_char s.[0]) lsl 24) lor ((int_of_char s.[1]) lsl 16)
-      lor ((int_of_char s.[2]) lsl 8) lor (int_of_char s.[3])) in
-    let r = Int64.logor (Int64.shift_left (Int64.of_int r2) 32) (Int64.of_int r1) in
-    return r
 
 let dump_uint64 buf v =
   let ff = Int64.of_int 0xff in
@@ -251,15 +211,6 @@ let parse_uint64le input =
     Int64.logor (Int64.shift_left (Int64.of_int res2) 32) (Int64.of_int res1)
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
-let lwt_parse_uint64le input =
-  lwt_really_read input 8 >>= fun s ->
-    let r1 = (((int_of_char s.[3]) lsl 24) lor ((int_of_char s.[2]) lsl 16)
-      lor ((int_of_char s.[1]) lsl 8) lor (int_of_char s.[0])) in
-    let r2 = (((int_of_char s.[7]) lsl 24) lor ((int_of_char s.[6]) lsl 16)
-      lor ((int_of_char s.[5]) lsl 8) lor (int_of_char s.[4])) in
-    let r = Int64.logor (Int64.shift_left (Int64.of_int r2) 32) (Int64.of_int r1) in
-    return r
-
 let dump_uint64le buf v =
   let ff = Int64.of_int 0xff in
   let aux offset =
@@ -286,7 +237,6 @@ let parse_string n input =
     input.cur_offset <- input.cur_offset + n;
     res
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
-let lwt_parse_string n input = lwt_really_read input n
 let dump_string buf s = POutput.add_string buf s
 let value_of_string s = VString (s, false)
 
@@ -298,7 +248,6 @@ let peek_string n input =
 
 type binstring = string
 let parse_binstring = parse_string
-let lwt_parse_binstring = lwt_parse_string
 let dump_binstring = dump_string
 let value_of_binstring s = VString (s, true)
 
@@ -308,17 +257,12 @@ let parse_rem_string input =
   let res = String.sub input.str (input.cur_base + input.cur_offset) (input.cur_length - input.cur_offset) in
   input.cur_offset <- input.cur_length;
   res
-let lwt_parse_rem_string input =
-  if input.lwt_rewindable
-  then lwt_really_read input (input.lwt_length - input.lwt_offset)
-  else fail (ParsingException (NotImplemented "lwt_parse_rem_string", _h_of_li input))
 let dump_rem_string = dump_string
 let value_of_rem_string = value_of_string
 
 
 type rem_binstring = string
 let parse_rem_binstring = parse_rem_string
-let lwt_parse_rem_binstring = lwt_parse_rem_string
 let dump_rem_binstring = dump_string
 let value_of_rem_binstring = value_of_binstring
 
@@ -327,9 +271,6 @@ type varlen_string = string
 let parse_varlen_string len_fun input =
   let n = len_fun input in
   parse_string n input
-let lwt_parse_varlen_string len_fun input =
-  len_fun input >>= fun n ->
-  lwt_parse_string n input
 let dump_varlen_string len_fun buf s =
   let n = String.length s in
   len_fun buf n;
@@ -339,7 +280,6 @@ let value_of_varlen_string = value_of_string
 
 type varlen_binstring = string
 let parse_varlen_binstring = parse_varlen_string
-let lwt_parse_varlen_binstring = lwt_parse_varlen_string
 let dump_varlen_binstring = dump_varlen_string
 let value_of_varlen_binstring = value_of_binstring
 
@@ -354,18 +294,8 @@ let drop_bytes n input =
   then input.cur_offset <- input.cur_offset + n
   else raise (ParsingException (OutOfBounds, _h_of_si input))
 
-let lwt_drop_bytes n input =
-  lwt_really_read input n >>= fun _ -> return ()
-
 let drop_rem_bytes input =
   input.cur_offset <- input.cur_length
-
-let lwt_drop_rem_bytes input =
-  if input.lwt_rewindable then begin
-    lwt_really_read input (input.lwt_length - input.lwt_offset) >>= fun _ ->
-    return ()
-  end else fail (ParsingException (NotImplemented "lwt_drop_rem_bytes", _h_of_li input))
-
 
 
 
@@ -378,14 +308,6 @@ let parse_list n _name parse_fun input =
     | 0 -> List.rev accu
     | i ->
       let x = parse_fun input in
-      aux (x::accu) (i-1)
-  in aux [] n
-
-let lwt_parse_list n _name lwt_parse_fun input =
-  let rec aux accu = function
-    | 0 -> return (List.rev accu)
-    | i ->
-      lwt_parse_fun input >>= fun x ->
       aux (x::accu) (i-1)
   in aux [] n
 
@@ -414,29 +336,6 @@ let parse_rem_list _name parse_fun input =
     end
   in aux []
 
-let lwt_parse_rem_list _name lwt_parse_fun input =
-  let rec aux accu =
-    if lwt_eos input
-    then return (List.rev accu)
-    else begin
-      let saved_offset = input.lwt_offset in
-      let finalize_ok x = aux (x::accu)
-      and finalize_nok = function
-	| ParsingStop ->
-	  if input.lwt_rewindable then begin
-	    Lwt_io.set_position input.lwt_ch (Int64.of_int saved_offset) >>= fun () ->
-	    input.lwt_offset <- saved_offset;
-	    return (List.rev accu)
-	  end else return (List.rev accu)
-	| (ParsingException _) as e ->
-	    if input.lwt_offset = saved_offset
-	    then return (List.rev accu)
-	    else fail e
-	| e -> fail e
-      in try_bind (fun () -> lwt_parse_fun input) finalize_ok finalize_nok
-    end
-  in aux []
-
 let dump_rem_list = dump_list
 
 let value_of_rem_list = value_of_list
@@ -450,13 +349,6 @@ let parse_varlen_list len_fun name parse_fun input =
   let res = parse_rem_list name parse_fun new_input in
   get_out input new_input;
   res
-
-let lwt_parse_varlen_list len_fun name parse_fun input =
-  len_fun input >>= fun n ->
-  lwt_get_in input name n >>= fun str_input ->
-  wrap3 parse_rem_list name parse_fun str_input >>= fun res ->
-  lwt_get_out input str_input >>= fun () ->
-  return res
 
 let dump_varlen_list len_fun dump_fun buf l =
   let tmp_buf = POutput.create () in
@@ -481,12 +373,6 @@ let parse_container n name parse_fun input =
   get_out input new_input;
   res
 
-let lwt_parse_container n name parse_fun input =
-  lwt_get_in input name n >>= fun str_input ->
-  wrap1 parse_fun str_input >>= fun res ->
-  lwt_get_out input str_input >>= fun () ->
-  return res
-
 let dump_container dump_fun buf content = dump_fun buf content
 
 let value_of_container value_of_fun x = value_of_fun x
@@ -497,10 +383,6 @@ type 'a varlen_container = 'a
 let parse_varlen_container len_fun name parse_fun input =
   let n = len_fun input in
   parse_container n name parse_fun input
-
-let lwt_parse_varlen_container len_fun name parse_fun input =
-  len_fun input >>= fun n ->
-  lwt_parse_container n name parse_fun input
 
 let dump_varlen_container len_fun dump_fun buf content =
   let tmp_buf = POutput.create () in
@@ -518,11 +400,6 @@ let value_of_varlen_container = value_of_container
 
 let parse_array n _name parse_fun input =
   Array.init n (fun _ -> parse_fun input)
-
-(* TODO: Is it possible to do better? *)
-let lwt_parse_array n name lwt_parse_fun input =
-  lwt_parse_list n name lwt_parse_fun input >>= fun l ->
-  return (Array.of_list l)
 
 let dump_array dump_fun buf a =
   Array.iter (dump_fun buf) a

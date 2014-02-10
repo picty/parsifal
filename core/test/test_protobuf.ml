@@ -1,4 +1,3 @@
-open Lwt
 open Parsifal
 open Protobuf
 open Getopt
@@ -45,24 +44,24 @@ let test_one_buf b =
   print_endline (print_rec_protobuf (parse_rec_protobuf (input_of_string "Buf" b)))
 
 
-
-
 let handle_one_file input =
-  lwt_parse_rec_protobuf input >>= function protobuf ->
-    print_endline (print_rec_protobuf protobuf);
-    return ()
+  let protobuf = parse_rec_protobuf input in
+  print_endline (print_rec_protobuf protobuf)
 
 let _ =
   try
     let args = parse_args ~progname:"test_protobuf" options Sys.argv in
-    match !action with
-    | Examples -> List.iter test_one_buf examples
-    | Print ->
-      let open_files = function
-        | [] -> input_of_channel ~enrich:(!enrich_style) ~verbose:(!verbose) "(stdin)" Lwt_io.stdin >>= fun x -> return [x]
-        | _ -> Lwt_list.map_s input_of_filename args
+    match !action, args with
+    | Examples, _ -> List.iter test_one_buf examples
+    | Print, [] ->
+      let i = string_input_of_stdin ~enrich:(!enrich_style) ~verbose:(!verbose) () in
+      handle_one_file i
+    | Print, l ->
+      let aux fn =
+	let i = string_input_of_filename ~enrich:(!enrich_style) ~verbose:(!verbose) fn in
+	handle_one_file i
       in
-      Lwt_unix.run (open_files args >>= Lwt_list.iter_s handle_one_file);
+      List.iter aux l
   with
     | End_of_file -> ()
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h)

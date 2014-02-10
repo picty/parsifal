@@ -1,7 +1,6 @@
 open Parsifal
 open BasePTypes
 open PTypes
-open Lwt
 
 let base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
@@ -39,10 +38,6 @@ let raiseB64 s i =
   let h = _h_of_si i in
   raise (ParsingException (InvalidBase64String s, h))
 
-let lwt_raiseB64 s i =
-  let h = _h_of_li i in
-  fail (ParsingException (InvalidBase64String s, h))
-
 
 
 (* Useful real base64 funs *)
@@ -79,21 +74,6 @@ let rec debaser expect_dash b b64chunk input =
     end
   end
 
-(* TODO: lwt_debaser does not handle eos correctly *)
-let rec lwt_debaser expect_dash b b64chunk lwt_input =
-  lwt_drop_while (fun c -> reverse_base64_chars.(c) = -2) lwt_input >>= fun c ->
-  let v = reverse_base64_chars.(c) in
-  if v >= -1 
-  then begin
-    match decode_rev_chunk b (v::b64chunk) with
-    | None -> return false
-    | Some new_chunk -> lwt_debaser expect_dash b new_chunk lwt_input
-  end else begin
-    if expect_dash && (v = -3) && (b64chunk = [])
-    then return true
-    else lwt_raiseB64 "Invalid character" lwt_input
-  end
-
 
 
 let string_of_base64_title title input =
@@ -121,35 +101,6 @@ let string_of_base64_title title input =
     else POutput.contents res
   | _, false -> raiseB64 "inconsistent titles" input
 
-
-let lwt_string_of_base64_title title lwt_input =
-  let lwt_read_title dash_read header lwt_input =
-    let handle_first_dash =
-      if not dash_read then begin
-	lwt_drop_while (fun c -> reverse_base64_chars.(c) = -2) lwt_input >>= fun c ->
-	if char_of_int c <> '-'
-	then lwt_raiseB64 "Dash expected" lwt_input
-	else return ()
-      end else return ()
-    in handle_first_dash >>= fun () ->
-    lwt_parse_magic (if header then  "----BEGIN " else "----END ") lwt_input >>= fun _ ->
-    lwt_read_while (fun c -> c <> (int_of_char '-')) lwt_input >>= fun title ->
-    lwt_parse_magic "----" lwt_input >>= fun _ ->
-    return title
-  in
-
-  let res = POutput.create () in
-  lwt_read_title false true lwt_input >>= fun t1 ->
-  lwt_debaser true res [] lwt_input >>= fun dash_read ->
-  lwt_read_title dash_read false lwt_input >>= fun t2 ->
-  match title, t1 = t2 with
-  | None, true ->
-    return (POutput.contents res)
-  | Some t, true ->
-    if not (List.mem t1 t)
-    then lwt_raiseB64 (List.hd t ^ " expected, " ^ t1 ^ " found") lwt_input
-    else return (POutput.contents res)
-  | _, false -> lwt_raiseB64 "inconsistent titles" lwt_input
 
 
 
@@ -230,21 +181,6 @@ let parse_base64_container header_expected name parse_fun input =
   let res = parse_fun new_input in
   check_empty_input true new_input;
   res
-
-let lwt_parse_base64_container title name parse_fun lwt_input =
-  begin
-    match title with
-    | NoHeader ->
-      let res = POutput.create () in
-      lwt_debaser false res [] lwt_input >>= fun _ ->
-      return (POutput.contents res)
-    | AnyHeader -> lwt_string_of_base64_title None lwt_input
-    | HeaderInList l -> lwt_string_of_base64_title (Some l) lwt_input
-  end >>= fun content ->
-  let new_input = lwt_get_in_container lwt_input name content in
-  let res = parse_fun new_input in
-  check_empty_input true new_input;
-  return res
 
 let dump_base64_container title dump_fun buf o =
   let tmp_buf = POutput.create () in

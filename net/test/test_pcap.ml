@@ -1,4 +1,5 @@
 open Lwt
+open LwtUtil
 open Parsifal
 open PTypes
 open Pcap
@@ -77,9 +78,8 @@ let show_one_packet packet = match packet.data with
 let show_packets pcap =
   List.iter show_one_packet pcap.packets
 
-
 let handle_one_file input =
-  lwt_parse_pcap_file input >>= fun pcap ->
+  lwt_parse_wrapper parse_pcap_file input >>= fun pcap ->
   if !show_transport_only
   then show_packets pcap
   else print_string (print_value (value_of_pcap_file pcap));

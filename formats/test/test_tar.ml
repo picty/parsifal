@@ -1,4 +1,5 @@
 open Lwt
+open LwtUtil
 open Parsifal
 open Tar
 open Getopt
@@ -67,7 +68,7 @@ let print_entry entry =
 
 
 let check_archive filename =
-  input_of_filename filename >>= lwt_parse_tar_file >>= fun tar_file ->
+  input_of_filename filename >>= lwt_parse_wrapper parse_tar_file >>= fun tar_file ->
   if !verbose
   then List.iter print_entry tar_file;
   return ()

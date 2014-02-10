@@ -1,7 +1,5 @@
 open Random
 
-open Lwt
-open Lwt_io
 open OUnit
 
 open Parsifal
@@ -21,17 +19,6 @@ let random_string len () =
 
 let ntimes n f () = for i = 1 to n do f (); done
 
-
-let lwt_wrap parse_fun s =
-  let inp, outp = pipe () in
-  let t =
-    write outp s >>= fun () ->
-    input_of_channel "" inp >>=
-    parse_fun >>= fun v ->
-    close inp >>= fun () ->
-    close outp >>= fun () ->
-    return v
-  in Lwt_unix.run t
 
 let str_wrap parse_fun s = exact_parse parse_fun (input_of_string "" s)
 
@@ -59,10 +46,8 @@ let mk_one_b64_test header_type len =
   in
   let rnd_str = random_string len in
   let parse = parse_base64_container header_type "base64_container" parse_rem_string
-  (* and lwt_parse = lwt_parse_base64_container header_type parse_rem_string *)
   and dump = dump_base64_container dump_hdr dump_string in
   [(prefix ^ "_idem_pod_" ^ (string_of_int len)) >:: ntimes !n (test_idem_pod (str_wrap parse) dump rnd_str)]
-(*   (prefix ^ "_idem_lpod_" ^ (string_of_int len)) >:: ntimes !n (test_idem_pod (lwt_wrap lwt_parse) dump rnd_str)] *)
 
 
 let base64_tests =

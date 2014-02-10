@@ -1,4 +1,3 @@
-open Lwt
 open Parsifal
 open BasePTypes
 open PTypes
@@ -105,7 +104,7 @@ union rom_content [enrich; exhaustive] (Unparsed_ROMContent)  =
   | _ -> LegacyRom of rom_file_legacy
 
   (*
-struct rom_image [with_lwt] = {
+struct rom_image = {
   parse_checkpoint position_before_rom : save_offset;
 
   signature : magic["\x55\xAA"];
@@ -135,15 +134,6 @@ let parse_rom_image input =
   (*print_endline (print_value (value_of_signature_type signature_type));*)
   parse_seek_offset pos input;
   parse_rom_content signature_type input
-
-(*
-let lwt_parse_rom_image input =
-  lwt_parse_save_offset input >>= fun pos ->
-  lwt_drop_bytes 4 input >>= fun () ->
-  lwt_parse_signature_type input >>= fun signature_type ->
-  lwt_parse_seek_offset pos input >>= fun () ->
-  lwt_parse_rom_content signature_type input
-*)
 
 (*
 let compute_next_rom_start rom =

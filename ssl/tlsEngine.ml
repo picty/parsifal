@@ -149,6 +149,9 @@ let catch_exceptions retry e =
   | End_of_file -> return EndOfFile
   | e -> fail e
 
+
+let lwt_parse_tls_record ctx i = LwtUtil.lwt_parse_wrapper (parse_tls_record ctx) i
+
 let handle_answer handle_hs handle_alert s =
   let ctx = empty_context () in
 

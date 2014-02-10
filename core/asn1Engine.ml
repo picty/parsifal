@@ -1,4 +1,3 @@
-open Lwt
 open Parsifal
 
 enum asn1_class (2, Exception) =
@@ -209,79 +208,6 @@ let produce_der_object hdr dump_content buf v =
   POutput.add_output buf tmp_buf
 
 
-let lwt_extract_der_longtype input =
-  let rec aux accu =
-    lwt_parse_byte input >>= fun byte ->
-    let new_accu = (accu lsl 7) lor (byte land 0x7f) in
-    if (byte land 0x80) = 0
-    then return new_accu
-    else aux new_accu
-  in aux 0 >>= fun x -> return (T_Unknown x)
-
-let lwt_extract_der_header input =
-  lwt_parse_byte input >>= fun hdr ->
-  let c = extract_der_class hdr in
-  let isC = extract_der_isConstructed hdr in
-  let hdr_t = hdr land 31 in
-  if (hdr_t < 0x1f)
-  then begin
-    if c = C_Universal
-    then return (c, isC, asn1_tag_of_int hdr_t)
-    else return (c, isC, T_Unknown hdr_t)
-  end else begin
-    lwt_extract_der_longtype input >>= fun t ->
-    return (c, isC, t)
-  end
-
-let lwt_extract_der_length input =
-  lwt_parse_byte input >>= fun first ->
-  if first land 0x80 = 0
-  then return first
-  else begin
-    let rec aux accu = function
-      | 0 -> return accu
-      | i ->
-	lwt_parse_byte input >>= fun x ->
-	aux ((accu lsl 8) lor x) (i-1)
-    in aux 0 (first land 0x7f)
-  end
-
-let _lwt_extract_der_object header_constraint name parse_content input =
-  let offset = input.lwt_offset in
-  lwt_extract_der_header input >>= fun (c, isC, t) ->
-  let fake_input = {
-    str = "";
-    cur_name = name;
-    cur_base = 0;
-    cur_offset = offset;
-    cur_bitstate = NoBitState;
-    cur_length = -1;
-    enrich = input.lwt_enrich;
-    history = [];
-    err_fun = input.lwt_err_fun
-  } in
-  check_header header_constraint fake_input (c, isC, t);
-  let hlen = input.lwt_offset - offset in
-  lwt_extract_der_length input >>= fun len ->
-  lwt_get_in input name len >>= fun new_input ->
-  let add_str buf s = POutput.add_string buf s in
-  let der_info = {
-    a_offset = offset;
-    a_hlen = hlen;
-    a_length = len;
-    a_class = c;
-    a_isConstructed = isC;
-    a_tag = t;
-  }
-  and raw_string () = exact_dump (produce_der_object (c, isC, t) add_str) new_input.str in
-  let res = parse_content new_input in
-  lwt_get_out input new_input >>= fun () ->
-  return (res, der_info, raw_string)
-
-let lwt_extract_der_object header_constraint name parse_content input =
-  _lwt_extract_der_object header_constraint name parse_content input >>= fun (res, _, _) ->
-  return res
-
 
 (* Sequence/Set of *)
 
@@ -294,15 +220,6 @@ let extract_der_seqof header_constraint (* min max *) name parse_content input =
       let next = parse_content input in
       parse_aux (next::accu) input
   in extract_der_object header_constraint name (parse_aux []) input
-
-let lwt_extract_der_seqof header_constraint (* min max *) name lwt_parse_content input =
-  let rec lwt_parse_aux accu input =
-    if eos input
-    then return (List.rev accu)
-    else
-      lwt_parse_content input >>= fun next ->
-      lwt_parse_aux (next::accu) input
-  in lwt_extract_der_object header_constraint name (lwt_parse_aux []) input
 
 let produce_der_seqof hdr dump_content buf l =
   let dump_der_list_aux b l = List.iter (dump_content b) l in

@@ -1,4 +1,3 @@
-open Lwt
 open Parsifal
 open Asn1Engine
 open Asn1PTypes
@@ -78,23 +77,8 @@ let print_line offset depth hlen len isC c t =
     (name_of_ct (c, isC, t))
 
 
-let rec lwt_parse input =
-  if lwt_eos input
-  then return ()
-  else begin
-    let offset = input.lwt_offset in
-    try_bind (fun () -> lwt_extract_der_header input)
-      (fun h -> return h) (fun _ -> fail End_of_file) >>= fun (c, isC, t) ->
-    lwt_extract_der_length input >>= fun len ->
-    let hlen = input.lwt_offset - offset in
-    print_line offset 0 hlen len isC c t;
-    lwt_get_in input (print_header (c, isC, t)) len >>= fun new_input ->
-    parse_content (offset + hlen) 0 (c, isC, t) new_input;
-    lwt_get_out input new_input >>= fun () ->
-    lwt_parse input
-  end
-
-and parse lwt_base depth input =
+(* TODO: Rethink the lwt flavour? *)
+let rec parse lwt_base depth input =
   if not (eos input) then begin
     let offset = lwt_base + input.cur_base + input.cur_offset
     and saved_offset = input.cur_offset in
@@ -146,35 +130,26 @@ and parse_content lwt_base depth (c, isC, t) input =
   end
 
 
-let catch_exceptions e =
-  if !keep_going
-  then begin
-    prerr_endline (Printexc.to_string e);
-    return ()
-  end else fail e
-
-let rec iter_on_names parse_fun = function
-  | [] -> return ()
-  | f::r ->
-    let t = input_of_filename f >>= parse_fun in
-    catch (fun () -> t) catch_exceptions >>= fun () ->
-    iter_on_names parse_fun r
-
-
-
 let _ =
   let args = parse_args ~progname:"asn1parse" options Sys.argv in
   let parse_fun =
     match !input_style with
-    | Hex -> lwt_parse_hex_container "hex_container" (parse 0 0)
-    | PEM -> lwt_parse_base64_container !base64_header "base64_container" (parse 0 0)
-    | Raw -> lwt_parse
+    | Hex -> parse_hex_container "hex_container" (parse 0 0)
+    | PEM -> parse_base64_container !base64_header "base64_container" (parse 0 0)
+    | Raw -> parse 0 0
   in
-  let t = match args with
-    | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= parse_fun
-    | _  -> iter_on_names parse_fun args
-  in
-  try Lwt_unix.run t;
+  try
+    match args with
+    | [] -> parse_fun (string_input_of_stdin ())
+    | _  ->
+      let aux fn =
+	try parse_fun (string_input_of_filename fn)
+	with e ->
+	  if !keep_going
+	  then prerr_endline (Printexc.to_string e)
+	  else raise e
+      in
+      List.iter aux args
   with
     | End_of_file -> ()
     | ParsingException (e, h) ->

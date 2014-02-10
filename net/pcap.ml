@@ -86,7 +86,7 @@ struct pcap_version [top] = {
 }
 
 
-enum link_type [with_lwt; little_endian] (32, UnknownVal LinkType_Unknown) =
+enum link_type [little_endian] (32, UnknownVal LinkType_Unknown) =
   | 1 -> LinkTypeEthernet
   | 101 -> LinkTypeRaw
   | 228 -> LinkTypeIPV4

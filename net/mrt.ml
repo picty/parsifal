@@ -5,7 +5,7 @@ open PTypes
 
 (* Generic useful types and functions *)
 
-enum address_family_identifier [with_lwt] (16, Exception) =
+enum address_family_identifier (16, Exception) =
   | 1 -> AFI_IPv4
   | 2 -> AFI_IPv6
 
@@ -205,7 +205,7 @@ struct bgp_message [param ipa_type; param as_size] = {
 
 (* MRT Types *)
 
-enum mrt_type [with_lwt] (16, UnknownVal MT_Unknown) =
+enum mrt_type (16, UnknownVal MT_Unknown) =
   | 0 -> MT_NULL, "NULL"
   | 1 -> MT_START, "START"
   | 2 -> MT_DIE, "DIE"
@@ -254,7 +254,7 @@ struct table_dump [param ipa_type] = {
 
 (* MT_TABLE_DUMP_V2 *)
 
-enum table_dump_v2_subtype [with_lwt] (16, UnknownVal UnknownTableDumpV2SubType) =
+enum table_dump_v2_subtype (16, UnknownVal UnknownTableDumpV2SubType) =
   | 1 -> PEER_INDEX_TABLE
   | 2 -> RIB_IPV4_UNICAST
   | 3 -> RIB_IPV4_MULTICAST
@@ -317,7 +317,7 @@ struct rib_generic = {
 
 (* MT_BGP4MP *)
 
-enum bgp4mp_subtype [with_lwt] (16, UnknownVal UnknownBGP4MPSubtype) =
+enum bgp4mp_subtype (16, UnknownVal UnknownBGP4MPSubtype) =
   | 0 -> BGP4MP_STATE_CHANGE
   | 1 -> BGP4MP_MESSAGE
   | 4 -> BGP4MP_MESSAGE_AS4
@@ -336,7 +336,7 @@ struct bgp4mp_message [param is_as4] = {
 }
 
 
-union mrt_subtype [enrich; with_lwt] (UnparsedSubType of uint16) =
+union mrt_subtype [enrich] (UnparsedSubType of uint16) =
   | MT_TABLE_DUMP -> MST_TABLE_DUMP of address_family_identifier
   | MT_TABLE_DUMP_V2 -> MST_TABLE_DUMP_V2 of table_dump_v2_subtype
   | MT_BGP4MP -> MST_BGP4MP of bgp4mp_subtype

@@ -1,5 +1,6 @@
 open Lwt
 open Lwt_io
+open LwtUtil
 open Unix
 open Getopt
 
@@ -169,7 +170,7 @@ let do_nothing _ = NothingSoFar
 
 
 let _send_and_receive hs_fun alert_fun =
-  LwtUtil.client_socket ~timeout:(Some !timeout) !host !port >>= fun s ->
+  client_socket ~timeout:(Some !timeout) !host !port >>= fun s ->
   if !verbose then Printf.fprintf Pervasives.stderr "Connected to %s:%d\n" !host !port;
   let ch = mk_client_hello None in
   if !verbose then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));

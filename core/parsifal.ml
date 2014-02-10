@@ -1,5 +1,3 @@
-open Lwt
-
 (***********)
 (* Options *)
 (***********)
@@ -138,7 +136,7 @@ type value =
 (* Parsing structures *)
 (**********************)
 
-(* String and Lwt input definitions *)
+(* String input definitions *)
 
 type history = (string * int * int option) list
 
@@ -170,17 +168,6 @@ type string_input = {
   enrich : enrich_style;
   history : history;
   err_fun : string -> unit
-}
-
-type lwt_input = {
-  lwt_ch : Lwt_io.input_channel;
-  lwt_name : string;
-  mutable lwt_offset : int;
-  mutable lwt_bitstate : bitstate;
-  lwt_rewindable : bool;
-  mutable lwt_length : int;
-  lwt_enrich : enrich_style;
-  lwt_err_fun : string -> unit
 }
 
 let print_history ?prefix:(prefix=" in ") history =
@@ -231,25 +218,16 @@ exception ParsingStop
 let value_not_in_enum s x h = raise (ParsingException (ValueNotInEnum (String.copy s, x), h))
 
 let not_implemented s = raise (ParsingException (NotImplemented (String.copy s), []))
-let lwt_not_implemented s = fail (ParsingException (NotImplemented (String.copy s), []))
 
 let string_of_exception e h = (print_parsing_exception e) ^ (print_history h)
 
 let _h_of_si i = (i.cur_name, i.cur_offset, Some i.cur_length)::i.history
-let _h_of_li i = [i.lwt_name, i.lwt_offset, None]
 
 let emit_parsing_exception fatal e i =
   let h = _h_of_si i in
   if fatal
   then raise (ParsingException (e, h))
   else i.err_fun (string_of_exception e h)
-
-let lwt_emit_parsing_exception fatal e i =
-  let h = _h_of_li i in
-  if fatal
-  then fail (ParsingException (e, h))
-  else return (i.lwt_err_fun (string_of_exception e h))
-
 
 
 (* string_input manipulation *)
@@ -355,130 +333,6 @@ let exact_parse parse_fun input =
 
 
 
-(* lwt_input manipulation *)
-
-let channel_length ch =
-  let handle_unix_error = function
-    | Unix.Unix_error (Unix.ESPIPE, "lseek", "") -> return None
-    | e -> fail e
-  and get_length () = Lwt_io.length ch
-  and is_not_null x = return (Some (Int64.to_int x))  (* TODO: Warning, integer overflow is possible! *)
-  in try_bind get_length is_not_null handle_unix_error
-
-let input_of_channel ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name ch =
-  channel_length ch >>= fun l ->
-  let rewindable, length = match l with
-    | None -> false, 0
-    | Some len -> true, len
-  in
-  return { lwt_ch = ch; lwt_name = name;
-	   lwt_offset = Int64.to_int (Lwt_io.position ch);
-	   (* TODO: Possible integer overflow in 32-bit *)
-	   lwt_bitstate = NoBitState;
-	   lwt_rewindable = rewindable;
-	   lwt_length = length;
-	   lwt_enrich = enrich;
-           lwt_err_fun = if verbose then prerr_endline else ignore }
-
-let input_of_fd ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name fd =
-  let ch = Lwt_io.of_fd Lwt_io.input fd in
-  input_of_channel ~verbose:verbose ~enrich:enrich name ch
-
-let input_of_filename ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) filename =
-  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
-  input_of_fd ~verbose:verbose ~enrich:enrich filename fd
-
-
-let lwt_really_read input len =
-  let buf = String.make len ' ' in
-  let _really_read () = Lwt_io.read_into_exactly input.lwt_ch buf 0 len
-  and finalize_ok () =
-    input.lwt_offset <- input.lwt_offset + len;
-    return buf
-  and finalize_nok = function
-    | End_of_file -> fail (ParsingException (OutOfBounds, _h_of_li input))
-    | e -> fail e
-  in try_bind _really_read finalize_ok finalize_nok
-
-let lwt_really_read_no_update input len =
-  let buf = String.make len ' ' in
-  let _really_read () = Lwt_io.read_into_exactly input.lwt_ch buf 0 len
-  and finalize_ok () = return buf
-  and finalize_nok = function
-    | End_of_file -> fail (ParsingException (OutOfBounds, _h_of_li input))
-    | e -> fail e
-  in try_bind _really_read finalize_ok finalize_nok
-
-let lwt_get_in input name len =
-  let new_history = [input.lwt_name, input.lwt_offset, None] in
-  if len < 0 then raise (ParsingException (OutOfBounds, new_history)) ;
-  lwt_really_read_no_update input len >>= fun s ->
-  return {
-    str = s;
-    cur_name = name;
-    cur_base = 0;
-    cur_offset = 0;
-    cur_bitstate = NoBitState;
-    cur_length = len;
-    enrich = update_enrich input.lwt_enrich;
-    history = new_history;
-    err_fun = input.lwt_err_fun
-  }
-
-let lwt_get_in_container input name s =
-  let new_history = _h_of_li input in
-  { str = s;
-    cur_name = name;
-    cur_base = 0;
-    cur_offset = 0;
-    cur_bitstate = NoBitState;
-    cur_length = String.length s;
-    enrich = update_enrich input.lwt_enrich;
-    history = new_history;
-    err_fun = input.lwt_err_fun
-  }
-
-let lwt_get_out old_input input =
-  if (input.cur_offset < input.cur_length) || (input.cur_bitstate <> NoBitState)
-  then fail (ParsingException (UnexpectedTrailingBytes, _h_of_si input))
-  else begin
-    old_input.lwt_offset <- old_input.lwt_offset + input.cur_length;
-    return ()
-  end
-
-let lwt_eos input =
-  input.lwt_rewindable && (input.lwt_offset >= input.lwt_length) && (input.lwt_bitstate = NoBitState)
-
-let lwt_check_empty_input fatal input =
-  if lwt_eos input
-  then return ()
-  else lwt_emit_parsing_exception fatal UnexpectedTrailingBytes input
-
-
-let lwt_try_parse lwt_parse_fun input =
-  if lwt_eos input then return None else begin
-    let saved_offset = input.lwt_offset
-    and saved_bitstate = input.lwt_bitstate in
-    let finalize_ok x = return (Some x)
-    and finalize_nok = function
-      | ParsingException _ ->
-	input.lwt_offset <- saved_offset;
-	input.lwt_bitstate <- saved_bitstate;
-	if input.lwt_rewindable
-	then begin
-	  Lwt_io.set_position input.lwt_ch (Int64.of_int saved_offset) >>= fun () ->
-	  return None
-	end else fail (ParsingException (UnableToRewind, _h_of_li input))
-      | e -> fail e
-    in try_bind (fun () -> lwt_parse_fun input) finalize_ok finalize_nok
-  end
-
-let lwt_exact_parse lwt_parse_fun input =
-  lwt_parse_fun input >>= fun res ->
-  lwt_check_empty_input true input >>= fun () ->
-  return res
-
-
 (************************)
 (* Construction helpers *)
 (************************)
@@ -525,10 +379,6 @@ let parse_byte input =
     res
   end else raise (ParsingException (OutOfBounds, _h_of_si input))
 
-let lwt_parse_byte input =
-  lwt_really_read input 1 >>= fun s ->
-  return (int_of_char (s.[0]))
-
 
 let rec drop_while predicate input =
   let c = parse_byte input in
@@ -547,25 +397,6 @@ let read_while predicate input =
   let b = Buffer.create 32 in
   _read_while b predicate input;
   Buffer.contents b
-
-
-let rec lwt_drop_while predicate input =
-  lwt_parse_byte input >>= fun c ->
-  if predicate c
-  then lwt_drop_while predicate input
-  else return c
-
-let rec _lwt_read_while b predicate input =
-  lwt_parse_byte input >>= fun c ->
-  if predicate c then begin
-    Buffer.add_char b (char_of_int c);
-    _lwt_read_while b predicate input
-  end else return ()
-
-let lwt_read_while predicate input =
-  let b = Buffer.create 32 in
-  _lwt_read_while b predicate input >>= fun () ->
-  return (Buffer.contents b)
 
 
 let parse_both_equal fatal err a b input =
@@ -604,34 +435,6 @@ let parse_bits nbits input =
   input.cur_bitstate <- (if rem_bits = 0 then NoBitState else LeftToRight (b, rem_bits));
   res
 
-let lwt_parse_bits nbits input =
-  let rec lwt_parse_bits_aux nbits cur_byte remaining_bits input res =
-    match nbits, remaining_bits with
-    | 0, _ -> return ((cur_byte, remaining_bits), res)
-    | _, 0 ->
-      lwt_parse_byte input >>= fun b ->
-      lwt_parse_bits_aux nbits b 8 input res
-    | _, _ ->
-      if nbits <= remaining_bits
-      then begin
-	let new_rem = remaining_bits - nbits in
-	let new_state = cur_byte, new_rem
-	and new_res = (res lsl nbits) lor ((cur_byte lsr new_rem) land _bits_masks.(nbits))
-	in return (new_state, new_res)
-      end else begin
-	let new_res = (res lsl remaining_bits) lor (cur_byte land _bits_masks.(remaining_bits)) in
-	lwt_parse_byte input >>= fun b ->
-	lwt_parse_bits_aux (nbits - remaining_bits) b 8 input new_res
-      end
-  in
-  let cur_byte, remaining_bits = match input.lwt_bitstate with
-    | NoBitState -> 0, 0
-    | LeftToRight (b, nbits) -> b, nbits
-    | RightToLeft _ -> raise (ParsingException (CustomException "Inconsistant bit state (RtoL or LtoR ?)", _h_of_li input))
-  in
-  lwt_parse_bits_aux nbits cur_byte remaining_bits input 0 >>= fun ((b, rem_bits), res) ->
-  input.lwt_bitstate <- (if rem_bits = 0 then NoBitState else LeftToRight (b, rem_bits));
-  return res
 
 (* RightToLeft reading *)
 let parse_rtol_bit input =
@@ -932,15 +735,3 @@ let string_input_of_stdin ?verbose:(verbose=false) ?enrich:(enrich=DefaultEnrich
      with Sys_error _ -> ""
   in
   input_of_string ~verbose:(verbose) ~enrich:(enrich) "(stdin)" (read_more ())
-
-let wrap f () =
-  try return (f ())
-  with e -> fail e
-
-let wrap1 f x =
-  try return (f x)
-  with e -> fail e
-
-let wrap2 f x y =
-  try return (f x y)
-  with e -> fail e

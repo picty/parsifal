@@ -27,5 +27,5 @@ BUILD_DIR = build
 include ../../Makefile.ocaml
 
 
-check:	test_parsifal
+check:	all
 	./test_parsifal

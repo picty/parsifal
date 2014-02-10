@@ -2,7 +2,7 @@ open Parsifal
 open BasePTypes
 open Asn1PTypes
 
-enum tls_version [with_lwt] (16, UnknownVal V_Unknown) =
+enum tls_version (16, UnknownVal V_Unknown) =
   | 0x0002 -> V_SSLv2, "SSLv2"
   | 0x0300 -> V_SSLv3, "SSLv3"
   | 0x0301 -> V_TLSv1, "TLSv1.0"
@@ -35,7 +35,7 @@ struct rsa_public_key_content = {
   p_publicExponent : Asn1PTypes.der_integer
 }
 
-asn1_alias rsa_public_key [with_exact]
+asn1_alias rsa_public_key [top]
 
 asn1_union der_time [top; enrich; exhaustive] (UnparsedTime) =
   | (Asn1Engine.C_Universal, false, Asn1Engine.T_UTCTime) -> UTCTime of Asn1PTypes.der_utc_time_content

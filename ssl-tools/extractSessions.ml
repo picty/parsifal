@@ -1,4 +1,5 @@
 open Lwt
+open LwtUtil
 open Parsifal
 open PTypes
 open Pcap
@@ -147,7 +148,7 @@ let handle_one_packet packet = match packet.data with
   | _ -> ()
 
 let handle_one_file input =
-  lwt_parse_pcap_file input >>= fun pcap ->
+  lwt_parse_wrapper parse_pcap_file input >>= fun pcap ->
   List.iter handle_one_packet pcap.packets;
   Hashtbl.iter (if !print_all then print_all_connection else print_connection) connections;
   return ()

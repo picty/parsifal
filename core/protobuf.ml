@@ -1,4 +1,3 @@
-open Lwt
 open Parsifal
 open BasePTypes
 
@@ -39,16 +38,6 @@ let parse_varint input =
   let bytes = parse_bytelist [] input in
   varint_of_bytelist bytes (_h_of_si input)
 
-let lwt_parse_varint lwt_input =
-  let rec lwt_parse_bytelist accu lwt_input =
-    lwt_parse_byte lwt_input >>= fun b ->
-    if (b land 0x80) == 0
-    then return (b::accu)
-    else lwt_parse_bytelist ((b land 0x7f)::accu) lwt_input
-  in
-  lwt_parse_bytelist [] lwt_input >>= fun bytes ->
-  return (varint_of_bytelist bytes (_h_of_li lwt_input))
-
 let dump_varint (_buf : POutput.t) (_i : int) = not_implemented "dump_varint"
 
 let value_of_varint i = VSimpleInt i
@@ -69,10 +58,6 @@ type protobuf_key = wire_type * int
 let parse_protobuf_key input =
   let x = parse_varint input in
   (wire_type_of_int (x land 7), x lsr 3)
-
-let lwt_parse_protobuf_key lwt_input =
-  lwt_parse_varint lwt_input >>= fun x ->
-  return (wire_type_of_int (x land 7), x lsr 3)
 
 let dump_protobuf_key buf (wt, fn) =
   dump_varint buf ((fn lsl 3) lor (int_of_wire_type wt))
@@ -97,10 +82,6 @@ let parse_length_delimited_container name parse_fun input =
   let len = parse_varint input in
   parse_container len name parse_fun input
 
-let lwt_parse_length_delimited_container name parse_fun lwt_input =
-  lwt_parse_varint lwt_input >>= fun len ->
-  lwt_parse_container len name parse_fun lwt_input
-
 let dump_length_delimited_container dump_fun buf v =
   dump_varlen_container dump_varint dump_fun buf v
 
@@ -113,7 +94,7 @@ alias bothstring = binstring
 let string_of_bothstring s =
   Printf.sprintf "%s (%s)" (hexdump s) (quote_string s)
 
-union protobuf_value [enrich; exhaustive; with_lwt] (Unparsed_Protobuf) =
+union protobuf_value [enrich; exhaustive] (Unparsed_Protobuf) =
   | WT_Varint, _ -> Varint of varint
   | WT_Fixed64bit, _ -> Fixed64bit of binstring(8)
   | WT_LengthDelimited, _ -> LengthDelimited of (length_delimited_container of bothstring)
@@ -162,25 +143,6 @@ let rec parse_rec_protobuf input =
     | Unparsed_Protobuf _ ->
       raise (ParsingException (CustomException "parse_rec_protobuf on Unparsed_Protobuf", _h_of_si input))
   in (snd protobuf.key, v)
-
-let lwt_parse_rec_protobuf lwt_input =
-  lwt_parse_protobuf lwt_input >>= fun protobuf ->
-  try
-    let v = match protobuf.value with
-      | Varint i -> R_Varint i
-      | Fixed64bit s -> R_Fixed64bit s
-      | LengthDelimited s -> begin
-        let new_input = input_of_string ("Field number " ^ (string_of_int (snd protobuf.key))) s in
-        try R_List (parse_rem_list "Protobuf field" parse_rec_protobuf new_input)
-        with _ -> R_String s
-      end
-      | StartGroup -> R_StartGroup
-      | EndGroup -> R_EndGroup
-      | Fixed32bit i -> R_Fixed32bit i
-      | Unparsed_Protobuf _ ->
-        raise (ParsingException (CustomException "lwt_parse_rec_protobuf on Unparsed_Protobuf", _h_of_li lwt_input))
-    in return (snd protobuf.key, v)
-  with e -> fail e
 
 
 let rec print_rec_protobuf ?indent:(indent="") (num, value) =

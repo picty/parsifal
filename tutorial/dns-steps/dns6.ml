@@ -133,7 +133,7 @@ struct rr [param ctx] = {
 }
 
 
-struct dns_message [with_exact] = {
+struct dns_message [top] = {
   parse_checkpoint ctx : dns_context;
   id : uint16;
   unparsedStuff : uint16;

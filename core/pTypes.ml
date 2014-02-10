@@ -1,6 +1,5 @@
 open Parsifal
 open BasePTypes
-open Lwt
 
 
 (* IPv4 and IPv6 *)
@@ -8,7 +7,6 @@ open Lwt
 type ipv4 = string
 
 let parse_ipv4 = parse_string 4
-let lwt_parse_ipv4 = lwt_parse_string 4
 
 let dump_ipv4 buf ipv4 = POutput.add_string buf ipv4
 
@@ -28,7 +26,6 @@ let value_of_ipv4 s =
 type ipv6 = string
 
 let parse_ipv6 = parse_string 16
-let lwt_parse_ipv6 = lwt_parse_string 16
 
 let dump_ipv6 buf ipv6 = POutput.add_string buf ipv6
 
@@ -63,12 +60,6 @@ let parse_magic magic_expected input =
   if s = magic_expected then s
   else raise (ParsingException (CustomException ("invalid magic (\"" ^
 				  (hexdump s) ^ "\")"), _h_of_si input))
-
-let lwt_parse_magic magic_expected input =
-  lwt_parse_string (String.length magic_expected) input >>= fun s ->
-  if s = magic_expected then return s
-  else fail (ParsingException (CustomException ("invalid magic (\"" ^
-				 (hexdump s) ^ "\")"), _h_of_li input))
 
 let dump_magic buf s = POutput.add_string buf s
 
@@ -229,43 +220,6 @@ let parse_hex_container name parse_fun input =
   check_empty_input true new_input;
   res
 
-
-let lwt_extract_4bits input =
-  let handle_exn = function
-    | ParsingException (OutOfBounds, _) -> return None
-    | e -> fail e
-  in
-  let parsing_thread () =
-    lwt_parse_byte input >>= fun c ->
-    match reverse_hex_chars.(c) with
-    | -1 -> raise (ParsingException (InvalidHexString "invalid character", _h_of_li input))
-    | res -> return (Some res)
-  in
-  try_bind parsing_thread return handle_exn
-
-let lwt_hexparse input =
-  let rec lwt_hexparse_aux buf input =
-    lwt_extract_4bits input >>= function
-    | None -> return ()
-    | Some hibits ->
-      lwt_extract_4bits input >>= function
-      | None -> fail (ParsingException (InvalidHexString "odd-length string", _h_of_li input))
-      | Some lobits ->
-	POutput.add_byte buf ((hibits lsl 4) lor lobits);
-	lwt_hexparse_aux buf input
-  in
-  let buf = POutput.create () in
-  lwt_hexparse_aux buf input >>= fun () ->
-  return (POutput.contents buf)
-
-let lwt_parse_hex_container name parse_fun input =
-  lwt_hexparse input >>= fun content ->
-  let new_input = lwt_get_in_container input name content in
-  let res = parse_fun new_input in
-  check_empty_input true new_input;
-  return res
-
-
 let dump_hex_container dump_fun buf o =
   let tmp_buf = POutput.create () in
   dump_fun tmp_buf o;
@@ -282,8 +236,6 @@ let parse_safe_union discriminator fallback_discriminator _name parse_fun input 
   match try_parse (parse_fun discriminator) input with
   | None -> parse_fun fallback_discriminator input
   | Some res -> res
-(* TODO: lwt_parse_safe_union would need a lwt_subtype to be set by our code
-   For now, it is impossible to do so because only code in parsifalSyntax has access to this *)
 let dump_safe_union dump_fun buf u = dump_fun buf u
 let value_of_safe_union = value_of_container
 
@@ -293,7 +245,6 @@ let parse_exact_safe_union discriminator fallback_discriminator _name parse_fun 
   match try_parse ~exact:true (parse_fun discriminator) input with
   | None -> parse_fun fallback_discriminator input
   | Some res -> res
-(* TODO: lwt_parse_exact_safe_union *)
 let dump_exact_safe_union dump_fun buf u = dump_fun buf u
 let value_of_exact_safe_union = value_of_container
 
@@ -335,38 +286,12 @@ let value_of_trivial_union value_of_fun = function
 (* Parse checkpoints and raw values *)
 
 let parse_save_offset input = input.cur_offset
-let lwt_parse_save_offset input = input.lwt_offset
 let parse_seek_offset offset input = input.cur_offset <- offset
-let lwt_parse_seek_offset offset input =
-  let handle_unix_error = function
-    | Unix.Unix_error (Unix.ESPIPE, "lseek", "") -> return ()
-    | e -> fail e
-  and set_offset () =
-    Lwt_io.set_position input.lwt_ch (Int64.of_int offset) >>= fun _ ->
-    (* TODO: Warning, integer overflow is possible! *)
-      input.lwt_offset <- offset;
-      return ()
-  in try_bind (set_offset) (fun () -> return ()) handle_unix_error
-
 let parse_seek_offsetrel offset input = input.cur_offset <- (input.cur_offset + offset)
-let lwt_parse_seek_offsetrel offset input =
-  let handle_unix_error = function
-    | Unix.Unix_error (Unix.ESPIPE, "lseek", "") -> return ()
-    | e -> fail e
-  and set_offset () =
-    let new_offset = Int64.add (Int64.of_int input.lwt_offset) (Int64.of_int offset) in
-    Lwt_io.set_position input.lwt_ch new_offset >>= fun _ ->
-    (* TODO: Warning, integer overflow is possible! *)
-      input.lwt_offset <- (input.lwt_offset + offset);
-      return ()
-  in try_bind (set_offset) (fun () -> return ()) handle_unix_error
-
 
 type raw_value = string option
 let parse_raw_value offset input =
   Some (String.sub input.str (input.cur_base + offset) (input.cur_offset - offset))
-let lwt_parse_raw_value _offset input =
-  fail (ParsingException (NotImplemented "lwt_parse_raw_value", _h_of_li input))
 
 let value_of_raw_value = function
   | None -> VUnit

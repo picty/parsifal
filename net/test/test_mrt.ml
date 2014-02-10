@@ -1,4 +1,5 @@
 open Lwt
+open LwtUtil
 open Mrt
 open Parsifal
 open PTypes
@@ -277,8 +278,9 @@ let test_filter m =
 	find_value value v
     | _ -> failwith "Invalid filter"
 
+
 let rec map_mrt f input =
-  lwt_parse_mrt_message input >>= fun mrt_msg ->
+  lwt_parse_wrapper parse_mrt_message input >>= fun mrt_msg ->
   let real_msg =
     if !safe_mode then begin
       let str_input = input_of_string ~enrich:AlwaysEnrich "" (exact_dump_mrt_message mrt_msg) in
@@ -314,9 +316,11 @@ let get_mrt mrt_msg =
     (string_of_mrt_type mrt_msg.mrt_type) (string_of_value (value_of_mrt_subtype mrt_msg.mrt_subtype)) s
 
 
+let opts = { default_output_options with unfold_aliases = false }
+
 let handle_input input =
   match !action with
-    | PrettyPrint -> map_mrt (fun m -> print_endline (print_value (value_of_mrt_message m))) input
+    | PrettyPrint -> map_mrt (fun m -> print_endline (print_value ~options:opts (value_of_mrt_message m))) input
     | ObsDump -> map_mrt obsdump input
     | JustParse -> map_mrt ignore input
     | Get -> map_mrt get_mrt input

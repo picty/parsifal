@@ -1,3 +1,4 @@
+open Parsifal
 open Lwt
 
 let rec _really_write o s p l =
@@ -45,3 +46,57 @@ let launch_server ?bind_address:(bind_addr=None) ?backlog:(backlog=1024) port (s
     do_accept ()
   in
   Lwt_unix.run (do_accept ())
+
+
+
+
+
+
+(**********************************)
+(* TODO: Work on this sordid hack *)
+(**********************************)
+
+(* In particular, this does NOT work with parse_rem_* stuff... *)
+type lwt_input = {
+  lwt_ch : Lwt_io.input_channel;
+  mutable lwt_eof : bool;
+  mutable string_input : string_input;
+}
+
+let input_of_channel ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name ch =
+  let string_input = input_of_string ~verbose:verbose ~enrich:enrich name "" in
+  return { lwt_ch = ch;
+	   lwt_eof = false;
+	   string_input = string_input }
+
+let input_of_fd ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name fd =
+  let ch = Lwt_io.of_fd Lwt_io.input fd in
+  input_of_channel ~verbose:verbose ~enrich:enrich name ch
+
+let input_of_filename ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) filename =
+  Lwt_unix.openfile filename [Unix.O_RDONLY] 0 >>= fun fd ->
+  input_of_fd ~verbose:verbose ~enrich:enrich filename fd
+
+
+(* TODO: use a flavour of try_parse that only catches OOB exceptions? *)
+let lwt_parse_wrapper parse_fun lwt_input =
+  let rec try_str_parse () =
+    if lwt_input.lwt_eof
+    then Lwt.wrap1 parse_fun lwt_input.string_input
+    else match try_parse parse_fun lwt_input.string_input with
+    | None ->
+      let buf = String.make 8192 '\x00' in
+      Lwt_io.read_into lwt_input.lwt_ch buf 0 8192 >>= fun n_read ->
+      if n_read == 0
+      then lwt_input.lwt_eof <- true
+      else begin
+	let new_string_input = append_to_input lwt_input.string_input (String.sub buf 0 n_read) in
+	lwt_input.string_input <- new_string_input
+      end;
+      try_str_parse ()
+    | Some x ->
+	let new_string_input = drop_used_string lwt_input.string_input in
+	lwt_input.string_input <- new_string_input;
+	return x
+  in try_str_parse ()
+(*****************************)  

@@ -1,4 +1,5 @@
 open Lwt
+open LwtUtil
 open Parsifal
 open PTypes
 open AnswerDump
@@ -355,22 +356,18 @@ let handle_answer answer =
 	  | _ -> ()
 	end
   end;
-  return again
+  again
 
 let rec handle_one_file input =
-  let saved_offset = input.lwt_offset
-  and saved_bitstate = input.lwt_bitstate in
   let finalize_ok answer =
-    handle_answer answer >>= fun again ->
-    if again then handle_one_file input else return ()
+    if handle_answer answer then handle_one_file input else return ()
   and finalize_nok = function
     | (ParsingException _) as e ->
-      if (input.lwt_offset = saved_offset)
-	&& (input.lwt_bitstate = saved_bitstate)
+      if input.lwt_eof && (input.string_input.cur_length = 0)
       then return ()
       else fail e
     | e -> fail e
-  in try_bind (fun () -> lwt_parse_answer_dump input) finalize_ok finalize_nok
+  in try_bind (fun () -> lwt_parse_wrapper parse_answer_dump input) finalize_ok finalize_nok
 
 
 let _ =

@@ -2,7 +2,7 @@ open BasePTypes
 open PTypes
 open Pkcs7
 
-enum w_cert_type_t [with_lwt; little_endian] (16, UnknownVal W_CERT_TYPE_UNKNOWN) =
+enum w_cert_type_t [little_endian] (16, UnknownVal W_CERT_TYPE_UNKNOWN) =
   | 0x0002  -> W_CERT_TYPE_PKCS_SIGNED_DATA
   | 0x0EF0  -> W_CERT_TYPE_EFI_PKCS115
   | 0x0EF1  -> W_CERT_TYPE_EFI_GUID
@@ -15,13 +15,13 @@ struct win_certificate = {
   junk : binstring
 }
 
-struct data_directory_entry [with_lwt] = {
+struct data_directory_entry = {
   virtualaddress : uint32le;
   size : uint32le
 }
 
 
-struct msdos_header [with_lwt] = {
+struct msdos_header = {
   e_magic : magic("MZ");
   e_cblp : uint16le;              (* Bytes on last page of file *)
   e_cp : uint16le;                (* Pages in file *)
@@ -43,7 +43,7 @@ struct msdos_header [with_lwt] = {
   e_lfanew : uint32le             (* File address of new exe header *)
 }
 
-enum subsystem [with_lwt; little_endian] (16, UnknownVal IMAGE_SUBSYSTEM_UNKNOWN) =
+enum subsystem [little_endian] (16, UnknownVal IMAGE_SUBSYSTEM_UNKNOWN) =
   | 1  -> IMAGE_SUBSYSTEM_NATIVE (* No subsystem required (device drivers and native system processes). *)
   | 2  -> IMAGE_SUBSYSTEM_WINDOWS_GUI (* Windows graphical user interface (GUI) subsystem. *)
 	| 3  -> IMAGE_SUBSYSTEM_WINDOWS_CUI (* Windows character-mode user interface (CUI) subsystem. *)
@@ -57,7 +57,7 @@ enum subsystem [with_lwt; little_endian] (16, UnknownVal IMAGE_SUBSYSTEM_UNKNOWN
 	| 14 -> IMAGE_SUBSYSTEM_XBOX (* Xbox system. *)
 	| 16 -> IMAGE_SUBSYSTEM_WINDOWS_BOOT_APPLICATION (* Boot application. *)
 
-struct pe_header [with_lwt] = {
+struct pe_header = {
   pe_magic : magic("PE\x00\x00");
   machine : uint16le;      (* Machine type *)
   numsections : uint16le;  (* Number of Sections *)
@@ -68,12 +68,12 @@ struct pe_header [with_lwt] = {
   charact : uint16le       (* Flags that indicate the attributes of the file *)
 }
 
-enum optpe_magic [with_lwt; little_endian] (16, UnknownVal OPTPE_UNKNOWN) =
+enum optpe_magic [little_endian] (16, UnknownVal OPTPE_UNKNOWN) =
   | 0x10b  -> IMAGE_NT_OPTIONAL_HDR32_MAGIC
   | 0x107  -> IMAGE_ROM_OPTIONAL_HDR_MAGIC
   | 0x20b  -> IMAGE_NT_OPTIONAL_HDR64_MAGIC
 
-struct optpe32_header [with_lwt] = {
+struct optpe32_header = {
   optpr_magic : optpe_magic;   (* Magic. 0x10b (normal exe), 0x107 (ROM image), 0x20b (PE32+) *)
   majorlinkerversion : uint8;
   minorlinkerversion : uint8;
@@ -106,7 +106,7 @@ struct optpe32_header [with_lwt] = {
   numberofrvaandsizes : uint32le
 }
 
-struct optpe64_header [with_lwt] = {
+struct optpe64_header = {
   optpr_magic : optpe_magic;   (* Magic. 0x10b (normal exe), 0x107 (ROM image), 0x20b (PE32+) *)
   majorlinkerversion : uint8;
   minorlinkerversion : uint8;
@@ -140,7 +140,7 @@ struct optpe64_header [with_lwt] = {
   datadirectory : array(numberofrvaandsizes) of data_directory_entry
 }
 
-struct pe_file [with_lwt] = {
+struct pe_file = {
   msdos_header: msdos_header;
   parse_checkpoint : seek_offset(0x3c);
   pehdr_loc : uint16le;

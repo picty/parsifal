@@ -1,4 +1,4 @@
-enum tls_version [with_lwt] (16, UnknownVal V_Unknown) =
+enum tls_version (16, UnknownVal V_Unknown) =
   | 0x0002 -> V_SSLv2, "SSLv2"
   | 0x0300 -> V_SSLv3, "SSLv3"
   | 0x0301 -> V_TLSv1, "TLSv1.0"
@@ -9,7 +9,7 @@ enum tls_version [with_lwt] (16, UnknownVal V_Unknown) =
 (* http://www.iana.org/assignments/tls-parameters/tls-parameters.xml *)
 
 (* TODO: Should be a SoftException? *)
-enum tls_content_type [with_lwt] (8, Exception) =
+enum tls_content_type (8, Exception) =
   | 0x14 -> CT_ChangeCipherSpec, "ChangeCipherSpec"
   | 0x15 -> CT_Alert, "Alert"
   | 0x16 -> CT_Handshake, "Handshake"

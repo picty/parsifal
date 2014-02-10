@@ -14,7 +14,6 @@ open ParsifalHelpers
 type param_type = ParseParam | DumpParam | BothParam | ContextParam
 
 type parsifal_option =
-  | DoLwt
   | LittleEndian
   | ExactParser
   | NoAlias
@@ -46,8 +45,8 @@ type field_len =
 type ptype =
   | PT_Empty
   | PT_Custom of (string option) * string * (param_type * expr) list
-  | PT_CustomContainer of (string option) * string * (param_type * expr) list * ptype * bool
-    (* PT_CustomContainer (module name, name, param list, subtype, lwt_subparse) *)
+  | PT_CustomContainer of (string option) * string * (param_type * expr) list * ptype
+    (* PT_CustomContainer (module name, name, param list, subtype) *)
 
 
 (* Records *)
@@ -111,9 +110,7 @@ let opts_of_seq_expr expr =
   let opt_of_exp e =
     let _loc = loc_of_expr e in
     match e with
-    | <:expr< $lid:"with_lwt"$ >>   -> [_loc, DoLwt]
-    | <:expr< $lid:"with_exact"$ >> -> [_loc, ExactParser]
-    | <:expr< $lid:"top"$ >>        -> [_loc, DoLwt; _loc, ExactParser]
+    | <:expr< $lid:"top"$ >>        -> [_loc, ExactParser]
     | <:expr< $lid:"enrich"$ >>     -> [_loc, EnrichByDefault]
     | <:expr< $lid:"exhaustive"$ >> -> [_loc, ExhaustiveChoices]
     | <:expr< $lid:"noalias"$ >>    -> [_loc, NoAlias]
@@ -158,23 +155,23 @@ let rec choices_of_match_cases = function
 let ptype_of_ident name decorators subtype =
   match name, decorators, subtype with
     | <:ident< $lid:"list"$ >>, [], Some t ->
-      PT_CustomContainer (Some "BasePTypes", "rem_list", [], t, true)
+      PT_CustomContainer (Some "BasePTypes", "rem_list", [], t)
     | <:ident< $lid:"list"$ >>, [ParseParam, _], Some t ->
-      PT_CustomContainer (None, "list", decorators, t, true)
+      PT_CustomContainer (None, "list", decorators, t)
     | <:ident< $lid:"list"$ >>,                                      (* Compat Hack: BothParam should not be kept *)
       [ (BothParam|ContextParam), int_t ], Some t ->
-      PT_CustomContainer (Some "BasePTypes", "varlen_list", [ContextParam, int_t], t, false)
+      PT_CustomContainer (Some "BasePTypes", "varlen_list", [ContextParam, int_t], t)
     | <:ident< $lid:"list"$ >> as i,  _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid list type")
 
     | <:ident< $lid:"array"$ >>, [ParseParam, _], Some t ->
-      PT_CustomContainer (None, "array", decorators, t, true)
+      PT_CustomContainer (None, "array", decorators, t)
     | <:ident< $lid:"array"$ >> as i,  _, _ ->  Loc.raise (loc_of_ident i) (Failure "invalid array type")
 
     | <:ident< $lid:"container"$ >>, [ParseParam, _], Some t ->      (* Compat Hack: should be removed? *)
-      PT_CustomContainer (Some "BasePTypes", "container", decorators, t, false)
+      PT_CustomContainer (Some "BasePTypes", "container", decorators, t)
     | <:ident< $lid:"container"$ >>,                                 (* Compat Hack: BothParam should not be kept *)
       [ (BothParam|ContextParam), int_t ], Some t ->
-      PT_CustomContainer (Some "BasePTypes", "varlen_container", [ContextParam, int_t], t, false)
+      PT_CustomContainer (Some "BasePTypes", "varlen_container", [ContextParam, int_t], t)
     | <:ident< $lid:"container"$ >> as i, _, _ -> Loc.raise (loc_of_ident i) (Failure "invalid container type")
 
     | <:ident< $lid:"string"$ >>,    [], None -> PT_Custom (Some "BasePTypes", "rem_string", [])
@@ -193,7 +190,7 @@ let ptype_of_ident name decorators subtype =
 
     | custom_identifier, _, Some t ->
       let module_name, name = qname_ident (custom_identifier) in
-      PT_CustomContainer (module_name, name, decorators, t, false)
+      PT_CustomContainer (module_name, name, decorators, t)
 
 
 (* ASN1 Aliases *)
@@ -236,8 +233,8 @@ let rec ocaml_type_of_ptype _loc = function
   | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
   | PT_Custom (None, n, _) -> <:ctyp< $lid:n$ >>
   | PT_Custom (Some m, n, _) -> <:ctyp< $uid:m$.$lid:n$ >>
-  | PT_CustomContainer (None, n, _, subtype, _) -> <:ctyp< $lid:n$ $ocaml_type_of_ptype _loc subtype$ >>
-  | PT_CustomContainer (Some m, n, _, subtype, _) -> <:ctyp< ($uid:m$.$lid:n$) $ocaml_type_of_ptype _loc subtype$ >>
+  | PT_CustomContainer (None, n, _, subtype) -> <:ctyp< $lid:n$ $ocaml_type_of_ptype _loc subtype$ >>
+  | PT_CustomContainer (Some m, n, _, subtype) -> <:ctyp< ($uid:m$.$lid:n$) $ocaml_type_of_ptype _loc subtype$ >>
 
 let ocaml_type_of_field_type _loc t opt =
   let real_t = ocaml_type_of_ptype _loc t in
@@ -398,41 +395,26 @@ let mk_specific_funs _loc c =
 (* PARSING FUNCTIONS *)
 (*********************)
 
-let rec parse_fun_of_ptype lwt_fun _loc name t =
-  let prefix = if lwt_fun then "lwt_parse_" else "parse_" in
+let rec parse_fun_of_ptype _loc name t =
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
     | PT_Custom (m, n, e) ->
-      apply_exprs _loc (exp_qname _loc m (prefix ^ n)) (filter_params ParseParam prefix e)
-    | PT_CustomContainer (m, n, e, subtype, lwt_subparse) ->
-      apply_exprs _loc (exp_qname _loc m (prefix ^ n))
-	((filter_params ParseParam prefix e)@
-	    [ <:expr< $str:name$ >> ; parse_fun_of_ptype (lwt_subparse && lwt_fun) _loc name subtype])
+      apply_exprs _loc (exp_qname _loc m ("parse_" ^ n)) (filter_params ParseParam "parse_" e)
+    | PT_CustomContainer (m, n, e, subtype) ->
+      apply_exprs _loc (exp_qname _loc m ("parse_" ^ n))
+	((filter_params ParseParam "parse_" e)@
+	    [ <:expr< $str:name$ >> ; parse_fun_of_ptype _loc name subtype])
 
 
 
-let mk_parse_fun lwt_fun _loc c =
-  let prefix = if lwt_fun then "lwt_" else "" in
-  let mkname m fname = exp_qname _loc (Some m) (prefix ^ fname) in
-
-  let mk_return e = if lwt_fun then <:expr< Lwt.return $e$ >> else e
-  and mk_compose f g x = (* f (g x) *)
-    if lwt_fun
-    then <:expr< Lwt.bind ($g$ $x$) (Parsifal.wrap1 $f$) >>
-    else <:expr< $f$ ($g$ $x$) >>
-  and mk_let_in x v e = (* let x = v in e *)
-    if lwt_fun
-    then <:expr< Lwt.bind ($v$) (fun $lid:x$ -> $e$) >> 
-    else <:expr< let $lid:x$ = $v$ in $e$ >>
-  and mk_union_res f cons = (* Cons (f input) *)
-    if lwt_fun
-    then <:expr< Lwt.bind ($f$ input) (fun x -> Lwt.return ($uid:cons$ x)) >>
-    else <:expr< $uid:cons$ ($f$ input) >>
+let mk_parse_fun _loc c =
+  let mkname m fname = exp_qname _loc (Some m) fname in
+  let mk_compose f g x = <:expr< $f$ ($g$ $x$) >>             (* f (g x) *)
+  and mk_let_in x v e = <:expr< let $lid:x$ = $v$ in $e$ >>   (* let x = v in e *)
+  and mk_union_res f cons = <:expr< $uid:cons$ ($f$ input) >> (* Cons (f input) *)
   in
 
   let body = match c.construction with
-    | _ when not (c <.> DoLwt) && lwt_fun -> []
-
     | Enum enum ->
       (* TODO: How can we treat non-aligned 8-bit enums properly and efficiently in most cases *)
       (* Add a AlwaysAligned option? Or on the contrary *)
@@ -453,13 +435,13 @@ let mk_parse_fun lwt_fun _loc c =
 	| [] ->
 	  let single_assign (_loc, n, _, _) = <:rec_binding< $lid:n$ = $exp: <:expr< $lid:n$ >> $ >> in
 	  let assignments = List.map single_assign (keep_built_fields fields) in
-	  mk_return <:expr< { $list:assignments$ } >>
+	  <:expr< { $list:assignments$ } >>
 	| (_loc, n, t, attribute)::r ->
 	  let tmp = parse_fields r
-	  and f = parse_fun_of_ptype lwt_fun _loc n t in
-	  let parse_f = match lwt_fun, attribute with
-	    | _, Optional -> <:expr< $mkname "Parsifal" "try_parse"$ $f$ >>
-	    | _, _ -> f
+	  and f = parse_fun_of_ptype _loc n t in
+	  let parse_f = match attribute with
+	    | Optional -> <:expr< $mkname "Parsifal" "try_parse"$ $f$ >>
+	    | _ -> f
 	  in
 	  mk_let_in n <:expr< $parse_f$ input >> tmp
       in [parse_fields (keep_parsed_fields fields)]
@@ -467,12 +449,12 @@ let mk_parse_fun lwt_fun _loc c =
     | Union union ->
       let mk_case = function
 	| (_loc, cons, (p, PT_Empty)) ->
-	  <:match_case< $p$ -> $ mk_return <:expr< $uid:cons$ >> $ >>
+	  <:match_case< $p$ -> $ <:expr< $uid:cons$ >> $ >>
 	| (_loc, cons, (p, t)) ->
-	  let f = parse_fun_of_ptype lwt_fun _loc c.name t in
+	  let f = parse_fun_of_ptype _loc c.name t in
 	  <:match_case< $p$ -> $mk_union_res f cons$ >>
       and mk_unparsed =
-	let f = parse_fun_of_ptype lwt_fun _loc c.name union.unparsed_type in
+	let f = parse_fun_of_ptype _loc c.name union.unparsed_type in
 	mk_union_res f union.unparsed_constr
       in
       let parsed_cases = List.map mk_case union.uchoices
@@ -483,18 +465,18 @@ let mk_parse_fun lwt_fun _loc c =
 	else $mk_unparsed$ >> ]
 
     | Alias atype ->
-      [ <:expr< $parse_fun_of_ptype lwt_fun _loc c.name atype$ input >> ]
+      [ <:expr< $parse_fun_of_ptype _loc c.name atype$ input >> ]
 
     | ASN1Alias alias ->
       let header_constraint = split_header _loc alias.aaheader
-      and parse_content = parse_fun_of_ptype false _loc (c.name ^ "_content") alias.aatype in
+      and parse_content = parse_fun_of_ptype _loc (c.name ^ "_content") alias.aatype in
       let meta_f_name = if alias.aalist then "extract_der_seqof" else "extract_der_object" in
-      let meta_f = exp_qname _loc (Some "Asn1Engine") (prefix ^ meta_f_name) in
+      let meta_f = exp_qname _loc (Some "Asn1Engine") (meta_f_name) in
       [ <:expr< $meta_f$ $header_constraint$ $str:c.name$ $parse_content$ input >> ]
 
     | ASN1Union union ->
       let mk_case (_loc, cons, (p, t)) =
-	let parse_fun = parse_fun_of_ptype false _loc c.name t in
+	let parse_fun = parse_fun_of_ptype _loc c.name t in
 	<:match_case< $p$ -> $ <:expr< $uid:cons$ ($parse_fun$ new_input) >> $ >>
       in
       let parsed_cases = List.map mk_case union.uchoices
@@ -503,8 +485,8 @@ let mk_parse_fun lwt_fun _loc c =
           (Asn1PTypes.mk_object c t (Asn1PTypes.parse_der_object_content h new_input)) >> $ >>
       in
       let enrich_flag = <:expr< input.$mkname "Parsifal" "enrich"$ >>
-      and wrapper_fun = exp_qname _loc (Some "Asn1PTypes") (prefix ^ "advanced_der_parse")
-      and default_fun = exp_qname _loc (Some "Asn1PTypes") (prefix ^ "parse_der_object") in
+      and wrapper_fun = exp_qname _loc (Some "Asn1PTypes") "advanced_der_parse"
+      and default_fun = exp_qname _loc (Some "Asn1PTypes") "parse_der_object" in
 
       [ <:expr<
 	  let aux h new_input = match h with
@@ -515,7 +497,7 @@ let mk_parse_fun lwt_fun _loc c =
 	  else $mk_union_res default_fun union.unparsed_constr$ >> ]
 
   in
-  let res_name = prefix ^ "parse_" ^ c.name in
+  let res_name = "parse_" ^ c.name in
   List.map (mk_multiple_args_fun _loc res_name ((keep_parse_params c.params)@["input"])) body
 
 
@@ -540,7 +522,7 @@ let rec dump_fun_of_ptype _loc t =
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
     | PT_Custom (m, n, e) ->
       apply_exprs _loc (exp_qname _loc m ("dump_" ^ n)) (filter_params DumpParam "dump_" e)
-    | PT_CustomContainer (m, n, e, subtype, _) ->
+    | PT_CustomContainer (m, n, e, subtype) ->
       apply_exprs _loc (exp_qname _loc m ("dump_" ^ n))
 	((filter_params DumpParam "dump_" e)@[dump_fun_of_ptype _loc subtype])
 
@@ -633,7 +615,7 @@ let rec value_of_fun_of_ptype _loc t =
   match t with
     | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
     | PT_Custom (m, n, _) -> exp_qname _loc m ("value_of_" ^ n)
-    | PT_CustomContainer (m, n, _, subtype, _) ->
+    | PT_CustomContainer (m, n, _, subtype) ->
       <:expr< $exp_qname _loc m ("value_of_" ^ n)$ $value_of_fun_of_ptype _loc subtype$ >>
 
 
@@ -742,7 +724,7 @@ let mk_parsifal_construction _loc name raw_opts specific_descr =
 	     params = params;
 	     construction = specific_descr }
   and funs = [ mk_decls; mk_type; mk_specific_funs;
-	       mk_parse_fun false; mk_parse_fun true; mk_exact_parse_fun;
+	       mk_parse_fun; mk_exact_parse_fun;
 	       mk_dump_fun; mk_exact_dump_fun; mk_value_of_fun ] in
   mk_sequence _loc (List.concat (List.map (fun f -> f _loc pc) funs))
 

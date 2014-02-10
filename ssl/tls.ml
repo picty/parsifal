@@ -277,7 +277,7 @@ struct heartbeat_msg = {
 
 (* TLS record *)
 
-union record_content [param context; exhaustive; with_exact] (Unparsed_Record) =
+union record_content [param context; exhaustive; top] (Unparsed_Record) =
   | CT_Alert -> Alert of tls_alert
   | CT_Handshake -> Handshake of handshake_msg(context)
   | CT_ChangeCipherSpec -> ChangeCipherSpec of change_cipher_spec
