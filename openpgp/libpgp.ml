@@ -917,32 +917,23 @@ let dump_partial_len_container (* _tag _first_partial_len *) _dump_fun _buf _o =
 let value_of_partial_len_container = value_of_container
 
 (* §4.2 *)
-union packet_content_container [param tag ; enrich ; exhaustive] (UnparsedPacketContentContainer) =
+union packet_content_union [param tag ; enrich ; exhaustive] (UnparsedPacketContentContainer) =
     | FixedLen length   -> PacketContentContainer of container(length) of packet_content(tag.packet_type)
     | PartialLen length -> PacketContentContainer of partial_len_container(tag ; length) of packet_content(tag.packet_type)
     | UndeterminateLen  -> PacketContentOfIndeterminateLen of packet_content(tag.packet_type)
 
-(* §4.2 *)
-struct packet_len_and_content [both_param tag] = {
-    len     : packet_len[tag];
-    content : packet_content_container(tag ; len);
-}
 
 (* § 4.1 *)
+(* §4.2 *)
 struct packet = {
-    tag                     : packet_tag;
-    len_and_content         : packet_len_and_content(tag ; DUMP packet.tag);
-            (* TODO OL (partial body lengths) list of packet_len_and_content(tag); *)
-            (* TODO First Partial Body Len MUST NOT be less than 512 *)
-            (* TODO Last Length cannot by Partial Body Len *)
+    tag     : packet_tag;
+    len     : packet_len(tag ; DUMP packet.tag);
+    content : packet_content_union(tag ; len);
 }
 
 (* §4.1 *)
 (* TODO §5.1 "0 or more public key encrypted session key packets and/or symmetric key encrypted session key packet may precede symmetrically encrypted data packet" *)
 alias openpgp_message = list of packet
-
-
-(* XXX TODO develop radix-64 and ASCII Armoring containers *)
 
 
 alias junk_to_armor = string
