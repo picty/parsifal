@@ -1,0 +1,6 @@
+version = "0.1"
+description = "Parsifal OpenPGP library"
+requires = "unix str cryptokit camlp4 parsifal_syntax parsifal_core"
+archive(byte) = "parsifal_pgp.cma"
+archive(native) = "parsifal_pgp.cmxa"
+exists_if = "parsifal_pgp.cma"
