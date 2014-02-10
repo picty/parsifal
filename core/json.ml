@@ -47,11 +47,11 @@ let rec json_of_value ?options:(options=default_output_options) = function
   end
 
   | VOption None -> "null"
-  | VOption (Some v) -> json_of_value v
+  | VOption (Some v) -> json_of_value ~options:options v
   | VError _ -> failwith "json_of_value encountered an error in the value"
-  | VLazy v -> json_of_value (Lazy.force v)
+  | VLazy v -> json_of_value ~options:options (Lazy.force v)
   | VAlias (n, v) ->
     if options.unfold_aliases
-    then json_of_value (VRecord [n, v])
-    else json_of_value v
-  | VUnparsed v -> json_of_value v
+    then json_of_value ~options:options (VRecord [n, v])
+    else json_of_value ~options:options v
+  | VUnparsed v -> json_of_value ~options:options v
