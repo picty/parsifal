@@ -918,7 +918,7 @@ let string_input_of_filename ?verbose:(verbose=false) ?enrich:(enrich=DefaultEnr
   let content = get_file_content filename in
   input_of_string ~verbose:(verbose) ~enrich:(enrich) filename content
 
-let string_input_of_stdin () =
+let string_input_of_stdin ?verbose:(verbose=false) ?enrich:(enrich=DefaultEnrich) () =
    let input_string = Buffer.create 4096 in
    let buf = String.create 4096 in
    let rec read_more () =
@@ -931,7 +931,7 @@ let string_input_of_stdin () =
            Buffer.contents input_string
      with Sys_error _ -> ""
   in
-  input_of_string "(stdin)" (read_more ())
+  input_of_string ~verbose:(verbose) ~enrich:(enrich) "(stdin)" (read_more ())
 
 let wrap f () =
   try return (f ())
