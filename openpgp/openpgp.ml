@@ -2,6 +2,8 @@ open Parsifal
 open BasePTypes
 open PTypes
 
+let openpgp_output_options = { default_output_options with oo_verbose=true }
+
 type 'a lbl_container = 'a
 
 let parse_lbl_container name n _name parse_fun input =
@@ -1176,7 +1178,7 @@ let _ =
         (*let msg = parse_armored_openpgp_message input in
         print_endline (Json.json_of_value (value_of_armored_openpgp_message msg))*)
         let msg = parse_openpgp_message input in
-        print_endline (Json.json_of_value (value_of_openpgp_message msg))
+        print_endline (Json.json_of_value ~options:openpgp_output_options (value_of_openpgp_message msg))
     with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1
