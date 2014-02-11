@@ -34,12 +34,12 @@ let value_of_safe_parse_container value_of_fun = function
 alias pgp_keyid = uint64
 
 (* §3.2 *)
-type mpint = string
+type mpint = binstring
 
 let parse_mpint input =
     let n = parse_uint16 input in
     let bytes_count = (n + 7)/8 in
-    parse_string bytes_count input
+    parse_binstring bytes_count input
 
 let dump_mpint buf i =
     let strlen = String.length i in
@@ -47,7 +47,7 @@ let dump_mpint buf i =
     let order_of_fst_char = int_of_float (ceil (log (float_of_int fst_char)) /. (log 2.) )  in
     let bit_counter = ((strlen - 1) * 8) + order_of_fst_char in
     dump_uint16 buf bit_counter ;
-    dump_string buf i
+    dump_binstring buf i
 
 let value_of_mpint i =
     VBigInt (i, BigEndian)
