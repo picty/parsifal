@@ -1,0 +1,46 @@
+Installation instructions on Debian Wheezy
+-------------------------------------------
+Parsifal currently depends on the following OCaml libraries:
+
+* Lwt
+* Cryptokit
+* OUnit (for some tests)
+
+To compile Parsifal, you also need the following tools:
+
+* Make
+* OCaml 3.12
+* OCaml-findlib
+
+Therefore, to compile Parsifal, you need to ensure you have the following packages installed:
+
+ * git
+ * make
+ * ocaml
+ * ocaml-findlib
+ * liblwt-ocaml-dev
+ * libcryptokit-ocaml-dev
+ * libounit-ocaml-dev
+
+When they are installed, you can type in the following commands:
+% cd <your_dev_dir>
+% git clone https://github.com/ANSSI-FR/parsifal
+% cd parsifal
+% make
+
+To install the libraries and the binaries in standard directories:
+# make install
+
+To install the libraries and the binaries in a custom location, for
+example in subdirectories of your home:
+% LIBDIR=$HOME/.ocamlpath BINDIR=$HOME/bin make install
+
+
+Notes
+-----
+
+The source code has been checked with Debian Wheezy. In particular,
+the used OCaml version is 3.12.
+
+OCaml 4 compiler is compatible with most of the source code, but might
+need minor adapatations.

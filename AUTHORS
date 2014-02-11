@@ -3,6 +3,7 @@
 Maintainer: Olivier Levillain
 
 Contributors:
+ - Olivier Levillain (TLS, X.509, DNS)
  - Pierre Chifflier (PE, PKCS#7, UEFI)
  - Thomas Calderon (Kerberos)
  - Anthony Albert (PNG)

@@ -7,6 +7,8 @@ v0.2	5	Create a Changelog					closed	yeye	doc
 v0.2	6	Described the formats and protocols implemented		open	yeye	doc
 v0.2	13	Debug features: use container real names		closed	yeye	stdlib,enhancement
 v0.2	15	Add string_input_of_stdin				closed	yeye	stdlib,enhancement
+v0.2	18	A README would be nice					closed	yeye	doc
+v0.2	19	An INSTALL would be nice				closed	yeye	doc
 
 v0.3	7	Write a white paper   	  	    			open	yeye	doc
 v0.3	8	Write some HTML to provide a decent website		open	yeye	doc
