@@ -21,7 +21,7 @@ Ticket #13: Write parse_t_as_value functions
  - and to keep the context (offset/len)
 
 Ticket #14: Generate modules around top-level PTypes
- - the interface should be (type t / parse / lwt_parse / dump / value_of / parse_value_of)
+ - the interface should be (type t / parse / dump / value_of / parse_value_of)
  - it should allow to produce a short description
 
 Ticket #15: Create a registry of top-level PTypes
@@ -123,7 +123,7 @@ Ticket #17: Recursive PType definitions
  - in fact, the idea would be to populate the following structure when preprocessing a PType
    * type definition
    * type dependencies (to try to sort the PTypes inside a block)
-   * parse/lwt_parse/parse_as_value
+   * parse/parse_as_value
    * dump
    * (optional) int_of / of_int / of_string
    * (optional) string_of
@@ -219,8 +219,8 @@ Ticket #32: Clean up DNS implementation
 
 Ticket #36: Improve bitfield support
  - rewrite dns_flags using flags in dnsXX.ml in tutorial.
- - at the end of structs, at the end of exact_parse / lwt_exact_parse, check None
- - use parsifal.mli to control cur_bitstate and lwt_bitstate tightly
+ - at the end of structs, at the end of exact_parse, check None
+ - use parsifal.mli to control cur_bitstate tightly
  - add more checks to check bitstate = None when working on bytes?
  - check the performance on simple unit tests?
  - improve support for RightToLeft bit parsing
@@ -252,8 +252,6 @@ Ticket #46: Write a sym_cipher_algo module interface
  - encrypt/decrypt
  - write a asym_encrypted_block
  - Look at the code of cryptokit which seems groovy
-
-Ticket #47:...
 
 
 

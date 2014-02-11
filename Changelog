@@ -1,3 +1,8 @@
+2014-01-22 Pierre Chifflier <pierre.chifflier@ssi.gouv.fr>
+	* Various bugfixes/enhancements
+	* PE support improvements
+	* First description of UEFI Volume formats
+
 2014-01-21 Florian Maury <florian.maury@ssi.gouv.fr>
 	* First description of OpenPGP messages
 
