@@ -19,6 +19,6 @@ let parse_tiano_container name parse_fun input =
   check_empty_input true new_input;
   res
 
-let dump_tiano_container _ buf _ = failwith "dump_tiano_container not implemented"
+let dump_tiano_container _ _buf _ = failwith "dump_tiano_container not implemented"
 
 let value_of_tiano_container = value_of_container

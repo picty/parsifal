@@ -112,7 +112,7 @@ let parse_compressed_container section_hdr name parse_fun input =
       end
   | _ -> failwith "Invalid header for compression section"
 
-let dump_compressed_container _ buf _ = failwith "dump_compressed_container not implemented"
+let dump_compressed_container _ _buf _ = failwith "dump_compressed_container not implemented"
 
 let value_of_compressed_container = value_of_container
 
@@ -134,7 +134,7 @@ let parse_guid_defined_container section_hdr name parse_fun input =
       end
   | _ -> failwith "Invalid header for guid_defined section"
 
-let dump_guid_defined_container _ buf _ = failwith "dump_guid_defined_container not implemented"
+let dump_guid_defined_container _ _buf _ = failwith "dump_guid_defined_container not implemented"
 
 let value_of_guid_defined_container = value_of_container
 

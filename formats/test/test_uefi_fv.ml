@@ -141,15 +141,12 @@ let ugly_print_utf16 s =
 
 
 let content_from_section section =
-  let content = section.section_content in
-  let section_type = string_of_section_type_t section.section_hdr.section_type in
-  match content with
+  match section.section_content with
   | Section_Compressed s -> s
   | Section_Guid_Defined s -> s
   | Section_PE32 s -> s
   | Section_Firmware_Volume_Image s -> s
   | UnparsedSectionContent s -> s
-  | _ -> failwith ("Unhandled Section type " ^ section_type ^ " for content_from_section")
 
 
 let rec extract_section_compressed current_dir section =
@@ -199,7 +196,7 @@ and extract_section_guid_defined current_dir section =
    *)
 
 
-and extract_section_pe32 current_dir section =
+and extract_section_pe32 _current_dir _section =
   (* Nothing special to do *)
   ()
 
@@ -215,7 +212,7 @@ and extract_section_firmware_volume current_dir section =
   extract_firmware_volume new_dir fv
 
 
-and extract_section_unparsed current_dir section =
+and extract_section_unparsed _current_dir _section =
   (* Nothing special to do *)
   ()
 
