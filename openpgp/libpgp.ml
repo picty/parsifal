@@ -31,7 +31,7 @@ let value_of_safe_parse_container value_of_fun = function
                                   ]
 
 (* §3.3 *)
-alias pgp_keyid = uint64
+alias pgp_keyid = binstring(8)
 
 (* §3.2 *)
 type mpint = binstring
