@@ -89,6 +89,7 @@ let _ =
   Hashtbl.add type_handlers "pe" (fun i -> Pe.value_of_pe_file (Pe.parse_pe_file i));
   Hashtbl.add type_handlers "tar" (fun i -> Tar.value_of_tar_file (Tar.parse_tar_file i));
   Hashtbl.add type_handlers "answer_dump" (fun i -> AnswerDump.value_of_answer_dump (AnswerDump.parse_answer_dump i));
+  Hashtbl.add type_handlers "answer_dump_v2" (fun i -> AnswerDump.value_of_answer_dump_v2 (AnswerDump.parse_answer_dump_v2 i));
   Hashtbl.add type_handlers "tls_record" parse_tls_records_as_value;
   Hashtbl.add type_handlers "dns" (fun i -> Dns.value_of_dns_message (Dns.parse_dns_message i));
   Hashtbl.add type_handlers "pcap" (fun i -> Pcap.value_of_pcap_file (Pcap.parse_pcap_file i));

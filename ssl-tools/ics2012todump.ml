@@ -40,12 +40,12 @@ let rec convert_lines input_f output_f =
       | _ -> failwith (Printf.sprintf "Invalid IP address (%s)" ip_s)
     and content = parse_quoted_printable_container parse_rem_binstring (input_of_string "quoted_string" answer_q) in 
     let answer = {
-      ip = ip;
-      port = 443;
-      name = "";
-      client_hello_type = 42;
-      msg_type = 0;
-      content = content
+      ad_ip = ip;
+      ad_port = 443;
+      ad_name = "";
+      ad_client_hello_type = 42;
+      ad_msg_type = 0;
+      ad_content = content
     } in
     let answer_s = exact_dump_answer_dump answer in
     output_string output_f answer_s;

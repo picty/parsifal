@@ -67,7 +67,7 @@ let options = [
 
 
 let parse_all_records answer =
-  let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_ipv4 answer.ip) answer.content in
+  let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_ipv4 answer.ad_ip) answer.ad_content in
   TlsUtil.parse_all_records !verbose answer_input
 
 
@@ -80,7 +80,7 @@ let parse_all_ssl2_records answer =
       | None -> List.rev accu, true
     end else List.rev accu, false
   in
-  let answer_input = input_of_string ~enrich:(!enrich_style) ~verbose:(!verbose) (string_of_ipv4 answer.ip) answer.content in
+  let answer_input = input_of_string ~enrich:(!enrich_style) ~verbose:(!verbose) (string_of_ipv4 answer.ad_ip) answer.ad_content in
   enrich_record_content := false;
   let raw_recs, err = read_ssl2_records [] answer_input in
   raw_recs, None, err
@@ -124,7 +124,7 @@ let dump_extract s =
 
 
 let handle_answer answer =
-  let ip = string_of_ipv4 answer.ip in
+  let ip = string_of_ipv4 answer.ad_ip in
   let this_one, again =
     if !filter_ip = ""
     then true, true
@@ -195,7 +195,7 @@ let handle_answer answer =
             let dump = exact_dump_tls_record r in
             let new_p =
               Printf.sprintf "IP(src=\"%s\")/TCP(sport=%d,dport=12345,seq=%d,flags=\"\")/(\"%s\".decode(\"hex\"))"
-                ip answer.port len (hexdump dump)
+                ip answer.ad_port len (hexdump dump)
             in
             convert_to_scapy (len + (String.length dump), new_p::ps) rs
         in
@@ -206,7 +206,7 @@ let handle_answer answer =
           | [] -> ()
           | r::rs ->
             let dump = exact_dump_tls_record r in
-            let new_p = Pcap.mk_packet answer.ip answer.port dump len in
+            let new_p = Pcap.mk_packet answer.ad_ip answer.ad_port dump len in
             print_string (Parsifal.exact_dump Pcap.dump_packet new_p);
             convert_to_pcap (len + (String.length dump)) (new_p::ps) rs
         in
@@ -222,7 +222,7 @@ let handle_answer answer =
           end
         in
         begin
-          match records, answer.content with
+          match records, answer.ad_content with
           | _, "" ->
             Printf.printf "%s\tE\n" ip
           | Right [{ content_type = CT_Alert;

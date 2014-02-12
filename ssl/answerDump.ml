@@ -1,11 +1,42 @@
 open BasePTypes
 
 struct answer_dump [top] = {
-  ip : PTypes.ipv4;
+  ad_ip : PTypes.ipv4;
+  ad_port : uint16;
+  ad_name : string[uint16];
+  ad_client_hello_type : uint8;
+  ad_msg_type : uint8;
+  ad_content : binstring[uint32]
+}
+
+
+type error = unit
+let parse_error err_msg _ = Parsifal.not_implemented err_msg
+let dump_error _ () = Parsifal.not_implemented "error"
+let value_of_error () = Parsifal.not_implemented "error"
+
+union ipv4_or_6 [enrich] (UnparsedIPType of error("UnparsedIPType")) =
+  | 4 -> AD_IPv4 of PTypes.ipv4
+  | 6 -> AD_IPv6 of PTypes.ipv6
+
+struct answer_dump_v2 [top] = {
+  ip_type : uint8;
+  ip_addr : ipv4_or_6(ip_type);
   port : uint16;
   name : string[uint16];
-  client_hello_type : uint8;
-  msg_type : uint8;
+  campaign : uint32;
+  timestamp : uint64;
   content : binstring[uint32]
 }
 
+
+
+let v2_of_v1 ?timestamp a = {
+  ip_type = 4;
+  ip_addr = AD_IPv4 a.ad_ip;
+  port = a.ad_port;
+  name = a.ad_name;
+  campaign = a.ad_client_hello_type;
+  timestamp = Parsifal.pop_opt Int64.zero timestamp;
+  content = a.ad_content;
+}
