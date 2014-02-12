@@ -1,0 +1,31 @@
+type test = | A | B | C | D
+
+let int_of_test = function | A -> 0 | B -> 1 | C -> 2 | D -> 3
+  
+let string_of_test = function | A -> "A" | B -> "B" | C -> "C" | D -> "D"
+  
+let test_of_int ?history:(history = []) =
+  function
+  | 0 -> A
+  | 1 -> B
+  | 2 -> C
+  | 3 -> D
+  | i -> Parsifal.value_not_in_enum "test" i history
+  
+let test_of_string =
+  function
+  | "A" -> A
+  | "B" -> B
+  | "C" -> C
+  | "D" -> D
+  | s -> test_of_int (int_of_string s)
+  
+let parse_test input = test_of_int (BasePTypes.parse_uint16 input)
+  
+let dump_test buf test = BasePTypes.dump_uint16 buf (int_of_test test)
+  
+let value_of_test test =
+  Parsifal.value_of_enum string_of_test int_of_test 16 Parsifal.BigEndian
+    test
+  
+

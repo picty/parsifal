@@ -1,6 +1,6 @@
 LIBDIRS=syntax core net ssl formats kerby openpgp
 DIRS=net-tools ssl-tools pci tools openpgp-tools
-CHECK_DIRS=core/test core/unit net/test formats/test ssl/test
+CHECK_DIRS=syntax/unit core/test core/unit net/test formats/test ssl/test
 
 all: libs
 	for i in $(DIRS); do OCAMLPATH="$(PWD)/usrlibocaml" $(MAKE) -C $$i all || exit 1; done

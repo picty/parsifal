@@ -22,4 +22,8 @@ v0.3	12	Allow direct access to fields in dump functions		open	yeye	preprocessor,
 v0.3	16	Debug features: give better info on partial parsings	open	yeye	preprocessor,enhancement
 v0.3	17	Debug features: add an hex tool to interpret histories	open	yeye	enhancement
 
+UNIT	22	Write unit tests for parsifal_syntax	     		open	yeye	tests
+UNIT	23	Write unit tests for parsifal_core			open	yeye	tests
+UNIT	24	Generic framework to test format/protocol descriptions	open	yeye	tests
+
 -	14	Allow for non-constant constructors in enum		open	yeye	preprocessor,enhancement
