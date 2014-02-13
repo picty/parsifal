@@ -1,21 +1,10 @@
-Milestone
- - REC Handle recursive PTypes
+= Milestone =
  - PARSILLADE Hachoir-like (cli + gui)
  - PAPRIKA (pki)
+ - CRYPTO
 
-REC
- - Change the internal structure used to handle Parsifal constructions
- - Take string_of_T as an optional function used in value_of
- - Allow for partial function overload (where keyword?)
-   struct { } where parse arg1 input = ... and parse
- - Create a new option "depends" to explicit dependencies
-   Some dependencies can not be inferred
- - New PType construction "custom"
-   Syntax : "custom t [depends ...] where ..."
- - Add recursive markers (parsifal_section)
-   begin_parsifal_section / end_parsifal_section
 
-PARSILLADE
+= PARSILLADE =
 Ticket #13: Write parse_t_as_value functions
  - the objective is to do parse and value_of in one pass
  - and to keep the context (offset/len)
@@ -35,6 +24,14 @@ Ticket #16: parsillade
  * Depends on #13, #14 and #15
  - write a GUI to explore files
 
+
+= CRYPTO =
+ - extract crypto-related files in crypto/ dir
+ - clean up RSA/PKCS#1 implementation (ticket #1)
+ - include X509 support in crypto/
+ - clean up PKCS#7 implementation using recursive PTypes
+ - Ticket #46: Write a sym_cipher_algo module interface
+ - Ticket #45: Write a asym_cipher_algo module interface
 
 
 

@@ -26,4 +26,11 @@ UNIT	22	Write unit tests for parsifal_syntax	     		open	yeye	tests
 UNIT	23	Write unit tests for parsifal_core			open	yeye	tests
 UNIT	24	Generic framework to test format/protocol descriptions	open	yeye	tests
 
+REC	25	Rewrite the internal structure handling PTypes		open	yeye	preprocessor,enhancement
+REC	26	Use string_of_t function when available in value_of	open	yeye	preprocessor,enhancement
+REC	27	Allow for partial function overload in PType defintion	open	yeye	preprocessor,enhancement
+REC	28	Create a new "depend" option to explicit dependencies	open	yeye	preprocessor,enhancement
+REC	29	New "custom" construction    		 		open	yeye	preprocessor,enhancement
+REC	30	Add support in the preprocessor for recursive types	open	yeye	preprocessor,enhancement
+
 -	14	Allow for non-constant constructors in enum		open	yeye	preprocessor,enhancement

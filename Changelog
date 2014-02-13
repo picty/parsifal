@@ -1,3 +1,10 @@
+2014-02-12 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+	* Issue #15: Add string_input_of_stdin
+	* Issue #13: Debug feature: handle name in containers
+	* Issue #18 and #19: Add README and INSTALL files
+	* First unit tests for the preprocessor
+	* Remove Lwt as a specific input type
+
 2014-01-22 Pierre Chifflier <pierre.chifflier@ssi.gouv.fr>
 	* Various bugfixes/enhancements
 	* PE support improvements
