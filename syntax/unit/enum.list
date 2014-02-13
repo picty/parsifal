@@ -1,24 +1,32 @@
 # Enum unit tests
-enum-01	    8 bits, 4 choices, Exception
-enum-02	    8 bits, 4 choices, UnknownVal
-enum-03	    16 bits, 4 choices, Exception
-enum-04	    24 bits, 4 choices, Exception
-enum-05	    32 bits, 4 choices, Exception
+enum-01     # 8 bits, 4 choices, Exception
+enum-02     # 8 bits, 4 choices, UnknownVal
+enum-03     # 16 bits, 4 choices, Exception
+enum-04     # 24 bits, 4 choices, Exception
+enum-05     # 32 bits, 4 choices, Exception
+enum-06     # 1 bit, 2 choices, Exception
+enum-07     # 2 bits, 4 choices, Exception
+enum-08     # 3 bits, 4 choices, Exception
+enum-09     # 4 bits, 4 choices, Exception
+enum-0a     # 8 bits, 1 choice, Exception
+enum-0b     # 8 bits, 200 choices, Exception
+enum-0c     # 8 bits, colliding choices
+enum-0d     # 8 bits, 4 choices, Exception, little-endian
+enum-0e     # 16 bits, 4 choices, Exception, little-endian
+enum-0f     # 24 bits, 4 choices, Exception, little-endian
+enum-10     # 32 bits, 4 choices, Exception, little-endian
+enum-11     # 8 bits, 4 choices, pretty-print strings
+enum-12     # 8-bits, different numeric representations
+enum-13     # 8 bits, 4 choices, pretty-print strings with colliding constructors
+enum-14     # 8 bits, 4 choices, pretty-print strings with inconsistant colliding constructors => should issue a warning?
+enum-15     # alternative syntax
+enum-16     # range syntax
+enum-17     # enum_test.ml
 
-enum-06	    1 bit, 2 choices, Exception
-enum-07	    2 bits, 4 choices, Exception
-enum-08	    3 bits, 4 choices, Exception
-enum-09	    4 bits, 4 choices, Exception
-enum-0a	    8 bits, 1 choice, Exception
-enum-0b	    8 bits, 200 choices, Exception
-enum-0c	    8 bits, colliding choices
-enum-0d	    8 bits, 4 choices, UnknownVal, little-endian
-enum-0e	    16 bits, 4 choices, Exception, little-endian
-enum-0f	    24 bits, 4 choices, Exception, little-endian
-enum-10	    32 bits, 4 choices, Exception, little-endian
-enum-11	    8 bits, 4 choices, pretty-print strings
-enum-12	    8-bits, different numeric representations
+#enum-XX     # repetition of a discriminating value => should issue a warning at preprocessor time if possible (there ill be a warning at compile time) ? 
+#enum-XX     # alternative (| X | Y ->) syntax with a repetition => should issue a warning
+#enum-XX     # range (| X, Y ->) syntax with a repetition or with Y < X
+#enum-XX     # error messages should be tested
 
-enum-test à intégrer (en tests unitaires puis deux trois trucs réels)
-
-+ des tests pour chacun des messages d'erreur possibles ?
+#enum-XX     # 1 bit, 2 choices, Exception, little-endian => should issue not_implemented
+#enum-XX     # 2 bits, 4 choices, Exception, little-endian => should issue not_implemented

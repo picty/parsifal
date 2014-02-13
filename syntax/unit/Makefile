@@ -4,9 +4,15 @@ BUILD_DIR = build
 
 INCLUDES = $(shell $(OCAMLFIND) query -format "-I %d" -predicates syntax parsifal_syntax)
 
+.PRECIOUS: $(BUILD_DIR)/%.ast $(BUILD_DIR)/%.diff
 
-check:	enum-01.test enum-02.test enum-03.test enum-04.test enum-05.test
 
+check:	enum-01.test enum-02.test enum-03.test enum-04.test \
+	enum-05.test enum-06.test enum-07.test enum-08.test \
+	enum-09.test enum-0a.test enum-0b.test enum-0c.test \
+	enum-0d.test enum-0e.test enum-0f.test enum-10.test \
+	enum-11.test enum-12.test enum-13.test enum-14.test \
+	enum-15.test enum-16.test enum-17.test \
 
 $(BUILD_DIR):
 	@[ -d "$(BUILD_DIR)" ] || mkdir $(BUILD_DIR)

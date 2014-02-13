@@ -1,0 +1,66 @@
+type test =
+  | Zero | One | TwoOrThree | FourOrFive | SixToTen | More | Unknown of int
+
+let int_of_test =
+  function
+  | Zero -> 0
+  | One -> 1
+  | TwoOrThree -> 2
+  | FourOrFive -> 4
+  | SixToTen -> 6
+  | More -> 11
+  | Unknown i -> i
+  
+let string_of_test =
+  function
+  | Zero -> "0"
+  | One -> "One"
+  | TwoOrThree -> "2 or 3"
+  | FourOrFive -> "FourOrFive"
+  | SixToTen -> "6 .. 10"
+  | More -> "More"
+  | Unknown i -> "Unknown test (" ^ ((string_of_int i) ^ ")")
+  
+let test_of_int =
+  function
+  | 0 -> Zero
+  | 1 -> One
+  | 2 -> TwoOrThree
+  | 3 -> TwoOrThree
+  | 4 -> FourOrFive
+  | 5 -> FourOrFive
+  | 6 -> SixToTen
+  | 7 -> SixToTen
+  | 8 -> SixToTen
+  | 9 -> SixToTen
+  | 10 -> SixToTen
+  | 11 -> More
+  | 12 -> More
+  | 13 -> More
+  | 14 -> More
+  | 15 -> More
+  | 16 -> More
+  | 17 -> More
+  | 18 -> More
+  | 19 -> More
+  | 20 -> More
+  | i -> Unknown i
+  
+let test_of_string =
+  function
+  | "0" -> Zero
+  | "One" -> One
+  | "2 or 3" -> TwoOrThree
+  | "FourOrFive" -> FourOrFive
+  | "6 .. 10" -> SixToTen
+  | "More" -> More
+  | s -> test_of_int (int_of_string s)
+  
+let parse_test input = test_of_int (BasePTypes.parse_uint8 input)
+  
+let dump_test buf test = BasePTypes.dump_uint8 buf (int_of_test test)
+  
+let value_of_test test =
+  Parsifal.value_of_enum string_of_test int_of_test 8 Parsifal.BigEndian test
+  
+
