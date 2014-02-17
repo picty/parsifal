@@ -250,6 +250,10 @@ Ticket #46: Write a sym_cipher_algo module interface
  - write a asym_encrypted_block
  - Look at the code of cryptokit which seems groovy
 
+Ticket #47: Infer automatically the dump_arg fields.
+ - dump_arg is a new simple prefix to allow for structure fields to be visible from dump functions:
+ - "dump_arg field;" adds a "let field = struct.field in" in the dump function.
+ - it might be useful to infer the dump_args from the PTypes args (the free variables named as a field?)
 
 
 

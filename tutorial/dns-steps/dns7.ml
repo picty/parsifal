@@ -53,7 +53,7 @@ let parse_dns_pcontext input = {
   direct_resolver = Hashtbl.create 10;
 }
 
-let dump_dns_dcontext buf _ = {
+let dump_dns_dcontext buf = {
   output_offset = POutput.length buf;
   reverse_resolver = Hashtbl.create 10;
 }

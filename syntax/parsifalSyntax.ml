@@ -50,7 +50,7 @@ type ptype =
 
 
 (* Records *)
-type field_attribute = NoFieldAttr | Optional | ParseCheckpoint | DumpCheckpoint | ParseField
+type field_attribute = NoFieldAttr | Optional | ParseCheckpoint | DumpCheckpoint | ParseField | DumpArg
 type struct_description = (Loc.t * string * ptype * field_attribute) list
 
 
@@ -240,12 +240,22 @@ let ocaml_type_of_field_type _loc t opt =
   let real_t = ocaml_type_of_ptype _loc t in
   if opt = Optional then <:ctyp< option $real_t$ >> else real_t
 
-let keep_parsed_fields fields =
-  List.filter (fun (_, _, _, a) -> a <> DumpCheckpoint) fields
-let keep_built_fields fields =
-  List.filter (fun (_, _, _, a) -> (a <> ParseCheckpoint) && (a <> DumpCheckpoint)) fields
-let keep_dumped_fields fields =
-  List.filter (fun (_, _, _, a) -> (a <> ParseCheckpoint) && (a <> ParseField)) fields
+
+let parsed_attr = function
+  | NoFieldAttr | Optional | ParseCheckpoint | ParseField -> true
+  | DumpCheckpoint | DumpArg -> false
+let built_attr = function
+  | NoFieldAttr | Optional | ParseField -> true
+  | ParseCheckpoint | DumpCheckpoint | DumpArg -> false
+let dumped_attr = function
+  | NoFieldAttr | Optional | DumpArg | DumpCheckpoint -> true
+  | ParseCheckpoint | ParseField -> false
+let filter_attr f fields = List.filter (fun (_, _, _, a) -> f a) fields
+
+let keep_parsed_fields = filter_attr parsed_attr
+let keep_built_fields = filter_attr built_attr
+let keep_dumped_fields = filter_attr dumped_attr
+
 
 let split_header _loc (hdr, isC) =
   let _c, _t = match hdr with
@@ -546,17 +556,19 @@ let mk_dump_fun _loc c =
   | Struct fields ->
     let rec dump_fields = function
       | [] -> <:expr< () >>
-      | (_loc, n, t, attr)::r ->
-	let tmp = dump_fields r
-	and raw_f = dump_fun_of_ptype _loc t in
-	let f = if attr = Optional then <:expr< Parsifal.try_dump $raw_f$ >> else raw_f
-	and varname, arg =
-	  if attr = DumpCheckpoint
-	  then n, <:expr< $lid: c.name$ >>
-	  else "_" ^ n, <:expr< $lid:c.name$.$lid:n$ >>
-	in
-	let dump_f = <:expr< $f$ buf $arg$ >> in
-	<:expr< let $lid:varname$ = $dump_f$ in $tmp$ >>
+      | (_loc, n, t, o)::r ->
+	let tmp = dump_fields r in
+	match t, o with
+	| PT_Empty, DumpArg -> <:expr< let $lid:n$ = $lid:c.name$.$lid:n$ in $tmp$ >>
+	| t, DumpCheckpoint ->
+	  let f = dump_fun_of_ptype _loc t in
+	  <:expr< let $lid:n$ = $f$ buf in $tmp$ >>
+	| t, Optional ->
+	  let f = <:expr< Parsifal.try_dump $dump_fun_of_ptype _loc t$ >> in
+	  <:expr< let $lid:"_" ^ n$ = $f$ buf $lid:c.name$.$lid:n$ in $tmp$ >>
+	| _ ->
+	  let f = dump_fun_of_ptype _loc t in
+	  <:expr< let $lid:"_" ^ n$ = $f$ buf $lid:c.name$.$lid:n$ in $tmp$ >>
     in [dump_fields (keep_dumped_fields fields)]
 
   | Union union ->
@@ -799,6 +811,8 @@ EXTEND Gram
       | Some a -> (_loc, lid_of_ident name, field, a)
       | None -> (_loc, lid_of_ident name, field, NoFieldAttr)
     end
+  | "dump_arg"; name = ident ->
+    (_loc, lid_of_ident name, PT_Empty, DumpArg)
   ]];
 
   struct_fields: [[
