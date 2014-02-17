@@ -84,7 +84,6 @@ let parse_tls_records_as_value i =
     VList (List.map Tls.value_of_tls_record recs)
 
 
-
 let type_handlers : (string, string_input -> value) Hashtbl.t = Hashtbl.create 10
 
 let _ =
@@ -103,6 +102,7 @@ let _ =
   Hashtbl.add type_handlers "dvi" (fun i -> Dvi.value_of_dvi_file (Dvi.parse_dvi_file i));
   Hashtbl.add type_handlers "gzip" (fun i -> ZLib.value_of_gzip_member (ZLib.parse_gzip_member i));
   Hashtbl.add type_handlers "fv" (fun i -> Uefi_fv.value_of_fv_volume (Uefi_fv.parse_fv_volume i));
+  Hashtbl.add type_handlers "mrt" (fun i -> Mrt.value_of_mrt_message (Mrt.parse_mrt_message i));
 
   (*
   Hashtbl.add type_handlers "keytab" (fun i -> Keytab.value_of_keytab_file (Keytab.parse_keytab_file i));
@@ -117,7 +117,7 @@ let _ =
 let show_type_list error =
   print_endline "The types available are:";
   Hashtbl.iter (fun t -> fun _ -> print_string "  "; print_endline t) type_handlers;
-  usage "perceval" options error
+  usage "parsifal" options error
 
 
 let mk_parse_value () =
@@ -128,7 +128,7 @@ let mk_parse_value () =
 	| NoContainer -> raw_parse_fun
 	| HexContainer -> parse_hex_container "hex_container" raw_parse_fun
 	| Base64Container -> Base64.parse_base64_container Base64.AnyHeader "base64_container" raw_parse_fun
-	| GZipContainer -> ZLib.parse_gzip_container "gzip_container" raw_parse_fun
+	| GZipContainer -> ZLib.parse_gzip_container "gzip:" raw_parse_fun
 	| PcapTCPContainer port -> fun i ->
 	  PcapContainers.value_of_tcp_container (fun x -> x)
 	    (PcapContainers.parse_tcp_container port "tcp_container" raw_parse_fun i)
@@ -149,7 +149,7 @@ let mk_parse_value () =
       | Right s -> print_endline s
 
 
-let handle_stdin () = failwith "Not implemented"
+let handle_stdin _ = string_input_of_stdin ~verbose:(!verbose) ~enrich:(!enrich_style) ()
 let handle_filename filename = string_input_of_filename ~verbose:(!verbose) ~enrich:(!enrich_style) filename
 let handle_inline data = input_of_string ~verbose:!verbose ~enrich:!enrich_style "(inline)" data
 
@@ -160,22 +160,23 @@ let _ =
     let parse_value = mk_parse_value () in
     if !type_list then show_type_list None;  
     begin
-      match args with
-      | [] -> handle_stdin ()
+      let handle_fun, real_args = match args with
+      | [] -> handle_stdin, [""]
       | l ->
 	let f =
 	  if !input_in_args
 	  then handle_inline
 	  else handle_filename
-	in
-	let handle_one_input s =
-	  let input = f s in
-	  parse_value input;
-	  while (!multiple_values) && not (eos input) do
-	    parse_value input
-	  done;
-	in
-	List.iter handle_one_input l
+	in f, l
+      in	
+      let handle_one_input s =
+	let input = handle_fun s in
+	parse_value input;
+	while (!multiple_values) && not (eos input) do
+	  parse_value input
+	done;
+      in
+      List.iter handle_one_input real_args
     end;
     exit 0
   with

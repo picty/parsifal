@@ -132,7 +132,7 @@ struct bgp_reach_nlri_full = {
   rn_nlri : list of ip_prefix(rn_afi)
 }  
 
-union bgp_reach_nlri (AbbreviatedNLRI of container[uint8] of list of (ip_address(AFI_IPv6))) =
+union bgp_reach_nlri [enrich] (AbbreviatedNLRI of container[uint8] of list of (ip_address(AFI_IPv6))) =
   | 1 -> FullNLRI of bgp_reach_nlri_full
   | 2 -> FullNLRI of bgp_reach_nlri_full
 
