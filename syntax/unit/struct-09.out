@@ -1,0 +1,17 @@
+type s = { s : BasePTypes.rem_string; x : uint8 }
+
+let parse_s input =
+  let s = BasePTypes.parse_rem_string input in
+  let x = parse_uint8 input in { s = s; x = x; }
+  
+let dump_s buf s =
+  let _s = BasePTypes.dump_rem_string buf s.s in
+  let _x = dump_uint8 buf s.x in ()
+  
+let value_of_s s =
+  Parsifal.VRecord
+    [ ("@name", (Parsifal.VString (("s", false))));
+      ("s", (Parsifal.VLazy (lazy (BasePTypes.value_of_rem_string s.s))));
+      ("x", (Parsifal.VLazy (lazy (value_of_uint8 s.x)))) ]
+  
+

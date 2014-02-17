@@ -1,0 +1,16 @@
+type s = { x : uint8; l : uint16 list }
+
+let parse_s n input =
+  let x = parse_uint8 input in
+  let l = parse_list n "l" parse_uint16 input in { x = x; l = l; }
+  
+let dump_s buf s =
+  let _x = dump_uint8 buf s.x in let _l = dump_list dump_uint16 buf s.l in ()
+  
+let value_of_s s =
+  Parsifal.VRecord
+    [ ("@name", (Parsifal.VString (("s", false))));
+      ("x", (Parsifal.VLazy (lazy (value_of_uint8 s.x))));
+      ("l", (Parsifal.VLazy (lazy (value_of_list value_of_uint16 s.l)))) ]
+  
+

@@ -1,0 +1,12 @@
+type s = { x : custom }
+
+let parse_s n input = let x = parse_custom n input in { x = x; }
+  
+let dump_s n buf s = let _x = dump_custom n buf s.x in ()
+  
+let value_of_s s =
+  Parsifal.VRecord
+    [ ("@name", (Parsifal.VString (("s", false))));
+      ("x", (Parsifal.VLazy (lazy (value_of_custom s.x)))) ]
+  
+

@@ -1,0 +1,26 @@
+# Struct unit tests
+struct-01       # 1 field
+struct-02       # 2 fields
+struct-03       # top option
+struct-04       # 1 parameter
+struct-05       # 2 parameters
+struct-06       # 2 parameters (same name) => TODO: should issue a warning?
+struct-07       # 1 unused parameter => TODO: should issue a warning?
+struct-08       # 2 fields with colliding names => TODO: should issue a warning?
+struct-09       # field name colliding with the struct name => warning? or only with dump_arg?
+struct-0a       # optional field
+struct-0b       # parse_checkpoint
+struct-0c       # unnamed parse_checkpoint
+struct-0d       # parse_field
+struct-0e       # dump_checkpoint
+struct-0f       # unnamed dump_checkpoint
+struct-10       # dump_arg
+struct-11       # parse_param / PARSE
+struct-12       # dump_param
+struct-13       # both_param
+struct-14       # both_param ([] syntax)
+struct-15       # both_param (2 params)
+struct-16       # context_param
+
+# TODO: Remove specific hacks concerning strings and lists?
+#       This should lead to less code and less "BasePTypes"
