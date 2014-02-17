@@ -240,16 +240,6 @@ struct s2k_specifier = {
 }
 
 
-type bit_magic = bool
-let parse_bit_magic expected_value input =
-    let v = parse_bit_bool input in
-    if v = expected_value then v
-    else raise (ParsingException (CustomException ("invalid magic (\"" ^
-                  (string_of_bool v) ^ "\")"), _h_of_si input))
-let dump_bit_magic = dump_bit_bool
-let value_of_bit_magic = value_of_bit_bool
-
-
 (* §4.2 & §4.3 *)
 enum packet_type_enum (8, UnknownVal UnknownPacketType) =
     | 0  ->  ReservedPacketType, "Reserved Packet Type"
@@ -300,9 +290,10 @@ let value_of_packet_version packet_version =
 
 (* §4.2 & §4.3 *)
 struct packet_tag = {
-    packet_magic : bit_magic (true);
+    packet_magic : bit_magic ([true]);
     packet_version : packet_version;
-    packet_type : packet_type(packet_version; DUMP packet_tag.packet_version);   (* TODO OL: Fix this *)
+    dump_arg packet_version;
+    packet_type : packet_type[packet_version];
     packet_length_type : conditional_container(not packet_version) of bit_int[2];
 }
 
@@ -452,7 +443,7 @@ alias subpacket_regular_expression_data = cstring
 
 (* §5.2.3.15 *)
 struct subpacket_revocation_key_data = {
-    srkd_magic1         : bit_magic(true);
+    srkd_magic1         : bit_magic([true]);
     sensitive           : bit_bool;
     srkd_unparsed_flags : bit_int[6];
     sig_algo            : pubkey_sig_algo;
@@ -473,7 +464,7 @@ struct subpacket_notation_data_data = {
 
 struct subpacket_key_server_prefs_data = {
   no_modify             : bit_bool;
-  skspd_placeholder     : list(7) of bit_magic(false); (* TODO OL: bit_int_magic(length, expected_value) *)
+  skspd_placeholder     : bit_magic(mk_list 7 false);
   skspd_placeholder2    : binstring;
 }
 
@@ -825,8 +816,7 @@ enum literal_data_format (8, UnknownVal UnknownLiteralDataFormat) =
     | 0x62  ->  BinaryLiteralDataFormat, "Binary format"
     | 0x74  ->  ASCIITextLiteralDataFormat, "ASCII text format"
     | 0x75  ->  UTF8LiteralDataFormat, "UTF-8 text format"
-    | 0x6c  ->  LocalMachineEncodingLiteralDataFormat, "Machine-local conversions format"
-    | 0x31  ->  LocalMachineEncodingLiteralDataFormat, "Machine-local conversions format" (* TODO OL: Simplify this into 0x6C | 0x31 -> *)
+    | 0x6c | 0x31  ->  LocalMachineEncodingLiteralDataFormat, "Machine-local conversions format"
 
 struct literal_data_packet_content = {
     data_format     : literal_data_format;
