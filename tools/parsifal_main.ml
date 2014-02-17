@@ -10,7 +10,13 @@ open Getopt
 *)
 
 let parser_type = ref "binstring"
-type container = NoContainer | HexContainer | Base64Container | PcapTCPContainer of int | PcapUDPContainer of int
+type container =
+  | NoContainer
+  | HexContainer
+  | Base64Container
+  | GZipContainer
+  | PcapTCPContainer of int
+  | PcapUDPContainer of int
 let container = ref NoContainer
 
 let verbose = ref false
@@ -52,6 +58,7 @@ let options = [
 
   mkopt (Some 'B') "base64" (TrivialFun (fun () -> container := Base64Container)) "the data is first decoded as base64";
   mkopt (Some 'H') "hex" (TrivialFun (fun () -> container := HexContainer)) "the data is first decoded as hexa";
+  mkopt (Some 'G') "gzip" (TrivialFun (fun () -> container := GZipContainer)) "the data is first GZIP uncompressed"; 
   mkopt None "pcap-tcp" (IntFun (fun p -> container := PcapTCPContainer p; ActionDone)) "the data is first extracted from a PCAP";
   mkopt None "pcap-udp" (IntFun (fun p -> container := PcapUDPContainer p; ActionDone)) "the data is first extracted from a PCAP";
 
@@ -94,7 +101,7 @@ let _ =
   Hashtbl.add type_handlers "dns" (fun i -> Dns.value_of_dns_message (Dns.parse_dns_message i));
   Hashtbl.add type_handlers "pcap" (fun i -> Pcap.value_of_pcap_file (Pcap.parse_pcap_file i));
   Hashtbl.add type_handlers "dvi" (fun i -> Dvi.value_of_dvi_file (Dvi.parse_dvi_file i));
-
+  Hashtbl.add type_handlers "gzip" (fun i -> ZLib.value_of_gzip_member (ZLib.parse_gzip_member i));
   Hashtbl.add type_handlers "fv" (fun i -> Uefi_fv.value_of_fv_volume (Uefi_fv.parse_fv_volume i));
 
   (*
@@ -121,6 +128,7 @@ let mk_parse_value () =
 	| NoContainer -> raw_parse_fun
 	| HexContainer -> parse_hex_container "hex_container" raw_parse_fun
 	| Base64Container -> Base64.parse_base64_container Base64.AnyHeader "base64_container" raw_parse_fun
+	| GZipContainer -> ZLib.parse_gzip_container "gzip_container" raw_parse_fun
 	| PcapTCPContainer port -> fun i ->
 	  PcapContainers.value_of_tcp_container (fun x -> x)
 	    (PcapContainers.parse_tcp_container port "tcp_container" raw_parse_fun i)

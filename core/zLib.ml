@@ -1,5 +1,6 @@
 open Parsifal
 open BasePTypes
+open PTypes
 
 
 (*********************)
@@ -170,7 +171,7 @@ let copy_bytes buf distance length =
   for i = 0 to length - 1 do
     Buffer.add_char buf (Buffer.nth buf (initial_index + i))
   done
-  
+
 
 let rec handle_compressed_block buf ll_tree distance_tree input =
   let literal_or_length = huffman_decode ll_tree input in
@@ -288,7 +289,7 @@ struct zlib_stream = {
   fdict : rtol_bit_bool;
   flevel : rtol_bit_int(2);
   (* if fdict is set, dict : uint32; *) (* TODO *)
-  zlib_data : deflate_container of binstring;
+  zlib_data : deflate_container of binstring;  (* TODO: Should depend on compresison_method *)
   adler32_checksum : uint32;            (* TODO *)
 }
 
@@ -314,3 +315,72 @@ let dump_zlib_container dump_fun buf o =
   dump_zlib_stream buf stream
 
 let value_of_zlib_container = value_of_container
+
+
+
+(*************************)
+(* RFC 1952: GZip stream *)
+(*************************)
+
+enum gzip_os (8, Exception) =
+  | 0 -> OS_FAT, "FAT filesystem (MS-DOS, OS/2, NT/Win32)"
+  | 1 -> OS_Amiga, "Amiga"
+  | 2 -> OS_VMS, "VMS (or OpenVMS)"
+  | 3 -> OS_Unix, "Unix"
+  | 4 -> OS_VM_CMS, "VM/CMS"
+  | 5 -> OS_Atari, "Atari TOS"
+  | 6 -> OS_HPFS, "HPFS filesystem (OS/2, NT)"
+  | 7 -> OS_Macintosh, "Macintosh"
+  | 8 -> OS_ZSystem, "Z-System"
+  | 9 -> OS_CPM, "CP/M"
+  | 10 -> OS_TOPS_20, "TOPS-20"
+  | 11 -> OS_NTFS, "NTFS filesystem (NT)"
+  | 12 -> OS_QDOS, "QDOS"
+  | 13 -> OS_Acorn_RISCOS, "Acorn RISCOS"
+  | 255 -> OS_Unknown, "Unknown"
+
+
+struct gzip_member = {
+  gzip_id : magic("\x1f\x8b");
+  gzip_compression_method : uint8; (* TODO: enum *)
+  ftext : rtol_bit_bool;
+  fhcrc : rtol_bit_bool;
+  fextra : rtol_bit_bool;
+  fname : rtol_bit_bool;
+  fcomment : rtol_bit_bool;
+  reserved_flags : rtol_bit_int[3]; (* TODO: should be bit_magic(000) *)
+  mtime : uint32;
+  xfl : uint8;
+  os : gzip_os;
+  extra_field : conditional_container (fextra) of binstring[uint16le]; (* TODO: Decode extra field? *)
+  file_name : conditional_container (fname) of cstring;
+  file_comment : conditional_container (fcomment) of cstring;
+  crc16 : conditional_container (fhcrc) of binstring(2); (* TODO: Check? *)
+  gzip_content : deflate_container of binstring; (* TODO: should depend on gzip_compression_method! *)
+  crc32 : binstring(4); (* TODO: Check? *)
+  isize : uint32le;
+}
+
+
+type 'a gzip_container = 'a
+
+let parse_gzip_container name parse_fun input =
+  let member = parse_gzip_member input in
+  let real_name = name ^ (pop_opt "<noname>" member.file_name) in
+  let new_input = get_in_container input real_name member.gzip_content in
+  let res = parse_fun new_input in
+  check_empty_input true new_input;
+  (* TODO: CRC and length checks? *)
+  res
+
+let dump_gzip_container _dump_fun _buf _o = not_implemented "dump_gzip_container" (* TODO *)
+
+let value_of_gzip_container = value_of_container
+
+
+type 'a gzip_file = ('a gzip_container) list
+let parse_gzip_file name parse_fun input =
+  parse_list name (parse_gzip_container "gzip:" parse_fun) input
+let dump_gzip_file dump_fun buf l =
+  dump_list (dump_gzip_container dump_fun) buf l
+let value_of_gzip_file = value_of_list

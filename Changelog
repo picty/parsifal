@@ -1,3 +1,6 @@
+2014-02-17 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+	* First implementation of gzip_container
+
 2014-02-12 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* Issue #15: Add string_input_of_stdin
 	* Issue #13: Debug feature: handle name in containers

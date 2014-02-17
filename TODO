@@ -154,8 +154,8 @@ Ticket #22: Be more cautious about int32 types...
  - clean up integer handling in uint types
  - insure it works properly on x86 and x86-64
 
-Ticket #23: Add gzip_container
- - using zlib_container
+Ticket #23: Cleanup all ZLib containers
+ - using CRCs and various checks
 
 Ticket #24: Rethink the union options
  * NEEDS A LOT OF WORK
