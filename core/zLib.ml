@@ -348,7 +348,7 @@ struct gzip_member = {
   fextra : rtol_bit_bool;
   fname : rtol_bit_bool;
   fcomment : rtol_bit_bool;
-  reserved_flags : rtol_bit_int[3]; (* TODO: should be bit_magic(000) *)
+  reserved_flags : rtol_bit_magic([false;false;false]); (* TODO: should be bit_magic(000) *)
   mtime : uint32;
   xfl : uint8;
   os : gzip_os;

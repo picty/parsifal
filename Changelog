@@ -1,5 +1,6 @@
 2014-02-17 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* First implementation of gzip_container
+	* New PTypes: (rtol_)bit_magic
 
 2014-02-12 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* Issue #15: Add string_input_of_stdin

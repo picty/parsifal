@@ -62,10 +62,40 @@ let parse_magic magic_expected input =
 				  (hexdump s) ^ "\")"), _h_of_si input))
 
 let dump_magic buf s = POutput.add_string buf s
-
 let string_of_magic s = hexdump s
-
 let value_of_magic s = VString (s, true)
+
+
+type bit_magic = bool list
+type rtol_bit_magic = bool list
+let mk_list n v =
+  let rec aux accu = function
+  | 0 -> accu
+  | n -> aux (v::accu) (n-1)
+  in aux [] n
+
+let string_of_bit_magic v =
+  String.concat "" (List.map (fun b -> if b then "1" else "0") v)
+
+let meta_parse_bit_magic parse_bit expected_value input =
+  let n = List.length expected_value in
+  let rec aux = function
+    | 0 -> []
+    | n -> (parse_bit input)::(aux (n-1))
+  in
+  let v = aux n in
+  if v = expected_value then v
+  else
+    let s = string_of_bit_magic v in
+    raise (ParsingException (CustomException ("invalid magic (\"" ^ s ^ "\")"), _h_of_si input))
+
+let parse_bit_magic = meta_parse_bit_magic parse_bit_bool
+let dump_bit_magic buf v = List.iter (dump_bit_bool buf) v
+let value_of_bit_magic v = VString (string_of_bit_magic v, true)
+
+let parse_rtol_bit_magic = meta_parse_bit_magic parse_rtol_bit_bool
+let dump_rtol_bit_magic buf v = List.iter (dump_rtol_bit_bool buf) v
+let value_of_rtol_bit_magic v = VString (string_of_bit_magic v, true)
 
 
 (* Null Terminated Strings *)
