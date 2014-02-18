@@ -70,7 +70,7 @@ let decrypt block_type expected_len ed n c =
   let res = ref true in
 
   if encryption_block.[0] != '\x00'
-  or encryption_block.[1] != (char_of_int block_type)
+  || encryption_block.[1] != (char_of_int block_type)
   then res := false;
 
   let block_len = String.length encryption_block in

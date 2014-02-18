@@ -2,7 +2,7 @@ let polynom = 0xedb88320l
 
 let crc_table = Array.init 256 (fun n ->
   let crc = ref (Int32.of_int n) in
-  for j = 0 to 7 do
+  for _j = 0 to 7 do
     crc := if Int32.to_int (Int32.logand (!crc) 1l) <> 0 then
       Int32.logxor (Int32.shift_right_logical (!crc) 1) polynom
     else
