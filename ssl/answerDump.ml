@@ -25,6 +25,7 @@ struct answer_dump_v2 [top] = {
   port : uint16;
   name : string[uint16];
   campaign : uint32;
+  msg_type : uint8;   (* This field has been kept for compatibility reasons *)
   timestamp : uint64;
   content : binstring[uint32]
 }
@@ -38,5 +39,18 @@ let v2_of_v1 ?timestamp a = {
   name = a.ad_name;
   campaign = a.ad_client_hello_type;
   timestamp = Parsifal.pop_opt Int64.zero timestamp;
+  msg_type = a.ad_msg_type;
   content = a.ad_content;
 }
+
+let v1_of_v2 a = match a with
+  | { ip_addr = AD_IPv4 ip } ->
+    {
+      ad_ip = ip;
+      ad_port = a.port;
+      ad_name = a.name;
+      ad_client_hello_type = a.campaign;
+      ad_msg_type = a.msg_type;
+      ad_content = a.content;
+    }
+  | _ -> failwith "Unsupported IP type for v1 answer dump."

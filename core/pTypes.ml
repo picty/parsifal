@@ -22,6 +22,15 @@ let value_of_ipv4 s =
     "address", VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts)
   ]
 
+let ipv4_of_string s =
+  let res = String.make 4 ' ' in
+  match List.map (fun x -> char_of_int (int_of_string x)) (string_split '.' s) with
+  | [w;x;y;z] ->
+    res.[0] <- w; res.[1] <- x; res.[2] <- y; res.[3] <- z;
+    res
+  | _ -> raise (ParsingException (CustomException ("Invalid IPv4 (" ^ (quote_string s) ^ ")"), []))
+
+
 
 type ipv6 = string
 
