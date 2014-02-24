@@ -24,7 +24,7 @@ $(BUILD_DIR):
 	@[ -d "$(BUILD_DIR)" ] || mkdir $(BUILD_DIR)
 
 $(BUILD_DIR)/%.ast: %.ml build
-	@if $(CAMLP4) $(INCLUDES) parsifal_syntax.cma -o $@ $< 2> $(BUILD_DIR)/$*.err; \
+	@if $(CAMLP4) $(INCLUDES) -printer Camlp4OCamlPrinter parsifal_syntax.cma -o $@ $< 2> $(BUILD_DIR)/$*.err; \
 	then rm -f $(BUILD_DIR)/$*.err; \
 	else mv $(BUILD_DIR)/$*.err $(BUILD_DIR)/$*.ast; \
 	fi
