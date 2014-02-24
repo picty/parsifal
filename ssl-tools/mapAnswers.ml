@@ -9,6 +9,7 @@ open Ssl2
 open Getopt
 open X509Basics
 open X509
+open TlsEngineNG
 
 type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType | RecordTypes | Get
 	      | VersionACSAC | SuiteACSAC
@@ -70,11 +71,6 @@ let options = [
 ]
 
 
-let parse_all_records answer =
-  let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_v2_ip answer.ip_addr) answer.content in
-  TlsUtil.parse_all_records !verbose answer_input
-
-
 let parse_all_ssl2_records answer =
   let rec read_ssl2_records accu i =
     if not (eos i)
@@ -89,14 +85,24 @@ let parse_all_ssl2_records answer =
   let raw_recs, err = read_ssl2_records [] answer_input in
   raw_recs, None, err
 
+let parse_all_tls_records answer =
+  let prefs = {
+    acceptable_versions = (V_Unknown 0, V_Unknown 0xffff);
+    acceptable_ciphersuites = [];
+    acceptable_compressions = [];
+    directive_behaviour = false;
+  } in
+  let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_v2_ip answer.ip_addr) answer.content in
+  parse_all_records answer_input prefs
+
 let parse_records_as_values answer =
-  match parse_all_records answer with
-  | [], _, false -> [], false
-  | [], _, true ->
+  match parse_all_tls_records answer with
+  | [], _, None -> [], false
+  | [], _, Some _ ->
     let records, _, err = parse_all_ssl2_records answer in
     List.map value_of_ssl2_record records, err
-  | records, _, err ->
-    List.map value_of_tls_record  records, err
+  | records, _, x ->
+    List.map value_of_tls_record records, x <> None
 
 let rec get_one_of v = function
   | [] -> None
@@ -144,18 +150,21 @@ let handle_answer answer =
         print_endline ip;
 	let opts = { default_output_options with oo_verbose = !verbose; indent = "  " } in
 	begin
-          match parse_all_records answer with
-	  | [], _, false -> ()
-	  | [], _, true ->
+          match parse_all_tls_records answer with
+	  | [], _, None -> ()
+	  | [], _, Some _ ->
             let records, _, error = parse_all_ssl2_records answer in
             List.iter (fun r -> print_endline (print_value ~options:opts (value_of_ssl2_record r))) records;
             if error then print_endline "  ERROR"
-	  | records, _, error ->
+	  | records, _, rem ->
             List.iter (fun r -> print_endline (print_value ~options:opts (value_of_tls_record r))) records;
-            if error then print_endline "  ERROR"
+	    match rem, !verbose with
+	    | None, _ -> ()
+	    | Some _, false -> print_endline "  ERROR"
+	    | Some s, true -> print_endline ("  ERROR (Remaining: " ^ (hexdump s) ^ ")")
         end
       | Suite ->
-        let _, ctx, _ = parse_all_records answer in
+        let _, ctx, _ = parse_all_tls_records answer in
         let cs = match ctx with
           | None -> if !verbose then (Some "ERROR") else None
           | Some ctx -> Some (string_of_ciphersuite (List.hd ctx.future.proposed_ciphersuites))
@@ -166,7 +175,7 @@ let handle_answer answer =
             | Some s -> Printf.printf "%s: %s\n" ip s
         end
       | SKE ->
-        let _, ctx, _ = parse_all_records answer in
+        let _, ctx, _ = parse_all_tls_records answer in
         let ske = match ctx with
           | None -> if !verbose then (Some "ERROR") else None
           | Some { future = { s_server_key_exchange = (SKE_DHE { params = params } ) } } ->
@@ -181,7 +190,7 @@ let handle_answer answer =
             | Some s -> Printf.printf "%s: %s\n" ip s
         end
       | ServerRandom ->
-        let records, _, _ = parse_all_records answer in
+        let records, _, _ = parse_all_tls_records answer in
         begin
           match records with
           | { content_type = CT_Handshake;
@@ -192,7 +201,7 @@ let handle_answer answer =
           | _ -> ()
         end;
       | Scapy ->
-        let records, _, _ = parse_all_records answer in
+        let records, _, _ = parse_all_tls_records answer in
         let rec convert_to_scapy (len, ps) = function
           | [] -> List.rev ps
           | r::rs ->
@@ -205,7 +214,7 @@ let handle_answer answer =
         in
         Printf.printf "ps = [%s]\n" (String.concat ",\n  " (convert_to_scapy (0, []) records))
       | Pcap ->
-        let records, _, _ = parse_all_records answer in
+        let records, _, _ = parse_all_tls_records answer in
         let rec convert_to_pcap len ps = function
           | [] -> ()
           | r::rs ->
@@ -218,7 +227,7 @@ let handle_answer answer =
         convert_to_pcap 0 [] records
       | AnswerType ->
         let records =
-          let tls_records, _, _ = parse_all_records answer in
+          let tls_records, _, _ = parse_all_tls_records answer in
           if tls_records <> []
           then Right tls_records
           else begin
@@ -290,7 +299,7 @@ let handle_answer answer =
 	    end else Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
         end;
       | RecordTypes ->
-        let records, _, err = parse_all_records answer in
+        let records, _, err = parse_all_tls_records answer in
         let rec get_type = function
           | [], false -> []
           | [], true -> ["ERROR"]
@@ -302,10 +311,10 @@ let handle_answer answer =
             (string_of_hs_message_type h.handshake_type)::(get_type (r, err))
           | _::r, err -> "UNKNOWN"::(get_type (r, err))
         in
-        let res = String.concat " " (get_type (records, err)) in
+        let res = String.concat " " (get_type (records, err <> None)) in
         Printf.printf "%s\t%s\n" ip res
       | Subject ->
-        let records, _, _ = parse_all_records answer in
+        let records, _, _ = parse_all_tls_records answer in
         let rec extractSubjectOfFirstCert = function
           | [] -> None
           | { content_type = CT_Handshake;

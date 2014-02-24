@@ -69,14 +69,14 @@ let options = [
 
 
 let parse_tls_records_as_value i =
-  match TlsUtil.parse_all_records (!verbose) i with
-  | [], _, false -> VUnit
-  | [], _, true ->
+  match TlsEngineNG.parse_all_records i Tls.default_prefs with
+  | [], _, None -> VUnit
+  | [], _, Some _ ->
     begin
       match try_parse (Ssl2.parse_ssl2_record { Ssl2.cleartext = true }) i with
       | None -> VError "No SSLv2 nor TLS message could be parsed"
       | Some first ->
-	let next, _, _ = TlsUtil.parse_all_records (!verbose) i in
+	let next, _, _ = TlsEngineNG.parse_all_records i Tls.default_prefs in
 	let values = (Ssl2.value_of_ssl2_record first)::(List.map Tls.value_of_tls_record next) in
 	VList values
     end

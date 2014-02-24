@@ -77,13 +77,13 @@ Ticket #7: Implement more DNS RR types
 
 Ticket #8: Rewrite TLS context
  * NEEDS A LOT OF WORK
+ - split global_state (preferences, certificates) and session_state (present, future)
+ - rewrite tools using the automata: serveranswer, disturber, sslproxy, sslrevproxy
+ - write the automata (client, server, transparent proxy, normalizing proxy, hookable client...)
+ - add a check_consistency field in context (or should it depend on the automata)
  - merge tls_context and ssl2_context?
  - rethink tlsEngine / tls to incorporate context checks/updates in the description?
- - work on TlsEngine.update* functions
- - merge TlsEngine and TlsUtil?
- - write the automata (client, server, transparent proxy, normalizing proxy)
  - add a automaton_state field in context
- - add a check_consistency field in context
  - add a generic update function relying on the context and the message received to
    * check the consistency if necessary
    * update the state

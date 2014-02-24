@@ -59,6 +59,31 @@ let extract_first_record ctx recs =
     enrich_record_content := old_enrich_record_content;
     res
 
+(* Offline record parsing *)
+let parse_all_records input prefs =
+  let rec parse_raw_records accu i =
+    if eos i
+    then List.rev accu, None
+    else begin
+      match try_parse (parse_tls_record None) i with
+      | Some next -> parse_raw_records (next::accu) i
+      | None -> List.rev accu, Some (parse_rem_binstring i)
+    end
+  in
+
+  let rec enrich_records ctx accu recs =
+    match extract_first_record (Some ctx) recs with
+    | [] -> List.rev accu
+    | { record_content = Unparsed_Record _ }::_ -> List.rev_append accu recs
+    | r::rs -> enrich_records ctx (r::accu) rs
+  in
+
+  let recs, remaining = parse_raw_records [] { input with enrich = NeverEnrich } in
+  let ctx = empty_context prefs in
+  let parsed_recs = enrich_records ctx [] recs in
+  parsed_recs, Some ctx, remaining
+
+
 
 
 (******************)
