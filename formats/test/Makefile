@@ -1,9 +1,8 @@
 # configurable section
-TARGETS = test_tar test_pe test_png test_dvi test_uefi_fv
+TARGETS = test_tar test_pe test_dvi test_uefi_fv
 
 test_tar_SRCS := test_tar.ml
 test_pe_SRCS := test_pe.ml
-test_png_SRCS := test_png.ml
 test_dvi_SRCS := test_dvi.ml
 test_uefi_fv_SRCS := test_uefi_fv.ml
 

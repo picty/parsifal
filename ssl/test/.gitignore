@@ -1,7 +1,5 @@
 test_random
 test_random.byte
-test_rsa_private_key
-test_rsa_private_key.byte
 test_ssl2
 test_ssl2.byte
 test_tls_record

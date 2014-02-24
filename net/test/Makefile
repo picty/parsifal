@@ -1,8 +1,7 @@
 # configurable section
-TARGETS = test_dns test_pcap test_mrt
+TARGETS = test_dns test_mrt
 
 test_dns_SRCS := test_dns.ml
-test_pcap_SRCS := test_pcap.ml
 test_mrt_SRCS := test_mrt.ml
 
 # comment this line if not using camlp4

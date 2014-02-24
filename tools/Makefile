@@ -1,6 +1,8 @@
 # configurable section
-TARGETS = parsifal
+TARGETS = asn1parse picodig parsifal
 
+asn1parse_SRCS := asn1parse.ml
+picodig_SRCS := picodig.ml
 parsifal_SRCS := parsifal_main.ml
 
 # comment this line if not using camlp4

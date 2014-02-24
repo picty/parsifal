@@ -2,8 +2,6 @@ test_tar
 test_tar.byte
 test_pe
 test_pe.byte
-test_png
-test_png.byte
 test_dvi
 test_dvi.byte
 test_uefi_fv

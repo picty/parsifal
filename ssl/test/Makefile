@@ -1,8 +1,7 @@
 # configurable section
-TARGETS = test_random test_rsa_private_key test_ssl2
+TARGETS = test_random test_ssl2
 
 test_random_SRCS := test_random.ml
-test_rsa_private_key_SRCS := test_rsa_private_key.ml
 test_ssl2_SRCS := test_ssl2.ml
 
 # comment this line if not using camlp4

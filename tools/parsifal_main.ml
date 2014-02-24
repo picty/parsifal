@@ -103,6 +103,7 @@ let _ =
   Hashtbl.add type_handlers "gzip" (fun i -> ZLib.value_of_gzip_member (ZLib.parse_gzip_member i));
   Hashtbl.add type_handlers "fv" (fun i -> Uefi_fv.value_of_fv_volume (Uefi_fv.parse_fv_volume i));
   Hashtbl.add type_handlers "mrt" (fun i -> Mrt.value_of_mrt_message (Mrt.parse_mrt_message i));
+  Hashtbl.add type_handlers "rsa" (fun i -> RSAKey.value_of_rsa_private_key (RSAKey.parse_rsa_private_key i));
 
   (*
   Hashtbl.add type_handlers "keytab" (fun i -> Keytab.value_of_keytab_file (Keytab.parse_keytab_file i));
