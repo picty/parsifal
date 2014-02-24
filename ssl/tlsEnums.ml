@@ -76,7 +76,15 @@ enum hs_message_type (8, UnknownVal HT_Unknown) =
   | 22 -> HT_CertificateStatus, "CertificateStatus"
   | 23 -> HT_SupplementalData, "SupplementalData"
 
+exception InvalidTLSCiphersuite
 enum ciphersuite (16, UnknownVal TLS_UnknownSuite) =
+  | 0x010080 -> SSL2_CK_RC4_128_WITH_MD5
+  | 0x020080 -> SSL2_CK_RC4_128_EXPORT40_WITH_MD5
+  | 0x030080 -> SSL2_CK_RC2_128_CBC_WITH_MD5
+  | 0x040080 -> SSL2_CK_RC2_128_CBC_EXPORT40_WITH_MD5
+  | 0x050080 -> SSL2_CK_IDEA_128_CBC_WITH_MD5
+  | 0x060040 -> SSL2_CK_DES_64_CBC_WITH_MD5
+  | 0x0700C0 -> SSL2_CK_DES_192_EDE3_CBC_WITH_MD5
   | 0x0000 -> TLS_NULL_WITH_NULL_NULL, "TLS_NULL_WITH_NULL_NULL"
   | 0x0001 -> TLS_RSA_WITH_NULL_MD5, "TLS_RSA_WITH_NULL_MD5"
   | 0x0002 -> TLS_RSA_WITH_NULL_SHA, "TLS_RSA_WITH_NULL_SHA"
@@ -379,6 +387,17 @@ enum ciphersuite (16, UnknownVal TLS_UnknownSuite) =
   | 0xffe0 -> SSL_RSA_FIPS_WITH_3DES_EDE_CBC_SHA_bis, "SSL_RSA_FIPS_WITH_3DES_EDE_CBC_SHA_bis"
   | 0xffe1 -> SSL_RSA_FIPS_WITH_DES_CBC_SHA_bis, "SSL_RSA_FIPS_WITH_DES_CBC_SHA_bis"
   | 0x00ff -> TLS_EMPTY_RENEGOTIATION_INFO_SCSV, "TLS_EMPTY_RENEGOTIATION_INFO_SCSV"
+
+(* TODO: Do better by generalising this behabiour? *)
+let dump_ciphersuite buf cs =
+  let tmp = int_of_ciphersuite cs in
+  if tmp land (lnot 0xffff) = 0
+  then BasePTypes.dump_uint16 buf tmp
+  else raise InvalidTLSCiphersuite
+
+alias ssl2_cipher_spec = ciphersuite
+let parse_ssl2_cipher_spec input = ciphersuite_of_int (BasePTypes.parse_uint24 input)
+let dump_ssl2_cipher_spec buf cs = BasePTypes.dump_uint24 buf (int_of_ciphersuite cs)
 
 enum compression_method (8, UnknownVal CM_UnknownVal) =
   | 0 -> CM_Null, "Null"

@@ -7,38 +7,6 @@ type ssl2_context = {
 }
 
 
-enum pure_ssl2_cipher_spec (24, UnknownVal UnknownSSL2CipherSpec) =
-  | 0x010080 -> SSL2_CK_RC4_128_WITH_MD5
-  | 0x020080 -> SSL2_CK_RC4_128_EXPORT40_WITH_MD5
-  | 0x030080 -> SSL2_CK_RC2_128_CBC_WITH_MD5
-  | 0x040080 -> SSL2_CK_RC2_128_CBC_EXPORT40_WITH_MD5
-  | 0x050080 -> SSL2_CK_IDEA_128_CBC_WITH_MD5
-  | 0x060040 -> SSL2_CK_DES_64_CBC_WITH_MD5
-  | 0x0700C0 -> SSL2_CK_DES_192_EDE3_CBC_WITH_MD5	
-
-union ssl2_cipher_spec [enrich; exhaustive; noalias] (UnparsedSSL2CipherSpec) =
-  | true -> SSL2CipherSpec of pure_ssl2_cipher_spec
-  | false -> TLSCipherSpec of TlsEnums.ciphersuite
-
-(* The use of masking is ugly... *)
-let parse_ssl2_cipher_spec input =
-  let x = peek_uint8 input in
-  if x = 0 then drop_bytes 1 input;
-  parse_ssl2_cipher_spec (x <> 0) input
-
-let dump_ssl2_cipher_spec buf = function
-  | SSL2CipherSpec x -> dump_pure_ssl2_cipher_spec buf x
-  | TLSCipherSpec x ->
-    POutput.add_char buf '\x00';
-    TlsEnums.dump_ciphersuite buf x
-  | UnparsedSSL2CipherSpec s -> POutput.add_string buf s
-
-let int_of_ssl2_cipher_spec = function
-  | SSL2CipherSpec x -> int_of_pure_ssl2_cipher_spec x
-  | TLSCipherSpec x -> TlsEnums.int_of_ciphersuite x
-  | UnparsedSSL2CipherSpec _ -> failwith "Impossible"
-
-
 (* TODO: Should it be SoftExceptions if they are ever implemented? *)
 (* It would allow to forge invalid packets, at least... *)
 enum ssl2_certificate_type (8, Exception) =
@@ -69,13 +37,13 @@ struct ssl2_client_hello = {
   ssl2_client_cipher_specs_length : uint16;
   ssl2_client_session_id_length : uint16;
   ssl2_challenge_length : uint16;
-  ssl2_client_cipher_specs : container(ssl2_client_cipher_specs_length) of list of ssl2_cipher_spec;
+  ssl2_client_cipher_specs : container(ssl2_client_cipher_specs_length) of list of TlsEnums.ssl2_cipher_spec;
   ssl2_client_session_id : binstring(ssl2_client_session_id_length);
   ssl2_challenge : binstring(ssl2_challenge_length)
 }
 
 struct ssl2_client_master_key = {
-  ssl2_cipher_spec : ssl2_cipher_spec;
+  ssl2_cipher_spec : TlsEnums.ssl2_cipher_spec;
   ssl2_clear_key_length : uint16;
   ssl2_encrypted_key_length : uint16;
   ssl2_key_arg_length : uint16;
@@ -94,7 +62,7 @@ struct ssl2_server_hello = {
   ssl2_server_session_id_length : uint16;
   ssl2_server_certificate : container(ssl2_server_certificate_length) of
       trivial_union(enrich_certificate_in_server_hello) of X509.certificate;
-  ssl2_server_cipher_specs : container(ssl2_server_cipher_specs_length) of list of ssl2_cipher_spec;
+  ssl2_server_cipher_specs : container(ssl2_server_cipher_specs_length) of list of TlsEnums.ssl2_cipher_spec;
   ssl2_server_session_id : binstring(ssl2_server_session_id_length)
 }
 
