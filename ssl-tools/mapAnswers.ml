@@ -17,6 +17,7 @@ let verbose = ref false
 let filter_ip = ref ""
 let junk_length = ref 16
 let path = ref []
+let v2_answer_dump = ref false
 
 let enrich_style = ref DefaultEnrich
 let set_enrich_level l =
@@ -40,6 +41,9 @@ let do_get_action path_str =
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
+
+  mkopt (Some '2') "--ad2" (Set v2_answer_dump) "use the v2 answer_dump";
+  mkopt (Some '1') "--ad1" (Clear v2_answer_dump) "use the v1 answer_dump";
 
   mkopt (Some 'a') "all" (TrivialFun (fun () -> action := All)) "show all the information and records of an answer";
   mkopt (Some 'I') "ip" (TrivialFun (fun () -> action := IP)) "only show the IP of the answers";
@@ -67,7 +71,7 @@ let options = [
 
 
 let parse_all_records answer =
-  let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_ipv4 answer.ad_ip) answer.ad_content in
+  let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_v2_ip answer.ip_addr) answer.content in
   TlsUtil.parse_all_records !verbose answer_input
 
 
@@ -80,7 +84,7 @@ let parse_all_ssl2_records answer =
       | None -> List.rev accu, true
     end else List.rev accu, false
   in
-  let answer_input = input_of_string ~enrich:(!enrich_style) ~verbose:(!verbose) (string_of_ipv4 answer.ad_ip) answer.ad_content in
+  let answer_input = input_of_string ~enrich:(!enrich_style) ~verbose:(!verbose) (string_of_v2_ip answer.ip_addr) answer.content in
   enrich_record_content := false;
   let raw_recs, err = read_ssl2_records [] answer_input in
   raw_recs, None, err
@@ -124,7 +128,7 @@ let dump_extract s =
 
 
 let handle_answer answer =
-  let ip = string_of_ipv4 answer.ad_ip in
+  let ip = string_of_v2_ip answer.ip_addr in
   let this_one, again =
     if !filter_ip = ""
     then true, true
@@ -135,7 +139,7 @@ let handle_answer answer =
   if this_one then begin
     match !action with
       | IP -> print_endline ip
-      | Dump -> print_string (exact_dump_answer_dump answer)
+      | Dump -> print_string (exact_dump_answer_dump_v2 answer)
       | All ->
         print_endline ip;
 	let opts = { default_output_options with oo_verbose = !verbose; indent = "  " } in
@@ -195,7 +199,7 @@ let handle_answer answer =
             let dump = exact_dump_tls_record r in
             let new_p =
               Printf.sprintf "IP(src=\"%s\")/TCP(sport=%d,dport=12345,seq=%d,flags=\"\")/(\"%s\".decode(\"hex\"))"
-                ip answer.ad_port len (hexdump dump)
+                ip answer.port len (hexdump dump)
             in
             convert_to_scapy (len + (String.length dump), new_p::ps) rs
         in
@@ -206,7 +210,8 @@ let handle_answer answer =
           | [] -> ()
           | r::rs ->
             let dump = exact_dump_tls_record r in
-            let new_p = Pcap.mk_packet answer.ad_ip answer.ad_port dump len in
+	    let ip = match answer.ip_addr with AD_IPv4 ipv4 -> ipv4 | _ -> String.make 4 '\x00' in
+            let new_p = Pcap.mk_packet ip answer.port dump len in
             print_string (Parsifal.exact_dump Pcap.dump_packet new_p);
             convert_to_pcap (len + (String.length dump)) (new_p::ps) rs
         in
@@ -222,7 +227,7 @@ let handle_answer answer =
           end
         in
         begin
-          match records, answer.ad_content with
+          match records, answer.content with
           | _, "" ->
             Printf.printf "%s\tE\n" ip
           | Right [{ content_type = CT_Alert;
@@ -358,6 +363,11 @@ let handle_answer answer =
   end;
   again
 
+let parse_answer_from_v1 input = v2_of_v1 (parse_answer_dump input)
+let parse_answer_from_v2 = parse_answer_dump_v2
+
+let real_parse_answer_dump = ref parse_answer_from_v1
+
 let rec handle_one_file input =
   let finalize_ok answer =
     if handle_answer answer then handle_one_file input else return ()
@@ -367,12 +377,13 @@ let rec handle_one_file input =
       then return ()
       else fail e
     | e -> fail e
-  in try_bind (fun () -> lwt_parse_wrapper parse_answer_dump input) finalize_ok finalize_nok
+  in try_bind (fun () -> lwt_parse_wrapper !real_parse_answer_dump input) finalize_ok finalize_nok
 
 
 let _ =
   try
     let args = parse_args ~progname:"test_answerDump" options Sys.argv in
+    if !v2_answer_dump then real_parse_answer_dump := parse_answer_from_v2;
     if !action = Pcap
     then print_string (Pcap.std_pcap_hdr_str);
     let open_files = function

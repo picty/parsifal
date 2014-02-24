@@ -54,3 +54,9 @@ let v1_of_v2 a = match a with
       ad_content = a.content;
     }
   | _ -> failwith "Unsupported IP type for v1 answer dump."
+
+
+let string_of_v2_ip = function
+  | AD_IPv4 ipv4 -> PTypes.string_of_ipv4 ipv4
+  | AD_IPv6 ipv6 -> PTypes.string_of_ipv6 ipv6
+  | UnparsedIPType _ -> "Unsupported_IP_type"
