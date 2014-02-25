@@ -104,13 +104,10 @@ let _ =
   Hashtbl.add type_handlers "fv" (fun i -> Uefi_fv.value_of_fv_volume (Uefi_fv.parse_fv_volume i));
   Hashtbl.add type_handlers "mrt" (fun i -> Mrt.value_of_mrt_message (Mrt.parse_mrt_message i));
   Hashtbl.add type_handlers "rsa" (fun i -> Pkcs1.value_of_rsa_private_key (Pkcs1.parse_rsa_private_key i));
-
-  (*
   Hashtbl.add type_handlers "keytab" (fun i -> Keytab.value_of_keytab_file (Keytab.parse_keytab_file i));
   Hashtbl.add type_handlers "kerb_pkcs7" (fun i -> Padata.value_of_kerb_pkcs7 (Padata.parse_kerb_pkcs7 i));
   Hashtbl.add type_handlers "kerberos_tcp" (fun i -> Kerby.value_of_kerberos_msg (Kerby.parse_kerberos_msg i));
   Hashtbl.add type_handlers "kerberos_udp" (fun i -> Kerby.value_of_kerberos_udp_msg (Kerby.parse_kerberos_udp_msg i));
-  *)
   ()
 
 
