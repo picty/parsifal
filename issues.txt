@@ -4,7 +4,7 @@ v0.2	2	Describe PNG step by step				open	yeye	doc
 v0.2	3	Describe DNS step by step				open	yeye	doc
 v0.2	4	Write a tutorial					open	yeye	doc
 v0.2	5	Create a Changelog					closed	yeye	doc
-v0.2	6	Described the formats and protocols implemented		open	yeye	doc
+v0.2	6	Described the formats and protocols implemented		closed	yeye	doc
 v0.2	13	Debug features: use container real names		closed	yeye	stdlib,enhancement
 v0.2	15	Add string_input_of_stdin				closed	yeye	stdlib,enhancement
 v0.2	18	A README would be nice					closed	yeye	doc

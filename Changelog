@@ -2,6 +2,7 @@
 	* Major rewrite of TLS engine (using automata)
 	* Remove several programs to limit the number of targets
 	* New library: crypto, to factor some code
+	* Issue #6: Documented the repo layout in README.md
 
 2014-02-17 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* First implementation of gzip_container
