@@ -111,10 +111,26 @@ let _ =
   ()
 
 
-
 let show_type_list error =
+  let n_groups = 3 in
   print_endline "The types available are:";
-  Hashtbl.iter (fun t -> fun _ -> print_string "  "; print_endline t) type_handlers;
+  let type_list = List.sort compare (Hashtbl.fold (fun t -> fun _ -> fun l -> t::l) type_handlers []) in
+  let maxlen = List.fold_left max 0 (List.map String.length type_list)
+  and types = Array.of_list type_list in
+  let total = Array.length types in
+  let n = (total + n_groups - 1) / n_groups in
+  for i = 0 to n do
+    for j = 0 to n_groups - 1 do
+      let index = (j * n) + i in
+      if index < total then begin
+	print_string "    ";
+	print_string types.(index);
+	print_string (String.make (maxlen - (String.length types.(index))) ' ');
+      end;
+    done;
+    print_newline ();
+  done;
+  print_newline ();
   usage "parsifal" options error
 
 
