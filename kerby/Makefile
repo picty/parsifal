@@ -3,9 +3,9 @@ TARGETS = padata kerby
 MLLIBS = parsifal_kerby
 LIBNAME = parsifal_kerby
 
-parsifal_kerby_SRCS := pkcs7.ml kerberosTypes.ml padata.ml kerby.ml keytab.ml
-kerby_SRCS := pkcs7.ml kerberosTypes.ml padata.ml kerby.ml
-padata_SRCS := pkcs7.ml kerberosTypes.ml padata.ml
+parsifal_kerby_SRCS := kerberosTypes.ml padata.ml kerby.ml keytab.ml
+kerby_SRCS := kerberosTypes.ml padata.ml kerby.ml
+padata_SRCS := kerberosTypes.ml padata.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
@@ -14,7 +14,7 @@ CC = gcc
 
 # use the following lines to guess .cmxa files from libs names.
 # remember, libs are always lowercase
-OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal_syntax parsifal_core parsifal_net parsifal_ssl
+OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal_syntax parsifal_core parsifal_net parsifal_crypto
 
 # use the following variables to add extra flags (not guessed by ocamlfind)
 EXTRA_OCAMLOPT_CC_FLAGS = -package parsifal_syntax

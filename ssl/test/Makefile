@@ -1,7 +1,6 @@
 # configurable section
-TARGETS = test_random test_ssl2 test_tls_client test_tls_server
+TARGETS = test_ssl2 test_tls_client test_tls_server
 
-test_random_SRCS := test_random.ml
 test_ssl2_SRCS := test_ssl2.ml
 test_tls_client_SRCS := test_tls_client.ml
 test_tls_server_SRCS := test_tls_server.ml
@@ -13,7 +12,7 @@ CC = gcc
 
 # use the following lines to guess .cmxa files from libs names.
 # remember, libs are always lowercase
-OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal_syntax parsifal_core parsifal_net parsifal_ssl
+OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal_syntax parsifal_core parsifal_crypto parsifal_net parsifal_ssl
 
 # use the following variables to add extra flags (not guessed by ocamlfind)
 EXTRA_OCAMLOPT_CC_FLAGS = -package parsifal_syntax
@@ -29,4 +28,3 @@ include ../../Makefile.ocaml
 
 
 check: all
-	./test_random

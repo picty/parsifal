@@ -26,9 +26,7 @@ Ticket #16: parsillade
 
 
 = CRYPTO =
- - extract crypto-related files in crypto/ dir
  - clean up RSA/PKCS#1 implementation (ticket #1)
- - include X509 support in crypto/
  - clean up PKCS#7 implementation using recursive PTypes
  - Ticket #46: Write a sym_cipher_algo module interface
  - Ticket #45: Write a asym_cipher_algo module interface
@@ -36,7 +34,6 @@ Ticket #16: parsillade
 
 
 Ticket #1: Implement properly RSA/PKCS#1
- - create a crypto directory?
  - clean up PKCS1 module?
  - write test_pkcs1.ml to check RSA implementation (unit tests)
  - write some perf test to see whether cryptokit is needed => should be added to prepare-release.sh
