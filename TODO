@@ -220,9 +220,6 @@ Ticket #36: Improve bitfield support
    * add more efficient versions to parse zLib-style bit fields
    * write dump_rtol_bit(s) functions
 
-Ticket #37: Improve lwt support for fallback strategies
- - maybe lwt_parse_byte/lwt_parse_string/... should store the bytes read in a Buffer
-
 Ticket #38: Implement support for CSR (PKCS#10?)
 
 Ticket #39: Implement support for OCSP

@@ -10,7 +10,7 @@ v0.2	15	Add string_input_of_stdin				closed	yeye	stdlib,enhancement
 v0.2	18	A README would be nice					closed	yeye	doc
 v0.2	19	An INSTALL would be nice				closed	yeye	doc
 
-NoLwt	20	Remove Lwt specific code from the preprocessor/stdlib	open	yeye	preprocessor,stdlib
+NoLwt	20	Remove Lwt specific code from the preprocessor/stdlib	closed	yeye	preprocessor,stdlib
 NoLwt	21	Create a Lwt wrapper to handle stream parsing		open	yeye	stdlib
 
 v0.3	7	Write a white paper   	  	    			open	yeye	doc

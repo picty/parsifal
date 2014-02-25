@@ -1,6 +1,6 @@
 version = "0.1"
 description = "Parsifal SSL library"
-requires = "unix lwt lwt.unix str cryptokit camlp4 parsifal_syntax parsifal_core"
+requires = "unix lwt lwt.unix str cryptokit camlp4 parsifal_syntax parsifal_core parsifal_lwt"
 archive(byte) = "parsifal_ssl.cma"
 archive(native) = "parsifal_ssl.cmxa"
 exists_if = "parsifal_ssl.cma"

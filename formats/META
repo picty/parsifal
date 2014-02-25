@@ -1,6 +1,6 @@
 version = "0.1"
 description = "Parsifal File formats library"
-requires = "unix lwt lwt.unix str cryptokit camlp4 parsifal_syntax parsifal_core"
+requires = "unix str cryptokit camlp4 parsifal_syntax parsifal_core"
 archive(byte) = "parsifal_formats.cma"
 archive(native) = "parsifal_formats.cmxa"
 exists_if = "parsifal_formats.cma"

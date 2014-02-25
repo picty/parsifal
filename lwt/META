@@ -1,0 +1,6 @@
+version = "0.1"
+description = "Parsifal Lwt helpers"
+requires = "unix lwt lwt.unix str camlp4 parsifal_syntax parsifal_core"
+archive(byte) = "parsifal_lwt.cma"
+archive(native) = "parsifal_lwt.cmxa"
+exists_if = "parsifal_lwt.cma"

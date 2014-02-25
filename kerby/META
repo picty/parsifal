@@ -1,6 +1,6 @@
 version = "0.1"
 description = "Parsifal Kerberos library"
-requires = "unix lwt lwt.unix str cryptokit camlp4 parsifal_syntax parsifal_core parsifal_net parsifal_ssl"
+requires = "unix str cryptokit camlp4 parsifal_syntax parsifal_core parsifal_net parsifal_ssl"
 archive(byte) = "parsifal_kerby.cma"
 archive(native) = "parsifal_kerby.cmxa"
 exists_if = "parsifal_kerby.cma"
