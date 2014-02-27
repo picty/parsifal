@@ -22,6 +22,14 @@ PARSIFAL_DIR=$1
 
 [ -d "$PARSIFAL_DIR/.git" ] || error "$PARSIFAL_DIR do not correspond to a git repo."
 
+if git log --format=oneline HEAD^..HEAD | grep WIP > /dev/null; then
+  WIP_IN_COMMIT="YES"
+fi
+if [ -z "$DONT_MIND_WIP_IN_COMMIT" -a -n "$WIP_IN_COMMIT" ]; then
+  echo "Beware of WIP in commit name!"
+  echo "You can skip this warning by setting DONT_MIND_WIP_IN_COMMIT to something."
+  exit 1
+fi
 
 
 # Temporary dir creation
@@ -56,6 +64,7 @@ info "Checking whether the tutorial compiles"
 OCAMLPATH="$TMPDIR/lib" make -C tutorial/dns-steps byte
 OCAMLPATH="$TMPDIR/lib" make -C tutorial/tar-steps byte
 OCAMLPATH="$TMPDIR/lib" make -C tutorial/png-steps byte
+OCAMLPATH="$TMPDIR/lib" make -C tutorial/csr-steps byte
 
 echo "Seems OK to me..."
 

@@ -1,3 +1,6 @@
+2014-02-27 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+	* New step-by-step example: PKCS#10 CSR
+
 2014-02-25 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* Major rewrite of TLS engine (using automata)
 	* Remove several programs to limit the number of targets
