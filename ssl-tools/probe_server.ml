@@ -31,6 +31,9 @@ let timeout = ref 3.0
 (* TODO? *)
 (* let retry = ref 3 *)
 
+
+(* TODO: Add stuff to add/remove/clear a list in getopt? *)
+
 let remove_from_list list elt =
   list := List.filter (fun x -> x <> elt) !list;
   !list <> []
@@ -109,6 +112,7 @@ let options = [
   mkopt None "deep-parse" (TrivialFun deep_parse) "activate deep parsing for certificates/DNs";
 ]
 
+(* TODO: Move this code to getopt? *)
 
 type probe_cmd =
 | ProbeAndPrint
@@ -264,7 +268,31 @@ let _ =
 	| Fatal msg, _ -> if !verbose then prerr_endline msg
       in
       next_step ()
-    | ScanVersions -> failwith "scan-versions not implemented yet!"
+    | ScanVersions ->
+      let versions = [V_SSLv3; V_TLSv1; V_TLSv1_1; V_TLSv1_2; V_Unknown 0x3ff] in
+      let rec mk_versions ext int = match ext, int with
+	| [], _ -> []
+	| _::r, [] -> mk_versions r versions
+	| e::_, i::s -> (e, i)::(mk_versions ext s)
+      in
+      let all_cases = mk_versions versions versions in
+
+      let rec next_step = function
+	| [] -> ()
+	| (e, i)::r ->
+	  let updated_prefs = { prefs with acceptable_versions = (e, i) } in
+	  let ctx, _, res = Lwt_unix.run (probe_server updated_prefs !host !port) in
+	  match res, ctx.future.proposed_versions with
+	  | NothingSoFar, (v1, v2) ->
+	    if v1 <> v2 then begin
+	      if !verbose then prerr_endline "Unexpected result."
+	    end else begin
+	      Printf.printf "%s,%s -> %s\n" (string_of_tls_version e)
+		(string_of_tls_version i) (string_of_tls_version v1);
+	      next_step r
+	    end
+	  | Fatal msg, _ -> if !verbose then prerr_endline msg
+      in next_step all_cases
   with
     | End_of_file -> ()
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
