@@ -1,0 +1,862 @@
+\documentclass{beamer}
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{listings}
+\usepackage{array}
+\lstset{language=Caml, basicstyle=\footnotesize,
+  morekeywords={enum, alias, struct, union,
+                asn1_alias, asn1_union, asn1_struct,
+                UnknownVal, with_lwt, Exception}}
+
+
+\title{Parsifal: a tutorial}
+\author{Olivier Levillain}
+\date{}
+
+\begin{document}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+  \maketitle
+\end{frame}
+
+\begin{frame}{Parsifal}
+  This tutorial is about Parsifal: a generic framework to write binary
+  parsers in OCaml.
+
+  \bigskip
+
+  After a short introduction, the slides explain how to install and
+  build Parsifal.
+
+  \bigskip
+
+  The remaining of the presentation are step-by-step implementation of
+  some toy parsers (TAR, DNS).
+\end{frame}
+
+\begin{frame}{Outline}
+  \tableofcontents
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Context}
+
+\begin{frame}{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+
+\begin{frame}{Starting point of our work: SSL data (1/2)}
+  Several campaigns to collect SSL data, between July 2010 and July
+  2011, using the following methodology:
+  \begin{itemize}
+  \item enumerating IPv4 hosts with 443/tcp open
+  \item sending \texttt{ClientHello} messages
+  \item recording the server answer
+  \end{itemize}
+
+  \bigskip
+
+  \uncover<2->{Using 10 such campaigns, we analysed several
+    parameters:
+    \begin{itemize}
+    \item TLS parameters
+    \item ceritification chain quality
+    \item server behaviour against different stimuli
+    \item results published at ACSAC 2012
+    \end{itemize}
+  }
+\end{frame}
+
+\begin{frame}{Starting point of our work: SSL data (2/2)}
+  Our goal was to extract from those 140~GB of data
+  \begin{itemize}
+  \item relevant infomration (the messages and certificates received)
+  \item quickly
+  \item in a robust way
+  \end{itemize}
+
+  \bigskip
+
+  \uncover<2->{The Electronic Frontier Foundation, which published
+    part of the data we used, also provided some analyses
+    \begin{itemize}
+    \item they mostly used standard tools (\texttt{openssl})
+    \item they mostly focus on certificates
+    \end{itemize}
+  }
+\end{frame}
+
+\begin{frame}{Some history of our parsers (1/2)}
+  To handle this amount of data, we used custom tools; several
+  implementaions were developped
+  \begin{itemize}
+  \item<2-> a first Python prototype: quick to write, slow to run
+  \item<3-> a second version in C++ (using templates and objects):
+    \begin{itemize}
+    \item rather extensible (thanks to a description language)
+    \item faster than Python, but
+    \item hard to debug (memory leaks, segfaults)
+    \item long to write (each new feature required too much code)
+    \end{itemize}
+  \item<4-> third version in OCaml (using a Domain Specific Language resembling Python):
+    \begin{itemize}
+    \item fast and extensible
+    \item more robust than the previous one
+    \item but still too much code to write
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Some history of our parsers (2/2)}
+  \begin{itemize}
+  \item the last version, still in OCaml, is called Parsifal
+  \item<2-> it relies on a pre-processor to automate most of the tedious steps
+    \begin{itemize}
+    \item the resulting code is fast, robust and concise
+    \end{itemize}
+  \end{itemize}
+
+  \bigskip
+
+  \uncover<2->{Code is available on GitHub (\texttt{ANSSI-FR/parsifal})}
+\end{frame}
+
+
+\begin{frame}{Parsifal in a nutshell}
+  \begin{itemize}
+  \item Generic framework to write \textbf{concise} parsers
+  \item \textbf{Speed} of the produced programs
+  \item \textbf{Robustness} of the developped tools
+  \item Development methodology adapted to write parsers
+    \textbf{incrementally}\\[.5cm]
+
+  \item<2-> Parsifal also allows to dump the described objects
+  \item<2-> Example: a DNS client in 200~loc\\[.5cm]
+
+  \item<3-> Parsifal main goals
+    \begin{itemize}
+    \item trusted analysis tools (SSL, X.509, Kerberos, OpenPGP...)
+    \item basic blocks to sanitize files or protocol messages (PNG,
+      PKCS\#10 CSR...)
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Installation}
+
+\begin{frame}{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+
+\begin{frame}{OCaml installation}
+  \begin{block}{}
+    \tt
+    \begin{tabular}{l}
+      apt-get install ocaml ocaml-findlib \\
+      apt-get install liblwt-ocaml-dev \\
+      apt-get install libcryptokit-ocaml-dev \\
+      apt-get install libounit-ocaml-dev \\
+      apt-get install make \\
+      \\
+      apt-get install git \\
+    \end{tabular}
+  \end{block}
+
+  \bigskip
+
+  \textit{(Tested on Debian Wheezy)}
+\end{frame}
+
+\begin{frame}{Parsifal compilation and installation}
+  \begin{block}{Cloning git repository}
+    \tt
+    \begin{tabular}{l}
+      git clone https://github.com/ANSSI-FR/parsifal.git \\
+      cd parsifal \\
+    \end{tabular}
+  \end{block}
+
+  \begin{block}{Compilation}
+    \tt
+    \begin{tabular}{l} 
+      make \\
+      LIBDIR=\$HOME/.ocamlpath BINDIR=\$HOME/bin make install \\
+      export OCAMLPATH=\$HOME/.ocamlpath \\
+      PATH=\$HOME/bin:\$PATH \\
+    \end{tabular}
+  \end{block}
+
+  \bigskip
+
+  \textit{(Without \texttt{LIBDIR} or \texttt{BINDIR}, system dirs are
+    used)}
+\end{frame}
+
+\begin{frame}{How to create a project}
+  \begin{block}{First project}
+    \tt
+    \begin{tabular}{l}
+      ./mk\_project.sh helloworld \\
+      cd helloworld \\
+      make \\
+      ./helloworld \\
+    \end{tabular}
+  \end{block}
+
+  \bigskip
+
+  \begin{block}{}
+    The project created simply display \texttt{Hello, world!}, but
+    uses a Makefile using \texttt{parsifal\_syntax}, the preprocessor.
+
+    \medskip
+
+    Let us now discover the constructions provided by Parsifal.
+  \end{block}
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Constructions}
+
+\begin{frame}{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}[fragile]{Principle}
+  The idea is to let the developper write short type descrptions, and
+  to expand them automatically to obtain the following elements:
+  \begin{itemize}
+  \item an OCaml type \texttt{t}
+  \item a parsing function \texttt{parse\_t}
+  \item a dumping function \texttt{dump\_t}
+  \item a function to convert \texttt{t} to a printable value
+    \texttt{value\_of\_t}
+  \end{itemize}
+
+  \medskip
+
+  \begin{block}{Function prototypes}
+    \begin{lstlisting}
+      parse_t : string_input -> t
+      dump_t : POutput.t -> t -> unit
+      value_of_t : t -> value
+    \end{lstlisting}
+  \end{block}
+\end{frame}
+
+\begin{frame}{PTypes}
+  Such an enriched type (an OCaml type accompagnied by the thhree
+  functions.
+
+  \bigskip
+
+  There are three kinds of PTypes:
+  \begin{itemize}
+  \item basic PTypes (integers, strings, lists, etc.) are provided by
+    the Parsifal core library
+  \item keyword-assisted PTypes, described in the following slides
+  \item custom PTypes can be written manually
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Enumerations}
+  \textbf{Goal}: use a sum type resembling C enums with strong types
+
+  \bigskip
+
+TLS versions are encoded by a 2-byte (16-bit) value:
+{\footnotesize
+\begin{lstlisting}
+enum tls_version (16, UnknownVal V_Unknown) =
+  | 0x0002 -> V_SSLv2, "SSLv2"
+  | 0x0300 -> V_SSLv3, "SSLv3"
+  | 0x0301 -> V_TLSv1, "TLSv1.0"
+  | 0x0302 -> V_TLSv1_1, "TLSv1.1"
+  | 0x0303 -> V_TLSv1_2, "TLSv1.2"
+\end{lstlisting}
+}
+
+  \bigskip
+
+  Enums also come with useful extra functions:
+  \begin{itemize}
+  \item \texttt{int\_of\_tls\_version}
+  \item \texttt{string\_of\_tls\_version}
+  \item \texttt{tls\_version\_of\_int}
+  \item \texttt{tls\_version\_of\_string}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]{Structures (1/2)}
+  \textbf{Goal}: handle a sequence of fields
+
+  \bigskip
+
+  For example, TLS alerts simply are a structure containing two 1-byte
+  fields, described as follows in RFC 5246 (TLSv1.2):
+  {\footnotesize
+\begin{lstlisting}
+enum { warning(1), fatal(2), (255) } AlertLevel;
+
+enum {
+    close_notify(0),
+    unexpected_message(10),
+     ...
+    unsupported_extension(110),
+    (255)
+} AlertDescription;
+
+struct {
+    AlertLevel level;
+    AlertDescription description;
+} Alert;
+\end{lstlisting}
+}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Structures (2/2)}
+  \bigskip
+
+TLS alerts in Parsifal:
+{\footnotesize
+\begin{lstlisting}
+enum tls_alert_level (8, UnknownVal AL_Unknown) =
+  | 1 -> AL_Warning
+  | 2 -> AL_Fatal
+
+enum tls_alert_type (8, UnknownVal AT_Unknown) =
+  | 0 -> AT_CloseNotify
+  | 10 -> AT_UnexpectedMessage
+    ...
+  | 110 -> AT_UnsupportedExtension
+
+struct tls_alert =
+{
+  alert_level : tls_alert_level;
+  alert_type : tls_alert_type
+}
+\end{lstlisting}
+}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Unions}
+  \textbf{Goal}: create a type depending on a discriminating value
+
+  \bigskip
+
+{\footnotesize
+\begin{lstlisting}
+union autonomous_system [enrich] (UnparsedAS) =
+  | 16 -> AS16 of uint16
+  | 32 -> AS32 of uint32
+
+struct bgp_as_path_segment [param as_size] =
+{
+  path_segment_type : uint8;
+  path_segment_length : uint8;
+  path_segment_value : list(path_segment_length) of
+                       autonomous_system(as_size)
+}
+\end{lstlisting}
+}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Alias}
+  \textbf{Goal}: aliases allow for renaming PTypes or ASN.1 structures
+
+  \bigskip
+
+{\footnotesize
+\begin{lstlisting}
+alias ustar_magic = magic["ustar"]
+alias tar_file = list of tar_entry
+
+struct atv_content = {
+  attributeType : der_oid;
+  attributeValue : der_object
+}
+asn1_alias atv
+asn1_alias rdn = set_of atv
+asn1_alias distinguishedName = seq_of rdn
+\end{lstlisting}
+}
+
+\end{frame}
+
+\begin{frame}{Other constructions}
+  \begin{itemize}
+  \item PContainers, allowing transparent transformations at parsing
+    and/or dumping time
+    \begin{itemize}
+    \item encoding: hexadecimal, base64
+    \item compression: DEFLATE, zLib or gzip containers
+    \item safe parsing: some containers provide a fall-back strategy
+      when the contained PType can not be parsed
+    \item miscellaneous checks: CRC, length-checking\\[.5cm]
+    \end{itemize}
+
+  \item \texttt{asn1\_union} and \texttt{asn1\_struct}
+  \item bit fields
+  \end{itemize}
+\end{frame}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Step by step TAR}
+
+\begin{frame}{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}{The TAR format (1/3)}
+  A TAR file is composed of entries:
+  \begin{center}
+    \scriptsize
+
+    \begin{tabular}{|r|r|l|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Offset} &
+      \multicolumn{1}{c|}{\bf Len} &
+      \multicolumn{1}{c|}{\bf Description} \\
+      \hline
+
+      \hline
+      0 & 512 & TAR header, padded with zero bytes \\
+      \hline
+      512 & \multicolumn{1}{c|}{file size} &
+      file content, padded with zero bytes \\
+      & \multicolumn{1}{c|}{aligned at the 512-byte boundary)} & \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+
+\begin{frame}{The TAR format (2/3)}
+  TAR header:
+  \begin{center}
+    \scriptsize
+
+    \begin{tabular}{|r|r|l|l|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Offset} &
+      \multicolumn{1}{c|}{\bf Len} &
+      \multicolumn{2}{c|}{\bf Description} \\
+      & & \multicolumn{1}{c|}{\bf TAR} &
+      \multicolumn{1}{c|}{\bf \tt ustar} \\
+      \hline
+
+      \hline
+        0 & 100 & \multicolumn{2}{l|}{Filename} \\
+      \hline
+      100 &   8 & \multicolumn{2}{l|}{Permissions} \\
+      \hline
+      108 &   8 & \multicolumn{2}{l|}{UID} \\
+      \hline
+      116 &   8 & \multicolumn{2}{l|}{GID} \\
+      \hline
+      124 &  12 & \multicolumn{2}{l|}{File size} \\
+      \hline
+      136 &  12 & \multicolumn{2}{l|}{Timestamp} \\
+      \hline
+      148 &   8 & \multicolumn{2}{l|}{Header checksum} \\
+      \hline
+      156 &   1 & Link type & File type \\
+      \hline
+      157 & 100 & \multicolumn{2}{l|}{Linked file} \\
+      \hline
+      257 &   5	& \multicolumn{1}{c|}{-} & \texttt{"ustar"} marker \\
+      \hline
+      263 &   3	& \multicolumn{1}{c|}{-} & \texttt{ustar} version \\
+      \hline
+      265 &  32 & \multicolumn{1}{c|}{-} & Owner \\
+      \hline
+      297 &  32 & \multicolumn{1}{c|}{-} & Group \\
+      \hline
+      329 &   8 & \multicolumn{1}{c|}{-} & Device major \\
+      \hline
+      337 &   8 & \multicolumn{1}{c|}{-} & Device minor \\
+      \hline
+      345 & 155 & \multicolumn{1}{c|}{-} & Prefix \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}{The TAR format (3/3)}
+  Link type/File type values:
+  \begin{center}
+    \scriptsize
+    \begin{tabular}{|>{\tt}c|l|c|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Character} &
+      \multicolumn{1}{c|}{\bf Description} &
+      \multicolumn{1}{c|}{\bf {\tt ustar}-specific} \\
+      \hline
+
+      \hline
+      <NUL>, 0 & regular file & - \\
+      1 & hard link & - \\
+      2 & symbolic link & - \\
+      \hline
+      3 & character device & yes \\
+      4 & block device & yes \\
+      5 & directory & yes \\
+      6 & FIFO & yes \\
+      7 & contiguous file & yes \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+
+\begin{frame}{TAR v1}
+  \texttt{tar-steps/tar1.ml} describe a primitive version of the TAR
+  file format:
+  \begin{itemize}
+  \item a \texttt{file\_type} \texttt{enum} to represent the different
+    values
+  \item a \texttt{struct} type to describe the complete \texttt{ustar}
+    header
+  \item in TAR, integer as encoded as a string representing an octal
+    value; to decode the \texttt{file\_size} field, the file contains
+    a \texttt{int\_of\_tarstring} function
+  \item then, a second \texttt{struct} to describe a TAR entry
+  \item finally, the \texttt{main} program opens a file and prints the
+    names of the files contained in the archive
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{TAR v2}
+  \texttt{tar-steps/tar2.ml} allows the \texttt{ustar} header to be
+  optional:
+  \begin{itemize}
+  \item the \texttt{tar\_header} is now terminated by a
+    \texttt{string} field (which corresponds to the remaining string)
+    and encapsulated inside a 512-byte container
+  \item the \texttt{ustar}-specific part of the header is extracted in
+    a new \texttt{struct}
+  \item the header includes the \texttt{ustar\_header} field as an
+    optional field
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{TAR v3}
+  As explained earlier, integers are encoded as strings representing
+  their octal value in TAR archive.
+
+  \medskip
+
+  To handle integers better, we write a custom \texttt{tar\_numstring}
+  PType in \texttt{tar-steps/tar3.ml}:
+  \begin{itemize}
+  \item the \texttt{tar\_numstring} type is \texttt{int}, the
+    \textit{intended} value
+  \item to create a working PType, we need to write the
+    \texttt{parse\_tar\_numstring}, \texttt{dump\_tar\_numstring} and
+    the \texttt{value\_of\_numstring} functions
+  \item we replace the old \texttt{string} fields by
+    \texttt{tar\_numstring} ones
+  \end{itemize}
+
+  \medskip
+
+  \textit{As our new PType needs the length argument at parsing and
+    dumping time, the argument is specified using [] instead of ()}
+\end{frame}
+
+\begin{frame}{TAR v4/5}
+  However \texttt{tar3.ml} is bugged since the \texttt{device\_major}
+  and \texttt{device\_minor} are filled with zero bytes when the file
+  type is not a device.
+
+  \medskip
+
+  Thus, \texttt{parse\_tar\_numstring} fails and the whole
+  \texttt{ustar} header is ignored.
+
+  \medskip
+
+  There are two possible fixes:
+  \begin{itemize}
+  \item \texttt{tar4.ml} defines a new custom PType
+    \texttt{optional\_tar\_numstring}
+  \item \texttt{tar5.ml} creates a union using \texttt{file\_type} as
+    the discriminating value
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Improvements}
+  \texttt{tar6.ml}, \texttt{tar7.ml} and \texttt{tar8.ml} later
+  improve the parser:
+  \begin{itemize}
+  \item better display of strings, by taking into account the trailing
+    zeroes (\texttt{tar6.ml})
+  \item add a \texttt{try..with} in the \texttt{main} function to
+    handle the end of file (\texttt{tar7.ml})
+  \item add a list and a \texttt{checkpoint} to handle the end of file
+    (alternative solution, \texttt{tar8.ml})
+  \end{itemize}
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Step by step DNS}
+
+\begin{frame}{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}{DNS messages (1/4)}
+  The original specification is RFC 1035 (updated by some RFCs)
+
+  \medskip
+
+  Message layout:
+  \begin{center}
+    \scriptsize
+
+    \begin{tabular}{|r|r|l|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Offset} &
+      \multicolumn{1}{c|}{\bf Len.} &
+      \multicolumn{1}{c|}{\bf Description} \\
+      \hline
+
+      \hline
+        0 &   2 & QId \\
+      \hline
+        2 &   2 & \textit{flags} \\
+      \hline
+        4 &   2 & Question count \\
+      \hline
+        6 &   2 & Answer count \\
+      \hline
+        8 &   2 & Authority record count \\
+      \hline
+       10 &   2 & Additional record count \\
+      \hline
+       12 &   ? & Questions \\
+      \hline
+        ? &   ? & Answers \\
+      \hline
+        ? &   ? & Authority records \\
+      \hline
+        ? &   ? & Additional records \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}{DNS messages (2/4)}
+  Question format:
+  \begin{itemize}
+  \item a domain,
+  \item a 16-bit \texttt{query\_type}
+  \item a 16-bit \texttt{query\_class}
+  \end{itemize}
+
+  \medskip
+
+  A domain is a sequence of labels, a label being:
+  \begin{itemize}
+  \item a string if the two first bits are zeroes, the six next bits
+    containing the string length
+  \item an empty label (a zero byte) to signal the end of a domain
+  \item a pointer to compress the domain, two bytes beginning by
+    \texttt{0b11} and followed by a 14-bit offset to retrieve the end
+    of the domain in the already parsed message
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{DNS messages (3/4)}
+  Resource Record (RR) format:
+  \begin{itemize}
+  \item a domain (cf. previous slide)
+  \item a 16-bit \texttt{rr\_type}
+  \item a 16-bit \texttt{rr\_class}
+  \item a 32-bit TTL (time-to-live)
+  \item a 16-bit integer representing the size of the data
+  \item the RR data
+  \end{itemize}
+
+  \medskip
+
+  Here are examples of RR data:
+  \begin{itemize}
+  \item \texttt{A} RR contains an IPv4 address (32~bits)
+  \item \texttt{CNAME} RR is an alias pointing towards a domain
+  \item \texttt{MX} RR establishes mail exchanger information (a
+    16-bit integer and a domain)
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{DNS messages (4/4)}
+  Here a some possible values of \texttt{query\_type} /
+  \texttt{rr\_type}:
+  \begin{center}
+    \scriptsize
+    \begin{tabular}{|>{\tt}c|>{\tt}l|c|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Value} &
+      \multicolumn{1}{c|}{\bf Description} &
+      \multicolumn{1}{c|}{\bf Compatible with \texttt{rr\_type}} \\
+      \hline
+
+      \hline
+      1 & A & yes \\
+      \hline
+      2 & NS & yes \\
+      \hline
+      5 & CNAME & yes \\
+      \hline
+      6 & SOA & yes \\
+      \hline
+      12 & PTR & yes \\
+      \hline
+      15 & MX & yes \\
+      \hline
+      255 & * & - \\
+      \hline
+    \end{tabular}
+  \end{center}
+
+  \medskip
+
+  And some values for \texttt{query\_class} / \texttt{rr\_class}:
+  \begin{center}
+    \scriptsize
+    \begin{tabular}{|>{\tt}c|>{\tt}l|c|}
+      \hline
+      \multicolumn{1}{|c|}{\bf Value} &
+      \multicolumn{1}{c|}{\bf Description} &
+      \multicolumn{1}{c|}{\bf Compatible with \texttt{rr\_class}} \\
+      \hline
+
+      \hline
+      1 & Internet & yes \\
+      \hline
+      2 & CSNET & yes \\
+      \hline
+      3 & CHAOS & yes \\
+      \hline
+      4 & Hesiod & yes \\
+      \hline
+      255 & * & - \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+
+\begin{frame}{DNS: first implementation}
+  \texttt{dns-steps/dns1.ml} is a first description of DNS messages:
+  \begin{itemize}
+  \item two \texttt{enum}s for \texttt{rr\_type} and \texttt{rr\_class}
+  \item a custom \texttt{label} PType
+  \item a custom \texttt{domain} PType to implement a list of
+    \texttt{label}s
+  \item two \texttt{struct}s describing questions and RRs
+  \item a \texttt{dns\_message} structure to wrap everything up
+  \item finally, some piece of code to use the generated
+    \texttt{parse\_dns\_message} funcion½
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{DNS: enriched RRs}
+  \texttt{dns-steps/dns2.ml} enriches the \texttt{rdata} field:
+  \begin{itemize}
+  \item new PType: a \texttt{union} called \texttt{rdata} where the
+    discriminator is the RR type
+  \item for some RRs, description of the RR data (A, CNAME, MX)
+  \item change of the \texttt{rdata} field type from
+    \texttt{binstring} to \texttt{rdata(rtype)} (the union just
+    defined)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Toward a trivial DNS client}
+  \begin{itemize}
+  \item \texttt{dns3.ml} consists of a rewrite of \texttt{domain} and
+    \texttt{label}
+  \item \texttt{dns4.ml} introduces a parameter to the \texttt{domain}
+    PType, \texttt{context}, to record and expand the label
+    compression at parsing time
+  \item \texttt{dns5.ml}, \texttt{dns6.ml} and \texttt{dns7.ml} add
+    some code in the \texttt{main} function to send a request to a
+    real server, and to print the result
+  \end{itemize}
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusion}
+
+\begin{frame}{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}{Related work}
+  \begin{itemize}
+  \item Scapy
+  \item Hachoir
+  \item OCaml \texttt{bitstring} library
+  \item NetZob
+  \item Bro's binpac language
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{File formats and network protocols implemented}
+  \begin{itemize}
+  \item X.509
+  \item TLS
+  \item MRT+BGP
+  \item TAR
+  \item PCAP/IP/TCP/UDP (trivial description)
+  \item DNS
+  \item PNG
+  \item PE (work in progress)
+  \item ExpROM (work in progress)
+  \item Kerberos (work in progress)
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Questions ?}
+  \vspace*{\stretch{1}}
+
+  \begin{center}
+    Thank you for your attention.
+  \end{center}
+
+  \vspace*{\stretch{1}}
+\end{frame}
+
+
+
+
+\end{document}

@@ -1,9 +1,6 @@
-FIGURES=
-TEXS=
+all: tutorial.pdf
 
-all: parsifal.pdf
-
-parsifal.pdf: %.pdf : parsifal.tex $(FIGURES) $(TEXS)
+tutorial.pdf: tutorial.tex
 	@pdflatex -halt-on-error $< > $*.ltx.out 2>&1 || (cat $*.ltx.out && exit 1) 
 	@grep -q '\(There were undefined references\|Label(s) may have changed\)' $*.ltx.out || pdflatex $< > $*.ltx.out 2>&1
 	@while grep -q 'Label(s) may have changed' $*.ltx.out; do \
@@ -12,18 +9,6 @@ parsifal.pdf: %.pdf : parsifal.tex $(FIGURES) $(TEXS)
 	@cat $*.ltx.out
 	@rm -f $*.ltx.out
 
-%-fig.pdf: %-fig.eps
-	epspdf $<
-
-%-fig.eps: %-fig.ps
-	ps2eps $<
-
-%-fig.ps: %-fig.dvi
-	dvips -o $@ $<
-
-%-fig.dvi: %-fig.tex
-	latex -output-directory $$(dirname $@) $<
-
 
 clean:
-	rm -f img/*-fig.aux img/*-fig.log img/*-fig.dvi img/*-fig.ps img/*-fig.dvi img/*-fig.eps img/*-fig.pdf parsifal.pdf *.log *.aux *.blg *.bbl *.vrb *.snm *.nav *.out *.toc
+	rm -f tutorial.pdf *.log *.aux *.blg *.bbl *.vrb *.snm *.nav *.out *.toc
