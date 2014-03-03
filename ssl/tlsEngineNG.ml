@@ -13,7 +13,7 @@ open Parsifal
 
 let mk_rec ct v content = { content_type = ct; record_version = v; record_content = content }
 
-let extract_first_record ctx recs =
+let extract_first_record enrich ctx recs =
   let rec produce_raw_first_record accu recs =
     match accu, recs with
     | _, [] -> accu, []
@@ -36,9 +36,7 @@ let extract_first_record ctx recs =
     let rec_content = POutput.contents content in
 
     (* Here, we try to enrich the first record from the merged messages *)
-    let old_enrich_record_content = !enrich_record_content in
-    enrich_record_content := true;
-    let new_input = input_of_string input_name rec_content in
+    let new_input = input_of_string ~enrich:enrich input_name rec_content in
     let res = match try_parse ~report:false (parse_record_content ctx ct) new_input with
       | None ->
 	let first = mk_rec ct v (Unparsed_Record rec_content) in
@@ -56,7 +54,6 @@ let extract_first_record ctx recs =
 	  end
 	in first::next
     in
-    enrich_record_content := old_enrich_record_content;
     res
 
 (* Offline record parsing *)
@@ -72,7 +69,7 @@ let parse_all_records input prefs =
   in
 
   let rec enrich_records ctx accu recs =
-    match extract_first_record (Some ctx) recs with
+    match extract_first_record input.enrich (Some ctx) recs with
     | [] -> List.rev accu
     | { record_content = Unparsed_Record _ }::_ -> List.rev_append accu recs
     | r::rs -> enrich_records ctx (r::accu) rs
@@ -351,7 +348,8 @@ let get_next_automata_input ctx c =
 
   and enrich_new_records new_record_pending =
     if new_record_pending then begin
-      match extract_first_record (Some ctx) c.input_records with
+      (* TODO: Should it really be AlwaysEnrich here? *)
+      match extract_first_record AlwaysEnrich (Some ctx) c.input_records with
       | [] | [ { record_content = Unparsed_Record _ } ] -> input_fun ()
       | r::rs ->
 	c.input_records <- rs;
