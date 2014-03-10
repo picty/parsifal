@@ -26,7 +26,7 @@ let extract_first_record enrich ctx recs =
       then begin
 	dump_record_content content r.record_content;
 	produce_raw_first_record accu rs
-      end else accu, rs
+      end else accu, r::rs
   in
 
   match produce_raw_first_record None recs with
