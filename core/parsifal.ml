@@ -165,7 +165,7 @@ type string_input = {
   mutable cur_offset : int;
   mutable cur_bitstate : bitstate;
   cur_length : int;
-  enrich : enrich_style;
+  mutable enrich : enrich_style;
   history : history;
   err_fun : string -> unit
 }

@@ -75,7 +75,10 @@ let parse_all_records input prefs =
     | r::rs -> enrich_records ctx (r::accu) rs
   in
 
-  let recs, remaining = parse_raw_records [] { input with enrich = NeverEnrich } in
+  let saved_enrich = input.enrich in
+  input.enrich <- NeverEnrich;
+  let recs, remaining = parse_raw_records [] input in
+  input.enrich <- saved_enrich;
   let ctx = empty_context prefs in
   let parsed_recs = enrich_records ctx [] recs in
   parsed_recs, Some ctx, remaining
