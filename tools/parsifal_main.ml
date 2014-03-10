@@ -20,6 +20,7 @@ type container =
 let container = ref NoContainer
 
 let verbose = ref false
+let maxlen = ref (Some 70)
 let enrich_style = ref DefaultEnrich
 let set_enrich_level l =
   if l > 0 then begin
@@ -45,6 +46,8 @@ let multiple_values = ref false
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
+  mkopt None "maxlen" (IntFun (fun i -> maxlen := Some i; ActionDone)) "set the string max length";
+  mkopt None "no-maxlen" (TrivialFun (fun () -> maxlen := None)) "reset the string max length";
 
   mkopt (Some 'T') "type" (StringVal parser_type) "select the parser type";
   mkopt (Some 'L') "list-types" (Set type_list) "prints the list of supported types";
@@ -152,7 +155,7 @@ let mk_parse_value () =
     with
       Not_found -> show_type_list (Some "parser type not found.")
   in fun input ->
-    let opts = { default_output_options with oo_verbose = !verbose } in
+    let opts = { default_output_options with oo_verbose = !verbose; maxlen = !maxlen } in
     let v = parse_fun input in
     match !action with
     | All -> print_endline (print_value ~options:opts v)

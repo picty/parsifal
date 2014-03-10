@@ -15,6 +15,7 @@ type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | P
 	      | VersionACSAC | SuiteACSAC
 let action = ref IP
 let verbose = ref false
+let maxlen = ref (Some 70)
 let filter_ip = ref ""
 let junk_length = ref 16
 let path = ref []
@@ -42,6 +43,8 @@ let do_get_action path_str =
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
+  mkopt None "maxlen" (IntFun (fun i -> maxlen := Some i; ActionDone)) "set the string max length";
+  mkopt None "no-maxlen" (TrivialFun (fun () -> maxlen := None)) "reset the string max length";
 
   mkopt (Some '2') "--ad2" (Set v2_answer_dump) "use the v2 answer_dump";
   mkopt (Some '1') "--ad1" (Clear v2_answer_dump) "use the v1 answer_dump";
@@ -149,7 +152,7 @@ let handle_answer answer =
       | Dump -> print_string (exact_dump_answer_dump_v2 answer)
       | All ->
         print_endline ip;
-	let opts = { default_output_options with oo_verbose = !verbose; indent = "  " } in
+	let opts = { default_output_options with oo_verbose = !verbose; indent = "  " ; maxlen = !maxlen } in
 	begin
           match parse_all_tls_records answer with
 	  | [], _, None -> ()
