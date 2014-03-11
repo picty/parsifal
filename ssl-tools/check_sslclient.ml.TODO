@@ -1,11 +1,38 @@
 (* check_sslclient: TODO
 
+Versions
+========
+
 Check the version proposed?
+ - Check the reaction when the version returned is outside the scope?
+ - Version inconsistencies?
+ - Check the alert returned (protocolVersion? IllegalParameter?)
+Check down negociation -> SSLv3 / SSLv2
+
+Suites
+======
+Does client accept ADH
+Check export suites
+Accept a suite that was never proposed (always RC4-MD5 for example, even if not proposed)
+
+Attacks
+=======
+ - Bleichenbacher
+ - RFC5746
+ - Beast
+ - SSLStrip and HSTS support
 
 Record checks: same as check_sslserver
 
+Check the acceptable sizes of SID (0..32)
+Check the logic of session resumption (SID / SessionTicket)
+
+Check the suite/version/compression is consistant with the ClientHello sent
+
 [...]
 
+Check the minimum RSA size accepted by the client
+Check the minimum DH size accepted by the client
 Check the different versions to write 0 in DHE
 Check the client avoids DHE values in {-1;0;1}
 
@@ -18,6 +45,11 @@ Check how subject naming is handled
  - IP in SAN/DNSName
  -  does SAN overrid CN?)
 
+Check wether revocation is checked (CRL / OCSP)
+
 Check wether the presence of \x00 works in CN/SAN/etc.
 
+Check whether a non-AC signed certificate is accepted
+
+Check whether the SKE signature is checked (aka the gotofail bug)
 *)

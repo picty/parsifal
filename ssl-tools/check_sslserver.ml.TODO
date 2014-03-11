@@ -2,23 +2,31 @@
 
 Probe should take as an input a CH and return a result after trying to establish a complete connexion.
 
+Client Hello:
+ - reaction to a long CH (> 256 bytes for example)
+
 Protocol Versions:
  - check the accepted SSL version
+ - check the alert sent (protocolVersion?)
  - determine the preferred version (with different stimuli (SSLv2 CH, other TLS CH)
  - check the version intolerance (for example a CH 0x03ff)
  - check the coherency between record_version and clienthello_version
  - check the tolerance to various (record_version/clienthello_version)
  - check the consistency of the record_version during a session
  - check the tolerance to inconsistency of record_version during a session
+ - check the suite/version/compression is consistant with the ClientHello sent
 
 Ciphersuites:
  - check the accepted ciphersuites
  - determine the preferred ciphersuites (with different stimuli)
  - determine the choice algorithm (directive or courteous)
  - check for SCSV support / intolerance (in particular when it is the *first* suite)
+ - check the intolerance to "new" suites
+ - check export suites
 
 Compression Methods:
- - check the accepted comrpession methods
+ - check the accepted compression methods
+ - check the intolerance to "new" compression
 
 Extensions:
  - determine the accepted extensions
@@ -47,8 +55,10 @@ CKE:
    * in case of renegotiation or session resumption
  - check the different versions to write 0 in DHE
  - check the server avoids DHE values in {-1;0;1}
+ - check for Bleichenbacher
 
 Record protocol
+ - Beast
  - one Handshake message spanning over several records
  - several Handshake messages inside one record
  - messages split in 10-byte records, in (2^14 + 1)-byte records
@@ -61,6 +71,8 @@ Record protocol
  - reaction to AppData received during a Handshake (the first one or subsequent renegos)
 
 Certificates
+ - Check wether the certificates accepts to present a private key as a certificate
+ - Check the quality of the modulus (factorable.net,EFF / projet little black box)
  - Serial numbers
  - Duplicate certificates
  - Unused certificates
@@ -76,3 +88,14 @@ Certificates
  - Validity dates
  - Revocation state *)
 
+
+(* Ideas to sort (client / server):
+ - Sign a cert with a non-AC cert (Moxie's bug)
+ - Down neg SSL2 / Export
+ - ADH compatible client
+ - weak RSA key
+ - weak DH group
+ - Bleichenbacher
+ - Renegotiation gap
+ - Beast
+ - SSLStrip *)
