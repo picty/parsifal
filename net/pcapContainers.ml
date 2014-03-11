@@ -7,9 +7,6 @@ open Pcap
 (* TODO: All this should be rewritten from scratch                  *)
 (*       because of lots of shortcuts in the current implementation *)
 
-type direction = ClientToServer | ServerToClient
-let string_of_direction = function ClientToServer -> "C->S" | ServerToClient -> "S->C"
-
 type connection_key = {
   source : ipv4 * int;
   destination : ipv4 * int;
@@ -22,11 +19,11 @@ let string_of_connexion_key k =
 type segment = direction * int * int * string
 
 
-type 'a tcp_container = (connection_key * (direction * 'a) list) list
+type 'a oriented_tcp_container = (connection_key * (direction * 'a) list) list
 
-let parse_tcp_container (expected_dest_port : int) (_name : string)
-                        (parse_fun : string_input -> 'a)
-                        (input : string_input) : 'a tcp_container =
+let parse_oriented_tcp_container (init_fun : unit -> unit) (expected_dest_port : int) (_name : string)
+                        (parse_fun : direction -> string_input -> 'a)
+                        (input : string_input) : 'a oriented_tcp_container =
   let connections : (connection_key, segment list) Hashtbl.t = Hashtbl.create 100 in
 
   let update_connection = function
@@ -99,6 +96,7 @@ let parse_tcp_container (expected_dest_port : int) (_name : string)
 	  else find_next_seg (seg::leftover) accu cur_seg r
       in
 
+      init_fun ();
       let (dir, seq, ack, p), other_segs = extract_first_segment segs in
       find_next_seg [] [] (dir, seq + String.length p, ack, p) other_segs
     in
@@ -107,7 +105,7 @@ let parse_tcp_container (expected_dest_port : int) (_name : string)
     let segs = aggregate c in
     let parse_aggregate (dir, payload) =
       let new_input = get_in_container input cname payload in
-      let res = parse_rem_list "tcp_container" parse_fun new_input in
+      let res = parse_rem_list "tcp_container" (parse_fun dir) new_input in
       check_empty_input true new_input;
       List.map (fun x -> dir, x) res
     in
@@ -121,7 +119,7 @@ let parse_tcp_container (expected_dest_port : int) (_name : string)
   List.rev !result
 
 
-let dump_tcp_container _dump_fun _o = not_implemented "dump_tcp_container"
+let dump_oriented_tcp_container _dump_fun _o = not_implemented "dump_oriented_tcp_container"
 
 let value_of_tcp_connexion value_of_fun (k, segs) =
   let value_of_one_aggregate (d, p) = VRecord [
@@ -137,8 +135,13 @@ let value_of_tcp_connexion value_of_fun (k, segs) =
     "data", VList (List.map value_of_one_aggregate segs)
   ]
 
-let value_of_tcp_container value_of_fun = value_of_list (value_of_tcp_connexion value_of_fun)
+let value_of_oriented_tcp_container value_of_fun = value_of_list (value_of_tcp_connexion value_of_fun)
 
+type 'a tcp_container = (connection_key * (direction * 'a) list) list
+let parse_tcp_container expected_dest_port name parse_fun input =
+  parse_oriented_tcp_container (fun () -> ()) expected_dest_port name (fun _ -> parse_fun) input
+let dump_tcp_container _dump_fun _o = not_implemented "dump_tcp_container"
+let value_of_tcp_container value_of_fun = value_of_list (value_of_tcp_connexion value_of_fun)
 
 
 type 'a udp_container = (connection_key * (direction * 'a) list) list

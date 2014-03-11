@@ -27,6 +27,9 @@ let incr_indent o = { o with indent = o.indent ^ o.indent_increment }
 (* Trivial functions *)
 (*********************)
 
+type direction = ClientToServer | ServerToClient
+let string_of_direction = function ClientToServer -> "C->S" | ServerToClient -> "S->C"
+
 let const s _ = s
 let id x = x
 
