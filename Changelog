@@ -1,3 +1,7 @@
+2014-03-10 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+	* Fixed some bugs in TlsEngineNG and how TLS records
+	  were parsed offline.
+
 2014-02-27 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* New step-by-step example: PKCS#10 CSR
 

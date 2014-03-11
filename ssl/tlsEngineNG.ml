@@ -56,35 +56,6 @@ let extract_first_record enrich ctx recs =
     in
     res
 
-(* Offline record parsing *)
-let parse_all_records input prefs =
-  let rec parse_raw_records accu i =
-    if eos i
-    then List.rev accu, None
-    else begin
-      match try_parse (parse_tls_record None) i with
-      | Some next -> parse_raw_records (next::accu) i
-      | None -> List.rev accu, Some (parse_rem_binstring i)
-    end
-  in
-
-  let rec enrich_records ctx accu recs =
-    match extract_first_record input.enrich (Some ctx) recs with
-    | [] -> List.rev accu
-    | { record_content = Unparsed_Record _ }::_ -> List.rev_append accu recs
-    | r::rs -> enrich_records ctx (r::accu) rs
-  in
-
-  let saved_enrich = input.enrich in
-  input.enrich <- NeverEnrich;
-  let recs, remaining = parse_raw_records [] input in
-  input.enrich <- saved_enrich;
-  let ctx = empty_context prefs in
-  let parsed_recs = enrich_records ctx [] recs in
-  parsed_recs, Some ctx, remaining
-
-
-
 
 (******************)
 (* Global context *)
@@ -473,3 +444,54 @@ let rec run_automata automata state global_ctx ctx sock =
   if again
   then run_automata automata next_state global_ctx ctx sock
   else return next_state
+
+
+
+(**************************)
+(* Offline record parsing *)
+(**************************)
+
+let update_with_record ctx = function
+  | { record_content = Handshake { handshake_content = ClientHello ch } } -> update_with_client_hello ctx ch
+  | { record_content = Handshake { handshake_content = ServerHello sh } } -> update_with_server_hello ctx sh
+  | { record_content = Handshake { handshake_content = Certificate certs } } -> update_with_certificate ctx certs
+  | { record_content = Handshake { handshake_content = ServerKeyExchange ske } } -> update_with_server_key_exchange ctx ske
+  | { record_content = Handshake { handshake_content = _ } } -> () (* TODO *)
+  | { record_content = ChangeCipherSpec _ } -> () (* TODO *)
+  | { record_content = Unparsed_Record _ } -> ()
+  | { record_content = ApplicationData _ } -> ()
+  | { record_content = Alert _ } -> ()
+  | { record_content = Heartbeat _ } -> ()
+
+
+
+let parse_all_records ctx input =
+  let rec parse_raw_records accu i =
+    if eos i
+    then List.rev accu, None
+    else begin
+      match try_parse (parse_tls_record None) i with
+      | Some next -> parse_raw_records (next::accu) i
+      | None -> List.rev accu, Some (parse_rem_binstring i)
+    end
+  in
+
+  let rec enrich_records ctx accu recs =
+    match extract_first_record input.enrich ctx recs with
+    | [] -> List.rev accu
+    | { record_content = Unparsed_Record _ }::_ -> List.rev_append accu recs
+    | r::rs ->
+      begin
+	match ctx with
+	| None -> ()
+	| Some real_ctx -> update_with_record real_ctx r
+      end;
+      enrich_records ctx (r::accu) rs
+  in
+
+  let saved_enrich = input.enrich in
+  input.enrich <- NeverEnrich;
+  let recs, remaining = parse_raw_records [] input in
+  input.enrich <- saved_enrich;
+  let parsed_recs = enrich_records ctx [] recs in
+  parsed_recs, ctx, remaining

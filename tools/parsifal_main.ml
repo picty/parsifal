@@ -42,6 +42,8 @@ let type_list = ref false
 let input_in_args = ref false
 let multiple_values = ref false
 
+let ctx = ref (Tls.empty_context Tls.default_prefs)
+
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
@@ -71,15 +73,15 @@ let options = [
 ]
 
 
-let parse_tls_records_as_value i =
-  match TlsEngineNG.parse_all_records i Tls.default_prefs with
+let parse_tls_records_as_value ctx i =
+  match TlsEngineNG.parse_all_records ctx i with
   | [], _, None -> VUnit
   | [], _, Some _ ->
     begin
       match try_parse (Ssl2.parse_ssl2_record { Ssl2.cleartext = true }) i with
       | None -> VError "No SSLv2 nor TLS message could be parsed"
       | Some first ->
-	let next, _, _ = TlsEngineNG.parse_all_records i Tls.default_prefs in
+	let next, _, _ = TlsEngineNG.parse_all_records ctx i in
 	let values = (Ssl2.value_of_ssl2_record first)::(List.map Tls.value_of_tls_record next) in
 	VList values
     end
@@ -99,7 +101,7 @@ let _ =
   Hashtbl.add type_handlers "tar" (fun i -> Tar.value_of_tar_file (Tar.parse_tar_file i));
   Hashtbl.add type_handlers "answer_dump" (fun i -> AnswerDump.value_of_answer_dump (AnswerDump.parse_answer_dump i));
   Hashtbl.add type_handlers "answer_dump_v2" (fun i -> AnswerDump.value_of_answer_dump_v2 (AnswerDump.parse_answer_dump_v2 i));
-  Hashtbl.add type_handlers "tls_record" parse_tls_records_as_value;
+  Hashtbl.add type_handlers "tls_record" (parse_tls_records_as_value (Some !ctx));
   Hashtbl.add type_handlers "dns" (fun i -> Dns.value_of_dns_message (Dns.parse_dns_message i));
   Hashtbl.add type_handlers "pcap" (fun i -> Pcap.value_of_pcap_file (Pcap.parse_pcap_file i));
   Hashtbl.add type_handlers "dvi" (fun i -> Dvi.value_of_dvi_file (Dvi.parse_dvi_file i));
@@ -172,6 +174,7 @@ let handle_inline data = input_of_string ~verbose:!verbose ~enrich:!enrich_style
 
 
 let _ =
+  TlsDatabase.enrich_suite_hash ();
   try
     let args = parse_args ~progname:"perceval" options Sys.argv in
     let parse_value = mk_parse_value () in

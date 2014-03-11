@@ -96,8 +96,9 @@ let parse_all_tls_records answer =
     directive_behaviour = false;
     available_certificates = []
   } in
+  let ctx = Tls.empty_context prefs in
   let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_v2_ip answer.ip_addr) answer.content in
-  parse_all_records answer_input prefs
+  parse_all_records (Some ctx) answer_input
 
 let parse_records_as_values answer =
   match parse_all_tls_records answer with
@@ -394,6 +395,7 @@ let rec handle_one_file input =
 
 
 let _ =
+  TlsDatabase.enrich_suite_hash ();
   try
     let args = parse_args ~progname:"test_answerDump" options Sys.argv in
     if !v2_answer_dump then real_parse_answer_dump := parse_answer_from_v2;
