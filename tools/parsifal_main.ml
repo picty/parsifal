@@ -18,6 +18,7 @@ type container =
   | PcapTCPContainer of int
   | PcapUDPContainer of int
 let container = ref NoContainer
+let port = ref 80
 
 let verbose = ref false
 let maxlen = ref (Some 70)
@@ -50,6 +51,7 @@ let options = [
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
   mkopt None "maxlen" (IntFun (fun i -> maxlen := Some i; ActionDone)) "set the string max length";
   mkopt None "no-maxlen" (TrivialFun (fun () -> maxlen := None)) "reset the string max length";
+  mkopt (Some 'p') "port" (IntVal port) "set the port to pcap parsers";
 
   mkopt (Some 'T') "type" (StringVal parser_type) "select the parser type";
   mkopt (Some 'L') "list-types" (Set type_list) "prints the list of supported types";
@@ -113,6 +115,11 @@ let _ =
   Hashtbl.add type_handlers "kerb_pkcs7" (fun i -> Padata.value_of_kerb_pkcs7 (Padata.parse_kerb_pkcs7 i));
   Hashtbl.add type_handlers "kerberos_tcp" (fun i -> Kerby.value_of_kerberos_msg (Kerby.parse_kerberos_msg i));
   Hashtbl.add type_handlers "kerberos_udp" (fun i -> Kerby.value_of_kerberos_udp_msg (Kerby.parse_kerberos_udp_msg i));
+  Hashtbl.add type_handlers "http" (fun i -> Http.value_of_http_message (Http.parse_http_message None i));
+  Hashtbl.add type_handlers "pcap_http" (
+    fun i -> PcapContainers.value_of_oriented_tcp_container (fun x -> x)
+      (PcapContainers.parse_oriented_tcp_container (fun () -> ()) !port "HTTP"
+	 (fun dir -> fun i -> Http.value_of_http_message (Http.parse_http_message (Some dir) i)) i));
   ()
 
 
