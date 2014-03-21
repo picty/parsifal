@@ -91,65 +91,52 @@ let parse_tls_records_as_value ctx i =
     VList (List.map Tls.value_of_tls_record recs)
 
 
-let type_handlers : (string, string_input -> value) Hashtbl.t = Hashtbl.create 10
+let type_handlers : (string, string * (string_input -> value)) Hashtbl.t = Hashtbl.create 10
 
 let _ =
-  Hashtbl.add type_handlers "string" (fun i -> value_of_string (parse_rem_string i));
-  Hashtbl.add type_handlers "binstring" (fun i -> value_of_binstring (parse_rem_string i));
-  Hashtbl.add type_handlers "x509" (fun i -> X509.value_of_certificate (X509.parse_certificate i));
-  Hashtbl.add type_handlers "asn1" (fun i -> Asn1PTypes.value_of_der_object (Asn1PTypes.parse_der_object i));
-  Hashtbl.add type_handlers "png" (fun i -> Png.value_of_png_file (Png.parse_png_file i));
-  Hashtbl.add type_handlers "pe" (fun i -> Pe.value_of_pe_file (Pe.parse_pe_file i));
-  Hashtbl.add type_handlers "tar" (fun i -> Tar.value_of_tar_file (Tar.parse_tar_file i));
-  Hashtbl.add type_handlers "answer_dump" (fun i -> AnswerDump.value_of_answer_dump (AnswerDump.parse_answer_dump i));
-  Hashtbl.add type_handlers "answer_dump_v2" (fun i -> AnswerDump.value_of_answer_dump_v2 (AnswerDump.parse_answer_dump_v2 i));
-  Hashtbl.add type_handlers "tls_record" (parse_tls_records_as_value (Some !ctx));
-  Hashtbl.add type_handlers "dns" (fun i -> Dns.value_of_dns_message (Dns.parse_dns_message i));
-  Hashtbl.add type_handlers "pcap" (fun i -> Pcap.value_of_pcap_file (Pcap.parse_pcap_file i));
-  Hashtbl.add type_handlers "dvi" (fun i -> Dvi.value_of_dvi_file (Dvi.parse_dvi_file i));
-  Hashtbl.add type_handlers "gzip" (fun i -> ZLib.value_of_gzip_member (ZLib.parse_gzip_member i));
-  Hashtbl.add type_handlers "fv" (fun i -> Uefi_fv.value_of_fv_volume (Uefi_fv.parse_fv_volume i));
-  Hashtbl.add type_handlers "mrt" (fun i -> Mrt.value_of_mrt_message (Mrt.parse_mrt_message i));
-  Hashtbl.add type_handlers "rsa" (fun i -> Pkcs1.value_of_rsa_private_key (Pkcs1.parse_rsa_private_key i));
-  Hashtbl.add type_handlers "keytab" (fun i -> Keytab.value_of_keytab_file (Keytab.parse_keytab_file i));
-  Hashtbl.add type_handlers "kerb_pkcs7" (fun i -> Padata.value_of_kerb_pkcs7 (Padata.parse_kerb_pkcs7 i));
-  Hashtbl.add type_handlers "kerberos_tcp" (fun i -> Kerby.value_of_kerberos_msg (Kerby.parse_kerberos_msg i));
-  Hashtbl.add type_handlers "kerberos_udp" (fun i -> Kerby.value_of_kerberos_udp_msg (Kerby.parse_kerberos_udp_msg i));
-  Hashtbl.add type_handlers "http" (fun i -> Http.value_of_http_message (Http.parse_http_message None i));
-  Hashtbl.add type_handlers "pcap_http" (
+  Hashtbl.add type_handlers "string" ("String", fun i -> value_of_string (parse_rem_string i));
+  Hashtbl.add type_handlers "binstring" ("Binary string", fun i -> value_of_binstring (parse_rem_string i));
+  Hashtbl.add type_handlers "x509" ("X509 certificate", fun i -> X509.value_of_certificate (X509.parse_certificate i));
+  Hashtbl.add type_handlers "asn1" ("ASN.1", fun i -> Asn1PTypes.value_of_der_object (Asn1PTypes.parse_der_object i));
+  Hashtbl.add type_handlers "png" ("PNG image", fun i -> Png.value_of_png_file (Png.parse_png_file i));
+  Hashtbl.add type_handlers "pe" ("PE executable", fun i -> Pe.value_of_pe_file (Pe.parse_pe_file i));
+  Hashtbl.add type_handlers "tar" ("TAR archive", fun i -> Tar.value_of_tar_file (Tar.parse_tar_file i));
+  Hashtbl.add type_handlers "answer_dump" ("Answer dump v1", fun i -> AnswerDump.value_of_answer_dump (AnswerDump.parse_answer_dump i));
+  Hashtbl.add type_handlers "answer_dump_v2" ("Answer dump v2", fun i -> AnswerDump.value_of_answer_dump_v2 (AnswerDump.parse_answer_dump_v2 i));
+  Hashtbl.add type_handlers "tls_record" ("SSL/TLS record", parse_tls_records_as_value (Some !ctx));
+  Hashtbl.add type_handlers "dns" ("DNS message", fun i -> Dns.value_of_dns_message (Dns.parse_dns_message i));
+  Hashtbl.add type_handlers "pcap" ("PCAP capture file", fun i -> Pcap.value_of_pcap_file (Pcap.parse_pcap_file i));
+  Hashtbl.add type_handlers "dvi" ("DVI file", fun i -> Dvi.value_of_dvi_file (Dvi.parse_dvi_file i));
+  Hashtbl.add type_handlers "gzip" ("GZip compressed file", fun i -> ZLib.value_of_gzip_member (ZLib.parse_gzip_member i));
+  Hashtbl.add type_handlers "fv" ("UEFI volume", fun i -> Uefi_fv.value_of_fv_volume (Uefi_fv.parse_fv_volume i));
+  Hashtbl.add type_handlers "mrt" ("MRT archive", fun i -> Mrt.value_of_mrt_message (Mrt.parse_mrt_message i));
+  Hashtbl.add type_handlers "rsa" ("PKCS#1 RSA key", fun i -> Pkcs1.value_of_rsa_private_key (Pkcs1.parse_rsa_private_key i));
+  Hashtbl.add type_handlers "keytab" ("Kerberos keytab", fun i -> Keytab.value_of_keytab_file (Keytab.parse_keytab_file i));
+  Hashtbl.add type_handlers "kerb_pkcs7" ("Kerberos PKCS#7", fun i -> Padata.value_of_kerb_pkcs7 (Padata.parse_kerb_pkcs7 i));
+  Hashtbl.add type_handlers "kerberos_tcp" ("Kerberos TCP message", fun i -> Kerby.value_of_kerberos_msg (Kerby.parse_kerberos_msg i));
+  Hashtbl.add type_handlers "kerberos_udp" ("Kerberos UDP message", fun i -> Kerby.value_of_kerberos_udp_msg (Kerby.parse_kerberos_udp_msg i));
+  Hashtbl.add type_handlers "http" ("HTTP message", fun i -> Http.value_of_http_message (Http.parse_http_message None i));
+  Hashtbl.add type_handlers "pcap_http" ("PCAP containing HTTP messages",
     fun i -> PcapContainers.value_of_oriented_tcp_container (fun x -> x)
       (PcapContainers.parse_oriented_tcp_container (fun () -> ()) !port "HTTP"
 	 (fun dir -> fun i -> Http.value_of_http_message (Http.parse_http_message (Some dir) i)) i));
   ()
 
 
-let show_type_list error =
-  let n_groups = 3 in
-  print_endline "The types available are:";
-  let type_list = List.sort compare (Hashtbl.fold (fun t -> fun _ -> fun l -> t::l) type_handlers []) in
-  let maxlen = List.fold_left max 0 (List.map String.length type_list)
-  and types = Array.of_list type_list in
-  let total = Array.length types in
-  let n = (total + n_groups - 1) / n_groups in
-  for i = 0 to n do
-    for j = 0 to n_groups - 1 do
-      let index = (j * n) + i in
-      if index < total then begin
-	print_string "    ";
-	print_string types.(index);
-	print_string (String.make (maxlen - (String.length types.(index))) ' ');
-      end;
-    done;
-    print_newline ();
-  done;
-  print_newline ();
-  usage "parsifal" options error
-
+let show_type_list () =
+  let type_list = List.sort compare (Hashtbl.fold (fun t -> fun (desc, _) -> fun l -> (t,desc)::l) type_handlers []) in
+  let maxlen = List.fold_left (fun accu -> fun (n, _) -> max (String.length n) accu) 0 type_list in
+  let print_type max (n, d) =
+    if !verbose
+    then Printf.printf "%-*s %s\n" max n d
+    else print_endline (n ^ ":" ^ d)
+  in
+  List.iter (print_type (maxlen + 2)) type_list
 
 let mk_parse_value () =
   let parse_fun =
     try
-      let raw_parse_fun = Hashtbl.find type_handlers !parser_type in
+      let _, raw_parse_fun = Hashtbl.find type_handlers !parser_type in
       match !container with
 	| NoContainer -> raw_parse_fun
 	| HexContainer -> parse_hex_container "hex_container" raw_parse_fun
@@ -162,7 +149,7 @@ let mk_parse_value () =
 	  PcapContainers.value_of_udp_container (fun x -> x)
 	    (PcapContainers.parse_udp_container port "udp_container" raw_parse_fun i)
     with
-      Not_found -> show_type_list (Some "parser type not found.")
+      Not_found -> usage "parsifal" options (Some "Unknown parser type (try -L).")
   in fun input ->
     let opts = { default_output_options with oo_verbose = !verbose; maxlen = !maxlen } in
     let v = parse_fun input in
@@ -185,7 +172,10 @@ let _ =
   try
     let args = parse_args ~progname:"perceval" options Sys.argv in
     let parse_value = mk_parse_value () in
-    if !type_list then show_type_list None;  
+    if !type_list then begin
+      show_type_list ();
+      exit 0;
+    end;
     begin
       let handle_fun, real_args = match args with
       | [] -> handle_stdin, [""]
