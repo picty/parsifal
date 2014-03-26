@@ -1,3 +1,9 @@
+2014-04-04 Florian Maury <florian.maury@ssi.gouv.fr>
+	* First description of NTP messages
+	* Add function to read input with read_line
+	  (1 line = 1 message)
+	* Add output option to allow one-line JSON output format
+
 2014-03-10 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* Fixed some bugs in TlsEngineNG and how TLS records
 	  were parsed offline.

@@ -1,9 +1,8 @@
 # configurable section
-TARGETS =
 MLLIBS = parsifal_net
 LIBNAME = parsifal_net
 
-parsifal_net_SRCS := dns.ml pcap.ml mrt.ml pcapContainers.ml http.ml
+parsifal_net_SRCS := dns.ml pcap.ml mrt.ml pcapContainers.ml http.ml libntp.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
