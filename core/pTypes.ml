@@ -90,7 +90,9 @@ let meta_parse_bit_magic parse_bit expected_value input =
   let n = List.length expected_value in
   let rec aux = function
     | 0 -> []
-    | n -> (parse_bit input)::(aux (n-1))
+    | n ->
+      let b = parse_bit input in
+      b::(aux (n-1))
   in
   let v = aux n in
   if v = expected_value then v
@@ -100,11 +102,11 @@ let meta_parse_bit_magic parse_bit expected_value input =
 
 let parse_bit_magic = meta_parse_bit_magic parse_bit_bool
 let dump_bit_magic buf v = List.iter (dump_bit_bool buf) v
-let value_of_bit_magic v = VString (string_of_bit_magic v, true)
+let value_of_bit_magic v = VString (string_of_bit_magic v, false)
 
 let parse_rtol_bit_magic = meta_parse_bit_magic parse_rtol_bit_bool
 let dump_rtol_bit_magic buf v = List.iter (dump_rtol_bit_bool buf) v
-let value_of_rtol_bit_magic v = VString (string_of_bit_magic v, true)
+let value_of_rtol_bit_magic v = VString (string_of_bit_magic v, false)
 
 
 (* Null Terminated Strings *)
