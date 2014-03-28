@@ -738,3 +738,6 @@ let string_input_of_stdin ?verbose:(verbose=false) ?enrich:(enrich=DefaultEnrich
      with Sys_error _ -> ""
   in
   input_of_string ~verbose:(verbose) ~enrich:(enrich) "(stdin)" (read_more ())
+
+let string_input_of_readline ?verbose:(verbose=false) ?enrich:(enrich=DefaultEnrich) () =
+   input_of_string ~verbose:(verbose) ~enrich:(enrich) "(read_line)" (read_line ())
