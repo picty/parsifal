@@ -17,9 +17,9 @@ let rec json_of_value ?options:(options=default_output_options) = function
     let indent = options.indent
     and new_indent = new_options.indent in
     let handle_elt v = json_of_value ~options:new_options v in
-    Printf.sprintf "[\n%s%s\n%s]" new_indent
-      (String.concat (",\n" ^ new_indent) (List.map handle_elt l))
-      indent
+    Printf.sprintf "[%s%s%s%s%s]" options.eol new_indent
+      (String.concat ("," ^ options.eol ^ new_indent) (List.map handle_elt l))
+      options.eol indent
 
   | VRecord l -> begin
     try
@@ -40,9 +40,9 @@ let rec json_of_value ?options:(options=default_output_options) = function
 	       (json_of_value ~options:new_options v))::accu
 	  else accu
       in
-      Printf.sprintf "{\n%s%s\n%s}" new_indent
-	(String.concat (",\n" ^ new_indent) (List.rev (List.fold_left handle_field [] l)))
-	indent
+      Printf.sprintf "{%s%s%s%s%s}" options.eol new_indent
+	(String.concat ("," ^ options.eol ^ new_indent) (List.rev (List.fold_left handle_field [] l)))
+	options.eol indent
     end
   end
 

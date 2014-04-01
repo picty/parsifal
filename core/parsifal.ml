@@ -10,6 +10,7 @@ type output_options = {
   maxlen : int option;
   indent : string;
   indent_increment : string;
+  eol : string;
 }
 
 let default_output_options = {
@@ -18,6 +19,7 @@ let default_output_options = {
   maxlen = Some 70;
   indent = "";
   indent_increment = "  ";
+  eol = "\n";
 }
 
 let incr_indent o = { o with indent = o.indent ^ o.indent_increment }
