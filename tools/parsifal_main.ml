@@ -120,6 +120,7 @@ let _ =
     fun i -> PcapContainers.value_of_oriented_tcp_container (fun x -> x)
       (PcapContainers.parse_oriented_tcp_container (fun () -> ()) !port "HTTP"
 	 (fun dir -> fun i -> Http.value_of_http_message (Http.parse_http_message (Some dir) i)) i));
+  Hashtbl.add type_handlers "ntp" ("NTP packets", fun i -> Libntp.value_of_ntp_packet (Libntp.parse_ntp_packet i));
   ()
 
 
