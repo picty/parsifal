@@ -61,9 +61,18 @@ let n = ref 100
 
 
 
-let mk_int_tests name parse dump value_of expected_len =
-  let max = if expected_len < 4 then 1 lsl (8 * expected_len) else 1000000000 in
-  let rnd_fun () = Random.int max in
+let mk_int_tests name parse dump value_of signed expected_len =
+  let max =
+    if expected_len < 4
+    then 1 lsl (8 * expected_len)
+    else 0x3fff_ffff
+  in
+  let max_div_2 = max lsr 1 in
+  let rnd_fun =
+    if signed
+    then fun () -> (Random.int max) - max_div_2
+    else fun () -> Random.int max
+  in
   let rnd_str = random_string expected_len in
   let prefix = "test_" ^ name in [
     (prefix ^ "_idem_pod") >:: ntimes !n (test_idem_pod (str_wrap parse) dump rnd_fun);
@@ -89,14 +98,17 @@ let mk_int64_tests name parse dump value_of =
 
 (* TODO: Use modules when they exists? *)
 let int_tests =
-  (mk_int_tests "uint8" parse_uint8 dump_uint8 value_of_uint8 1)@
-    (mk_int_tests "uint16" parse_uint16 dump_uint16 value_of_uint16 2)@
-    (mk_int_tests "uint16le" parse_uint16le dump_uint16le value_of_uint16le 2)@
-    (mk_int_tests "uint24" parse_uint24 dump_uint24 value_of_uint24 3)@
-    (mk_int_tests "uint32" parse_uint32 dump_uint32 value_of_uint32 4)@
-    (mk_int_tests "uint32le" parse_uint32le dump_uint32le value_of_uint32le 4)@
+  (mk_int_tests "uint8" parse_uint8 dump_uint8 value_of_uint8 false 1)@
+    (mk_int_tests "uint16" parse_uint16 dump_uint16 value_of_uint16 false 2)@
+    (mk_int_tests "uint16le" parse_uint16le dump_uint16le value_of_uint16le false 2)@
+    (mk_int_tests "uint24" parse_uint24 dump_uint24 value_of_uint24 false 3)@
+    (mk_int_tests "uint32" parse_uint32 dump_uint32 value_of_uint32 false 4)@
+    (mk_int_tests "uint32le" parse_uint32le dump_uint32le value_of_uint32le false 4)@
     (mk_int64_tests "uint64" parse_uint64 dump_uint64 value_of_uint64)@
-    (mk_int64_tests "uint64le" parse_uint64le dump_uint64le value_of_uint64le)
+    (mk_int64_tests "uint64le" parse_uint64le dump_uint64le value_of_uint64le)@
+    (mk_int_tests "sint8" parse_sint8 dump_sint8 value_of_sint8 true 1)@
+    (mk_int_tests "sint16" parse_sint16 dump_sint16 value_of_sint16 true 2)@
+    (mk_int_tests "sint32" parse_sint32 dump_sint32 value_of_sint32 true 4)
 
 
 let string_tests = [ (* TODO: string tests (ok/nok), drop_bytes *) ]
@@ -112,6 +124,11 @@ let tests = List.flatten [
 
 let suite = "Base PTypes Unit Tests" >::: tests
 
+let aggregate exit_code = function
+  | RSuccess _ -> exit_code
+  | _ -> 1
+
 let _ =
   Random.self_init ();
-  run_test_tt_main suite
+  let results = run_test_tt_main suite in
+  exit (List.fold_left aggregate 0 results)

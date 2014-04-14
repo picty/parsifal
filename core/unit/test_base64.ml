@@ -62,6 +62,11 @@ let tests = List.flatten [
 
 let suite = "Base64 Unit Tests" >::: tests
 
+let aggregate exit_code = function
+  | RSuccess _ -> exit_code
+  | _ -> 1
+
 let _ =
   Random.self_init ();
-  run_test_tt_main suite
+  let results = run_test_tt_main suite in
+  exit (List.fold_left aggregate 0 results)

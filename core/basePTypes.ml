@@ -225,6 +225,35 @@ let value_of_uint64le i = VBigInt (exact_dump dump_uint64 i, LittleEndian)
 
 
 
+type sint8 = int
+let parse_sint8 input =
+  let v = parse_byte input in
+  if v >= 128 then (v - 256) else v
+let dump_sint8 buf sint =
+  let v = if sint < 0 then 256 + sint else sint in
+  dump_uint8 buf v
+let value_of_sint8 v = VInt (v, 8, BigEndian)
+
+type sint16 = int
+let parse_sint16 input =
+  let v = parse_uint16 input in
+  if v >= 32768 then (v - 65536) else v
+let dump_sint16 buf sint =
+  let v = if sint < 0 then 65536 + sint else sint in
+  dump_uint16 buf v
+let value_of_sint16 v = VInt (v, 16, BigEndian)
+
+type sint32 = int
+let parse_sint32 input =
+  let v = parse_uint32 input in
+  if v >= 0x8000_0000 then (v - 0x1_0000_0000) else v
+let dump_sint32 buf sint =
+  let v = if sint < 0 then 0x1_0000_0000 + sint else sint in
+  dump_uint32 buf v
+let value_of_sint32 v = VInt (v, 32, BigEndian)
+
+
+
 (***********)
 (* Strings *)
 (***********)
