@@ -1,9 +1,0 @@
-# tcpdump -w /tmp/https.pcap -i usb0
-% wget -O- https://github.com	
-% parsifal -T pcap /tmp/https.pcap | less
-% parsifal --pcap-udp 53 -T dns /tmp/https.pcap | less
-% parsifal --pcap-tcp 443 -T tls_record /tmp/https.pcap | less
-% parsifal --pcap-tcp 443 -T tls_record /tmp/https.pcap --always-enrich | less
-% parsifal --pcap-tcp 443 -T tls_record /tmp/https.pcap --always-enrich -g "**.subject"
-% parsifal --pcap-tcp 443 -T tls_record /tmp/https.pcap --always-enrich -g "**.subject.@CN"
-% parsifal --pcap-tcp 443 -T tls_record /tmp/https.pcap --always-enrich -g "**.server_random"

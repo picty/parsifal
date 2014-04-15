@@ -1,6 +1,0 @@
-% probe_server -H www.google.com -p 443 extract-certs
-Saved 3 certificates
-% x509show www.google.com-?.pem --subject
-% x509show www.google.com-?.pem -text
-% x509show www.google.com-?.pem -g "**.distributionPoint"
-
