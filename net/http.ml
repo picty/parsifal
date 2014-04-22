@@ -3,20 +3,6 @@ open BasePTypes
 open PTypes
 
 
-let parse_string_until c input =
-  if input.cur_offset < input.cur_length then begin
-    let offset = input.cur_base + input.cur_offset in
-    try
-      let index = String.index_from input.str offset c in
-      let res = parse_string (index - offset) input in
-      ignore (parse_byte input);
-      ignore (try_parse ~report:false (parse_magic "\n") input);
-      res
-    with Not_found -> parse_rem_string input
-  end else raise (ParsingException (OutOfBounds, _h_of_si input))
-
-
-
 type query_info = {
   query_method : string;
   query_path : string;
@@ -79,6 +65,7 @@ let parse_http_message dir input =
   let rec parse_headers last_line hdrs input =
     if eos input then List.rev hdrs else begin
       let line = parse_string_until '\r' input in
+      ignore (try_parse ~report:false (parse_magic "\n") input);
       match last_line, line with
       | None, "" -> List.rev hdrs
       | Some h, "" -> List.rev ((split_header h input)::hdrs)

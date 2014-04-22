@@ -313,6 +313,23 @@ let dump_varlen_binstring = dump_varlen_string
 let value_of_varlen_binstring = value_of_binstring
 
 
+type string_until = string
+let parse_string_until c input =
+  if input.cur_offset < input.cur_length then begin
+    let offset = input.cur_base + input.cur_offset in
+    try
+      let index = String.index_from input.str offset c in
+      let res = parse_string (index - offset) input in
+      ignore (parse_byte input);
+      res
+    with Not_found -> parse_rem_string input
+  end else raise (ParsingException (OutOfBounds, _h_of_si input))
+let dump_string_until c buf s =
+  POutput.add_string buf s;
+  POutput.add_char buf c
+let value_of_string_until = value_of_string
+
+
 
 (********************)
 (* Drop bytes utils *)
