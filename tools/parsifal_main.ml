@@ -121,6 +121,10 @@ let _ =
       (PcapContainers.parse_oriented_tcp_container (fun () -> ()) !port "HTTP"
 	 (fun dir -> fun i -> Http.value_of_http_message (Http.parse_http_message (Some dir) i)) i));
   Hashtbl.add type_handlers "ntp" ("NTP packets", fun i -> Libntp.value_of_ntp_packet (Libntp.parse_ntp_packet i));
+  Hashtbl.add type_handlers "openpgp" ("OpenPGP message",
+    fun i -> Libpgp.value_of_openpgp_message (Libpgp.parse_openpgp_message i));
+  Hashtbl.add type_handlers "armored-openpgp" ("Armored OpenPGP message",
+    fun i -> Libpgp.value_of_armored_openpgp_message (Libpgp.parse_armored_openpgp_message i));
   ()
 
 
