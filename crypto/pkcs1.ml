@@ -166,7 +166,7 @@ let raw_sign rnd_state typ hash msg n d =
 let raw_verify typ msg s n e =
   try
     let digest_info = decrypt typ None s n e in
-    let input = Parsifal.input_of_string "DigestInfo" digest_info in
+    let input = input_of_string "DigestInfo" digest_info in
     let asn1_obj = parse_der_object input in
     (* TODO: This is rather ugly. Could it be a little cleaner *)
     match asn1_obj with
@@ -183,7 +183,7 @@ let raw_verify typ msg s n e =
 	f msg = digest
       | _ -> false
   with
-    | Not_found | Parsifal.ParsingException _ -> false
+    | Not_found | ParsingException _ -> false
 
 
 
@@ -195,18 +195,33 @@ type 'a pkcs1_container =
 | RSAEncrypted of string
 | RSADecrypted of 'a
 
-let parse_pkcs1_container key parse_fun input =
+let parse_pkcs1_container key name parse_fun input =
   let encrypted_string = parse_rem_binstring input in
   match input.enrich, key with
   | NeverEnrich, _
   | _, (NoRSAKey|RSAPublicKey _) -> RSAEncrypted encrypted_string
   | _, RSAPrivateKey { modulus = n; privateExponent = d } ->
     let decrypted_string = decrypt 2 None d n encrypted_string in
-    let new_input = get_in_container input "pkcs1_container" decrypted_string in
+    let new_input = get_in_container input name decrypted_string in
     let res = parse_fun new_input in
     check_empty_input true new_input;
-    res
+    RSADecrypted res
 
+let dump_pkcs1_container _ = not_implemented "Pkcs1.dump_pkcs1_container"
+
+let value_of_pkcs1_container value_of_fun = function
+  | RSAEncrypted s -> VUnparsed (VString (s, true))
+  | RSADecrypted x -> VAlias ("pkcs1_container", value_of_fun x)
+
+
+(********************)
+(* Useful functions *)
+(********************)
+
+let load_rsa_private_key filename =
+  let input = string_input_of_filename filename in
+  let rsa_key = parse_rsa_private_key input in
+  RSAPrivateKey rsa_key
 
 
 
