@@ -106,9 +106,9 @@ let encrypt rnd_state block_type d n c =
 
 (* TODO: block_type should be optional *)
 
-let decrypt block_type expected_len ed n c =
-  let normalized_n = normalize_modulus n in
-  let encryption_block = exp_mod ed c normalized_n in
+let decrypt block_type expected_len (modulus, exponent) c =
+  let normalized_n = normalize_modulus modulus in
+  let encryption_block = exp_mod c exponent normalized_n in
   let res = ref true in
 
   if encryption_block.[0] != '\x00'
@@ -165,7 +165,7 @@ let raw_sign rnd_state typ hash msg n d =
 
 let raw_verify typ msg s n e =
   try
-    let digest_info = decrypt typ None s n e in
+    let digest_info = decrypt typ None (n, e) s in
     let input = input_of_string "DigestInfo" digest_info in
     let asn1_obj = parse_der_object input in
     (* TODO: This is rather ugly. Could it be a little cleaner *)
@@ -201,7 +201,7 @@ let parse_pkcs1_container key name parse_fun input =
   | NeverEnrich, _
   | _, (NoRSAKey|RSAPublicKey _) -> RSAEncrypted encrypted_string
   | _, RSAPrivateKey { modulus = n; privateExponent = d } ->
-    let decrypted_string = decrypt 2 None d n encrypted_string in
+    let decrypted_string = decrypt 2 None (n, d) encrypted_string in
     let new_input = get_in_container input name decrypted_string in
     let res = parse_fun new_input in
     check_empty_input true new_input;
