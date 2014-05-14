@@ -22,6 +22,8 @@ let port = ref 80
 
 let verbose = ref false
 let maxlen = ref (Some 70)
+let no_alias = ref false
+
 let enrich_style = ref DefaultEnrich
 let set_enrich_level l =
   if l > 0 then begin
@@ -51,6 +53,7 @@ let options = [
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
   mkopt None "maxlen" (IntFun (fun i -> maxlen := Some i; ActionDone)) "set the string max length";
   mkopt None "no-maxlen" (TrivialFun (fun () -> maxlen := None)) "reset the string max length";
+  mkopt None "no-alias" (Set no_alias) "remove alias structure from output";
   mkopt (Some 'p') "port" (IntVal port) "set the port to pcap parsers";
 
   mkopt (Some 'T') "type" (StringVal parser_type) "select the parser type";
@@ -156,7 +159,12 @@ let mk_parse_value () =
     with
       Not_found -> usage "parsifal" options (Some "Unknown parser type (try -L).")
   in fun input ->
-    let opts = { default_output_options with oo_verbose = !verbose; maxlen = !maxlen } in
+    let opts = {
+      default_output_options with
+	oo_verbose = !verbose;
+	maxlen = !maxlen;
+	unfold_aliases = not !no_alias;
+    } in
     let v = parse_fun input in
     match !action with
     | All -> print_endline (print_value ~options:opts v)
