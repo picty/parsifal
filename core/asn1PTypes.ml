@@ -527,25 +527,46 @@ and dump_der_object_content buf = function
 let string_of_der_object_content _ = "der_object"
 let string_of_der_object _ = "der_object"
 
+(* let rec value_of_der_object o = *)
+(*   let value_of_content = value_of_der_object_content o.a_content in *)
+(*   VRecord [ *)
+(*     "@name", VString ("asn1_object", false); *)
+(*     "asn1_header", VString (print_header (o.a_class, isConstructed o, o.a_tag), false); *)
+(*     "@class", value_of_asn1_class o.a_class; *)
+(*     "@isConstructed", VBool (isConstructed o); *)
+(*     "@tag", value_of_asn1_tag o.a_tag; *)
+(*     "asn1_content", value_of_content *)
+(*   ] *)
+(* and value_of_der_object_content = function *)
+(*   | Boolean b -> value_of_der_boolean_content b *)
+(*   | Integer i -> value_of_der_integer_content i *)
+(*   | BitString (nBits, s) -> value_of_der_bitstring_content (nBits, s) *)
+(*   | Null -> VUnit *)
+(*   | OId oid -> value_of_der_oid_content oid *)
+(*   | String (s, binary) -> VString (s, binary) *)
+(*   | Constructed l -> value_of_list value_of_der_object l *)
+(*   | UnparsedDER (_, s) -> VString (s, true) *)
+
 let rec value_of_der_object o =
-  let value_of_content = value_of_der_object_content o.a_content in
-  VRecord [
-    "@name", VString ("asn1_object", false);
-    "asn1_header", VString (print_header (o.a_class, isConstructed o, o.a_tag), false);
-    "@class", value_of_asn1_class o.a_class;
-    "@isConstructed", VBool (isConstructed o);
-    "@tag", value_of_asn1_tag o.a_tag;
-    "asn1_content", value_of_content
-  ]
-and value_of_der_object_content = function
+  value_of_der_object_content o.a_content
+
+and mk_elt o =
+  let name = print_header (o.a_class, isConstructed o, o.a_tag)
+  and value = value_of_der_object_content o.a_content in
+  (name, value)
+
+and value_of_der_object_content c = match c with
   | Boolean b -> value_of_der_boolean_content b
   | Integer i -> value_of_der_integer_content i
   | BitString (nBits, s) -> value_of_der_bitstring_content (nBits, s)
   | Null -> VUnit
   | OId oid -> value_of_der_oid_content oid
   | String (s, binary) -> VString (s, binary)
-  | Constructed l -> value_of_list value_of_der_object l
+  | Constructed l ->
+    let fields = (List.fold_left (fun accu -> fun o -> (mk_elt o)::accu) [] l) in
+    VRecord (List.rev fields)
   | UnparsedDER (_, s) -> VString (s, true)
+
 
 
 (* ASN.1 Containers *)
