@@ -6,7 +6,6 @@ open X509Basics
 open Padata
 open KerberosTypes
 
-let dest_port = ref 88
 
 (* NOT USED *)
 enum padata_type (8, UnknownVal UnknownPreAuthenticationType) =
@@ -76,8 +75,6 @@ struct req_body_content =
   optional enc_authorization_data: 	cspe [10] of encrypted_data;	(* EncryptedData OPTIONAL*)
   optional additional_tickets: 		cspe [11] of der_object		(* SEQUENCE OF Ticket OPTIONAL *)
 }
-
-(*alias req_body = der_object*)
 asn1_alias req_body
 
 (* NOT USED NOW BECAUSE WE CANNOT DECIPHER WITHOUT KEYS *)
@@ -163,7 +160,4 @@ struct kerberos_msg =
   msg_content : kerberos_msg_type;
 }
 
-struct kerberos_udp_msg = 
-{
-  msg_content : kerberos_msg_type;
-}
+alias kerberos_udp_msg = kerberos_msg_type
