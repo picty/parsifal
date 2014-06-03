@@ -47,6 +47,12 @@ let multiple_values = ref false
 
 let ctx = ref (Tls.empty_context Tls.default_prefs)
 
+let load_kerb_rsa_key filename =
+  try
+    Padata.rsa_key := Pkcs1.load_rsa_private_key filename;
+    ActionDone
+  with _ -> ShowUsage (Some "Please supply a valid DER-encoded RSA key.")
+
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
@@ -75,6 +81,8 @@ let options = [
   mkopt None "always-enrich" (TrivialFun (fun () -> enrich_style := AlwaysEnrich)) "always enrich the structure parsed";
   mkopt None "never-enrich" (TrivialFun (fun () -> enrich_style := NeverEnrich)) "never enrich the structure parsed";
   mkopt None "enrich-level" (IntFun set_enrich_level) "enrich the structure parsed up to a certain level";
+
+  mkopt None "kerberos-rsa-key" (StringFun load_kerb_rsa_key) "set the RSA key to decrypt Kerberos PKINIT messages";
 ]
 
 

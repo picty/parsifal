@@ -8,6 +8,18 @@ open X509Extensions
 open Pkcs7
 open KerberosTypes
 
+open Pkcs1
+open CryptoUtil
+open KerbyContainers
+
+
+let rsa_key = ref NoRSAKey
+
+let global_des3_key = ref None
+let parse_init_des3_key des3_key _ = match des3_key with
+  | RSADecrypted k -> global_des3_key := Some k
+  | RSAEncrypted _ -> global_des3_key := None
+
 (* ContextSpecific optimization *)
 type 'a cspe = 'a
 let parse_cspe n parse_fun input = parse_asn1 (C_ContextSpecific, true, T_Unknown n) parse_fun input
@@ -53,10 +65,16 @@ asn1_struct kdc_dh_key_info = {
   optional dh_key_expiration : cspe [2] of der_kerberos_time
 }
 
+asn1_struct reply_key_pack = {
+  reply_key : cspe [0] of encryption_key;
+  as_checksum : cspe [1] of der_object;
+  parse_checkpoint : KerberosTypes.init_session_key(reply_key.key_value)
+}
+
 union krbContentInfo_value [enrich] (UnparsedKrbContentInfo of binstring) =
  | [43;6;1;5;2;3;1] -> ID_PKINIT_AuthData of auth_pack
  | [43;6;1;5;2;3;2] -> ID_PKINIT_DHKeyData of kdc_dh_key_info
- | [43;6;1;5;2;3;3] -> ID_PKINIT_RKeyData of binstring
+ | [43;6;1;5;2;3;3] -> ID_PKINIT_RKeyData of reply_key_pack
 
 asn1_struct krbContentInfo = {
   oid : der_oid;
@@ -91,12 +109,14 @@ union recipientIdentifier_value [enrich] (UnparsedRecipientIdentifier)=
  | 0 -> IssuerAndSerialNumber of issuerAndSerialNumber
  | 2 -> SubjectKeyIdentifier of cspe [0] of der_octetstring
 
-struct keyTransRecipientInfo = 
+(* FIXME encryptedKey is the 3DES wrapped key with RSA *)
+struct keyTransRecipientInfo =
 {
   version : der_smallint;
   rid : recipientIdentifier_value(version);
   keyEncryptionAlgorithm : algorithmIdentifier;
-  encryptedKey : der_octetstring
+  encryptedKey : octetstring_container of pkcs1_container (!rsa_key) of binstring;
+  parse_checkpoint : init_des3_key(encryptedKey)
 }
 
 (* FIXME Implement proper definition *)
@@ -105,7 +125,7 @@ alias keKRecipientInfo = binstring
 alias passwordRecipientInfo = binstring
 alias otherRecipientInfo = binstring
 
-asn1_struct recipientInfo = 
+asn1_struct recipientInfo =
 {
   ktri : keyTransRecipientInfo;
   optional kari :  cspe [1] of keyAgreeRecipientInfo;
@@ -114,11 +134,17 @@ asn1_struct recipientInfo =
   optional ori :   cspe [4] of otherRecipientInfo;
 }
 
-asn1_struct encryptedContentInfo = 
+
+(* FIXME encryptedContent is the encrypted replyKeyPack with 3DES, IV is in
+   in params of contentEncryptionAlgorithm, once decrypted, should be fed to
+   a kerb_pkcs7 struct.
+*)
+asn1_struct encryptedContentInfo =
 {
   contentType : der_oid;
   contentEncryptionAlgorithm : algorithmIdentifier;
-  optional encryptedContent : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of binstring
+  optional encryptedContent : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of
+      des3_container (contentEncryptionAlgorithm.algorithmParams; !global_des3_key) of kerb_pkcs7_signed_data
 }
 
 (* FIXME Implement originatorInfo/unprotectedAttrs *)
@@ -158,7 +184,7 @@ asn1_struct pa_pk_as_req =
   optional kdc_pk_id : cspe [2] of binstring
 }
 
-asn1_struct dhrepinfo = 
+asn1_struct dhrepinfo =
 {
   dh_signed_data : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of kerb_pkcs7;
   optional server_dh_nonce : cspe [1] of binstring;
@@ -215,10 +241,10 @@ union padata_value [enrich] (UnparsedPaDataValueContent of binstring) =
   | 2, true -> PA_ENC_TIMESTAMP of encrypted_data (0; None)
   | 3, true -> PA_PW_SALT of binstring
   | 11, _ -> PA_ENCTYPE_INFO of etype_infos
-  | 14, true -> PA_PK_AS_REQ_OLD of binstring
-  | 15, true -> PA_PK_AS_REP_OLD of binstring
-  | 16, true -> PA_PK_AS_REQ of pa_pk_as_req (* FIXME Improve PKCS7 *)
-  | 17, true -> PA_PK_AS_REP of pa_pk_as_rep (* FIXME Improve PKCS7 *)
+  | 14, true -> PA_PK_AS_REQ_OLD of binstring (* [PK_INIT_1999] *)
+  | 15, true -> PA_PK_AS_REP_OLD of binstring (* [PK_INIT_1999] *)
+  | 16, true -> PA_PK_AS_REQ of pa_pk_as_req  (* [RFC4556] FIXME Improve PKCS7 *)
+  | 17, true -> PA_PK_AS_REP of pa_pk_as_rep  (* [RFC4556] FIXME Improve PKCS7 *)
   | 18, true -> PA_ENCTYPE_INFO_UNUSED of binstring
   | 19,  _ -> PA_ENCTYPE_INFO2 of etype_info2s
   | 128, true -> PA_PAC_REQUEST of binstring
@@ -240,10 +266,15 @@ let kerberos_oids = [
   "id-pkinit-kdf-ah-sha384",  [43;6;1;5;2;3;6;4];
 ]
 
-let handle_entry input =
-  let padata = parse_kerb_pkcs7 input in
-  print_endline (print_value (value_of_kerb_pkcs7 padata))
+let enc_fun_list = [
+  [42;840;113549;3;7], "des-ede3-cbc", X509Basics.APT_DES3Params, md5sum ;
+(*  "sha384", [96;840;1;101;3;4;2;2], sha384sum;
+  "sha512", [96;840;1;101;3;4;2;3], sha512sum;
+  "sha224", [96;840;1;101;3;4;2;4], sha224sum;*)
+]
 
-let _ = 
+
+let _ =
   let register_oids (name, oid) = register_oid oid name in
-  List.map register_oids kerberos_oids
+  List.iter register_oids kerberos_oids;
+  List.iter (X509Basics.populate_alg_directory Pkcs1.hash_funs) enc_fun_list

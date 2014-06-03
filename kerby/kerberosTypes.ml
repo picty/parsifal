@@ -5,6 +5,9 @@ open Asn1Engine
 open X509Basics
 open KerbyContainers
 
+let global_session_key = ref None
+let parse_init_session_key key _ = global_session_key := Some key
+
 (* ContextSpecific optimization *)
 type 'a cspe = 'a
 let parse_cspe n parse_fun input = parse_asn1 (C_ContextSpecific, true, T_Unknown n) parse_fun input
@@ -150,6 +153,13 @@ enum etype_type (8, UnknownVal UnknownEncryptType) =
   | -133 -> RC4_HMAC_OLD
   | -135 -> RC4_HMAC_OLD_EXP
 *)
+
+asn1_struct encryption_key =
+{
+  key_type :     cspe [0] of asn1 [(C_Universal, false, T_Integer)] of etype_type;
+  key_value :    cspe [1] of der_octetstring;
+  parse_checkpoint : init_session_key(key_value)
+}
 
 struct encrypted_data_content [param usage; param key] =
 {
