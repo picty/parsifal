@@ -72,7 +72,7 @@ struct req_body_content =
   nonce : 		cspe [7] of der_smallint; 		(* UInt32 *)
   etype : 		cspe [8] of etypes; 			(* SEQUENCE OF Int32  -- EncryptionType*)
   optional addresses: 	cspe [9] of host_addresses; 		(* HostAddresses OPTIONAL,*)
-  optional enc_authorization_data: 	cspe [10] of encrypted_data;	(* EncryptedData OPTIONAL*)
+  optional enc_authorization_data: 	cspe [10] of encrypted_data (0; None);	(* EncryptedData OPTIONAL*)
   optional additional_tickets: 		cspe [11] of der_object		(* SEQUENCE OF Ticket OPTIONAL *)
 }
 asn1_alias req_body
@@ -104,7 +104,7 @@ asn1_struct ap_rep =
 {
   pvno : 	cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
   msg_type : 	cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
-  enc_part : 	cspe [2] of encrypted_data
+  enc_part : 	cspe [2] of encrypted_data (0; None);
 }
 
 (* AS_REQ *)
@@ -124,8 +124,8 @@ asn1_struct as_rep =
   optional padata : cspe [2] of padatas;
   crealm : 	cspe [3] of der_kerberos_string;
   cname : 	cspe [4] of cname;
-  ticket : 	cspe [5] of asn1 [(C_Application, true, T_Unknown 1)] of ticket;
-  enc_part : 	cspe [6] of encrypted_data
+  ticket : 	cspe [5] of asn1 [(C_Application, true, T_Unknown 1)] of ticket (None);
+  enc_part : 	cspe [6] of encrypted_data (0; None)
 }
 
 (* KRB_ERR *)

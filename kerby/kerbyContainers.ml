@@ -3,11 +3,12 @@ open Cryptokit
 open BasePTypes
 open Krb5
 
-type 'a crypto_container = Encrypted of binstring | Decrypted of 'a
+type 'a crypto_container = Encrypted of binstring | Decrypted of 'a | DecryptionError
 
 let value_of_crypto_container value_of_fun = function
   | Encrypted s -> VUnparsed (VString (s, true))
   | Decrypted x -> VAlias ("crypto_container", value_of_fun x)
+  | DecryptionError -> VUnparsed (VString ("DECRYPTION ERROR", false))
 
 
 (* UGLY AES *)

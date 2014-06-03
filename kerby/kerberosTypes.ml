@@ -3,6 +3,7 @@ open PTypes
 open Asn1PTypes
 open Asn1Engine
 open X509Basics
+open KerbyContainers
 
 (* ContextSpecific optimization *)
 type 'a cspe = 'a
@@ -149,18 +150,52 @@ enum etype_type (8, UnknownVal UnknownEncryptType) =
   | -133 -> RC4_HMAC_OLD
   | -135 -> RC4_HMAC_OLD_EXP
 *)
-asn1_struct encrypted_data =
+
+struct encrypted_data_content [param usage; param key] =
 {
-  encryption_type :     cspe [0] of asn1 [(C_Universal, false, T_Integer)] of etype_type;
-  optional kvno :       cspe [1] of der_smallint;
-  cipher :              cspe [2] of der_octetstring
+  edc_encryption_type :     cspe [0] of asn1 [(C_Universal, false, T_Integer)] of etype_type;
+  optional edc_kvno :       cspe [1] of der_smallint;
+  edc_cipher :              cspe [2] of octetstring_container of aes_container (usage; edc_kvno; key) of binstring;
+}
+asn1_alias encrypted_data [param usage; param key] = sequence encrypted_data_content(usage; key)
+
+type 'a encrypted_data_container = {
+  encryption_type : etype_type;
+  kvno : int option;
+  cipher : 'a crypto_container;
 }
 
+let parse_encrypted_data_container usage key name parse_fun input =
+  let enc_data = parse_encrypted_data usage key input in
+  let cipher = match enc_data.edc_cipher with
+    | ( DecryptionError | Encrypted _ ) as res -> res
+    | Decrypted s ->
+      try
+        let new_input = get_in_container input name s in
+        let res = parse_fun new_input in
+        check_empty_input true new_input;
+        Decrypted res
+      with _ -> DecryptionError
+  in {
+    encryption_type = enc_data.edc_encryption_type;
+    kvno = enc_data.edc_kvno;
+    cipher = cipher;
+  }
 
-asn1_struct ticket =
+let dump_encrypted_data_container _dump_fun _buf _o = not_implemented "dump_encrypted_data_container"
+
+let value_of_encrypted_data_container value_of_fun v = VRecord [
+  "@name", VString ("encrypted_data_container", false);
+  "encryption_type", value_of_etype_type v.encryption_type;
+  "kvno", (match v.kvno with None -> VUnit | Some i -> VSimpleInt i);
+  "cipher", value_of_crypto_container value_of_fun v.cipher
+  ]
+
+struct ticket_content [param key] =
 {
   tkvno : cspe [0] of der_smallint;
   realm : cspe [1] of der_kerberos_string;
   sname : cspe [2] of sname;
-  enc_tkt_part : cspe [3] of encrypted_data;
+  enc_tkt_part : cspe [3] of encrypted_data_container (2; key) of der_object;
 }
+asn1_alias ticket [param key] = sequence ticket_content(key)

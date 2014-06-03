@@ -206,13 +206,13 @@ asn1_struct ap_req =
   pvno :        cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
   msg_type :    cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
   ap_options :  cspe [2] of der_enumerated_bitstring[ap_options_values];
-  ticket :      cspe [3] of asn1 [(C_Application, true, T_Unknown 1)] of ticket;
-  authenticator :       cspe [4] of encrypted_data;
+  ticket :      cspe [3] of asn1 [(C_Application, true, T_Unknown 1)] of ticket(None);
+  authenticator :       cspe [4] of encrypted_data (0; None);
 }
 
 union padata_value [enrich] (UnparsedPaDataValueContent of binstring) =
   | 1, true -> PA_TGS_REQ of asn1 [(C_Application, true, T_Unknown 14)] of ap_req
-  | 2, true -> PA_ENC_TIMESTAMP of encrypted_data
+  | 2, true -> PA_ENC_TIMESTAMP of encrypted_data (0; None)
   | 3, true -> PA_PW_SALT of binstring
   | 11, _ -> PA_ENCTYPE_INFO of etype_infos
   | 14, true -> PA_PK_AS_REQ_OLD of binstring
