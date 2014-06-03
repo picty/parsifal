@@ -5,6 +5,7 @@ open Asn1Engine
 open X509Basics
 open Padata
 open KerberosTypes
+open KerbyContainers
 
 
 (* NOT USED *)
@@ -77,24 +78,23 @@ struct req_body_content =
 }
 asn1_alias req_body
 
-(* NOT USED NOW BECAUSE WE CANNOT DECIPHER WITHOUT KEYS *)
+asn1_struct enc_kdc_rep_part = {
+  key : 		cspe [0] of encryption_key;
+  last_req : 		cspe [1] of binstring;
+  nonce : 		cspe [2] of der_smallint;
+  optional key_expiration : 	cspe [3] of der_kerberos_time;
+  flags : 		cspe [4] of binstring;
+  authtime: 		cspe [5] of der_kerberos_time;
+  optional starttime : 	cspe [6] of der_kerberos_time;
+  endtime : 		cspe [7] of der_kerberos_time;
+  optional renew_till :	cspe [8] of der_kerberos_time;
+  srealm : 		cspe [9] of der_kerberos_string;
+  sname : 		cspe [10] of sname;
+  optional caddr :      cspe [11] of binstring;
+  reste_FIXME : cspe [12] of binstring
 (*
-struct enc_ticket_part_content = 
-{
-  flags : cspe [0] of binstring;
-  key : cspe [1] of binstring;
-  crealm : cspe [2] of binstring;
-  cname : cspe [3] of binstring;
-  transited : cspe [4] of binstring;
-  authtime : cspe [5] of binstring;
-  optional starttime : cspe [6] of binstring;
-  endtime : cspe [7] of binstring;
-  optional renew_till : cspe [8] of binstring;
-  optional caddr : cspe [9] of binstring;
-  optional authorization_data : cspe [10] of binstring;
-}
-asn1_alias enc_ticket_part
 *)
+}
 
 (* AP_REQ *)
 (* defined in PADATA, because it can be used in PA_TGS_REQ *)
@@ -125,7 +125,7 @@ asn1_struct as_rep =
   crealm : 	cspe [3] of der_kerberos_string;
   cname : 	cspe [4] of cname;
   ticket : 	cspe [5] of asn1 [(C_Application, true, T_Unknown 1)] of ticket (None);
-  enc_part : 	cspe [6] of encrypted_data (0; None)
+  enc_part : 	cspe [6] of encrypted_data_container (3; !KerberosTypes.global_session_key) of asn1 [(C_Application, true, T_Unknown 26)] of enc_kdc_rep_part;
 }
 
 (* KRB_ERR *)
@@ -150,7 +150,7 @@ asn1_union kerberos_msg_type [enrich] (UnparsedKerberosMessage ) =
   | (C_Application, true, T_Unknown 11) -> AS_REP of as_rep
   | (C_Application, true, T_Unknown 12) -> TGS_REQ of as_req
   | (C_Application, true, T_Unknown 13) -> TGS_REP of as_rep
-  | (C_Application, true, T_Unknown 14) -> AP_REQ of ap_req
+  | (C_Application, true, T_Unknown 14) -> AP_REQ of ap_req(11) (* 11 is the classic krb5_keyusage value *)
   | (C_Application, true, T_Unknown 15) -> AP_REP of ap_rep
   | (C_Application, true, T_Unknown 30) -> KRB_ERR of krb_error
 

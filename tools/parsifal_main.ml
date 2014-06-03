@@ -53,6 +53,12 @@ let load_kerb_rsa_key filename =
     ActionDone
   with _ -> ShowUsage (Some "Please supply a valid DER-encoded RSA key.")
 
+let load_aes_ticket_key filename =
+  try
+    Padata.aes_ticket_key := Some (get_file_content filename);
+    ActionDone
+  with _ -> ShowUsage (Some "Please supply a valid AES key.")
+
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
@@ -83,6 +89,7 @@ let options = [
   mkopt None "enrich-level" (IntFun set_enrich_level) "enrich the structure parsed up to a certain level";
 
   mkopt None "kerberos-rsa-key" (StringFun load_kerb_rsa_key) "set the RSA key to decrypt Kerberos PKINIT messages";
+  mkopt None "kerberos-aes-key" (StringFun load_aes_ticket_key) "set the AES key to decrypt Kerberos ticket";
 ]
 
 

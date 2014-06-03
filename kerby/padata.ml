@@ -20,6 +20,9 @@ let parse_init_des3_key des3_key _ = match des3_key with
   | RSADecrypted k -> global_des3_key := Some k
   | RSAEncrypted _ -> global_des3_key := None
 
+let aes_ticket_key = ref None
+
+
 (* ContextSpecific optimization *)
 type 'a cspe = 'a
 let parse_cspe n parse_fun input = parse_asn1 (C_ContextSpecific, true, T_Unknown n) parse_fun input
@@ -226,18 +229,35 @@ let parse_pa_pk_as_rep input =
   parse_pa_pk_as_rep input
 *)
 
+asn1_struct authenticator = {
+  authenticator_vno : cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
+  crealm : cspe [1] of der_kerberos_string;
+  cname : cspe [2] of cname;
+  optional cksum : cspe [3] of checksum;
+  cusec : cspe [4] of der_smallint;
+  ctime : cspe [5] of der_kerberos_time;
+  optional subkey : cspe [6] of encryption_key;
+  optional seq_number : cspe [7] of asn1 [(C_Universal, false, T_Integer)] of binstring;
+  optional authorization_data : cspe [8] of authorization_data;
+}
+
 (* AP_REQ *)
-asn1_struct ap_req =
+(* The DER encoding of the following is
+   encrypted in the ticket's session key, with a key usage value of 11
+   in normal application exchanges, or 7 when used as the PA-TGS-REQ
+   PA-DATA field of a TGS-REQ exchange (see Section 5.4.1) *)
+struct ap_req_content [param krb5_keyusage] =
 {
   pvno :        cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
   msg_type :    cspe [1] of asn1 [(C_Universal, false, T_Integer)] of msg_type;
   ap_options :  cspe [2] of der_enumerated_bitstring[ap_options_values];
-  ticket :      cspe [3] of asn1 [(C_Application, true, T_Unknown 1)] of ticket(None);
-  authenticator :       cspe [4] of encrypted_data (0; None);
+  ticket :      cspe [3] of asn1 [(C_Application, true, T_Unknown 1)] of ticket (!aes_ticket_key);
+  authenticator : cspe [4] of encrypted_data_container (krb5_keyusage; !KerberosTypes.global_session_key) of asn1 [(C_Application, true, T_Unknown 2)] of authenticator;
 }
+asn1_alias ap_req [param krb5_keyusage] = sequence ap_req_content(krb5_keyusage)
 
 union padata_value [enrich] (UnparsedPaDataValueContent of binstring) =
-  | 1, true -> PA_TGS_REQ of asn1 [(C_Application, true, T_Unknown 14)] of ap_req
+  | 1, true -> PA_TGS_REQ of asn1 [(C_Application, true, T_Unknown 14)] of ap_req(7)
   | 2, true -> PA_ENC_TIMESTAMP of encrypted_data (0; None)
   | 3, true -> PA_PW_SALT of binstring
   | 11, _ -> PA_ENCTYPE_INFO of etype_infos
