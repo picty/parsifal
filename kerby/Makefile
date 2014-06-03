@@ -2,7 +2,7 @@
 MLLIBS = parsifal_kerby
 LIBNAME = parsifal_kerby
 
-parsifal_kerby_SRCS := krb5.ml kerbyContainers.ml kerberosTypes.ml padata.ml kerby.ml keytab.ml
+parsifal_kerby_SRCS := krb5.ml kerbyContainers.ml pac.ml kerberosTypes.ml padata.ml kerby.ml keytab.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes

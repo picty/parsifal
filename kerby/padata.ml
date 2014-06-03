@@ -37,6 +37,40 @@ asn1_alias seqkerbstring = seq_of der_kerberos_string
 (* Define KerberosTime *)
 alias der_kerberos_time = der_time
 
+let pa_pac_options_values = [|
+  "CLAIMS";
+  "BRANCH_AWARE";
+  "FORWARD_TO_FULL_DC";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED";
+  "RESERVED"
+|]
 
 asn1_struct pk_authenticator =
 {
@@ -229,6 +263,11 @@ let parse_pa_pk_as_rep input =
   parse_pa_pk_as_rep input
 *)
 
+asn1_struct pa_pac_options =
+{
+  pa_pac_options : cspe [0] of der_enumerated_bitstring[pa_pac_options_values];
+}
+
 asn1_struct authenticator = {
   authenticator_vno : cspe [0] of asn1 [(C_Universal, false, T_Integer)] of pvno;
   crealm : cspe [1] of der_kerberos_string;
@@ -272,6 +311,7 @@ union padata_value [enrich] (UnparsedPaDataValueContent of binstring) =
   | 136, true -> Other_PA_DATA of binstring
   | 147, true -> Other_PA_DATA of binstring
   | 149, true -> Other_PA_DATA of binstring
+  | 167, true -> PA_PAC_OPTIONS              of pa_pac_options (* [MS_KILE] *)
   | _, false -> PA_NULL of binstring
 
 let kerberos_oids = [

@@ -5,6 +5,7 @@ open Asn1PTypes
 open Asn1Engine
 open X509Basics
 open KerbyContainers
+open Pac
 
 let global_session_key = ref None
 let parse_init_session_key key _ = global_session_key := Some key
@@ -240,9 +241,16 @@ let value_of_encrypted_data_container value_of_fun v = VRecord [
   "cipher", value_of_crypto_container value_of_fun v.cipher
   ]
 
+
+union ads_content [enrich] (UnparsedADSContent) =
+  | 128 -> AD_WIN2K_PAC of ad_win2k_pac
+  | 141 -> KERB_AUTH_DATA_TOKEN_RESTRICTION of kerb_ad_restriction_entry
+  | 142 -> KERB_LOCAL of kerb_local
+  | 143 -> AD_AUTH_DATA_AP_OPTIONS of ad_auth_data_ap_options
+
 asn1_struct ad_subentry = {
   ads_type : cspe [0] of der_smallint;
-  ads_content : cspe [1] of octetstring_container of binstring;
+  ads_content : cspe [1] of octetstring_container of ads_content(ads_type);
 }
 
 

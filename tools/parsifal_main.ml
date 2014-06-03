@@ -133,6 +133,7 @@ let _ =
   Hashtbl.add type_handlers "kerb_pkcs7" ("Kerberos PKCS#7", fun i -> Padata.value_of_kerb_pkcs7 (Padata.parse_kerb_pkcs7 i));
   Hashtbl.add type_handlers "kerberos_tcp" ("Kerberos TCP message", fun i -> Kerby.value_of_kerberos_msg (Kerby.parse_kerberos_msg i));
   Hashtbl.add type_handlers "kerberos_udp" ("Kerberos UDP message", fun i -> Kerby.value_of_kerberos_udp_msg (Kerby.parse_kerberos_udp_msg i));
+  Hashtbl.add type_handlers "pac" ("PAC", fun i -> Pac.value_of_ad_win2k_pac (Pac.parse_ad_win2k_pac i));
   Hashtbl.add type_handlers "http" ("HTTP message", fun i -> Http.value_of_http_message (Http.parse_http_message None i));
   Hashtbl.add type_handlers "pcap_http" ("PCAP containing HTTP messages",
     fun i -> PcapContainers.value_of_oriented_tcp_container (fun x -> x)
