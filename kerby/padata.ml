@@ -299,18 +299,58 @@ union padata_value [enrich] (UnparsedPaDataValueContent of binstring) =
   | 1, true -> PA_TGS_REQ of asn1 [(C_Application, true, T_Unknown 14)] of ap_req(7)
   | 2, true -> PA_ENC_TIMESTAMP of encrypted_data (0; None)
   | 3, true -> PA_PW_SALT of binstring
+  | 4, true -> RESERVED of binstring (* RFC6113 *)
+  | 5, true -> PA_ENC_UNIX_TIME of binstring (* deprecated *)
+  | 6, true -> PA_SANDIA_SECUREID of binstring
+  | 7, true -> PA_SESAME of binstring
+  | 8, true -> PA_OSF_DCE of binstring
+  | 9, true -> PA_CYBERSAFE_SECUREID of binstring
+  | 10, true ->  PA_AFS3_SALT of binstring (* [RFC4120] [RFC3961] *)
   | 11, _ -> PA_ENCTYPE_INFO of etype_infos
+  | 12, true -> PA_SAM_CHALLENGE of binstring (* [KRB_WG.SAM] *)
+  | 13, true -> PA_SAM_RESPONSE of binstring  (* [KRB_WG.SAM] *)
   | 14, true -> PA_PK_AS_REQ_OLD of binstring (* [PK_INIT_1999] *)
   | 15, true -> PA_PK_AS_REP_OLD of binstring (* [PK_INIT_1999] *)
   | 16, true -> PA_PK_AS_REQ of pa_pk_as_req  (* [RFC4556] FIXME Improve PKCS7 *)
   | 17, true -> PA_PK_AS_REP of pa_pk_as_rep  (* [RFC4556] FIXME Improve PKCS7 *)
   | 18, true -> PA_ENCTYPE_INFO_UNUSED of binstring
   | 19,  _ -> PA_ENCTYPE_INFO2 of etype_info2s
-  | 128, true -> PA_PAC_REQUEST of binstring
-  | 133, _ -> Other_PA_DATA of string           (* TODO Is it MIT only ? *)
-  | 136, true -> Other_PA_DATA of binstring
-  | 147, true -> Other_PA_DATA of binstring
-  | 149, true -> Other_PA_DATA of binstring
+  | 20, true ->  PA_USE_SPECIFIED_KVNO_OR_PA_SVR_REFERRAL_INFO  of binstring (* [RFC4120] or [REFERRALS] *)
+  | 21, true ->  PA_SAM_REDIRECT             of binstring (* [KRB_WG.SAM] *)
+  | 22, true ->  PA_GET_FROM_TYPED_DATA_OR_TD_PADATA      of binstring (* (embedded in typed data) [RFC4120] or embeds padata) [RFC4120] *)
+  | 23, true ->  PA_SAM_ETYPE_INFO           of binstring (* (sam/otp) [KRB_WG.SAM] *)
+  | 24, true ->  PA_ALT_PRINC                of binstring (* (crawdad@fnal.gov) [HW_AUTH] *)
+  | 25, true ->  PA_SERVER_REFERRAL          of binstring (* [REFERRALS] *)
+  | 30, true ->  PA_SAM_CHALLENGE2           of binstring (* (kenh@pobox.com) [KRB_WG.SAM] *)
+  | 31, true ->  PA_SAM_RESPONSE2            of binstring (* (kenh@pobox.com) [KRB_WG.SAM] *)
+  | 41, true ->  PA_EXTRA_TGT                of binstring (* Reserved extra TGT [RFC6113] *)
+  | 101, true ->  TD_PKINIT_CMS_CERTIFICATES of binstring (* CertificateSet from CMS *)
+  | 102, true ->  TD_KRB_PRINCIPAL           of binstring (* PrincipalName *)
+  | 103, true ->  TD_KRB_REALM               of binstring (* Realm *)
+  | 104, true ->  TD_TRUSTED_CERTIFIERS      of binstring (* [RFC4556] *)
+  | 105, true ->  TD_CERTIFICATE_INDEX       of binstring (* [RFC4556] *)
+  | 106, true ->  TD_APP_DEFINED_ERROR       of binstring (* Application specific [RFC6113] *)
+  | 107, true ->  TD_REQ_NONCE               of binstring (* INTEGER [RFC6113] *)
+  | 108, true ->  TD_REQ_SEQ                 of binstring (* INTEGER [RFC6113] *)
+  | 109, true ->  TD_DH_PARAMETERS           of binstring (* [RFC4556] *)
+  | 111, true ->  TD_CMS_DIGEST_ALGORITHMS   of binstring (* [ALG_AGILITY] *)
+  | 112, true ->  TD_CERT_DIGEST_ALGORITHMS  of binstring (* [ALG_AGILITY] *)
+  | 128, true ->  PA_PAC_REQUEST             of binstring (* [MS_KILE] *)
+  | 129, true ->  PA_FOR_USER                of binstring (* [MS_KILE] *)
+  | 130, true ->  PA_FOR_X509_USER           of binstring (* [MS_KILE] *)
+  | 131, true ->  PA_FOR_CHECK_DUPS          of binstring (* [MS_KILE] *)
+  | 132, true ->  PA_AS_CHECKSUM             of binstring (* [MS_KILE] *)
+  | 133, _ -> PA_FX_COOKIE of string (* RFC6113 *)
+  | 134, true ->  PA_AUTHENTICATION_SET      of binstring (* [RFC6113] *)
+  | 135, true ->  PA_AUTH_SET_SELECTED       of binstring (* [RFC6113] *)
+  | 136, true ->  PA_FX_FAST                 of binstring (* [RFC6113] *)
+  | 137, true ->  PA_FX_ERROR                of binstring (* [RFC6113] *)
+  | 138, true ->  PA_ENCRYPTED_CHALLENGE     of binstring (* [RFC6113] *)
+  | 147, true -> PA_PKINIT_KX                of binstring (* [RFC6112] *)
+  | 148, true -> PA_PKU2U_NAME               of binstring (* [PKU2U] *)
+  | 149, true -> Other_PA_DATA               of binstring (* FIXME *)
+  | 165, true -> PA_SUPPORTED_ETYPES         of binstring (* [MS_KILE] *)
+  | 166, true -> PA_EXTENDED_ERROR           of binstring (* [MS_KILE] *)
   | 167, true -> PA_PAC_OPTIONS              of pa_pac_options (* [MS_KILE] *)
   | _, false -> PA_NULL of binstring
 
