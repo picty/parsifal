@@ -22,6 +22,7 @@ least partially) described:
   * DVI documents
   * PNG images
   * PCAP/IP/TCP/UDP rudimentary support
+  * NTP messages
 
 
 Here is the content of the various directories of parsifal repository:
@@ -43,6 +44,7 @@ Here is the content of the various directories of parsifal repository:
     * PCAP/IP/TCP/UDP trivial support
     * BGP/MRT messages
     * DNS messages
+    * NTP messages
   * ssl/ is a first step towards a functionnal TLS stack. For the
     moment, it contains the description of handshake messages and some
     useful functions to produce and read TLS records.
