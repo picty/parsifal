@@ -545,8 +545,6 @@ enum tls_certificate_type (8, UnknownVal TCT_Unknown) =
 
 (* Internal types *)
 
-type direction = ClientToServer | ServerToClient
-
 type key_exchange_algorithm =
   | KX_RSA
   | KX_DH
