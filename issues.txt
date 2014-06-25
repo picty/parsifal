@@ -12,6 +12,7 @@ v0.2	19	An INSTALL would be nice				closed	yeye	doc
 
 NoLwt	20	Remove Lwt specific code from the preprocessor/stdlib	closed	yeye	preprocessor,stdlib
 NoLwt	21	Create a Lwt wrapper to handle stream parsing		open	yeye	stdlib
+NoLwt	31	OOB exception should return a hint on the exp. length	open	yeye	stdlib
 
 v0.3	7	Write a white paper   	  	    			open	yeye	doc
 v0.3	8	Write some HTML to provide a decent website		open	yeye	doc
@@ -34,3 +35,7 @@ REC	29	New "custom" construction    		 		open	yeye	preprocessor,enhancement
 REC	30	Add support in the preprocessor for recursive types	open	yeye	preprocessor,enhancement
 
 -	14	Allow for non-constant constructors in enum		open	yeye	preprocessor,enhancement
+-	32	Support of pcapng					open	yeye	enhancement
+-	33	SSL/TLS client						open	yeye	enhancement
+-	34	SSL/TLS server						open	yeye	enhancement
+-	35	Parsifal does not compile on 32-bit systems		open	yeye	bug,stdlib
