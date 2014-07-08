@@ -46,8 +46,8 @@ let options = [
   mkopt None "maxlen" (IntFun (fun i -> maxlen := Some i; ActionDone)) "set the string max length";
   mkopt None "no-maxlen" (TrivialFun (fun () -> maxlen := None)) "reset the string max length";
 
-  mkopt (Some '2') "--ad2" (Set v2_answer_dump) "use the v2 answer_dump";
-  mkopt (Some '1') "--ad1" (Clear v2_answer_dump) "use the v1 answer_dump";
+  mkopt (Some '2') "ad2" (Set v2_answer_dump) "use the v2 answer_dump";
+  mkopt (Some '1') "ad1" (Clear v2_answer_dump) "use the v1 answer_dump";
 
   mkopt (Some 'a') "all" (TrivialFun (fun () -> action := All)) "show all the information and records of an answer";
   mkopt (Some 'I') "ip" (TrivialFun (fun () -> action := IP)) "only show the IP of the answers";
