@@ -12,7 +12,7 @@ open X509
 open TlsEngineNG
 
 type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType | RecordTypes | Get
-	      | VersionACSAC | SuiteACSAC
+	      | VersionACSAC | SuiteACSAC | SaveCertificates of string
 let action = ref IP
 let verbose = ref false
 let maxlen = ref (Some 70)
@@ -60,6 +60,7 @@ let options = [
   mkopt None "answer-type" (TrivialFun (fun () -> action := AnswerType; update_enrich_level 5)) "prints the answer types";
   mkopt None "record-types" (TrivialFun (fun () -> action := RecordTypes; update_enrich_level 2)) "prints the records received";
   mkopt None "junk-length" (IntVal junk_length) "Sets the max length of junk stuff to print";
+  mkopt None "certificates" (StringFun (fun s -> action := SaveCertificates s; update_enrich_level 3; ActionDone)) "saves certificates";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject; update_enrich_level 2)) "show the subect";
   mkopt (Some 'g') "get" (StringFun do_get_action) "Walks through the answers using a get string";
 
@@ -374,6 +375,28 @@ let handle_answer answer =
 	    maybe_print ip result
 	  | _ -> ()
 	end
+
+      | SaveCertificates dir ->
+        let records, _, _ = parse_all_tls_records answer in
+        let rec saveCerts = function
+          | [] -> 0
+          | { content_type = CT_Handshake;
+              record_content = Handshake {
+                handshake_type = HT_Certificate;
+                handshake_content = Certificate certs }}::_ ->
+	    let rec save_cert i = function
+	      | [] -> i
+	      | c::cs ->
+		(* TODO: save the file as dir/by-hash/HASH and add a hard link *)
+		let s = exact_dump (dump_trivial_union dump_certificate) c in
+		let f = open_out (dir ^ "/" ^ ip ^ "-" ^ (string_of_int i)) in
+		output_string f s;
+		close_out f;
+		save_cert (i+1) cs
+	    in save_cert 0 certs
+          | _::r -> saveCerts r
+        in
+	Printf.printf "%s: %d certificate(s) saved.\n" ip (saveCerts records)
   end;
   again
 
