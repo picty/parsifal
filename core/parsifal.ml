@@ -125,7 +125,6 @@ type value =
   | VList of value list (* * header *)
   | VRecord of (string * value) list
   | VError of string
-  | VLazy of value Lazy.t
   | VUnparsed of value
   | VAlias of string * value
 
@@ -506,14 +505,9 @@ let rec string_of_value = function
     end
   end
   | VError s -> "Error: " ^ s
-  | VLazy v -> string_of_value (Lazy.force v)
   | VAlias (_, v) -> string_of_value v
   | VUnparsed v -> "[Unparsed]_" ^ string_of_value v
 
-
-let rec realise_value = function
-  | VLazy v -> realise_value (Lazy.force v)
-  | v -> v
 
 let cleanup_result init l =
   let _cleanup_result accu next = match accu, next with
@@ -572,7 +566,7 @@ let rec print_value ?options:(options=default_output_options) ?name:(name="value
       else Printf.sprintf "%s%s: %s\n" options.indent name (string_of_value (List.assoc "@string_of" l))
     with Not_found -> begin
       let new_options = incr_indent options in
-      let handle_field accu (name, raw_v) = match (name, realise_value raw_v) with
+      let handle_field accu = function
 	| _, VUnit -> accu
 	| name, v ->
 	  if options.oo_verbose || (String.length name >= 1 && name.[0] <> '@')
@@ -586,7 +580,6 @@ let rec print_value ?options:(options=default_output_options) ?name:(name="value
   end
 
   | VError err -> Printf.sprintf "%s%s: ERROR (%s)\n" options.indent name err
-  | VLazy v -> print_value ~options:options ~name:name (Lazy.force v)
   | VAlias (n, v) ->
     if options.unfold_aliases
     then print_value ~options:options ~name:name (VRecord [n, v])
@@ -594,7 +587,7 @@ let rec print_value ?options:(options=default_output_options) ?name:(name="value
   | VUnparsed v -> print_value ~options:options ~name:("[Unparsed]_" ^ name) v
 
 
-let rec get_value path v = match (realise_value v, path) with
+let rec get_value path v = match (v, path) with
   | v, [] -> v
 
   | VBigInt s, ("@len" | "@size")::r -> get_value r (VInt (String.length s))
@@ -647,7 +640,6 @@ let rec get_value path v = match (realise_value v, path) with
   end
 
   | VError _, _ -> v
-  | VLazy v, _ -> get_value path (Lazy.force v)
   | VAlias (_, v), _ -> get_value path v
   | VUnparsed v, _ -> get_value path v
 

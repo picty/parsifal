@@ -7,6 +7,6 @@ let dump_s buf s = let _x = dump_custom dump_uint48 buf s.x in ()
 let value_of_s s =
   Parsifal.VRecord
     [ ("@name", (Parsifal.VString (("s", false))));
-      ("x", (Parsifal.VLazy (lazy (value_of_custom s.x)))) ]
+      ("x", (value_of_custom s.x)) ]
   
 

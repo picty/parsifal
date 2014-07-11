@@ -30,7 +30,7 @@ let rec json_of_value ?options:(options=default_output_options) = function
     let new_options = incr_indent options in
     let indent = options.indent
     and new_indent = new_options.indent in
-      let handle_field accu (name, raw_v) = match (name, realise_value raw_v) with
+      let handle_field accu = function
 	| _, VUnit -> accu
 	| name, v ->
 	  if options.oo_verbose || (String.length name >= 1 && name.[0] <> '@')
@@ -46,7 +46,6 @@ let rec json_of_value ?options:(options=default_output_options) = function
   end
 
   | VError _ -> failwith "json_of_value encountered an error in the value"
-  | VLazy v -> json_of_value ~options:options (Lazy.force v)
   | VAlias (n, v) ->
     if options.unfold_aliases
     then json_of_value ~options:options (VRecord [n, v])

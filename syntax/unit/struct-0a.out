@@ -11,8 +11,7 @@ let dump_s buf s =
 let value_of_s s =
   Parsifal.VRecord
     [ ("@name", (Parsifal.VString (("s", false))));
-      ("x", (Parsifal.VLazy (lazy (value_of_uint8 s.x))));
-      ("y",
-       (Parsifal.VLazy (lazy (Parsifal.try_value_of value_of_uint16 s.y)))) ]
+      ("x", (value_of_uint8 s.x));
+      ("y", (Parsifal.try_value_of value_of_uint16 s.y)) ]
   
 

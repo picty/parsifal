@@ -66,7 +66,7 @@ let value_of_png_chunk chunk =
   VRecord [
     "@name", VString ("png_chunk", false);
     "type", VString (chunk.chunk_type, false);
-    "data", VLazy (lazy (value_of_chunk_content chunk.chunk_data));
+    "data", value_of_chunk_content chunk.chunk_data;
   ]
 
 
