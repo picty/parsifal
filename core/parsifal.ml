@@ -129,7 +129,6 @@ type value =
   | VString of string * bool (* * header *)
   | VList of value list (* * header *)
   | VRecord of (string * value) list
-  | VOption of value option
   | VError of string
   | VLazy of value Lazy.t
   | VUnparsed of value
@@ -511,8 +510,6 @@ let rec string_of_value = function
       with Not_found -> "record"
     end
   end
-  | VOption None -> "()"
-  | VOption (Some v) -> string_of_value v
   | VError s -> "Error: " ^ s
   | VLazy v -> string_of_value (Lazy.force v)
   | VAlias (_, v) -> string_of_value v
@@ -586,7 +583,6 @@ let rec print_value ?options:(options=default_output_options) ?name:(name="value
       let new_options = incr_indent options in
       let handle_field accu (name, raw_v) = match (name, realise_value raw_v) with
 	| _, VUnit -> accu
-	| _, VOption None -> accu
 	| name, v ->
 	  if options.oo_verbose || (String.length name >= 1 && name.[0] <> '@')
 	  then (print_value ~options:new_options ~name:name v)::accu
@@ -597,8 +593,6 @@ let rec print_value ?options:(options=default_output_options) ?name:(name="value
 	(Printf.sprintf "%s}\n" options.indent)
     end
   end
-  | VOption None -> Printf.sprintf "%s%s\n" options.indent name
-  | VOption (Some v) -> print_value ~options:options ~name:name v
 
   | VError err -> Printf.sprintf "%s%s: ERROR (%s)\n" options.indent name err
   | VLazy v -> print_value ~options:options ~name:name (Lazy.force v)

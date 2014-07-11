@@ -21,8 +21,8 @@ type http_info =
 | FirstLine of string
 
 let mkopt = function
-  | None -> VOption None
-  | Some s -> VOption (Some (VString (s, false)))
+  | None -> VUnit
+  | Some s -> VString (s, false)
 
 let value_of_http_info = function
   | Query q ->
