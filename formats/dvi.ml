@@ -24,7 +24,7 @@ let dump_varuint n buf v = match n with
   | 4 -> dump_uint32 buf v
   | _ -> failwith "invalid parameter n"
 
-let value_of_varuint n = VSimpleInt n
+let value_of_varuint n = VInt n
 
 
 

@@ -45,8 +45,8 @@ let value_of_ip_prefix = function
     VRecord [
       "@name", VString ("ipv4_prefix", false);
       "@string_of", VString ((string_of_ipv4 s) ^ "/" ^ (string_of_int prefix_len), false);
-      "prefix", VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts);
-      "prefix_len", VSimpleInt prefix_len
+      "prefix", VList (List.map (fun x -> VInt (int_of_char x)) elts);
+      "prefix_len", VInt prefix_len
     ]
   | IPv6Prefix (initial_s, prefix_len) ->
     let l = (prefix_len + 7) / 8 in
@@ -58,8 +58,8 @@ let value_of_ip_prefix = function
     VRecord [
       "@name", VString ("ipv6_prefix", false);
       "@string_of", VString ((string_of_ipv6 s) ^ "/" ^ (string_of_int prefix_len), false);
-      "prefix", VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts);
-      "prefix_len", VSimpleInt prefix_len
+      "prefix", VList (List.map (fun x -> VInt (int_of_char x)) elts);
+      "prefix_len", VInt prefix_len
     ]
 
 
@@ -83,10 +83,7 @@ let dump_bgp_attribute_len buf (extended, v) =
   if extended
   then dump_uint16 buf v
   else dump_uint8 buf v
-let value_of_bgp_attribute_len (extended, v) =
-  if extended
-  then VInt (v, 16, BigEndian)
-  else VInt (v, 8, BigEndian)
+let value_of_bgp_attribute_len (_, v) = VInt v
 
 enum bgp_attribute_type (8, UnknownVal UnknownBGPAttributeType) =
   | 1 -> ORIGIN

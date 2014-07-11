@@ -16,7 +16,7 @@ let peek_uint8 input =
 
 let dump_uint8 buf v = POutput.add_byte buf (v land 0xff)
 
-let value_of_uint8 i = VInt (i, 8, LittleEndian)
+let value_of_uint8 i = VInt i
 
 
 
@@ -42,7 +42,7 @@ let dump_uint16 buf v =
   POutput.add_byte buf ((v lsr 8) land 0xff);
   POutput.add_byte buf (v land 0xff)
 
-let value_of_uint16 i = VInt (i, 16, BigEndian)
+let value_of_uint16 i = VInt i
 
 
 
@@ -62,7 +62,7 @@ let dump_uint16le buf v =
   POutput.add_byte buf (v land 0xff);
   POutput.add_byte buf ((v lsr 8) land 0xff)
 
-let value_of_uint16le i = VInt (i, 16, LittleEndian)
+let value_of_uint16le i = VInt i
 
 
 
@@ -84,7 +84,7 @@ let dump_uint24 buf v =
   POutput.add_byte buf ((v lsr 8) land 0xff);
   POutput.add_byte buf (v land 0xff)
 
-let value_of_uint24 i = VInt (i, 24, BigEndian)
+let value_of_uint24 i = VInt i
 
 
 type uint24le = int
@@ -105,7 +105,7 @@ let dump_uint24le buf v =
   POutput.add_byte buf ((v lsr 8) land 0xff);
   POutput.add_byte buf (v land 0xff)
 
-let value_of_uint24le i = VInt (i, 24, BigEndian)
+let value_of_uint24le i = VInt i
 
 
 
@@ -129,7 +129,7 @@ let dump_uint32 buf v =
   POutput.add_byte buf ((v lsr 8) land 0xff);
   POutput.add_byte buf (v land 0xff)
 
-let value_of_uint32 i = VInt (i, 32, BigEndian)
+let value_of_uint32 i = VInt i
 
 
 
@@ -153,7 +153,7 @@ let dump_uint32le buf v =
   POutput.add_byte buf ((v lsr 16) land 0xff);
   POutput.add_byte buf ((v lsr 24) land 0xff)
 
-let value_of_uint32le i = VInt (i, 32, LittleEndian)
+let value_of_uint32le i = VInt i
 
 
 (* TODO: Should this be rewritten with a little more elegance? *)
@@ -187,7 +187,7 @@ let dump_uint64 buf v =
   POutput.add_byte buf (aux 24); POutput.add_byte buf (aux 16);
   POutput.add_byte buf (aux 8); POutput.add_byte buf (aux 0)
 
-let value_of_uint64 i = VBigInt (exact_dump dump_uint64 i, BigEndian)
+let value_of_uint64 i = VBigInt (exact_dump dump_uint64 i)
 
 
 
@@ -221,7 +221,7 @@ let dump_uint64le buf v =
   POutput.add_byte buf (aux 32); POutput.add_byte buf (aux 40);
   POutput.add_byte buf (aux 48); POutput.add_byte buf (aux 56)
 
-let value_of_uint64le i = VBigInt (exact_dump dump_uint64 i, LittleEndian)
+let value_of_uint64le i = VBigInt (exact_dump dump_uint64 i)
 
 
 
@@ -232,7 +232,7 @@ let parse_sint8 input =
 let dump_sint8 buf sint =
   let v = if sint < 0 then 256 + sint else sint in
   dump_uint8 buf v
-let value_of_sint8 v = VInt (v, 8, BigEndian)
+let value_of_sint8 v = VInt v
 
 type sint16 = int
 let parse_sint16 input =
@@ -241,7 +241,7 @@ let parse_sint16 input =
 let dump_sint16 buf sint =
   let v = if sint < 0 then 65536 + sint else sint in
   dump_uint16 buf v
-let value_of_sint16 v = VInt (v, 16, BigEndian)
+let value_of_sint16 v = VInt v
 
 type sint32 = int
 let parse_sint32 input =
@@ -250,7 +250,7 @@ let parse_sint32 input =
 let dump_sint32 buf sint =
   let v = if sint < 0 then 0x1_0000_0000 + sint else sint in
   dump_uint32 buf v
-let value_of_sint32 v = VInt (v, 32, BigEndian)
+let value_of_sint32 v = VInt v
 
 
 
@@ -466,7 +466,7 @@ let value_of_bit_bool b = VBool b
 type bit_int = int
 let parse_bit_int nbits input = parse_bits nbits input
 let dump_bit_int nbits buf i = POutput.add_bits buf nbits i
-let value_of_bit_int i = VSimpleInt i
+let value_of_bit_int i = VInt i
 
 type rtol_bit_bool = bool
 let parse_rtol_bit_bool input = (parse_rtol_bits 1 input) = 1
@@ -476,4 +476,4 @@ let value_of_rtol_bit_bool b = VBool b
 type rtol_bit_int = int
 let parse_rtol_bit_int nbits input = parse_rtol_bits nbits input
 let dump_rtol_bit_int _nbits _buf _i = raise (ParsingException (NotImplemented "dump_rtol_bit_int", []))
-let value_of_rtol_bit_int i = VSimpleInt i
+let value_of_rtol_bit_int i = VInt i

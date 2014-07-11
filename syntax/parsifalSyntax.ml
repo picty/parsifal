@@ -634,16 +634,10 @@ let rec value_of_fun_of_ptype _loc t =
 
 let mk_value_of_fun _loc c =
   let body = match c.construction with
-  | Enum enum ->
+  | Enum _ ->
     let ioe = <:expr< $lid:"int_of_" ^ c.name$ >>
-    and soe = <:expr< $lid:"string_of_" ^ c.name$ >>
-    and endianness =
-      if c <.> LittleEndian
-      then <:expr< Parsifal.LittleEndian >>
-      else <:expr< Parsifal.BigEndian >>
-    in
-    <:expr< Parsifal.value_of_enum $soe$ $ioe$ $int:string_of_int enum.size$
-      $endianness$ $lid:c.name$ >>
+    and soe = <:expr< $lid:"string_of_" ^ c.name$ >> in
+    <:expr< Parsifal.value_of_enum $soe$ $ioe$ $lid:c.name$ >>
 
   | Struct fields ->
     let value_of_one_field (_loc, n, t, attr) =

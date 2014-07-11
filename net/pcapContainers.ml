@@ -129,9 +129,9 @@ let value_of_tcp_connexion value_of_fun (k, segs) =
   ] in VRecord [
     "@name", VString ("tcp_connexion", false);
     "src", value_of_ipv4 (fst k.source);
-    "src_port", VSimpleInt (snd k.source);
+    "src_port", VInt (snd k.source);
     "dst", value_of_ipv4 (fst k.destination);
-    "dst_port", VSimpleInt (snd k.destination);
+    "dst_port", VInt (snd k.destination);
     "data", VList (List.map value_of_one_aggregate segs)
   ]
 
@@ -229,9 +229,9 @@ let value_of_udp_connexion value_of_fun (k, segs) =
   ] in VRecord [
     "@name", VString ("udp_connexion", false);
     "src", value_of_ipv4 (fst k.source);
-    "src_port", VSimpleInt (snd k.source);
+    "src_port", VInt (snd k.source);
     "dst", value_of_ipv4 (fst k.destination);
-    "dst_port", VSimpleInt (snd k.destination);
+    "dst_port", VInt (snd k.destination);
     "data", VList (List.map value_of_one_aggregate segs)
   ]
 

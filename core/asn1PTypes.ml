@@ -52,7 +52,7 @@ let parse_der_integer_content input =
 
 let dump_der_integer_content buf s = POutput.add_string buf s
 
-let value_of_der_integer_content i = VBigInt (i, BigEndian)
+let value_of_der_integer_content i = VBigInt i
 
 asn1_alias der_integer = primitive [T_Integer] der_integer_content
 
@@ -90,7 +90,7 @@ let dump_der_smallint_content buf i =
   mk_content (sz-1) i;
   POutput.add_string buf res
 
-let value_of_der_smallint_content i = VSimpleInt i
+let value_of_der_smallint_content i = VInt i
 
 asn1_alias der_smallint = primitive [T_Integer] der_smallint_content
 
@@ -204,7 +204,7 @@ let value_of_der_oid_content oid =
   VRecord [
     "@name", VString ("oid", false);
     "@string_of", VString (string_of_der_oid_content oid, false);
-    "oid", VList (List.map (fun x -> VSimpleInt x) (oid_expand oid))
+    "oid", VList (List.map (fun x -> VInt x) (oid_expand oid))
   ]
 
 asn1_alias der_oid = primitive [T_OId] der_oid_content
@@ -237,7 +237,7 @@ let value_of_der_bitstring_content (nBits, s) =
   VRecord [
     "@name", VString ("bitstring", false);
     "@string_of", VString (Printf.sprintf "[%d] %s" nBits s, false);
-    "nBits", VSimpleInt nBits;
+    "nBits", VInt nBits;
     "content", VString (s, true)
   ]
 
@@ -381,9 +381,9 @@ let value_of_time_content name t =
   VRecord [
     "@name", VString (name, false);
     "@string_of", VString (string_of_time_content t, false);
-    "year", VSimpleInt t.year; "month", VSimpleInt t.month;
-    "day", VSimpleInt t.day; "hour", VSimpleInt t.hour;
-    "minute", VSimpleInt t.minute; "second", VSimpleInt t.second
+    "year", VInt t.year; "month", VInt t.month;
+    "day", VInt t.day; "hour", VInt t.hour;
+    "minute", VInt t.minute; "second", VInt t.second
   ]
    
 

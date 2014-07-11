@@ -115,17 +115,12 @@ let mapi f l =
 (* TODO: value_of should be used when efficiency is not needed *)
 (*       -> string_of, json_of                                 *)
 
-type size = int
-type endianness = LittleEndian | BigEndian
-(* type header = string *)
-
 type value =
   | VUnit
   | VBool of bool
-  | VSimpleInt of int
-  | VInt of int * size * endianness
-  | VBigInt of string * endianness
-  | VEnum of string * int * size * endianness
+  | VInt of int (* * size * endianness *)
+  | VBigInt of string (* * endianness *)
+  | VEnum of string * int (* * size * endianness *)
   | VString of string * bool (* * header *)
   | VList of value list (* * header *)
   | VRecord of (string * value) list
@@ -346,8 +341,8 @@ let exact_parse parse_fun input =
 let print_enum string_of_val int_of_val nchars ?indent:(indent="") ?name:(name="enum") v =
   Printf.sprintf "%s%s: %s (0x%*.*x)\n" indent name (string_of_val v) nchars nchars (int_of_val v)
 
-let value_of_enum string_of_val int_of_val size endianness v =
-  VEnum (string_of_val v, int_of_val v, size, endianness)
+let value_of_enum string_of_val int_of_val v =
+  VEnum (string_of_val v, int_of_val v)
 
 
 (* Struct *)
@@ -498,10 +493,10 @@ type ('a, 'b) either = Left of 'a | Right of 'b
 let rec string_of_value = function
   | VUnit -> "()"
   | VBool b -> string_of_bool b
-  | VSimpleInt i | VInt (i, _, _) -> string_of_int i
-  | VBigInt (s, _) | VString (s, true) -> hexdump s
+  | VInt i -> string_of_int i
+  | VBigInt s | VString (s, true) -> hexdump s
   | VString (s, false) -> quote_string s
-  | VEnum (s, _, _, _) -> s
+  | VEnum (s, _) -> s
   | VList _ -> "list"
   | VRecord l -> begin
     try string_of_value (List.assoc "@string_of" l)
@@ -544,15 +539,11 @@ let list_of_fields l =
 let rec print_value ?options:(options=default_output_options) ?name:(name="value") = function
   | VUnit ->  Printf.sprintf "%s%s\n" options.indent name
   | VBool b -> Printf.sprintf "%s%s: %b\n" options.indent name b
-  | VSimpleInt i -> Printf.sprintf "%s%s: %d\n" options.indent name i
-  | VInt (i, sz, _) ->
-    let n_chars = sz / 4 in
-    Printf.sprintf "%s%s: %d (0x%*.*x)\n" options.indent name i n_chars n_chars i
-  | VBigInt (s, _) ->
+  | VInt i -> Printf.sprintf "%s%s: %d (0x%x)\n" options.indent name i i
+  | VBigInt s ->
     Printf.sprintf "%s%s: %s (%d bytes)\n" options.indent name (hexdump s) (String.length s)
-  | VEnum (s, i, sz, _) -> 
-    let n_chars = sz / 4 in
-    Printf.sprintf "%s%s: %s (0x%*.*x)\n" options.indent name s n_chars n_chars i
+  | VEnum (s, i) ->
+    Printf.sprintf "%s%s: %s (%d = 0x%x)\n" options.indent name s i i
 
   | VString ("", _) ->
     Printf.sprintf "%s%s: \"\" (0 byte)\n" options.indent name
@@ -606,25 +597,9 @@ let rec print_value ?options:(options=default_output_options) ?name:(name="value
 let rec get_value path v = match (realise_value v, path) with
   | v, [] -> v
 
-  (* TODO: add [] pour une chaîne de caractères? *)
-
-  | VSimpleInt i, "@hex"::r ->
-    get_value r (VString (Printf.sprintf "0x%x" i, false))
-  | VInt (i, sz, _), "@hex"::r ->
-    let n_chars = sz / 4 in
-    get_value r (VString (Printf.sprintf "0x%*.*x" n_chars n_chars i, false))
-  | VEnum (_, i, sz, _), "@hex"::r ->
-    let n_chars = sz / 4 in
-    get_value r (VString (Printf.sprintf "0x%*.*x" n_chars n_chars i, false))
-
-  | VInt (_, sz, _), ("@len" | "@size")::r -> get_value r (VSimpleInt ((sz + 7) / 8))
-  | VBigInt (s, _), ("@len" | "@size")::r -> get_value r (VSimpleInt (String.length s))
-  | VEnum (_, _, sz, _), ("@len" | "@size")::r -> get_value r (VSimpleInt ((sz + 7) / 8))
-
-  | VString (s, _), ("@len" | "@size")::r -> get_value r (VSimpleInt (String.length s))
-
-
-  | VList l, ("@len" | "@size" | "@count")::r -> get_value r (VSimpleInt (List.length l))
+  | VBigInt s, ("@len" | "@size")::r -> get_value r (VInt (String.length s))
+  | VString (s, _), ("@len" | "@size")::r -> get_value r (VInt (String.length s))
+  | VList l, ("@len" | "@size" | "@count")::r -> get_value r (VInt (List.length l))
 
   | VList l, "*"::r ->
     cleanup_result (Right []) (List.map (get_value r) l)

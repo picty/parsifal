@@ -49,8 +49,7 @@ let dump_mpint buf i =
     dump_uint16 buf bit_counter ;
     dump_binstring buf i
 
-let value_of_mpint i =
-    VBigInt (i, BigEndian)
+let value_of_mpint i = VBigInt i
 
 (* §3.5 *)
 alias timefield = uint32
@@ -189,8 +188,7 @@ let dump_iteration_counter buf iteration_counter =
     let c = (exponent lsl 4) lor ((unbiased_it_cnt lsr exponent) land 0xf) in
     dump_uint8 buf c
 
-let value_of_iteration_counter iteration_counter =
-  VSimpleInt iteration_counter
+let value_of_iteration_counter iteration_counter = VInt iteration_counter
 
 (* §3.7.1.3 *)
 struct iterated_salted_s2k_payload = {
@@ -392,7 +390,7 @@ let dump_subpacket_len buf subpacket_len =
         dump_uint32 buf (subpacket_len land 0xFFFFFFFF)
     end
 
-let value_of_subpacket_len l = VSimpleInt l
+let value_of_subpacket_len l = VInt l
 
 
 (* §5.2.3.1 *)

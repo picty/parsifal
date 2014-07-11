@@ -40,7 +40,7 @@ let parse_varint input =
 
 let dump_varint (_buf : POutput.t) (_i : int) = not_implemented "dump_varint"
 
-let value_of_varint i = VSimpleInt i
+let value_of_varint i = VInt i
 
 
 (* Protobuf key *)
@@ -70,7 +70,7 @@ let value_of_protobuf_key (wt, fn) =
     "@name", VString ("protobuf_key", false);
     "@string_of", VString (string_of_protobuf_key (wt, fn), false);
     "wire_type", value_of_wire_type wt;
-    "field_number", VSimpleInt fn
+    "field_number", VInt fn
   ]
 
 

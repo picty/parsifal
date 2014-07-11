@@ -224,12 +224,12 @@ let string_of_image_time t =
 let value_of_image_time t = VRecord [
   "@name", VString ("image_time", false);
   "@string_of", VString (string_of_image_time t, false);
-  "year", VSimpleInt t.year;
-  "month", VSimpleInt t.month;
-  "day", VSimpleInt t.day;
-  "hour", VSimpleInt t.hour;
-  "minute", VSimpleInt t.minute;
-  "second", VSimpleInt t.second;
+  "year", VInt t.year;
+  "month", VInt t.month;
+  "day", VInt t.day;
+  "hour", VInt t.hour;
+  "minute", VInt t.minute;
+  "second", VInt t.second;
 ]
 
 

@@ -26,7 +26,7 @@ let parse_tar_numstring len input =
 let dump_tar_numstring len buf v =
   POutput.bprintf buf "%*.*o\x00" len len v
 
-let value_of_tar_numstring v = VSimpleInt v
+let value_of_tar_numstring v = VInt v
 
 
 struct ustar_header =

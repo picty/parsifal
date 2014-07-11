@@ -19,7 +19,7 @@ let value_of_ipv4 s =
   VRecord [
     "@name", VString ("ipv4", false);
     "@string_of", VString (string_of_ipv4 s, false);
-    "address", VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts)
+    "address", VList (List.map (fun x -> VInt (int_of_char x)) elts)
   ]
 
 let ipv4_of_string s =
@@ -56,7 +56,7 @@ let value_of_ipv6 s =
   VRecord [ 
     "@name", VString ("ipv6", false);
     "@string_of", VString (string_of_ipv6 s, false);
-    "address", VList (List.map (fun x -> VSimpleInt (int_of_char x)) elts)
+    "address", VList (List.map (fun x -> VInt (int_of_char x)) elts)
   ]
 
 

@@ -3,14 +3,14 @@ open Parsifal
 let rec json_of_value ?options:(options=default_output_options) = function
   | VUnit -> "null"
   | VBool b -> string_of_bool b
-  | VSimpleInt i | VInt (i, _, _) -> string_of_int i
-  | VBigInt (s, _) | VString (s, true) -> "\"" ^ (hexdump s) ^ "\""
+  | VInt i -> string_of_int i
+  | VBigInt s | VString (s, true) -> "\"" ^ (hexdump s) ^ "\""
   | VString (s, false) ->
     (* TODO: Sordid hack to produce valid JSON structures
              To clean that up, some work is needed on VString constructor
              to keep trace of the source encoding. *)
     Str.global_replace (Str.regexp "\\\\x") "\\u00" (quote_string s)
-  | VEnum (s, _, _, _) -> quote_string s
+  | VEnum (s, _) -> quote_string s
 
   | VList l ->
     let new_options = incr_indent options in

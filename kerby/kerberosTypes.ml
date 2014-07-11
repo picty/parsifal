@@ -237,7 +237,7 @@ let dump_encrypted_data_container _dump_fun _buf _o = not_implemented "dump_encr
 let value_of_encrypted_data_container value_of_fun v = VRecord [
   "@name", VString ("encrypted_data_container", false);
   "encryption_type", value_of_etype_type v.encryption_type;
-  "kvno", (match v.kvno with None -> VUnit | Some i -> VSimpleInt i);
+  "kvno", (match v.kvno with None -> VUnit | Some i -> VInt i);
   "cipher", value_of_crypto_container value_of_fun v.cipher
   ]
 

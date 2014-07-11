@@ -14,6 +14,6 @@ let parse_test input = test_of_int (BasePTypes.parse_uint8 input)
 let dump_test buf test = BasePTypes.dump_uint8 buf (int_of_test test)
   
 let value_of_test test =
-  Parsifal.value_of_enum string_of_test int_of_test 8 Parsifal.BigEndian test
+  Parsifal.value_of_enum string_of_test int_of_test test
   
 

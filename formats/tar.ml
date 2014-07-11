@@ -27,7 +27,7 @@ let dump_tar_numstring len buf v =
   POutput.bprintf buf "%*.*o\x00" len len v
 
 (* TODO: change stg to get len in here? *)
-let value_of_tar_numstring i = VSimpleInt i
+let value_of_tar_numstring i = VInt i
 
 
 union optional_tar_numstring [both_param len; enrich] (UnparsedNum of binstring(len)) =

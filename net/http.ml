@@ -123,7 +123,7 @@ let value_of_headers hdrs =
 
 let value_of_http_message msg = VRecord [
   "@name", VString ("http_message", false);
-  "overall_length", VSimpleInt msg.overall_length;
+  "overall_length", VInt msg.overall_length;
   "http_info", value_of_http_info msg.http_info;
   "headers", value_of_headers msg.headers;
   "body", VString (msg.body, false);

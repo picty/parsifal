@@ -135,11 +135,11 @@ let value_of_soa_rdata soa_rdata =
 			     soa_rdata.soa_minimum, false);
     "soa_mname", value_of_domain soa_rdata.soa_mname;
     "soa_rname", value_of_domain soa_rdata.soa_rname;
-    "soa_serial", VSimpleInt soa_rdata.soa_serial;
-    "soa_refresh", VSimpleInt soa_rdata.soa_refresh;
-    "soa_retry", VSimpleInt soa_rdata.soa_retry;
-    "soa_expire", VSimpleInt soa_rdata.soa_expire;
-    "soa_minimum", VSimpleInt soa_rdata.soa_minimum;
+    "soa_serial", VInt soa_rdata.soa_serial;
+    "soa_refresh", VInt soa_rdata.soa_refresh;
+    "soa_retry", VInt soa_rdata.soa_retry;
+    "soa_expire", VInt soa_rdata.soa_expire;
+    "soa_minimum", VInt soa_rdata.soa_minimum;
   ]
 
 
@@ -160,7 +160,7 @@ let value_of_mx_rdata mx_rdata =
   VRecord [
     "@name", VString ("mx_rdata", false);
     "@string_of", VString (Printf.sprintf "%d %s" mx_rdata.mx_preference domain, false);
-    "mx_preference", VSimpleInt mx_rdata.mx_preference;
+    "mx_preference", VInt mx_rdata.mx_preference;
     "mx_host", value_of_domain mx_rdata.mx_host;
   ]
 

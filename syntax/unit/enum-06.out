@@ -18,6 +18,6 @@ let parse_test input = test_of_int (Parsifal.parse_bits 1 input)
 let dump_test buf test = POutput.add_bits buf 1 (int_of_test test)
   
 let value_of_test test =
-  Parsifal.value_of_enum string_of_test int_of_test 1 Parsifal.BigEndian test
+  Parsifal.value_of_enum string_of_test int_of_test test
   
 
