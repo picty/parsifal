@@ -10,7 +10,7 @@ open Base64
 type action =
   | Text | PrettyPrint | JSON | Dump | BinDump
   | Subject | Issuer | Serial | Modulus
-  | CheckSelfSigned | Get
+  | CheckSelfSigned | Get | HTTPNames
 let action = ref Text
 let set_action value = TrivialFun (fun () -> action := value)
 
@@ -44,6 +44,7 @@ let options = [
   mkopt (Some 's') "subject" (set_action Subject) "prints the certificates subject";
   mkopt (Some 'i') "issuer" (set_action Issuer) "prints the certificates issuer";
   mkopt (Some 'm') "modulus" (set_action Modulus) "prints the RSA modulus";
+  mkopt (Some 'N') "http-names" (set_action HTTPNames) "prints the CN/IP/DNS embedded";
   mkopt None "check-selfsigned" (set_action CheckSelfSigned) "checks the signature of a self signed";
   mkopt (Some 'g') "get" (StringFun do_get_action) "Walks through the certificate using a get string";
 
@@ -123,6 +124,9 @@ let handle_input input =
       in [string_of_bool (result)]
     | Subject -> ["[" ^ String.concat ", " (List.map string_of_atv (List.flatten certificate.tbsCertificate.subject)) ^ "]"]
     | Issuer -> ["[" ^ String.concat ", " (List.map string_of_atv (List.flatten certificate.tbsCertificate.issuer)) ^ "]"]
+    | HTTPNames ->
+      let names = extract_dns_and_ips certificate in
+      List.map (fun (t, v) -> t ^ "=" ^ v) names
     | Modulus ->
       let result = match certificate.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey with
 	| RSA {p_modulus = n} -> hexdump n

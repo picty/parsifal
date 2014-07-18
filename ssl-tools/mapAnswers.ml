@@ -12,7 +12,7 @@ open X509
 open TlsEngineNG
 
 type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType | RecordTypes | Get
-	      | VersionACSAC | SuiteACSAC | SaveCertificates of string
+	      | VersionACSAC | SuiteACSAC | SaveCertificates of string | HTTPNames
 let action = ref IP
 let verbose = ref false
 let maxlen = ref (Some 70)
@@ -62,6 +62,7 @@ let options = [
   mkopt None "junk-length" (IntVal junk_length) "Sets the max length of junk stuff to print";
   mkopt None "certificates" (StringFun (fun s -> action := SaveCertificates s; update_enrich_level 3; ActionDone)) "saves certificates";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject; update_enrich_level 2)) "show the subect";
+  mkopt None "http-names" (TrivialFun (fun () -> action := HTTPNames; update_enrich_level 5)) "prints the answer types";
   mkopt (Some 'g') "get" (StringFun do_get_action) "Walks through the answers using a get string";
 
   mkopt None "always-enrich" (TrivialFun (fun () -> enrich_style := AlwaysEnrich)) "always enrich the structure parsed";
@@ -397,6 +398,43 @@ let handle_answer answer =
           | _::r -> saveCerts r
         in
 	Printf.printf "%s: %d certificate(s) saved.\n" ip (saveCerts records)
+
+      | HTTPNames ->
+        let records =
+          let tls_records, _, _ = parse_all_tls_records answer in
+          if tls_records <> []
+          then Right tls_records
+          else begin
+            let ssl2_records, _, _ = parse_all_ssl2_records answer in
+            Left ssl2_records
+          end
+        in
+	let cert = match records with
+          | Right ({ content_type = CT_Handshake;
+                     record_content = Handshake {
+		       handshake_type = HT_ServerHello;
+		       handshake_content = ServerHello _
+		     }}::
+                  { content_type = CT_Handshake;
+                    record_content = Handshake {
+                      handshake_type = HT_Certificate;
+                      handshake_content = Certificate ((Parsed cert)::_) }}::_)
+          | Left ({ ssl2_content = SSL2Handshake {
+              ssl2_handshake_type = SSL2_HT_SERVER_HELLO;
+              ssl2_handshake_content = SSL2ServerHello {
+                ssl2_server_certificate = Parsed cert;
+              }}}::_)
+	    -> Some cert
+	  | _ -> None
+	in
+	begin
+	  match cert with
+	  | Some c ->
+	    let https_dns_and_ips = extract_dns_and_ips c in
+	    let string_of_dns_or_ip (t, v) = t ^ "=" ^ v in
+	    Printf.printf "%s: %s\n" ip (String.concat ", " (List.map string_of_dns_or_ip https_dns_and_ips))
+	  | None -> ()
+	end
   end;
   again
 

@@ -224,3 +224,40 @@ let _ =
   List.iter (populate_alg_directory subjectPublicKeyType_directory) public_key_types;
   List.iter (populate_alg_directory signatureType_directory) signature_types;  
   ()
+
+
+let get_extn_by_id id c =
+  match c.tbsCertificate.extensions with
+  | None -> None
+  | Some es ->
+    match List.filter (fun e -> e.extnID = id) es with
+    | [e] -> Some e.extnValue
+    | [] -> None
+    | _::_::_ ->
+      failwith (Printf.sprintf "get_extn_by_id: Duplicate extension (%s)" (string_of_oid id))
+
+
+let extract_dns_and_ips c =
+  let san_oid = Hashtbl.find Asn1PTypes.rev_oid_directory "subjectAltName"
+  and cn_oid = Hashtbl.find Asn1PTypes.rev_oid_directory "commonName" in
+
+  let cns = List.map (fun atv -> "CN", quote_string (string_of_atv_value atv.attributeValue))
+    (List.filter (fun atv -> atv.attributeType = cn_oid) (List.flatten c.tbsCertificate.subject))
+  in
+
+  let sans =
+    match get_extn_by_id san_oid c with
+    | Some (X509Extensions.SubjectAltName gns) ->
+      let rec extract_dns_or_ip = function
+	| [] -> []
+	| (X509Extensions.DNSName s)::r ->
+	  ("DNS", s)::(extract_dns_or_ip r)
+	| (X509Extensions.IPAddress s)::r ->
+	  let ip = if String.length s = 4 then string_of_ipv4 s else hexdump s in
+	  ("IP", ip)::(extract_dns_or_ip r)
+	| _::r -> extract_dns_or_ip r
+      in
+      extract_dns_or_ip gns
+    | _ -> []
+  in
+  cns@sans
