@@ -11,15 +11,15 @@ open Asn1PTypes
 (* TODO: Make the exhaustive meaningful *)
 asn1_union directoryString [enrich; exhaustive; param len_cons] (UnparsedDirectoryString) =
   | C_Universal, false, T_T61String -> DS_T61String of
-      length_constrained_container (len_cons) of der_octetstring_content (no_constraint)
+      length_constrained_container (len_cons) of der_printable_octetstring_content (no_constraint)
   | C_Universal, false, T_PrintableString -> DS_PrintableString of
-      length_constrained_container (len_cons) of der_octetstring_content (no_constraint)
+      length_constrained_container (len_cons) of der_printable_octetstring_content (no_constraint)
   | C_Universal, false, T_UniversalString -> DS_UniversalString of
-      length_constrained_container (len_cons) of der_octetstring_content (no_constraint)
+      length_constrained_container (len_cons) of der_printable_octetstring_content (no_constraint)
   | C_Universal, false, T_UTF8String -> DS_UTF8String of
-      length_constrained_container (len_cons) of der_octetstring_content (no_constraint)
+      length_constrained_container (len_cons) of der_printable_octetstring_content (no_constraint)
   | C_Universal, false, T_BMPString -> DS_BMPString of
-      length_constrained_container (len_cons) of der_octetstring_content (no_constraint)
+      length_constrained_container (len_cons) of der_printable_octetstring_content (no_constraint)
 
 
 type attributeValueType =
