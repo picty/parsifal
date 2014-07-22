@@ -92,8 +92,10 @@ let pretty_print_certificate cert =
     | None -> "Version: no version given, 1 assumed"
     | Some v -> Printf.sprintf "Version: %d" (v+1));
 
-    ""; Printf.sprintf "Signature: %s " (string_of_oid tbs.signature.algorithmId); (* TODO: Params *)
-    ""; Printf.sprintf "Issuer: %s " (string_of_distinguishedName tbs.issuer);
+    ""; Printf.sprintf "Serial number: %s" (hexdump tbs.serialNumber);
+
+    ""; Printf.sprintf "Signature: %s" (string_of_oid tbs.signature.algorithmId); (* TODO: Params *)
+    ""; Printf.sprintf "Issuer: %s" (string_of_distinguishedName tbs.issuer);
     ""; "Validity";
     Printf.sprintf "    Not before: %s" (string_of_value (value_of_der_time tbs.validity.notBefore));
     Printf.sprintf "    Not after: %s" (string_of_value (value_of_der_time tbs.validity.notAfter));
@@ -134,9 +136,13 @@ let handle_input input =
       in [result]
     | BinDump -> [exact_dump_certificate certificate]
     | Dump -> [hexdump (exact_dump_certificate certificate)]
-    | Text -> Str.split (Str.regexp_string "\n") (print_value (value_of_certificate certificate))
+    | Text -> Str.split (Str.regexp_string "\n")
+      (print_value ~options:{ default_output_options with oo_verbose = !verbose }
+	 (value_of_certificate certificate))
     | PrettyPrint -> pretty_print_certificate certificate
-    | JSON -> Str.split (Str.regexp_string "\n") (Json.json_of_value (value_of_certificate certificate))
+    | JSON -> Str.split (Str.regexp_string "\n")
+      (Json.json_of_value ~options:{ default_output_options with oo_verbose = !verbose }
+	 (value_of_certificate certificate))
     | Get ->
       match get (value_of_certificate certificate) !path_str with
       | Left _ -> []
