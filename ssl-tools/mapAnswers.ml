@@ -422,7 +422,7 @@ let handle_answer answer =
 	  match cert with
 	  | Some c ->
 	    let https_dns_and_ips = extract_dns_and_ips c in
-	    let string_of_dns_or_ip (t, v) = t ^ "=" ^ v in
+	    let string_of_dns_or_ip (t, v) = t ^ "=" ^ (quote_string v) in
 	    Printf.printf "%s: %s\n" ip (String.concat ", " (List.map string_of_dns_or_ip https_dns_and_ips))
 	  | None -> ()
 	end

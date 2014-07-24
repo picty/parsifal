@@ -128,7 +128,7 @@ let handle_input input =
     | Issuer -> ["[" ^ String.concat ", " (List.map string_of_atv (List.flatten certificate.tbsCertificate.issuer)) ^ "]"]
     | HTTPNames ->
       let names = extract_dns_and_ips certificate in
-      List.map (fun (t, v) -> t ^ "=" ^ v) names
+      List.map (fun (t, v) -> t ^ "=" ^ (quote_string v)) names
     | Modulus ->
       let result = match certificate.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey with
 	| RSA {p_modulus = n} -> hexdump n

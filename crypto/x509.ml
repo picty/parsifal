@@ -241,7 +241,7 @@ let extract_dns_and_ips c =
   let san_oid = Hashtbl.find Asn1PTypes.rev_oid_directory "subjectAltName"
   and cn_oid = Hashtbl.find Asn1PTypes.rev_oid_directory "commonName" in
 
-  let cns = List.map (fun atv -> "CN", quote_string (string_of_atv_value atv.attributeValue))
+  let cns = List.map (fun atv -> "CN", string_of_atv_value atv.attributeValue)
     (List.filter (fun atv -> atv.attributeType = cn_oid) (List.flatten c.tbsCertificate.subject))
   in
 
