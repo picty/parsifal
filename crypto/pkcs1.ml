@@ -191,6 +191,8 @@ let raw_verify typ msg s n e =
       | _ -> false
   with
     | Not_found | ParsingException _ -> false
+    | Cryptokit.Error Cryptokit.Message_too_long -> false
+    | NotFound _ -> false
 
 
 
