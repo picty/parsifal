@@ -35,9 +35,9 @@ let hmac hash_fun block_len k m =
   hash_fun (out_key ^ (hash_fun (in_key ^ m)))
 
 
-let hmac_md5 = hmac md5sum 512
-let hmac_sha1 = hmac sha1sum 512
-
+let hmac_md5 = hmac md5sum 64
+let hmac_sha1 = hmac sha1sum 64
+let hmac_sha256 = hmac sha256sum 64
 
 
 let tls_P_hash hmac_fun hash_len secret seed len =
