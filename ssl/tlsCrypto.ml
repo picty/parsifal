@@ -1,5 +1,6 @@
 open Cryptokit
 open CryptoUtil
+open TlsEnums
 
 exception CryptoMayhem
 
@@ -74,3 +75,12 @@ let tls1_prf secret label seed len =
 let tls12_prf (hmac_fun, hlen) secret label seed len =
   tls_P_hash hmac_fun hlen secret (label ^ seed) len
 
+
+
+let choose_prf version prf_hash = match version, prf_hash with
+  | V_SSLv2, _ -> failwith "Not implemented: SSLv2 PRF"
+  | V_SSLv3, _ -> failwith "Not implemented: SSLv3 PRF"
+  | (V_TLSv1 | V_TLSv1_1), _ -> tls1_prf
+  | V_TLSv1_2, (PRF_Default | PRF_SHA256) ->  tls12_prf (hmac_sha256, 32)
+  | V_TLSv1_2, (PRF_SHA384 | PRF_Unknown) ->  failwith "Not implemented: PRF hash function"
+  | V_Unknown _, _ -> failwith "Not implemented: PRF choice using an unknown version"
