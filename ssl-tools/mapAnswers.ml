@@ -57,7 +57,7 @@ let options = [
   mkopt None "server-random" (TrivialFun (fun () -> action := ServerRandom; update_enrich_level 2)) "only output the server random";
   mkopt None "scapy-style" (TrivialFun (fun () -> action := Scapy)) "outputs the records as independant scapy-style packets";
   mkopt None "output-pcap" (TrivialFun (fun () -> action := Pcap)) "export the answer as a PCAP";
-  mkopt None "answer-type" (TrivialFun (fun () -> action := AnswerType; update_enrich_level 5)) "prints the answer types";
+  mkopt None "answer-type" (TrivialFun (fun () -> action := AnswerType; update_enrich_level 9)) "prints the answer types";
   mkopt None "record-types" (TrivialFun (fun () -> action := RecordTypes; update_enrich_level 2)) "prints the records received";
   mkopt None "junk-length" (IntVal junk_length) "Sets the max length of junk stuff to print";
   mkopt None "certificates" (StringFun (fun s -> action := SaveCertificates s; update_enrich_level 3; ActionDone)) "saves certificates";
