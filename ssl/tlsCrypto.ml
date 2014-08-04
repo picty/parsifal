@@ -1,3 +1,4 @@
+open Cryptokit
 open CryptoUtil
 
 exception CryptoMayhem
@@ -6,18 +7,10 @@ exception CryptoMayhem
 let string_xor a b =
   let n_a = String.length a
   and n_b = String.length b in
-  (* TODO: Do better? *)
   if n_a <> n_b then raise CryptoMayhem;
-
-  let res = Buffer.create n_a in
-  for i = 0 to n_a-1 do
-    let a_i = int_of_char a.[i]
-    and b_i = int_of_char b.[i] in
-    Buffer.add_char res (char_of_int (a_i lxor b_i))
-  done;
-
-  Buffer.contents res
-
+  let res = String.copy b in
+  Cryptokit.xor_string a 0 res 0 n_a;
+  res
 
 (* TODO: Move this elsewhere? Reuse Cryptokit? *)
 let hmac hash_fun block_len k m =
