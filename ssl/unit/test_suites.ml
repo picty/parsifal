@@ -45,6 +45,10 @@ let null_decrypt x = true, x
 
 let tests = List.flatten [
   mk_idempotence_suite "NULL_NULL" null_encrypt null_decrypt 10 20;
+  mk_idempotence_suite "RC4_MD5" (rc4_encrypt hmac_md5 16 (String.make 16 'A') (String.make 16 'B'))
+    (rc4_decrypt hmac_md5 16 (String.make 16 'A') (String.make 16 'B')) 10 20;
+  mk_idempotence_suite "RC4_SHA1" (rc4_encrypt hmac_sha1 20 (String.make 20 'A') (String.make 16 'B'))
+    (rc4_decrypt hmac_sha1 20 (String.make 20 'A') (String.make 16 'B')) 10 20;
 ]
 
 let suite = "Ciphersuites Unit Tests" >::: tests
