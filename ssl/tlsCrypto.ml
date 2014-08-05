@@ -86,6 +86,9 @@ let choose_prf version prf_hash = match version, prf_hash with
   | V_Unknown _, _ -> failwith "Not implemented: PRF choice using an unknown version"
 
 
+
+(* PRF and PMS/MS/KB generation *)
+
 let mk_master_secret prf (cr, sr) = function
   | (Tls.NoKnownSecret | Tls.MasterSecret _) as secret -> secret
   | Tls.PreMasterSecret pms -> Tls.MasterSecret (prf pms "master secret" (cr ^ sr) 48)
@@ -105,3 +108,44 @@ let mk_key_block prf ms (cr, sr) block_lens =
   if String.length key_block <> total_len
   then failwith "Internal mk_key_block unexpected error";
   split_block key_block 0 total_len block_lens
+
+
+
+(* Encryption / Decryption methods *)
+
+let check_mac mac_fun mac_len mac_key plaintext =
+  if String.length plaintext < mac_len
+  then None
+  else begin
+    let real_len = (String.length plaintext) - mac_len in
+    let real_plaintext = String.sub plaintext 0 real_len in
+    let computed_mac = mac_fun mac_key real_plaintext in
+    let expected_mac = String.sub plaintext real_len mac_len in
+    (* TODO: Constant time compare? *)
+    (* TODO: For the moment, the implementation is really really from the 90's, timing leak-wise. *)
+    if computed_mac = expected_mac
+    then Some real_plaintext
+    else None
+  end
+
+let rc4_decrypt mac_fun mac_len mac_key enc_key =
+  let t = Cipher.arcfour enc_key Cipher.Decrypt in
+  let f ciphertext =
+    t#put_string ciphertext;
+    let plaintext = t#get_string in
+    (* TODO: Use a more generic type (Encrypted/Decrypted) *)
+    match check_mac mac_fun mac_len mac_key plaintext with
+    | Some p -> true, p
+    | None -> false, ciphertext
+  in
+  f
+
+let rc4_encrypt mac_fun _mac_len mac_key enc_key =
+  let t = Cipher.arcfour enc_key Cipher.Encrypt in
+  let f plaintext =
+    let computed_mac = mac_fun mac_key plaintext in
+    let plaintext_w_mac = plaintext ^ computed_mac in
+    t#put_string plaintext_w_mac;
+    t#get_string
+  in
+  f
