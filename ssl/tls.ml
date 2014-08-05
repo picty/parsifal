@@ -246,6 +246,11 @@ let default_prefs = {
 }
 
 
+type secret_info =
+| NoKnownSecret
+| PreMasterSecret of string
+| MasterSecret of string
+
 type future_crypto_context = {
   mutable proposed_versions : tls_version * tls_version;
   mutable proposed_ciphersuites : ciphersuite list;
@@ -257,7 +262,7 @@ type future_crypto_context = {
   mutable f_client_random : string;
   mutable f_server_random : string;
   mutable f_session_id : string;
-  mutable pre_master_secret : string;
+  mutable secret_info : secret_info;
 }
 
 type tls_context = {
@@ -356,7 +361,7 @@ struct tls_record [top; param context] = {
 }
 
 
-let empty_future_crypto_context = {
+let empty_future_crypto_context () = {
   proposed_versions = (V_Unknown 0, V_Unknown 0xffff);
   proposed_ciphersuites = [];
   proposed_compressions = [];
@@ -364,7 +369,7 @@ let empty_future_crypto_context = {
   f_certificates = []; f_private_key = None;
   f_server_key_exchange = Unparsed_SKEContent "";
   f_client_random = ""; f_server_random = "";
-  f_session_id = ""; pre_master_secret = "";
+  f_session_id = ""; secret_info = NoKnownSecret;
 }
 
 
@@ -383,6 +388,6 @@ let empty_context prefs = {
   out_compress = null_compress; out_encrypt = null_cipher;
   in_decrypt = null_cipher; in_expand = null_compress;
 
-  future = empty_future_crypto_context;
+  future = empty_future_crypto_context ();
 }
 

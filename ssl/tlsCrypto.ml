@@ -84,3 +84,24 @@ let choose_prf version prf_hash = match version, prf_hash with
   | V_TLSv1_2, (PRF_Default | PRF_SHA256) ->  tls12_prf (hmac_sha256, 32)
   | V_TLSv1_2, (PRF_SHA384 | PRF_Unknown) ->  failwith "Not implemented: PRF hash function"
   | V_Unknown _, _ -> failwith "Not implemented: PRF choice using an unknown version"
+
+
+let mk_master_secret prf (cr, sr) = function
+  | (Tls.NoKnownSecret | Tls.MasterSecret _) as secret -> secret
+  | Tls.PreMasterSecret pms -> Tls.MasterSecret (prf pms "master secret" (cr ^ sr) 48)
+
+
+let mk_key_block prf ms (cr, sr) block_lens =
+  let rec split_block block cur len lens =
+    match lens, len - cur with
+    | [], 0 -> []
+    | [], _ -> failwith "Internal mk_key_block unexpected error"
+    | l::ls, rem ->
+      if rem < l then failwith "Internal mk_key_block unexpected error";
+      (String.sub block cur l)::(split_block block (cur+l) len ls)
+  in
+  let total_len = List.fold_left (+) 0 block_lens in
+  let key_block = prf ms "key expansion" (sr ^ cr) total_len in
+  if String.length key_block <> total_len
+  then failwith "Internal mk_key_block unexpected error";
+  split_block key_block 0 total_len block_lens
