@@ -1,7 +1,8 @@
 # configurable section
-TARGETS = test_prf
+TARGETS = test_prf test_suites
 
 test_prf_SRCS := test_prf.ml
+test_suites_SRCS := test_suites.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
@@ -26,6 +27,8 @@ BUILD_DIR = build
 include ../../Makefile.ocaml
 
 
-check:	test_prf.byte test_prf
+check:	test_prf.byte test_prf test_suites.byte test_suites
 	./test_prf.byte
 	./test_prf
+	./test_suites.byte
+	./test_suites
