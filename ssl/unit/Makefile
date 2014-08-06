@@ -27,8 +27,6 @@ BUILD_DIR = build
 include ../../Makefile.ocaml
 
 
-check:	test_prf.byte test_prf test_suites.byte test_suites
-	./test_prf.byte
+check:	test_prf test_suites
 	./test_prf
-	./test_suites.byte
 	./test_suites

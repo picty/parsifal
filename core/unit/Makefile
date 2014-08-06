@@ -26,8 +26,6 @@ BUILD_DIR = build
 include ../../Makefile.ocaml
 
 
-check:	test_basePTypes.byte test_basePTypes test_base64.byte test_base64
-	./test_basePTypes.byte
+check:	test_basePTypes test_base64
 	./test_basePTypes
-	./test_base64.byte
 	./test_base64
