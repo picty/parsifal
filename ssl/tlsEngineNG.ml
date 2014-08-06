@@ -102,9 +102,15 @@ let update_with_client_hello ctx ch =
   ctx.future.proposed_ciphersuites <- ch.ciphersuites;
   ctx.future.proposed_compressions <- ch.compression_methods;
   (* TODO: extensions *)
-  match ch.client_extensions with
-  | None | Some [] -> ()
-  | _ -> () (* For now, all extensions are ignored *)
+  begin
+    match ch.client_extensions with
+    | None | Some [] -> ()
+    | _ -> () (* For now, all extensions are ignored *)
+  end;
+  match ctx.future.secret_info with
+  | NoKnownSecret -> ctx.future.secret_info <- get_ms_from_cr ch.client_random ctx.preferences.known_master_secrets;
+  | _ -> ()
+
 
 let update_with_server_hello ctx sh =
   (* Checks? *)
@@ -124,6 +130,15 @@ let update_with_certificate ctx certs =
 
 let update_with_server_key_exchange ctx ske =
   ctx.future.f_server_key_exchange <- ske
+
+let update_with_client_key_exchange ctx cke =
+  ctx.future.f_client_key_exchange <- cke;
+  match cke, ctx.future.secret_info with
+  | CKE_RSA cke_rsa, NoKnownSecret ->
+    if String.length cke_rsa >= 8
+    then ctx.future.secret_info <- get_pms_from_cke_rsa (String.sub cke_rsa 0 8) ctx.preferences.known_master_secrets
+  | _ -> () (* TODO ? *)
+
 
 
 (* Move the core of the function in TlsCrypto *)
@@ -704,6 +719,7 @@ let update_with_record dir ctx = function
   | { record_content = Handshake { handshake_content = ServerHello sh } } -> update_with_server_hello ctx sh
   | { record_content = Handshake { handshake_content = Certificate certs } } -> update_with_certificate ctx certs
   | { record_content = Handshake { handshake_content = ServerKeyExchange ske } } -> update_with_server_key_exchange ctx ske
+  | { record_content = Handshake { handshake_content = ClientKeyExchange cke } } -> update_with_client_key_exchange ctx cke
   | { record_content = Handshake { handshake_content = _ } } -> () (* TODO *)
   | { record_content = ChangeCipherSpec _ } ->
     begin
