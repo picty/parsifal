@@ -149,3 +149,76 @@ let rc4_encrypt mac_fun _mac_len mac_key enc_key =
     t#get_string
   in
   f
+
+
+
+class tls_length =
+  object
+    method pad buffer used =
+      let n = String.length buffer - used in
+      assert (n > 0 && n < 256);
+      String.fill buffer used n (Char.chr (n-1))
+    method strip buffer =
+      let blocksize = String.length buffer in
+      let n = Char.code buffer.[blocksize - 1] in
+      if n+1 > blocksize then raise (Cryptokit.Error Cryptokit.Bad_padding);
+      (* Characters blocksize - n to blocksize - 1 must be equal to n *)
+      for i = blocksize - n - 1 to blocksize - 2 do
+        if Char.code buffer.[i] <> n then raise (Cryptokit.Error Cryptokit.Bad_padding)
+      done;
+      blocksize - n - 1
+  end
+
+let tls_length = new tls_length
+
+
+(* TODO: Rethink the interface to use MAC or ENC as parameters *)
+(* TODO: Add support for TLSv1.1 explicit IV *)
+
+(* TODO: For the moment, the implementation is really really from the 90's, timing leak-wise. *)
+let aes_cbc_implicit_decrypt mac_fun mac_len mac_key initial_iv key =
+  let iv_len = String.length initial_iv in
+  let decrypt_aux iv ciphertext =
+    let t = Cipher.aes ~mode:Cipher.CBC ~pad:tls_length ~iv:iv key Cryptokit.Cipher.Decrypt in
+    transform_string t ciphertext
+  in
+  let current_decrypt = ref (decrypt_aux initial_iv) in
+  let f ciphertext =
+    let ciphertext_len = String.length ciphertext in
+    if ciphertext_len < iv_len
+    then false, ciphertext
+    else begin
+      try
+	let plaintext = !current_decrypt ciphertext in
+	let next_iv = String.sub ciphertext (ciphertext_len - iv_len) iv_len in
+	current_decrypt := decrypt_aux next_iv;
+	(* TODO: Use a more generic type (Encrypted/Decrypted) *)
+	match check_mac mac_fun mac_len mac_key plaintext with
+	| Some p -> true, p
+	| None -> false, ciphertext
+      with _ -> false, ciphertext
+    end
+  in
+  f
+
+let aes_cbc_implicit_encrypt mac_fun _mac_len mac_key initial_iv key =
+  let iv_len = String.length initial_iv in
+  let encrypt_aux iv ciphertext =
+    let t = Cipher.aes ~mode:Cipher.CBC ~pad:tls_length ~iv:iv key Cryptokit.Cipher.Encrypt in
+    transform_string t ciphertext
+  in
+  let current_encrypt = ref (encrypt_aux initial_iv) in
+  let f plaintext =
+    let computed_mac = mac_fun mac_key plaintext in
+    let plaintext_w_mac = plaintext ^ computed_mac in
+    let ciphertext = !current_encrypt plaintext_w_mac in
+    let ciphertext_len = String.length ciphertext in
+    if ciphertext_len < iv_len
+    then failwith "aes_cbc_implicit_encrypt: invalid encryption result"
+    else begin
+      let next_iv = String.sub ciphertext (ciphertext_len - iv_len) iv_len in
+      current_encrypt := encrypt_aux next_iv;
+      ciphertext
+    end
+  in
+  f

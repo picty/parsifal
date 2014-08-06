@@ -3,6 +3,7 @@ open Random
 open TlsEnums
 open TlsCrypto
 
+
 let random_string len =
   let res = String.make len '\x00' in
   for i = 0 to (len - 1) do
@@ -13,6 +14,10 @@ let random_string len =
 let aggregate exit_code = function
   | RSuccess _ -> exit_code
   | _ -> 1
+
+let mk char len = String.make len char
+
+
 
 
 let test_idempotence encrypt decrypt data =
@@ -57,8 +62,7 @@ let mk_check_integrity_check name encrypt decrypt _n maxlen =
   mk_one_test [] 1 (* TODO: n *) maxlen
 
 
-(* TODO:
-   - add full key derivation, from PMS+CR+SR to encryption and decryption *)
+(* TODO: add full key derivation, from PMS+CR+SR to encryption and decryption *)
 
 
 (* TODO: Move these function to Tls module *)
@@ -68,15 +72,31 @@ let null_decrypt x = true, x
 
 let tests = List.flatten [
   mk_idempotence_suite "NULL_NULL" null_encrypt null_decrypt 10 20;
-  mk_idempotence_suite "RC4_MD5" (rc4_encrypt hmac_md5 16 (String.make 16 'A') (String.make 16 'B'))
-    (rc4_decrypt hmac_md5 16 (String.make 16 'A') (String.make 16 'B')) 10 20;
-  mk_idempotence_suite "RC4_SHA1" (rc4_encrypt hmac_sha1 20 (String.make 20 'A') (String.make 16 'B'))
-    (rc4_decrypt hmac_sha1 20 (String.make 20 'A') (String.make 16 'B')) 10 20;
+  mk_idempotence_suite "RC4_MD5" (rc4_encrypt hmac_md5 16 (mk 'k' 16) (mk 'K' 16))
+    (rc4_decrypt hmac_md5 16 (mk 'k' 16) (mk 'K' 16)) 10 20;
+  mk_idempotence_suite "RC4_SHA1" (rc4_encrypt hmac_sha1 20 (mk 'k' 20) (mk 'K' 16))
+    (rc4_decrypt hmac_sha1 20 (mk 'k' 20) (mk 'K' 16)) 10 20;
+  mk_idempotence_suite "AES128_MD5" (aes_cbc_implicit_encrypt hmac_md5 16 (mk 'k' 16) (mk 'I' 16) (mk 'K' 16))
+    (aes_cbc_implicit_decrypt hmac_md5 16 (mk 'k' 16) (mk 'I' 16) (mk 'K' 16)) 10 20;
+  mk_idempotence_suite "AES128_SHA1" (aes_cbc_implicit_encrypt hmac_sha1 20 (mk 'k' 20) (mk 'I' 16) (mk 'K' 16))
+    (aes_cbc_implicit_decrypt hmac_sha1 20 (mk 'k' 20) (mk 'I' 16) (mk 'K' 16)) 10 20;
+  mk_idempotence_suite "AES256_MD5" (aes_cbc_implicit_encrypt hmac_md5 16 (mk 'k' 16) (mk 'I' 16) (mk 'K' 32))
+    (aes_cbc_implicit_decrypt hmac_md5 16 (mk 'k' 16) (mk 'I' 16) (mk 'K' 32)) 10 20;
+  mk_idempotence_suite "AES256_SHA1" (aes_cbc_implicit_encrypt hmac_sha1 20 (mk 'k' 20) (mk 'I' 16) (mk 'K' 32))
+    (aes_cbc_implicit_decrypt hmac_sha1 20 (mk 'k' 20) (mk 'I' 16) (mk 'K' 32)) 10 20;
 
   mk_check_integrity_check "RC4_MD5" (rc4_encrypt hmac_md5 16 (String.make 16 'A') (String.make 16 'B'))
     (rc4_decrypt hmac_md5 16 (String.make 16 'A') (String.make 16 'B')) 10 20;
   mk_check_integrity_check "RC4_SHA1" (rc4_encrypt hmac_sha1 20 (String.make 20 'A') (String.make 16 'B'))
     (rc4_decrypt hmac_sha1 20 (String.make 20 'A') (String.make 16 'B')) 10 20;
+  mk_check_integrity_check "AES128_MD5" (aes_cbc_implicit_encrypt hmac_md5 16 (mk 'k' 16) (mk 'I' 16) (mk 'K' 16))
+    (aes_cbc_implicit_decrypt hmac_md5 16 (mk 'k' 16) (mk 'I' 16) (mk 'K' 16)) 10 20;
+  mk_check_integrity_check "AES128_SHA1" (aes_cbc_implicit_encrypt hmac_sha1 20 (mk 'k' 20) (mk 'I' 16) (mk 'K' 16))
+    (aes_cbc_implicit_decrypt hmac_sha1 20 (mk 'k' 20) (mk 'I' 16) (mk 'K' 16)) 10 20;
+  mk_check_integrity_check "AES256_MD5" (aes_cbc_implicit_encrypt hmac_md5 16 (mk 'k' 16) (mk 'I' 16) (mk 'K' 32))
+    (aes_cbc_implicit_decrypt hmac_md5 16 (mk 'k' 16) (mk 'I' 16) (mk 'K' 32)) 10 20;
+  mk_check_integrity_check "AES256_SHA1" (aes_cbc_implicit_encrypt hmac_sha1 20 (mk 'k' 20) (mk 'I' 16) (mk 'K' 32))
+    (aes_cbc_implicit_decrypt hmac_sha1 20 (mk 'k' 20) (mk 'I' 16) (mk 'K' 32)) 10 20;
 ]
 
 let suite = "Ciphersuites Unit Tests" >::: tests
