@@ -91,6 +91,20 @@ let choose_prf version prf_hash = match version, prf_hash with
 
 
 
+let rec get_ms_from_cr cr = function
+  | (Tls.MS (cr2, ms))::log_entries ->
+    if cr = cr2 then Tls.MasterSecret ms else get_ms_from_cr cr log_entries
+  | _::log_entries -> get_ms_from_cr cr log_entries
+  | [] -> Tls.NoKnownSecret
+
+let rec get_pms_from_cke_rsa cke_rsa = function
+  | (Tls.RSA_PMS (cke_rsa2, pms))::log_entries ->
+    if cke_rsa = cke_rsa2 then Tls.PreMasterSecret pms else get_pms_from_cke_rsa cke_rsa log_entries
+  | _::log_entries -> get_pms_from_cke_rsa cke_rsa log_entries
+  | [] -> Tls.NoKnownSecret
+
+
+
 (* PRF and PMS/MS/KB generation *)
 
 let mk_master_secret prf (cr, sr) = function

@@ -421,6 +421,7 @@ let _ =
       directive_behaviour = false;
       send_SNI = !send_SNI;
       server_names = [];
+      known_master_secrets = [];
     } in
 
     let hosts_threads = match !hosts_file, !host_ref with

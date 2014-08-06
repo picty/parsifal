@@ -228,6 +228,11 @@ struct next_protocol = {
 }
 
 
+(* This type is derived from the data exported by NSS in its SSL/TLS secrets log file *)
+type secret_log_entry =
+| RSA_PMS of string * string
+| MS of string * string
+
 type prefs = {
   (* generic prefs *)
   random_generator : RandomEngine.state;
@@ -243,6 +248,9 @@ type prefs = {
   (* client-side prefs *)
   send_SNI : bool;   (* Of course, SNI can be disabled if use_extensions is false *)
   server_names : string list;
+
+  (* SSLKEYLOGFILE info *)
+  known_master_secrets : secret_log_entry list;
 }
 
 type random_generator_type =
@@ -265,6 +273,7 @@ let default_prefs rng_type =
     directive_behaviour = false;
     send_SNI = true;
     server_names = [];
+    known_master_secrets = [];
   }
 
 

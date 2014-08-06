@@ -74,6 +74,7 @@ let parse_all_tls_records enrich_style verbose answer =
     directive_behaviour = false;
     send_SNI = false;
     server_names = [];
+    known_master_secrets = [];
   } in
   let ctx = empty_context prefs in
   let answer_input = input_of_string ~verbose:(verbose) ~enrich:(enrich_style) (string_of_v2_ip answer.ip_addr) answer.content in
