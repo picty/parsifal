@@ -119,9 +119,9 @@ let _ =
   Hashtbl.add type_handlers "png" ("PNG image", fun i -> Png.value_of_png_file (Png.parse_png_file i));
   Hashtbl.add type_handlers "pe" ("PE executable", fun i -> Pe.value_of_pe_file (Pe.parse_pe_file i));
   Hashtbl.add type_handlers "tar" ("TAR archive", fun i -> Tar.value_of_tar_file (Tar.parse_tar_file i));
-  Hashtbl.add type_handlers "answer_dump" ("Answer dump v1", fun i -> AnswerDump.value_of_answer_dump (AnswerDump.parse_answer_dump i));
-  Hashtbl.add type_handlers "answer_dump_v2" ("Answer dump v2", fun i -> AnswerDump.value_of_answer_dump_v2 (AnswerDump.parse_answer_dump_v2 i));
-  Hashtbl.add type_handlers "tls_record" ("SSL/TLS record", parse_tls_records_as_value (Some !ctx));
+  Hashtbl.add type_handlers "answer-dump-v1" ("Answer dump v1", fun i -> AnswerDump.value_of_answer_dump (AnswerDump.parse_answer_dump i));
+  Hashtbl.add type_handlers "answer-dump" ("Answer dump v2", fun i -> AnswerDump.value_of_answer_dump_v2 (AnswerDump.parse_answer_dump_v2 i));
+  Hashtbl.add type_handlers "tls" ("SSL/TLS record", parse_tls_records_as_value (Some !ctx));
   Hashtbl.add type_handlers "dns" ("DNS message", fun i -> Dns.value_of_dns_message (Dns.parse_dns_message i));
   Hashtbl.add type_handlers "pcap" ("PCAP capture file", fun i -> Pcap.value_of_pcap_file (Pcap.parse_pcap_file i));
   Hashtbl.add type_handlers "dvi" ("DVI file", fun i -> Dvi.value_of_dvi_file (Dvi.parse_dvi_file i));
@@ -130,12 +130,12 @@ let _ =
   Hashtbl.add type_handlers "mrt" ("MRT archive", fun i -> Mrt.value_of_mrt_message (Mrt.parse_mrt_message i));
   Hashtbl.add type_handlers "rsa" ("PKCS#1 RSA key", fun i -> Pkcs1.value_of_rsa_private_key (Pkcs1.parse_rsa_private_key i));
   Hashtbl.add type_handlers "keytab" ("Kerberos keytab", fun i -> Keytab.value_of_keytab_file (Keytab.parse_keytab_file i));
-  Hashtbl.add type_handlers "kerb_pkcs7" ("Kerberos PKCS#7", fun i -> Padata.value_of_kerb_pkcs7 (Padata.parse_kerb_pkcs7 i));
-  Hashtbl.add type_handlers "kerberos_tcp" ("Kerberos TCP message", fun i -> Kerby.value_of_kerberos_msg (Kerby.parse_kerberos_msg i));
-  Hashtbl.add type_handlers "kerberos_udp" ("Kerberos UDP message", fun i -> Kerby.value_of_kerberos_udp_msg (Kerby.parse_kerberos_udp_msg i));
+  Hashtbl.add type_handlers "kerb-pkcs7" ("Kerberos PKCS#7", fun i -> Padata.value_of_kerb_pkcs7 (Padata.parse_kerb_pkcs7 i));
+  Hashtbl.add type_handlers "kerberos-tcp" ("Kerberos TCP message", fun i -> Kerby.value_of_kerberos_msg (Kerby.parse_kerberos_msg i));
+  Hashtbl.add type_handlers "kerberos-udp" ("Kerberos UDP message", fun i -> Kerby.value_of_kerberos_udp_msg (Kerby.parse_kerberos_udp_msg i));
   Hashtbl.add type_handlers "pac" ("PAC", fun i -> Pac.value_of_ad_win2k_pac (Pac.parse_ad_win2k_pac i));
   Hashtbl.add type_handlers "http" ("HTTP message", fun i -> Http.value_of_http_message (Http.parse_http_message None i));
-  Hashtbl.add type_handlers "pcap_http" ("PCAP containing HTTP messages",
+  Hashtbl.add type_handlers "pcap-http" ("PCAP containing HTTP messages",
     fun i -> PcapContainers.value_of_oriented_tcp_container (fun x -> x)
       (PcapContainers.parse_oriented_tcp_container (fun () -> ()) !port "HTTP"
 	 (fun dir -> fun i -> Http.value_of_http_message (Http.parse_http_message (Some dir) i)) i));
