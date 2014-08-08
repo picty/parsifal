@@ -225,6 +225,7 @@ let _ =
     let args = parse_args ~progname:"probe_server" options Sys.argv in
     let cmd = cmd_of_args args in
     let prefs = {
+      random_generator = RandomEngine.default_random_generator ();
       acceptable_versions = (!rec_version, !ch_version);
       acceptable_ciphersuites = !suites;
       acceptable_compressions = !compressions;

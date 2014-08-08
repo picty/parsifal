@@ -92,6 +92,7 @@ let parse_all_ssl2_records answer =
 
 let parse_all_tls_records answer =
   let prefs = {
+    random_generator = RandomEngine.default_random_generator ();
     acceptable_versions = (V_Unknown 0, V_Unknown 0xffff);
     acceptable_ciphersuites = [];
     acceptable_compressions = [];

@@ -1,3 +1,4 @@
+open Parsifal
 open BasePTypes
 open Parsifal
 open PTypes
@@ -220,7 +221,7 @@ union server_key_exchange [enrich] (Unparsed_SKEContent) =
 
 
 
-alias cke_rsa_params [param _rsa_key] = binstring (* TODO *)
+alias cke_rsa_params [param _rsa_key] = binstring[uint16] (* TODO *)
 
 union client_key_exchange [enrich; param rsa_key] (Unparsed_CKEContent) =
   | KX_RSA -> CKE_RSA of cke_rsa_params(rsa_key)
@@ -230,6 +231,7 @@ union client_key_exchange [enrich; param rsa_key] (Unparsed_CKEContent) =
 
 
 type prefs = {
+  random_generator : RandomEngine.state;
   acceptable_versions : tls_version * tls_version;
   acceptable_ciphersuites : ciphersuite list;
   acceptable_compressions : compression_method list;
@@ -237,12 +239,13 @@ type prefs = {
   available_certificates : (X509.certificate list * Pkcs1.rsa_private_key) list;
 }
 
-let default_prefs = {
+let default_prefs random_seed = {
+  random_generator = RandomEngine.make_bh_prng CryptoUtil.sha256sum random_seed;
   acceptable_versions = (V_SSLv3, V_TLSv1_2);
   acceptable_ciphersuites = [TLS_RSA_WITH_RC4_128_SHA];
   acceptable_compressions = [CM_Null];
   directive_behaviour = false;
-  available_certificates = []
+  available_certificates = [];
 }
 
 
@@ -259,6 +262,7 @@ type future_crypto_context = {
   mutable f_certificates : (X509.certificate trivial_union) list;
   mutable f_private_key : Pkcs1.rsa_private_key option; (* this should be a sum type (None/RSA/DSA/ECDSA) *)
   mutable f_server_key_exchange : server_key_exchange; (* this should NOT be a server_key_exchange *)
+  mutable f_client_key_exchange : client_key_exchange; (* this should NOT be a client_key_exchange *)
   mutable f_client_random : string;
   mutable f_server_random : string;
   mutable f_session_id : string;
@@ -368,6 +372,7 @@ let empty_future_crypto_context () = {
 
   f_certificates = []; f_private_key = None;
   f_server_key_exchange = Unparsed_SKEContent "";
+  f_client_key_exchange = Unparsed_CKEContent "";
   f_client_random = ""; f_server_random = "";
   f_session_id = ""; secret_info = NoKnownSecret;
 }

@@ -553,6 +553,15 @@ type key_exchange_algorithm =
   | KX_ECDHE
   | KX_Unknown
 
+(* TODO: Use an enum here? *)
+let string_of_kx = function
+  | KX_RSA -> "RSA"
+  | KX_DH -> "DH"
+  | KX_DHE -> "DHE"
+  | KX_ECDH -> "ECDH"
+  | KX_ECDHE -> "ECDHE"
+  | KX_Unknown -> "Unknown"
+
 type authentication_algorithm =
   | AU_Null
   | AU_RSA

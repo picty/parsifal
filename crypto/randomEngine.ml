@@ -68,3 +68,11 @@ let random_int s max =
     if !tmp < max then !tmp else aux ()
   in
   aux ()
+
+
+
+let default_random_generator () =
+  let f = open_in "/dev/urandom" in
+  let seed = String.make 32 ' ' in
+  really_input f seed 0 32;
+  make_bh_prng CryptoUtil.sha256sum seed

@@ -121,6 +121,13 @@ let mk_handshake_msg ctx hs_type hs_msg = {
   }
 }
 
+let mk_ccs_msg ctx = {
+  content_type = CT_ChangeCipherSpec;
+  record_version = ctx.current_version;
+  record_content = ChangeCipherSpec { change_cipher_spec_value = CCS_ChangeCipherSpec };
+}
+
+
 let mk_client_hello ctx =
   ctx.future.proposed_versions <- ctx.preferences.acceptable_versions;
   ctx.future.proposed_ciphersuites <- ctx.preferences.acceptable_ciphersuites;
@@ -174,6 +181,29 @@ let mk_server_hello ctx =
 let mk_certificate_msg ctx = mk_handshake_msg ctx HT_Certificate (Certificate [])
 
 let mk_server_hello_done ctx = mk_handshake_msg ctx HT_ServerHelloDone ServerHelloDone
+
+let mk_client_key_exchange ctx =
+  let kx = match ctx.future.proposed_ciphersuites with
+    | [cs] -> (find_csdescr cs).kx
+    | _ -> failwith "mk_client_hello: Internal inconsistency"
+  in
+  match kx, ctx.future.f_certificates, ctx.future.f_server_key_exchange with
+  | KX_RSA, server_cert_opt::_, _ ->
+    let server_cert = match server_cert_opt with
+      | Parsed c -> c
+      | Unparsed c_str -> X509.parse_certificate (input_of_string "Server certificate" c_str)
+    in
+    let n, e = match server_cert.X509.tbsCertificate.X509.subjectPublicKeyInfo.X509.subjectPublicKey with
+      | X509.RSA x -> x.Pkcs1.p_modulus, x.Pkcs1.p_publicExponent
+      | _ -> failwith "mk_client_hello: no RSA key..."
+    in
+    let rng = ctx.preferences.random_generator in
+    let version = exact_dump dump_tls_version (snd ctx.preferences.acceptable_versions) 
+    and pms = RandomEngine.random_string rng 46 in
+    (* TODO: Use a higher-level function (Pkcs1.pkcs1_container in cke_rsa_params) ? *)
+    let encrypted_pms = Pkcs1.encrypt rng 2 (version ^ pms) n e in
+    mk_handshake_msg ctx HT_ClientKeyExchange (ClientKeyExchange (CKE_RSA encrypted_pms))
+  | kx, _, _ -> not_implemented ("CKE with kx=" ^ (string_of_kx kx))
 
 
 
@@ -404,7 +434,13 @@ let client_automata state input _global_ctx ctx =
     SKEReceived, Wait
   | (CertificateReceived | SKEReceived),
     InputTlsMsg { record_content = Handshake { handshake_content = ServerHelloDone } } ->
-    SHDReceived, FatalAlert AT_BadCertificate
+    (* TODO: Optionaly send a Certificate message *)
+    let cke = mk_client_key_exchange ctx in
+    (* TODO: Optionaly send a CertificateVerify message *)
+    let ccs = mk_ccs_msg ctx in
+    (* TODO: Finished! *)
+    (* TODO: Handle alerts *)
+    SHDReceived, OutputTlsMsgs [cke; ccs]
   | _, Timeout -> ClientNil, FatalAlert AT_CloseNotify
   | _, Nothing -> state, Wait
   | _ -> ClientNil, FatalAlert AT_HandshakeFailure
