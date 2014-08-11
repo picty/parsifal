@@ -76,6 +76,7 @@ let options = [
 ]
 
 
+
 let parse_all_ssl2_records answer =
   let rec read_ssl2_records accu i =
     if not (eos i)
@@ -99,9 +100,10 @@ let parse_all_tls_records answer =
     directive_behaviour = false;
     available_certificates = []
   } in
-  let ctx = Tls.empty_context prefs in
+  let ctx = empty_context prefs in
   let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_v2_ip answer.ip_addr) answer.content in
-  parse_all_records (Some ctx) answer_input
+  let recs, _, remaining = parse_all_records (Some ctx) answer_input in
+  recs, ctx, remaining
 
 let parse_records_as_values answer =
   match parse_all_tls_records answer with
@@ -151,6 +153,7 @@ let handle_answer answer =
     else false, true
   in
   if this_one then begin
+    (* TODO: Take care that an empty answer is correctly signaled! *)
     match !action with
       | IP -> print_endline ip
       | Dump -> print_string (exact_dump_answer_dump_v2 answer)
@@ -173,41 +176,28 @@ let handle_answer answer =
         end
       | Suite ->
         let _, ctx, _ = parse_all_tls_records answer in
-        let cs = match ctx with
-          | None -> if !verbose then (Some "ERROR") else None
-          | Some ctx -> Some (string_of_ciphersuite (List.hd ctx.future.proposed_ciphersuites))
-        in
-        begin
-          match cs with
-            | None -> ()
-            | Some s -> Printf.printf "%s: %s\n" ip s
+	begin
+	  match ctx.future.proposed_ciphersuites with
+	  | [cs] -> Printf.printf "%s: %s\n" ip (string_of_ciphersuite cs)
+	  | _ -> if !verbose then Printf.printf "%s: ERROR" ip
         end
       | SKE ->
         let _, ctx, _ = parse_all_tls_records answer in
-        let ske = match ctx with
-          | None -> if !verbose then (Some "ERROR") else None
-          | Some { future = { f_server_key_exchange = (SKE_DHE { params = params } ) } } ->
-            Some (Printf.sprintf "%s,%s,%s" (hexdump params.dh_p) (hexdump params.dh_g) (hexdump params.dh_Ys))
-          | Some { future = { f_server_key_exchange = (Unparsed_SKEContent "" ) } } ->
-            if !verbose then (Some "NO_SKE") else None
-          | Some _ -> if !verbose then (Some "NOT PARSED YET") else None
-        in
-        begin
-          match ske with
-            | None -> ()
-            | Some s -> Printf.printf "%s: %s\n" ip s
+	begin
+	  match ctx.future.f_server_key_exchange with
+	  | SKE_DHE { params = params } ->
+	    Printf.printf "%s: %s,%s,%s\n" ip (hexdump params.dh_p)
+	      (hexdump params.dh_g) (hexdump params.dh_Ys)
+	  | Unparsed_SKEContent "" -> if !verbose then Printf.printf "%s: NO_SKE" ip
+	  | _ -> if !verbose then Printf.printf "%s: NOT PARSED YET" ip
         end
       | ServerRandom ->
-        let records, _, _ = parse_all_tls_records answer in
-        begin
-          match records with
-          | { content_type = CT_Handshake;
-              record_content = Handshake {
-                handshake_type = HT_ServerHello;
-                handshake_content = ServerHello {server_random = r} }}::_
-            -> Printf.printf "%s: %s\n" ip (hexdump r)
-          | _ -> ()
-        end;
+        let _, ctx, _ = parse_all_tls_records answer in
+	begin
+	  match ctx.future.f_server_random with
+	  | "" -> if !verbose then Printf.printf "%s: ERROR" ip
+	  | r -> Printf.printf "%s: %s\n" ip (hexdump r)
+        end
       | Scapy ->
         let records, _, _ = parse_all_tls_records answer in
         let rec convert_to_scapy (len, ps) = function
