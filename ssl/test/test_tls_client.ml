@@ -20,4 +20,4 @@ let test_client port prefs =
   Lwt_unix.close c_sock.socket
 
 let _ =
-  Unix.handle_unix_error Lwt_unix.run (test_client 8080 (Tls.default_prefs "DUMMY SEED"))
+  Unix.handle_unix_error Lwt_unix.run (test_client 8080 (default_prefs DummyRNG))

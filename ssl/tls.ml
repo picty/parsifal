@@ -239,14 +239,24 @@ type prefs = {
   available_certificates : (X509.certificate list * Pkcs1.rsa_private_key) list;
 }
 
-let default_prefs random_seed = {
-  random_generator = RandomEngine.make_bh_prng CryptoUtil.sha256sum random_seed;
-  acceptable_versions = (V_SSLv3, V_TLSv1_2);
-  acceptable_ciphersuites = [TLS_RSA_WITH_RC4_128_SHA];
-  acceptable_compressions = [CM_Null];
-  directive_behaviour = false;
-  available_certificates = [];
-}
+type random_generator_type =
+| DefaultRNG
+| DummyRNG
+| SeededRNG of string
+
+let default_prefs rng_type =
+  let rng = match rng_type with
+    | DefaultRNG -> RandomEngine.default_random_generator ()
+    | DummyRNG -> RandomEngine.dummy_random_generator ()
+    | SeededRNG seed -> RandomEngine.seeded_random_generator seed
+  in {
+    random_generator = rng;
+    acceptable_versions = (V_SSLv3, V_TLSv1_2);
+    acceptable_ciphersuites = [TLS_RSA_WITH_RC4_128_SHA];
+    acceptable_compressions = [CM_Null];
+    directive_behaviour = false;
+    available_certificates = [];
+  }
 
 
 type secret_info =

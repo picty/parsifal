@@ -10,4 +10,4 @@ let test_server prefs =
   Lwt_unix.close c_sock.socket
 
 let _ =
-  Unix.handle_unix_error Lwt_unix.run (test_server (default_prefs "DUMMY SEED"))
+  Unix.handle_unix_error Lwt_unix.run (test_server (default_prefs DummyRNG))

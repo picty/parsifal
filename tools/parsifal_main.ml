@@ -45,7 +45,7 @@ let type_list = ref false
 let input_in_args = ref false
 let multiple_values = ref false
 
-let ctx = ref (Tls.empty_context (Tls.default_prefs "DUMMY SEED"))
+let ctx = ref (Tls.empty_context (Tls.default_prefs Tls.DummyRNG))
 
 let load_kerb_rsa_key filename =
   try

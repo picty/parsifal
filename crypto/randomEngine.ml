@@ -71,8 +71,18 @@ let random_int s max =
 
 
 
+let seeded_random_generator seed =
+  make_bh_prng CryptoUtil.sha256sum seed
+
 let default_random_generator () =
   let f = open_in "/dev/urandom" in
   let seed = String.make 32 ' ' in
   really_input f seed 0 32;
-  make_bh_prng CryptoUtil.sha256sum seed
+  close_in f;
+  seeded_random_generator seed
+
+let dummy_random_generator () = {
+  seed = (fun _ -> ());
+  refresh = (fun _ -> ());
+  next = (fun () -> String.make 32 '\x00');
+}
