@@ -20,4 +20,9 @@ let test_client port prefs =
   Lwt_unix.close c_sock.socket
 
 let _ =
-  Unix.handle_unix_error Lwt_unix.run (test_client 8080 (default_prefs DummyRNG))
+  try
+    TlsDatabase.enrich_suite_hash ();
+    Unix.handle_unix_error Lwt_unix.run (test_client 8080 (default_prefs DummyRNG))
+  with
+    | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
+    | e -> prerr_endline (Printexc.to_string e)
