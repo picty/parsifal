@@ -87,6 +87,7 @@ let update_with_client_hello ctx ch =
 let update_with_server_hello ctx sh =
   (* Checks? *)
   ctx.future.proposed_versions <- (sh.server_version, sh.server_version);
+  ctx.current_version <- sh.server_version;
   ctx.future.proposed_ciphersuites <- [sh.ciphersuite];
   ctx.future.proposed_compressions <- [sh.compression_method];
   ctx.future.f_server_random <- sh.server_random;
