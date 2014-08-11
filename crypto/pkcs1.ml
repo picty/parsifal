@@ -86,7 +86,14 @@ let format_encryption_block rnd_state block_type padding_len d =
   let padding = match block_type with
     | 0 -> String.make padding_len '\x00'
     | 1 -> String.make padding_len '\xff'
-    | 2 -> RandomEngine.random_string rnd_state padding_len
+    | 2 ->
+      let s = RandomEngine.random_string rnd_state padding_len in
+      (* TODO: This introduces a bias towards 0xff which should be avoided *)
+      for i = 0 to padding_len - 1 do
+	if s.[i] = '\x00'
+	then s.[i] <- '\xff'
+      done;
+      s
     | _ -> raise InvalidBlockType
   in
   let tmp1 = String.make 1 '\x00' in
