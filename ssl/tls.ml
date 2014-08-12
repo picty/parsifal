@@ -85,6 +85,11 @@ struct trusted_authority = {
 }
 
 
+union next_protocol_negotiation_content [enrich; exhaustive] (Unparsed_NPNContent) =
+  | ClientToServer -> ClientNPN
+  | ServerToClient -> ServerNPN of list of string[uint8]
+
+
 (* TODO: Implement the commented extensions *)
 union hello_extension_content [enrich; param direction] (Unparsed_HelloExtension) =
   | HE_ServerName -> ServerName of server_name_content(direction)
@@ -104,6 +109,7 @@ union hello_extension_content [enrich; param direction] (Unparsed_HelloExtension
   (* | HE_UseSRTP -> UseSRTP of ? *)
   | HE_Heartbeat -> HeartbeatExtension of heartbeat_mode
   | HE_SessionTicket -> SessionTicket of binstring
+  | HE_NextProtocolNegotiation -> NextProtocolNegotiation of next_protocol_negotiation_content(direction)
   | HE_RenegotiationInfo -> RenegotiationInfo of binstring
 
 
@@ -229,6 +235,11 @@ union client_key_exchange [enrich; param rsa_key] (Unparsed_CKEContent) =
   | KX_ECDHE -> CKE_ECDHE of binstring (* TODO *)
 
 
+struct next_protocol = {
+  selected_protocol : string[uint8];
+  npn_padding : binstring[uint8];
+}
+
 
 type prefs = {
   random_generator : RandomEngine.state;
@@ -344,6 +355,7 @@ union handshake_content [enrich; param context] (Unparsed_HSContent) =
   | HT_CertificateURL -> CertificateURL of certificate_url
  (* | HT_CertificateStatus -> CertificateStatus of *)
   | HT_SupplementalData -> SupplementalData of binstring[uint24]
+  | HT_NextProtocol -> NextProtocol of next_protocol
 
 
 struct handshake_msg [param context] = {

@@ -75,6 +75,7 @@ enum hs_message_type (8, UnknownVal HT_Unknown) =
   | 21 -> HT_CertificateURL, "CertificateURL"
   | 22 -> HT_CertificateStatus, "CertificateStatus"
   | 23 -> HT_SupplementalData, "SupplementalData"
+  | 67 -> HT_NextProtocol, "NextProtocol"
 
 exception InvalidTLSCiphersuite
 enum ciphersuite (16, UnknownVal TLS_UnknownSuite) =
@@ -535,6 +536,7 @@ enum extension_type (16, UnknownVal HE_Unknown) =
   | 14 -> HE_UseSRTP, "UseSRTP"
   | 15 -> HE_Heartbeat, "Heartbeat"
   | 35 -> HE_SessionTicket, "SessionTicket"
+  | 13172 -> HE_NextProtocolNegotiation, "NextProtocolNegotiation"
   | 65281 -> HE_RenegotiationInfo, "RenegotiationInfo"
 
 enum tls_certificate_type (8, UnknownVal TCT_Unknown) =
