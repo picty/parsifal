@@ -112,39 +112,51 @@ let mk_key_block prf ms (cr, sr) block_lens =
 
 
 (* Encryption / Decryption methods *)
+(* TODO: Use a more generic approach? *)
+(* TODO: Rethink the interface to use MAC or ENC as parameters *)
+(* TODO: Use a more generic return type for decryption (Encrypted/Decrypted) *)
+(* TODO: Add a way to be laxist on mac errors (debug mode?) *)
 
-let check_mac mac_fun mac_len mac_key plaintext =
+let compute_mac mac_fun mac_key seq_num content_type version message =
+  let maced_string = POutput.create () in
+  BasePTypes.dump_uint64 maced_string seq_num;
+  dump_tls_content_type maced_string content_type;
+  dump_tls_version maced_string version;
+  BasePTypes.dump_uint16 maced_string (String.length message);
+  POutput.add_string maced_string message;
+  mac_fun mac_key (POutput.contents maced_string)
+
+let check_mac mac_fun mac_len mac_key seq_num content_type version plaintext =
   if String.length plaintext < mac_len
   then None
   else begin
     let real_len = (String.length plaintext) - mac_len in
     let real_plaintext = String.sub plaintext 0 real_len in
-    let computed_mac = mac_fun mac_key real_plaintext in
+    let computed_mac = compute_mac mac_fun mac_key seq_num content_type version real_plaintext in
     let expected_mac = String.sub plaintext real_len mac_len in
     (* TODO: Constant time compare? *)
     (* TODO: For the moment, the implementation is really really from the 90's, timing leak-wise. *)
     if computed_mac = expected_mac
     then Some real_plaintext
-    (* TODO: Add a way to be laxist on mac errors (debug mode?) *)
     else None
   end
 
-let rc4_decrypt mac_fun mac_len mac_key enc_key =
+let rc4_decrypt mac_fun mac_len mac_key enc_key seq_num_ref  =
   let t = Cipher.arcfour enc_key Cipher.Decrypt in
-  let f ciphertext =
+  let f content_type version ciphertext =
     t#put_string ciphertext;
     let plaintext = t#get_string in
-    (* TODO: Use a more generic type (Encrypted/Decrypted) *)
-    match check_mac mac_fun mac_len mac_key plaintext with
-    | Some p -> true, p
+    match check_mac mac_fun mac_len mac_key !seq_num_ref content_type version plaintext with
+    | Some p -> seq_num_ref := Int64.add !seq_num_ref 1L; true, p
     | None -> false, ciphertext
   in
   f
 
-let rc4_encrypt mac_fun _mac_len mac_key enc_key =
+let rc4_encrypt mac_fun _mac_len mac_key enc_key seq_num_ref =
   let t = Cipher.arcfour enc_key Cipher.Encrypt in
-  let f plaintext =
-    let computed_mac = mac_fun mac_key plaintext in
+  let f content_type version plaintext =
+    let computed_mac = compute_mac mac_fun mac_key !seq_num_ref content_type version plaintext in
+    seq_num_ref := Int64.add !seq_num_ref 1L;
     let plaintext_w_mac = plaintext ^ computed_mac in
     t#put_string plaintext_w_mac;
     t#get_string
@@ -173,44 +185,43 @@ class tls_length =
 let tls_length = new tls_length
 
 
-(* TODO: Rethink the interface to use MAC or ENC as parameters *)
 (* TODO: Add support for TLSv1.1 explicit IV *)
 
 (* TODO: For the moment, the implementation is really really from the 90's, timing leak-wise. *)
-let aes_cbc_implicit_decrypt mac_fun mac_len mac_key initial_iv key =
+let aes_cbc_implicit_decrypt mac_fun mac_len mac_key initial_iv key seq_num_ref =
   let iv_len = String.length initial_iv in
   let decrypt_aux iv ciphertext =
     let t = Cipher.aes ~mode:Cipher.CBC ~pad:tls_length ~iv:iv key Cryptokit.Cipher.Decrypt in
     transform_string t ciphertext
   in
   let current_decrypt = ref (decrypt_aux initial_iv) in
-  let f ciphertext =
+  let f content_type version ciphertext =
     let ciphertext_len = String.length ciphertext in
     if ciphertext_len < iv_len
     then false, ciphertext
     else begin
       try
-	let plaintext = !current_decrypt ciphertext in
-	let next_iv = String.sub ciphertext (ciphertext_len - iv_len) iv_len in
-	current_decrypt := decrypt_aux next_iv;
-	(* TODO: Use a more generic type (Encrypted/Decrypted) *)
-	match check_mac mac_fun mac_len mac_key plaintext with
-	| Some p -> true, p
-	| None -> false, ciphertext
+        let plaintext = !current_decrypt ciphertext in
+        let next_iv = String.sub ciphertext (ciphertext_len - iv_len) iv_len in
+        current_decrypt := decrypt_aux next_iv;
+        match check_mac mac_fun mac_len mac_key !seq_num_ref content_type version plaintext with
+        | Some p -> seq_num_ref := Int64.add !seq_num_ref 1L; true, p
+        | None -> false, ciphertext
       with _ -> false, ciphertext
     end
   in
   f
 
-let aes_cbc_implicit_encrypt mac_fun _mac_len mac_key initial_iv key =
+let aes_cbc_implicit_encrypt mac_fun _mac_len mac_key initial_iv key seq_num_ref =
   let iv_len = String.length initial_iv in
   let encrypt_aux iv ciphertext =
     let t = Cipher.aes ~mode:Cipher.CBC ~pad:tls_length ~iv:iv key Cryptokit.Cipher.Encrypt in
     transform_string t ciphertext
   in
   let current_encrypt = ref (encrypt_aux initial_iv) in
-  let f plaintext =
-    let computed_mac = mac_fun mac_key plaintext in
+  let f content_type version plaintext =
+    let computed_mac = compute_mac mac_fun mac_key !seq_num_ref content_type version plaintext in
+    seq_num_ref := Int64.add !seq_num_ref 1L;
     let plaintext_w_mac = plaintext ^ computed_mac in
     let ciphertext = !current_encrypt plaintext_w_mac in
     let ciphertext_len = String.length ciphertext in

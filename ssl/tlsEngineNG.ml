@@ -4,6 +4,7 @@ open Lwt
 open TlsEnums
 open Tls
 open TlsCrypto
+open TlsDatabase
 open Ssl2
 open Parsifal
 
@@ -124,13 +125,49 @@ let update_with_incoming_CCS dir ctx =
       let prf = choose_prf v1 cs.prf in
       ctx.current_prf <- prf;
       let master_secret = match mk_master_secret prf randoms ctx.future.secret_info with
-	| Tls.MasterSecret ms ->
+        | Tls.MasterSecret ms ->
           ctx.current_master_secret <- ms;
           Some ms
-	| _ -> None
+        | _ -> None
       in
       begin
         match master_secret, cs.enc, cs.mac, cm with
+        | Some ms, ENC_Stream (SC_RC4, 128), MAC_HMAC hash_name, CM_Null ->
+	  let hash_fun, hash_size = hash_fun_of_name hash_name and key_material_length = 16 in
+          begin
+            match dir, ctx.direction, mk_key_block prf ms randoms [hash_size; hash_size; key_material_length; key_material_length] with
+            | ClientToServer, None, [client_write_MAC_secret; _; client_write_key; _] ->
+              (* TODO: Have something more efficient? *)
+              ctx.current_c2s_seq_num := 0L;
+              let c2s = rc4_decrypt hash_fun hash_size client_write_MAC_secret client_write_key ctx.current_c2s_seq_num
+              and s2c = ctx.decrypt ServerToClient in
+              ctx.decrypt <- fun dir -> if dir = ClientToServer then c2s else s2c
+            | ServerToClient, None, [_; server_write_MAC_secret; _; server_write_key] ->
+              ctx.current_s2c_seq_num := 0L;
+              let s2c = rc4_decrypt hash_fun hash_size server_write_MAC_secret server_write_key ctx.current_s2c_seq_num
+              and c2s = ctx.decrypt ClientToServer in
+              ctx.decrypt <- fun dir -> if dir = ServerToClient then s2c else c2s
+            | _ -> () (* TODO: Other cases *)
+          end
+        | Some ms, ENC_CBC (BC_AES, key_bitlen), MAC_HMAC hash_name, CM_Null ->
+          let hash_fun, hash_size = hash_fun_of_name hash_name
+	  and key_material_length = key_bitlen / 8 and iv_length = 16 in
+          begin
+            match dir, ctx.direction, mk_key_block prf ms randoms
+              [hash_size; hash_size; key_material_length; key_material_length; iv_length; iv_length] with
+              | ClientToServer, None, [client_write_MAC_secret; _; client_write_key; _; client_iv; _] ->
+                (* TODO: Have something more efficient? *)
+               ctx.current_c2s_seq_num := 0L;
+               let c2s = aes_cbc_implicit_decrypt hash_fun hash_size client_write_MAC_secret client_iv client_write_key ctx.current_c2s_seq_num
+                and s2c = ctx.decrypt ServerToClient in
+                ctx.decrypt <- fun dir -> if dir = ClientToServer then c2s else s2c
+              | ServerToClient, None, [_; server_write_MAC_secret; _; server_write_key; _; server_iv] ->
+                ctx.current_s2c_seq_num := 0L;
+                let s2c = aes_cbc_implicit_decrypt hash_fun hash_size server_write_MAC_secret server_iv server_write_key ctx.current_s2c_seq_num
+                and c2s = ctx.decrypt ClientToServer in
+                ctx.decrypt <- fun dir -> if dir = ServerToClient then s2c else c2s
+              | _ -> () (* TODO: Other cases *)
+          end
         | _ -> (* TODO *)
           match dir with
           | ClientToServer ->
