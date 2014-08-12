@@ -3,6 +3,7 @@ open PTypes
 open Lwt
 open TlsEnums
 open Tls
+open TlsCrypto
 open Ssl2
 open Parsifal
 
@@ -14,47 +15,50 @@ open Parsifal
 let mk_rec ct v content = { content_type = ct; record_version = v; record_content = content }
 
 let extract_first_record enrich ctx recs =
+  (* produce_raw_first_record only hands out records when the integrity bool is true *)
   let rec produce_raw_first_record accu recs =
     match accu, recs with
     | _, [] -> accu, []
-    | None, r::rs ->
+    | None, (false, _)::_ -> None, recs
+    | None, (true, r)::rs ->
       let content = POutput.create () in
       dump_record_content content r.record_content;
       produce_raw_first_record (Some (r.content_type, r.record_version, content)) rs
-    | Some (ct, v, content), r::rs ->
-      if r.content_type = ct && r.record_version = v
+    | Some (ct, v, content), (integrity, r)::rs ->
+      if integrity && r.content_type = ct && r.record_version = v
       then begin
-	dump_record_content content r.record_content;
-	produce_raw_first_record accu rs
-      end else accu, r::rs
+        dump_record_content content r.record_content;
+        produce_raw_first_record accu rs
+      end else accu, recs
   in
 
   match produce_raw_first_record None recs with
   | None, rs -> rs
   | Some (ct, v, content), rs ->
-    let input_name = "Merged " ^ (string_of_tls_content_type ct) ^ " records" in
-    let rec_content = POutput.contents content in
+    let input_name = "Merged " ^ (string_of_tls_content_type ct) ^ " records"
+    and rec_content = POutput.contents content in
 
     (* Here, we try to enrich the first record from the merged messages *)
     let new_input = input_of_string ~enrich:enrich input_name rec_content in
     let res = match try_parse ~report:false (parse_record_content ctx ct) new_input with
       | None ->
-	let first = mk_rec ct v (Unparsed_Record rec_content) in
-	first::rs
+        let first = mk_rec ct v (Unparsed_Record rec_content) in
+        (true, first)::rs
       | Some res ->
-	let first = mk_rec ct v res in
-	let next =
-	  if (eos new_input)
-	  then rs
-	  else begin
-	    (* If we have not used all the contents of the merged records, we must keep it *)
-	    let rem = parse_rem_binstring new_input in
-	    let next_record = mk_rec ct v (Unparsed_Record rem) in
-	    next_record::rs
-	  end
-	in first::next
+        let first = mk_rec ct v res in
+        let next =
+          if (eos new_input)
+          then rs
+          else begin
+            (* If we have not used all the contents of the merged records, we must keep it *)
+            let rem = parse_rem_binstring new_input in
+            let next_record = mk_rec ct v (Unparsed_Record rem) in
+            (true, next_record)::rs
+          end
+        in (true, first)::next
     in
     res
+
 
 
 (******************)
@@ -64,7 +68,6 @@ let extract_first_record enrich ctx recs =
 type tls_global_context = {
   certs : X509.certificate list;
 }
-
 
 
 
@@ -103,6 +106,51 @@ let update_with_certificate ctx certs =
 let update_with_server_key_exchange ctx ske =
   ctx.future.f_server_key_exchange <- ske
 
+
+(* Move the core of the function in TlsCrypto *)
+let update_with_incoming_CCS dir ctx =
+  match ctx.future.proposed_versions,
+    ctx.future.proposed_ciphersuites,
+    ctx.future.proposed_compressions with
+    | (v1, v2), [cs_enum], [cm] ->
+      if v1 <> v2 (* TODO *)
+      then failwith "CCS received too early? version negotiation not done yet";
+      ctx.current_version <- v1;
+      let cs = find_csdescr cs_enum
+      and randoms = (ctx.future.f_client_random, ctx.future.f_server_random) in
+      ctx.current_ciphersuite <- cs;
+      ctx.current_compression_method <- cm;
+      ctx.current_randoms <- randoms;
+      let prf = choose_prf v1 cs.prf in
+      ctx.current_prf <- prf;
+      let master_secret = match mk_master_secret prf randoms ctx.future.secret_info with
+	| Tls.MasterSecret ms ->
+          ctx.current_master_secret <- ms;
+          Some ms
+	| _ -> None
+      in
+      begin
+        match master_secret, cs.enc, cs.mac, cm with
+        | _ -> (* TODO *)
+          match dir with
+          | ClientToServer ->
+            (* TODO: Have something more efficient? *)
+            let c2s = unknown_decrypt ClientToServer
+            and s2c = ctx.decrypt ServerToClient in
+            ctx.decrypt <- (fun dir -> if dir = ClientToServer then c2s else s2c);
+            ctx.current_c2s_seq_num := 0L
+          | ServerToClient ->
+            let s2c = unknown_decrypt ServerToClient
+            and c2s = ctx.decrypt ClientToServer in
+            ctx.decrypt <- (fun dir -> if dir = ServerToClient then s2c else c2s);
+            ctx.current_s2c_seq_num := 0L
+      end;
+    | _, _::_, _ -> (* TODO *)
+      failwith "CCS received too early? ciphersuite negotiation not done yet"
+    | _, _, _::_ -> (* TODO *)
+      failwith "CCS received too early? compression method negotiation not done yet"
+    | _, _, _ -> (* TODO *)
+      failwith "TODO"
 
 let mk_alert_msg ctx alert_level alert_type = {
   content_type = CT_Alert;
@@ -270,7 +318,7 @@ type connection = {
   options : connection_options;
   mutable input : string_input;
   (* TODO: Handle SSLv2 records? *)
-  mutable input_records : tls_record list;
+  mutable input_records : (bool * tls_record) list;
   mutable output : string;
 }
 
@@ -321,11 +369,12 @@ let accept_client s =
   let i = input_of_string ~enrich:NeverEnrich peer_name ""
   and o = "" in
   return { socket = sock; options = s.s_options;
-	   input = i; input_records = [];
-	   output = o }
+           input = i; input_records = [];
+           output = o }
 
 
 let get_next_automata_input ctx c =
+  let dir = pop_opt ClientToServer ctx.direction in
   let timeout_t = match c.options.timeout with
     | None -> []
     | Some t -> [Lwt_unix.sleep t >>= fun () -> return Timeout]
@@ -342,11 +391,14 @@ let get_next_automata_input ctx c =
       (* TODO: Should we check for that? *)
       match try_parse (parse_tls_record None) c.input with
       | None -> new_record
-      | Some ({ record_version = v; content_type = ct; record_content = Unparsed_Record ciphertext } as r) ->
-	c.input <- drop_used_string c.input;
-	let plaintext = ctx.in_expand (ctx.in_decrypt v ct ciphertext) in
-	c.input_records <- c.input_records@[{r with record_content = Unparsed_Record plaintext}];
-	parse_new_records true
+      | Some ({ record_content = Unparsed_Record ciphertext } as r) ->
+        c.input <- drop_used_string c.input;
+        let integrity, plaintext = match ctx.decrypt dir r.content_type r.record_version ciphertext with
+          | true, content -> true, ctx.expand dir content
+          | false, content -> false, content
+        in
+        c.input_records <- c.input_records@[integrity, {r with record_content = Unparsed_Record plaintext}];
+        parse_new_records true
       | Some _ -> failwith "get_next_automata_input: unexpected early parsed record"
     in
     enrich_new_records (parse_new_records false)
@@ -355,10 +407,11 @@ let get_next_automata_input ctx c =
     if new_record_pending then begin
       (* TODO: Should it really be AlwaysEnrich here? *)
       match extract_first_record AlwaysEnrich (Some ctx) c.input_records with
-      | [] | [ { record_content = Unparsed_Record _ } ] -> input_fun ()
-      | r::rs ->
-	c.input_records <- rs;
-	return (InputTlsMsg r)
+      | [] | [ true, { record_content = Unparsed_Record _ } ] -> input_fun ()
+      | (false, _)::_ -> failwith "Unable to check the integrity" (* TODO *)
+      | (true, r)::rs ->
+        c.input_records <- rs;
+        return (InputTlsMsg r)
     end else input_fun ()
   in
 
@@ -370,20 +423,24 @@ let get_next_automata_input ctx c =
   in
 
   match c.input_records with
-    | [] | { record_content = Unparsed_Record _ }::_ ->
+    | [] | (true, { record_content = Unparsed_Record _ })::_ ->
       let input_t = if c.input_records = [] then [input_fun ()] else [enrich_new_records true] in
       let rec output_t =
-	if c.output = ""
-	then []
-	else [output_fun ()]
+        if c.output = ""
+        then []
+        else [output_fun ()]
       in
       try_bind (fun () -> pick (input_t@output_t@timeout_t)) return catch_eof
 
-    | r::_ -> return (InputTlsMsg r)
+    | (false, _)::_ -> failwith "Unable to check the integrity" (* TODO *)
+    | (true, r)::rs ->
+      c.input_records <- rs;
+      return (InputTlsMsg r)
 
 
 
 let output_record ctx conn r =
+  let dir = pop_opt ServerToClient ctx.direction in
   let size =
     if conn.options.plaintext_chunk_size > 0
     then conn.options.plaintext_chunk_size
@@ -399,15 +456,15 @@ let output_record ctx conn r =
   let rec mk_records offset =
     if offset < len then begin
       let next_offset =
-	if offset + size >= len
-	then len
-	else offset + size
+        if offset + size >= len
+        then len
+        else offset + size
       in
       let plaintext = String.sub content offset (next_offset - offset) in
-      let ciphertext = ctx.out_encrypt v ct (ctx.out_compress plaintext) in
+      let ciphertext = ctx.encrypt dir ct v (ctx.compress dir plaintext) in
       let next = { content_type = ct;
-		   record_version = v;
-		   record_content = Unparsed_Record ciphertext } in
+                   record_version = v;
+                   record_content = Unparsed_Record ciphertext } in
       dump_tls_record result next;
       mk_records next_offset
     end
@@ -488,21 +545,36 @@ let rec run_automata automata state global_ctx ctx sock =
 (* Offline record parsing *)
 (**************************)
 
-let update_with_record ctx = function
+let update_with_record dir ctx = function
   | { record_content = Handshake { handshake_content = ClientHello ch } } -> update_with_client_hello ctx ch
   | { record_content = Handshake { handshake_content = ServerHello sh } } -> update_with_server_hello ctx sh
   | { record_content = Handshake { handshake_content = Certificate certs } } -> update_with_certificate ctx certs
   | { record_content = Handshake { handshake_content = ServerKeyExchange ske } } -> update_with_server_key_exchange ctx ske
   | { record_content = Handshake { handshake_content = _ } } -> () (* TODO *)
-  | { record_content = ChangeCipherSpec _ } -> () (* TODO *)
+  | { record_content = ChangeCipherSpec _ } ->
+    begin
+      try
+        update_with_incoming_CCS dir ctx;
+      with Failure f -> prerr_endline ("FAILURE: " ^ f)
+    end
   | { record_content = Unparsed_Record _ } -> ()
   | { record_content = ApplicationData _ } -> ()
   | { record_content = Alert _ } -> ()
   | { record_content = Heartbeat _ } -> ()
 
 
+type unauth_records =
+| RecordsToHandle of Tls.tls_record list
+| LostRecords of Tls.tls_record list
 
-let parse_all_records ctx input =
+type enrich_struct = {
+  clear_recs : Tls.tls_record list;
+  unauth_recs : unauth_records;
+}
+
+type enrich_status = NoMoreContent | NewContent of string | AuthError
+
+let parse_all_records dir ctx input =
   let rec parse_raw_records accu i =
     if eos i
     then List.rev accu, None
@@ -513,22 +585,79 @@ let parse_all_records ctx input =
     end
   in
 
-  let rec enrich_records ctx accu recs =
-    match extract_first_record input.enrich ctx recs with
-    | [] -> List.rev accu
-    | { record_content = Unparsed_Record _ }::_ -> List.rev_append accu recs
-    | r::rs ->
-      begin
-	match ctx with
-	| None -> ()
-	| Some real_ctx -> update_with_record real_ctx r
-      end;
-      enrich_records ctx (r::accu) rs
+  let rec enrich_records dir ctx accu recs =
+    let decrypt, expand = match ctx with
+      | None -> unknown_decrypt, null_compress
+      | Some real_ctx -> real_ctx.decrypt, real_ctx.expand
+    in
+    let rec decrypt_recs clr_content recs = match clr_content, recs.unauth_recs with
+      | None, (RecordsToHandle [] | LostRecords []) -> recs
+      | Some (cur_ct, cur_v, cur_content), (RecordsToHandle [] | LostRecords []) ->
+        let new_clear_rec = { content_type = cur_ct; record_version = cur_v;
+                              record_content = Unparsed_Record (Buffer.contents cur_content) } in
+        { recs with clear_recs = new_clear_rec::(recs.clear_recs) }
+      | _, LostRecords _ -> failwith "decrypt_recs: unexpected case (lost records are no use now)"
+
+      | _, RecordsToHandle (r::rs) ->
+        let proceed = match clr_content with
+          | None -> true
+          | Some (cur_ct, cur_v, _) ->
+            cur_ct = r.content_type && cur_v = r.record_version
+        in
+        let status = match proceed, r.record_content with
+          | true, Unparsed_Record ciphertext ->
+            begin
+              match decrypt dir r.content_type r.record_version ciphertext with
+              | true, content -> NewContent (expand dir content)
+              | false, _ -> AuthError (* TODO: Alert? Change decrypt? *)
+            end
+          | true, _ -> failwith "decrypt_recs: unexpected early parsed record"
+          | false, _ -> NoMoreContent
+        in
+        match clr_content, status with
+        | None, AuthError -> { recs with unauth_recs = LostRecords (r::rs) }
+        | None, NewContent content ->
+          let buf = Buffer.create 4096 in
+          Buffer.add_string buf content;
+          decrypt_recs
+            (Some (r.content_type, r.record_version, buf))
+            {recs with unauth_recs = RecordsToHandle rs }
+        | None, NoMoreContent -> failwith "decrypt_recs: unexpected case"
+
+        | Some (cur_ct, cur_v, cur_content), AuthError ->
+          let new_clear_rec = { content_type = cur_ct; record_version = cur_v;
+                                record_content = Unparsed_Record (Buffer.contents cur_content) } in
+          { clear_recs = new_clear_rec::(recs.clear_recs);
+            unauth_recs = LostRecords (r::rs) }
+        | Some (cur_ct, cur_v, cur_content), NoMoreContent ->
+          let new_clear_rec = { content_type = cur_ct; record_version = cur_v;
+                                record_content = Unparsed_Record (Buffer.contents cur_content) } in
+          { recs with clear_recs = new_clear_rec::(recs.clear_recs) }
+        | Some (_, _, cur_content), NewContent content ->
+          Buffer.add_string cur_content content;
+          decrypt_recs clr_content {recs with unauth_recs = RecordsToHandle rs }
+    in
+
+    match recs with
+    | { clear_recs = []; unauth_recs = LostRecords rs } -> List.rev_append accu rs
+    | { clear_recs = []; unauth_recs = RecordsToHandle [] } -> List.rev accu
+    | { clear_recs = []; unauth_recs = RecordsToHandle _ } ->
+      enrich_records dir ctx accu (decrypt_recs None recs)
+    | { clear_recs = clr_rec::clr_recs } ->
+      match extract_first_record input.enrich ctx [true, clr_rec] with
+      | (true, r)::rs ->
+        begin
+          match ctx with
+          | None -> ()
+          | Some real_ctx -> update_with_record dir real_ctx r
+        end;
+        enrich_records dir ctx (r::accu) { recs with clear_recs = (List.map snd rs)@clr_recs }
+      | (false, _)::_ | [] -> failwith "enrich_records: unexpected value returned by extract_first_record"
   in
 
   let saved_enrich = input.enrich in
   input.enrich <- NeverEnrich;
   let recs, remaining = parse_raw_records [] input in
   input.enrich <- saved_enrich;
-  let parsed_recs = enrich_records ctx [] recs in
-  parsed_recs, ctx, remaining
+  let parsed_recs = enrich_records dir ctx [] { clear_recs = []; unauth_recs = RecordsToHandle recs } in
+  parsed_recs, remaining

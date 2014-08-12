@@ -102,7 +102,7 @@ let parse_all_tls_records answer =
   } in
   let ctx = empty_context prefs in
   let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_v2_ip answer.ip_addr) answer.content in
-  let recs, _, remaining = parse_all_records (Some ctx) answer_input in
+  let recs, remaining = parse_all_records ServerToClient (Some ctx) answer_input in
   recs, ctx, remaining
 
 let parse_records_as_values answer =

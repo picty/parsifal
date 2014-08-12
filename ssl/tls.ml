@@ -292,6 +292,7 @@ type future_crypto_context = {
 
 type tls_context = {
   preferences : prefs;
+  direction : direction option;
 
   mutable current_version : tls_version;
   mutable current_ciphersuite : ciphersuite_description;
@@ -299,11 +300,15 @@ type tls_context = {
 
   mutable current_randoms : string * string;
   mutable current_master_secret : string;
+  mutable current_prf : string -> string -> string -> int -> string;
 
-  mutable out_compress : string -> string;
-  mutable out_encrypt : tls_version -> tls_content_type -> string -> string;
-  mutable in_decrypt : tls_version -> tls_content_type -> string -> string;
-  mutable in_expand : string -> string;
+  current_c2s_seq_num : Int64.t ref;
+  current_s2c_seq_num : Int64.t ref;
+
+  mutable compress : direction -> string -> string;
+  mutable encrypt : direction -> tls_content_type -> tls_version -> string -> string;
+  mutable decrypt : direction -> tls_content_type -> tls_version -> string -> (bool * string);
+  mutable expand : direction -> string -> string;
 
   future : future_crypto_context;
 }
@@ -400,11 +405,16 @@ let empty_future_crypto_context () = {
 }
 
 
-let null_compress x = x
-let null_cipher _ _ x = x
+let null_compress _ x = x
+let null_encrypt _ _ _ x = x
+let null_decrypt _ _ _ x = true, x
+let unknown_encrypt _ _ _ _ = failwith "No encrypt function found."
+let unknown_decrypt _ _ _ x = false, x
+let no_prf _ _ _ _ = failwith "No PRF has been specified yet."
 
 let empty_context prefs = {
   preferences = prefs;
+  direction = None;
 
   current_version = fst prefs.acceptable_versions;  (* And SSLv2? *)
   current_ciphersuite = find_csdescr TLS_NULL_WITH_NULL_NULL;
@@ -412,8 +422,13 @@ let empty_context prefs = {
 
   current_randoms = "", "";
   current_master_secret = "";
-  out_compress = null_compress; out_encrypt = null_cipher;
-  in_decrypt = null_cipher; in_expand = null_compress;
+  current_prf = no_prf;
+
+  current_c2s_seq_num = ref 0L;
+  current_s2c_seq_num = ref 0L;
+
+  compress = null_compress; encrypt = null_encrypt;
+  decrypt = null_decrypt; expand = null_compress;
 
   future = empty_future_crypto_context ();
 }

@@ -125,6 +125,7 @@ let check_mac mac_fun mac_len mac_key plaintext =
     (* TODO: For the moment, the implementation is really really from the 90's, timing leak-wise. *)
     if computed_mac = expected_mac
     then Some real_plaintext
+    (* TODO: Add a way to be laxist on mac errors (debug mode?) *)
     else None
   end
 

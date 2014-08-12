@@ -93,19 +93,19 @@ let options = [
 ]
 
 
-let parse_tls_records_as_value ctx i =
-  match TlsEngineNG.parse_all_records ctx i with
-  | [], _, None -> VUnit
-  | [], _, Some _ ->
+let parse_tls_records_as_value ctx dir i =
+  match TlsEngineNG.parse_all_records dir (Some !ctx) i with
+  | [], None -> VUnit
+  | [], Some _ ->
     begin
       match try_parse (Ssl2.parse_ssl2_record { Ssl2.cleartext = true }) i with
       | None -> VError "No SSLv2 nor TLS message could be parsed"
       | Some first ->
-	let next, _, _ = TlsEngineNG.parse_all_records ctx i in
+	let next, _ = TlsEngineNG.parse_all_records dir (Some !ctx) i in
 	let values = (Ssl2.value_of_ssl2_record first)::(List.map Tls.value_of_tls_record next) in
 	VList values
     end
-  | recs, _, _ ->
+  | recs, _ ->
     VList (List.map Tls.value_of_tls_record recs)
 
 
@@ -121,7 +121,7 @@ let _ =
   Hashtbl.add type_handlers "tar" ("TAR archive", fun i -> Tar.value_of_tar_file (Tar.parse_tar_file i));
   Hashtbl.add type_handlers "answer-dump-v1" ("Answer dump v1", fun i -> AnswerDump.value_of_answer_dump (AnswerDump.parse_answer_dump i));
   Hashtbl.add type_handlers "answer-dump" ("Answer dump v2", fun i -> AnswerDump.value_of_answer_dump_v2 (AnswerDump.parse_answer_dump_v2 i));
-  Hashtbl.add type_handlers "tls" ("SSL/TLS record", parse_tls_records_as_value (Some !ctx));
+  Hashtbl.add type_handlers "tls" ("SSL/TLS record", parse_tls_records_as_value ctx ServerToClient);
   Hashtbl.add type_handlers "dns" ("DNS message", fun i -> Dns.value_of_dns_message (Dns.parse_dns_message i));
   Hashtbl.add type_handlers "pcap" ("PCAP capture file", fun i -> Pcap.value_of_pcap_file (Pcap.parse_pcap_file i));
   Hashtbl.add type_handlers "dvi" ("DVI file", fun i -> Dvi.value_of_dvi_file (Dvi.parse_dvi_file i));
