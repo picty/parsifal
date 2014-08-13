@@ -288,6 +288,8 @@ type future_crypto_context = {
   mutable f_server_random : string;
   mutable f_session_id : string;
   mutable secret_info : secret_info;
+
+  mutable f_handshake_messages : POutput.t;
 }
 
 type tls_context = {
@@ -310,6 +312,8 @@ type tls_context = {
   mutable decrypt : direction -> tls_content_type -> tls_version -> string -> (bool * string);
   mutable expand : direction -> string -> string;
 
+  (* TODO: Handle future context reset -> should we have two future
+     contexts, each of which should be reset on the corresponding CCS? *)
   future : future_crypto_context;
 }
 
@@ -402,6 +406,8 @@ let empty_future_crypto_context () = {
   f_client_key_exchange = Unparsed_CKEContent "";
   f_client_random = ""; f_server_random = "";
   f_session_id = ""; secret_info = NoKnownSecret;
+
+  f_handshake_messages = POutput.create ();
 }
 
 

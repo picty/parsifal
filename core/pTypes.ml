@@ -333,6 +333,8 @@ let parse_seek_offsetrel offset input = input.cur_offset <- (input.cur_offset + 
 type raw_value = string option
 let parse_raw_value offset input =
   Some (String.sub input.str (input.cur_base + offset) (input.cur_offset - offset))
+let get_raw_value offset input =
+  String.sub input.str (input.cur_base + offset) (input.cur_offset - offset)
 
 let value_of_raw_value = function
   | None -> VUnit

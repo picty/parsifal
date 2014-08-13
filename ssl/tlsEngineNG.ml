@@ -41,11 +41,19 @@ let extract_first_record enrich ctx recs =
 
     (* Here, we try to enrich the first record from the merged messages *)
     let new_input = input_of_string ~enrich:enrich input_name rec_content in
+    let saved_offset = parse_save_offset new_input in
     let res = match try_parse ~report:false (parse_record_content ctx ct) new_input with
       | None ->
         let first = mk_rec ct v (Unparsed_Record rec_content) in
         (true, first)::rs
       | Some res ->
+	begin
+	  match ctx, ct with
+	  | Some context, CT_Handshake ->
+	    let handshake_str = get_raw_value saved_offset new_input in
+	    POutput.add_string context.future.f_handshake_messages handshake_str
+	  | _ -> ()
+	end;
         let first = mk_rec ct v res in
         let next =
           if (eos new_input)
@@ -498,6 +506,8 @@ let output_record ctx conn r =
         else offset + size
       in
       let plaintext = String.sub content offset (next_offset - offset) in
+      if ct = CT_Handshake
+      then POutput.add_string ctx.future.f_handshake_messages plaintext;
       let ciphertext = ctx.encrypt dir ct v (ctx.compress dir plaintext) in
       let next = { content_type = ct;
                    record_version = v;
