@@ -15,7 +15,7 @@ let mk_csdescr cs kx au enc mac prf exp min max =
   Hashtbl.replace ciphersuite_descriptions cs desc
 
 
-let hash_fun_of_name = function
+let hmac_fun_of_name = function
   | HF_MD5 -> TlsCrypto.hmac_md5, 16
   | HF_SHA1 -> TlsCrypto.hmac_sha1, 20
   | HF_SHA256 -> TlsCrypto.hmac_sha256, 32

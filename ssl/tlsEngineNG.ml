@@ -133,7 +133,7 @@ let update_with_incoming_CCS dir ctx =
       begin
         match master_secret, cs.enc, cs.mac, cm with
         | Some ms, ENC_Stream (SC_RC4, 128), MAC_HMAC hash_name, CM_Null ->
-	  let hash_fun, hash_size = hash_fun_of_name hash_name and key_material_length = 16 in
+	  let hash_fun, hash_size = hmac_fun_of_name hash_name and key_material_length = 16 in
           begin
             match dir, ctx.direction, mk_key_block prf ms randoms [hash_size; hash_size; key_material_length; key_material_length] with
             | ClientToServer, None, [client_write_MAC_secret; _; client_write_key; _] ->
@@ -150,7 +150,7 @@ let update_with_incoming_CCS dir ctx =
             | _ -> () (* TODO: Other cases *)
           end
         | Some ms, ENC_CBC (BC_AES, key_bitlen), MAC_HMAC hash_name, CM_Null ->
-          let hash_fun, hash_size = hash_fun_of_name hash_name
+          let hash_fun, hash_size = hmac_fun_of_name hash_name
 	  and key_material_length = key_bitlen / 8 and iv_length = 16 in
           begin
             match dir, ctx.direction, mk_key_block prf ms randoms
