@@ -17,8 +17,11 @@ type container =
   | GZipContainer
   | PcapTCPContainer of int
   | PcapUDPContainer of int
+  | PcapTLSContainer of int
 let container = ref NoContainer
 let port = ref 80
+
+let keylogfile = ref ""
 
 let verbose = ref false
 let maxlen = ref (Some 70)
@@ -50,11 +53,6 @@ let type_list = ref false
 let input_in_args = ref false
 let multiple_values = ref false
 
-let ctx = ref (Tls.empty_context (Tls.default_prefs Tls.DummyRNG))
-let init_ctx () =
-  let prefs = Tls.default_prefs Tls.DummyRNG in
-  ctx := Tls.empty_context prefs
-
 
 let load_kerb_rsa_key filename =
   try
@@ -67,6 +65,40 @@ let load_aes_ticket_key filename =
     Padata.aes_ticket_key := Some (get_file_content filename);
     ActionDone
   with _ -> ShowUsage (Some "Please supply a valid AES key.")
+
+
+(* TODO: Move this? *)
+let mk_known_secrets ms_only filename =
+  let rec read_line accu f =
+    let l_opt =
+      try Some (input_line f)
+      with End_of_file -> None
+    in
+    match l_opt with
+    | None -> List.rev accu
+    | Some l ->
+      match string_split ' ' l with
+      | ["RSA"; enc_pms; clr_pms] ->
+         (* TODO: Handle hexparse exceptions *)
+         let new_accu = if ms_only then accu else
+            (Tls.RSA_PMS (hexparse enc_pms, hexparse clr_pms))::accu in
+        read_line new_accu f
+      | ["CLIENT_RANDOM"; cr; clr_ms] ->
+         (* TODO: Handle hexparse exceptions *)
+         let new_accu = (Tls.MS (hexparse cr, hexparse clr_ms))::accu in
+         read_line new_accu f
+      | _ -> read_line accu f
+  in
+  if filename = ""  then [] else begin
+    let f = open_in filename in
+    read_line [] f
+  end
+
+let ctx = ref (Tls.empty_context (Tls.default_prefs Tls.DummyRNG))
+let init_ctx () =
+  let secrets = mk_known_secrets false !keylogfile in
+  let prefs = { (Tls.default_prefs Tls.DummyRNG) with Tls.known_master_secrets = secrets } in
+  ctx := Tls.empty_context prefs
 
 
 let options = [
@@ -93,6 +125,8 @@ let options = [
   mkopt (Some 'G') "gzip" (TrivialFun (fun () -> container := GZipContainer)) "the data is first GZIP uncompressed"; 
   mkopt None "pcap-tcp" (IntFun (fun p -> container := PcapTCPContainer p; ActionDone)) "the data is first extracted from a PCAP";
   mkopt None "pcap-udp" (IntFun (fun p -> container := PcapUDPContainer p; ActionDone)) "the data is first extracted from a PCAP";
+  mkopt None "pcap-tls" (IntFun (fun p -> container := PcapTLSContainer p; ActionDone)) "the data is first extracted from a PCAP and TLS messages";
+  mkopt None "keylogfile" (StringVal keylogfile) "defines the files where the TLS secrets are stored";
 
   mkopt None "always-enrich" (TrivialFun (fun () -> enrich_style := AlwaysEnrich)) "always enrich the structure parsed";
   mkopt None "never-enrich" (TrivialFun (fun () -> enrich_style := NeverEnrich)) "never enrich the structure parsed";
@@ -121,6 +155,55 @@ let parse_tls_records_as_value ctx dir i =
 
 let parse_bundled_certificate i =
   parse_varlen_container parse_uint32 "varlen_container" X509.parse_certificate i
+
+let parse_tls_container port parse_fun input =
+  let parse_tls_aux ctx dir i =
+    let res, _ = TlsEngineNG.parse_all_records dir (Some !ctx) i in
+    res
+  in
+
+  (* TODO: Handle properly unparsed AppData! *)
+  let rec extract_appdata accu cur_appdata cur_dir = function
+    | [] -> List.rev ((cur_dir, Buffer.contents cur_appdata)::accu)
+    | ((dir, { Tls.record_content = Tls.ApplicationData appdata })::rs) as rlist ->
+      if dir = cur_dir then begin
+	Buffer.add_string cur_appdata appdata;
+	extract_appdata accu cur_appdata cur_dir rs
+      end else begin
+	let new_accu = (cur_dir, Buffer.contents cur_appdata)::accu in
+	extract_appdata new_accu (Buffer.create 1024) dir rlist
+      end
+    | _::rs -> extract_appdata accu cur_appdata cur_dir rs
+  in
+
+  let handle_connection enrich (k, oriented_recs) =
+    let rec merge = function
+      | [] -> []
+      | (_, [])::ls -> merge ls
+      | (dir, r::rs)::ls -> (dir, r)::(merge ((dir, rs)::ls))
+    in
+    let c2s = Printf.sprintf "%s:%d -> %s:%d\n"
+      (string_of_ipv4 (fst k.PcapContainers.source)) (snd k.PcapContainers.source)
+      (string_of_ipv4 (fst k.PcapContainers.destination)) (snd k.PcapContainers.destination)
+    and s2c = Printf.sprintf "%s:%d -> %s:%d\n"
+      (string_of_ipv4 (fst k.PcapContainers.destination)) (snd k.PcapContainers.destination)
+      (string_of_ipv4 (fst k.PcapContainers.source)) (snd k.PcapContainers.source) in
+    let str_of_dir = function ClientToServer -> c2s | ServerToClient -> s2c in
+    let parse_as_value (dir, appdata) =
+      let i = input_of_string ~enrich:(enrich) (str_of_dir dir) appdata in
+      parse_fun i
+    in
+    match extract_appdata [] (Buffer.create 1024) ClientToServer (merge oriented_recs) with
+    | [ClientToServer, ""] -> VUnit
+    | oriented_appdata -> VList (List.map parse_as_value oriented_appdata)
+  in
+
+  let enrich = input.enrich in
+  input.enrich <- AlwaysEnrich;
+  let conns = PcapContainers.parse_oriented_tcp_container init_ctx port "HTTPS" (parse_tls_aux ctx) input in
+  VList (List.map (handle_connection enrich) conns)
+
+
 
 let type_handlers : (string, string * (string_input -> value)) Hashtbl.t = Hashtbl.create 10
 
@@ -191,6 +274,7 @@ let mk_parse_value () =
 	| PcapUDPContainer port -> fun i ->
 	  PcapContainers.value_of_udp_container (fun x -> x)
 	    (PcapContainers.parse_udp_container port "udp_container" raw_parse_fun i)
+	| PcapTLSContainer port -> parse_tls_container port raw_parse_fun
     with
       Not_found -> usage "parsifal" options (Some "Unknown parser type (try -L).")
   in fun input ->
