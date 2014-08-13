@@ -24,7 +24,12 @@ let extract_first_record enrich ctx recs =
     | None, (true, r)::rs ->
       let content = POutput.create () in
       dump_record_content content r.record_content;
-      produce_raw_first_record (Some (r.content_type, r.record_version, content)) rs
+      let new_accu = Some (r.content_type, r.record_version, content) in
+      (* CCS and Heartbeat messages should never be split/merged *)
+      (* For Alert messages, it is debatable: for the moment, let's say they cannot be split/merged *)
+      if r.content_type = CT_Handshake || r.content_type = CT_ApplicationData
+      then produce_raw_first_record new_accu rs
+      else new_accu, rs
     | Some (ct, v, content), (integrity, r)::rs ->
       if integrity && r.content_type = ct && r.record_version = v
       then begin
@@ -59,10 +64,15 @@ let extract_first_record enrich ctx recs =
           if (eos new_input)
           then rs
           else begin
-            (* If we have not used all the contents of the merged records, we must keep it *)
-            let rem = parse_rem_binstring new_input in
-            let next_record = mk_rec ct v (Unparsed_Record rem) in
-            (true, next_record)::rs
+            (* If we have not used all the contents of the merged records,
+	       what to do depends of the content type: for AppData and HS,
+	       we keep it; for CCS, Alert (this is debatable) and HB, we
+	       throw an error *)
+	    if ct = CT_Handshake || ct = CT_ApplicationData then begin
+              let rem = parse_rem_binstring new_input in
+              let next_record = mk_rec ct v (Unparsed_Record rem) in
+              (true, next_record)::rs
+	    end else failwith "Multiple messages in a record: this should only happen with Handshake and ApplicationData content types"
           end
         in (true, first)::next
     in
