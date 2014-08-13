@@ -117,7 +117,7 @@ let update_with_server_key_exchange ctx ske =
 
 
 (* Move the core of the function in TlsCrypto *)
-let update_with_incoming_CCS dir ctx =
+let update_with_CCS dir ctx =
   match ctx.future.proposed_versions,
     ctx.future.proposed_ciphersuites,
     ctx.future.proposed_compressions with
@@ -144,12 +144,15 @@ let update_with_incoming_CCS dir ctx =
 	  let hash_fun, hash_size = hmac_fun_of_name hash_name and key_material_length = 16 in
           begin
             match dir, ctx.direction, mk_key_block prf ms randoms [hash_size; hash_size; key_material_length; key_material_length] with
-            | ClientToServer, None, [client_write_MAC_secret; _; client_write_key; _] ->
+            | ClientToServer, _, [client_write_MAC_secret; _; client_write_key; _] ->
               (* TODO: Have something more efficient? *)
               ctx.current_c2s_seq_num := 0L;
               let c2s = rc4_decrypt hash_fun hash_size client_write_MAC_secret client_write_key ctx.current_c2s_seq_num
               and s2c = ctx.decrypt ServerToClient in
-              ctx.decrypt <- fun dir -> if dir = ClientToServer then c2s else s2c
+              ctx.decrypt <- (fun dir -> if dir = ClientToServer then c2s else s2c);
+              let c2s = rc4_encrypt hash_fun hash_size client_write_MAC_secret client_write_key ctx.current_c2s_seq_num
+              and s2c = ctx.encrypt ServerToClient in
+              ctx.encrypt <- fun dir -> if dir = ClientToServer then c2s else s2c
             | ServerToClient, None, [_; server_write_MAC_secret; _; server_write_key] ->
               ctx.current_s2c_seq_num := 0L;
               let s2c = rc4_decrypt hash_fun hash_size server_write_MAC_secret server_write_key ctx.current_s2c_seq_num
@@ -226,9 +229,10 @@ let mk_client_hello ctx =
   ctx.future.proposed_versions <- ctx.preferences.acceptable_versions;
   ctx.future.proposed_ciphersuites <- ctx.preferences.acceptable_ciphersuites;
   ctx.future.proposed_compressions <- ctx.preferences.acceptable_compressions;
+  let client_random = String.make 32 '\x00' in (* TODO! *)
   let ch = {
     client_version = snd ctx.future.proposed_versions;
-    client_random = String.make 32 '\x00'; (* TODO! *)
+    client_random = client_random;
     client_session_id = ""; (* TODO? *)
     ciphersuites = ctx.future.proposed_ciphersuites;
     compression_methods = ctx.future.proposed_compressions;
@@ -294,11 +298,23 @@ let mk_client_key_exchange ctx =
     let rng = ctx.preferences.random_generator in
     let version = exact_dump dump_tls_version (snd ctx.preferences.acceptable_versions) 
     and pms = RandomEngine.random_string rng 46 in
+    ctx.future.secret_info <- PreMasterSecret (version ^ pms);
     (* TODO: Use a higher-level function (Pkcs1.pkcs1_container in cke_rsa_params) ? *)
     let encrypted_pms = Pkcs1.encrypt rng 2 (version ^ pms) n e in
     mk_handshake_msg ctx HT_ClientKeyExchange (ClientKeyExchange (CKE_RSA encrypted_pms))
   | kx, _, _ -> not_implemented ("CKE with kx=" ^ (string_of_kx kx))
 
+let mk_finished ctx =
+  let hs_msgs = POutput.contents ctx.future.f_handshake_messages in
+  (* TODO: This is actually TLS version-dependent *)
+  let finished_pre_content = (CryptoUtil.md5sum hs_msgs) ^ (CryptoUtil.sha1sum hs_msgs)
+  and finished_label = match ctx.direction with
+    | Some ClientToServer -> "client finished"
+    | Some ServerToClient -> "server finished"
+    | None -> failwith "mk_finished depends on ctx.direction: it can not be None"
+  in
+  let finished_content = ctx.current_prf ctx.current_master_secret finished_label finished_pre_content 12 (* TODO *) in
+  mk_handshake_msg ctx HT_Finished (Finished finished_content)
 
 
 (************************)
@@ -330,8 +346,8 @@ type tls_server_state =
 type automata_output =
   | Abort
   | Wait
-  | OutputSSL2Msgs of ssl2_record list
-  | OutputTlsMsgs of tls_record list
+  | OutputSSL2Msgs of (unit -> ssl2_record) list
+  | OutputTlsMsgs of (unit -> tls_record) list
   | InternalMsgOut of string
   | FatalAlert of tls_alert_type
 
@@ -484,13 +500,14 @@ let get_next_automata_input ctx c =
 
 
 
-let output_record ctx conn r =
+let output_record ctx conn r_fun =
   let dir = pop_opt ServerToClient ctx.direction in
   let size =
     if conn.options.plaintext_chunk_size > 0
     then conn.options.plaintext_chunk_size
     else 16384
   in
+  let r = r_fun () in
   let ct = r.content_type
   and v = r.record_version
   and content = exact_dump_record_content r.record_content in
@@ -506,8 +523,6 @@ let output_record ctx conn r =
         else offset + size
       in
       let plaintext = String.sub content offset (next_offset - offset) in
-      if ct = CT_Handshake
-      then POutput.add_string ctx.future.f_handshake_messages plaintext;
       let ciphertext = ctx.encrypt dir ct v (ctx.compress dir plaintext) in
       let next = { content_type = ct;
                    record_version = v;
@@ -518,6 +533,12 @@ let output_record ctx conn r =
   in
 
   mk_records 0;
+  begin
+    match ct with
+    | CT_Handshake -> POutput.add_string ctx.future.f_handshake_messages content
+    | CT_ChangeCipherSpec -> update_with_CCS dir ctx
+    | _ -> ()
+  end;
   conn.output <- POutput.contents result
 
 
@@ -540,12 +561,12 @@ let client_automata state input _global_ctx ctx =
   | (CertificateReceived | SKEReceived),
     InputTlsMsg { record_content = Handshake { handshake_content = ServerHelloDone } } ->
     (* TODO: Optionaly send a Certificate message *)
-    let cke = mk_client_key_exchange ctx in
+    let cke () = mk_client_key_exchange ctx in
     (* TODO: Optionaly send a CertificateVerify message *)
-    let ccs = mk_ccs_msg ctx in
-    (* TODO: Finished! *)
+    let ccs () = mk_ccs_msg ctx in
+    let finished () = mk_finished ctx in
     (* TODO: Handle alerts *)
-    SHDReceived, OutputTlsMsgs [cke; ccs]
+    SHDReceived, OutputTlsMsgs [cke; ccs; finished]
   | _, Timeout -> ClientNil, FatalAlert AT_CloseNotify
   | _, Nothing -> state, Wait
   | _ -> ClientNil, FatalAlert AT_HandshakeFailure
@@ -555,9 +576,9 @@ let server_automata state input _global_ctx ctx =
   | ServerNil, InputTlsMsg { record_content = Handshake { handshake_content = ClientHello ch } } ->
 (*    let ctx = empty_crypto_context () in *)
     update_with_client_hello ctx ch;
-    let sh = mk_server_hello ctx in
-    let cert = mk_certificate_msg ctx in
-    let shd = mk_server_hello_done ctx in
+    let sh () = mk_server_hello ctx in
+    let cert () = mk_certificate_msg ctx in
+    let shd () = mk_server_hello_done ctx in
     ClientHelloReceived, OutputTlsMsgs [sh; cert; shd]
   | _, Timeout -> ServerNil, FatalAlert AT_CloseNotify
   | _, Nothing -> state, Wait
@@ -601,7 +622,7 @@ let update_with_record dir ctx = function
   | { record_content = ChangeCipherSpec _ } ->
     begin
       try
-        update_with_incoming_CCS dir ctx;
+        update_with_CCS dir ctx;
       with Failure f -> prerr_endline ("FAILURE: " ^ f)
     end
   | { record_content = Unparsed_Record _ } -> ()

@@ -360,7 +360,7 @@ union handshake_content [enrich; param context] (Unparsed_HSContent) =
   | HT_ServerHelloDone -> ServerHelloDone
  (* | HT_CertificateVerify -> CertificateVerify of *)
   | HT_ClientKeyExchange -> ClientKeyExchange of client_key_exchange(extract_future_key context; extract_future_kx context)
- (* | HT_Finished -> Finished of *)
+  | HT_Finished -> Finished of binstring(12 (* TODO: In TLSv1.2, this is ciphersuite-dependent *))
   | HT_CertificateURL -> CertificateURL of certificate_url
  (* | HT_CertificateStatus -> CertificateStatus of *)
   | HT_SupplementalData -> SupplementalData of binstring[uint24]
