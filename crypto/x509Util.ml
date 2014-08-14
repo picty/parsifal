@@ -255,3 +255,80 @@ let sc_check_link issuer subject =
     let res = check_link_bool (cert_of_sc issuer) (cert_of_sc subject) in
     Hashtbl.replace issuer.issued_certs s_h res;
     res
+
+
+
+(**********************)
+(* Certificate chains *)
+(**********************)
+
+type cert_chain = {
+  chain : smart_certificate list;
+  unused_certs : smart_certificate list;
+  complete : bool;
+  trusted : bool;
+  ordered : bool;
+}
+
+
+let print_certlist prefix cs =
+  let print_line sc = match sc.pos_in_hs_msg, cert_of_sc sc with
+    | None, c -> print_endline (prefix ^ "-: " ^ (string_of_distinguishedName c.tbsCertificate.subject))
+    | Some i, c -> print_endline (prefix ^ (string_of_int i) ^ ": " ^ (string_of_distinguishedName c.tbsCertificate.subject))
+  in List.iter print_line cs
+
+
+let is_root_included = function
+  | [] -> failwith "Should not happen"
+  | sc::_ -> sc.pos_in_hs_msg <> None
+
+let n_transvalid c =
+  if c.complete
+  then List.length (List.filter (fun sc -> sc.pos_in_hs_msg = None) (List.tl c.chain))
+  else 0
+
+
+let rate_chain c = match c, n_transvalid c with
+    | { complete = true; trusted = true; ordered = true; unused_certs = []; }, 0    -> "A"
+    | { complete = true; trusted = true; ordered = true; unused_certs = _::_; }, 0  -> "B"
+    | { complete = true; trusted = true; ordered = false }, 0                       -> "C"
+    | { complete = true; trusted = true }, _                                        -> "D"
+
+    | { complete = true; trusted = false; ordered = true; unused_certs = []; }, 0   -> "C"
+    | { complete = true; trusted = false; ordered = true; unused_certs = _::_; }, 0 -> "D"
+    | { complete = true; trusted = false; ordered = false }, 0                      -> "D"
+    | { complete = true; trusted = false }, _                                       -> "E"
+
+    | { complete = false }, _                                                       -> "F"
+
+let rate_and_sort_chains cs =
+  let compare_chains (g1, c1) (g2, c2) =
+    compare
+      (g1, List.length c1.chain, not (is_root_included c1.chain))
+      (g2, List.length c2.chain, not (is_root_included c2.chain))
+  in
+  List.sort compare_chains (List.map (fun c -> rate_chain c, c) cs)
+
+
+let print_chain = function
+  | { chain; unused_certs = []; complete = true; trusted; ordered; } ->
+    Printf.printf "Perfect %s chain (%d cert(s), root %s, %s)\n"
+      (if ordered then "ordered" else "unordered") (List.length chain)
+      (if is_root_included chain then "included" else "not included")
+      (if trusted then "trusted" else "not trusted");
+    print_certlist "  " (List.rev chain)
+
+  | { chain; unused_certs; complete = true; trusted; ordered; } ->
+    Printf.printf "Complete %s chain (%d cert(s), %d cert(s) unused, root %s, %s)\n"
+      (if ordered then "ordered" else "unordered") (List.length chain) (List.length unused_certs)
+      (if is_root_included chain then "included" else "not included")
+      (if trusted then "trusted" else "not trusted");
+    print_certlist "  " (List.rev chain);
+    print_certlist "  [UNUSED] " unused_certs
+
+  | { chain; unused_certs; complete = false; trusted; ordered; } ->
+    Printf.printf "Incomplete %s chain (%d cert(s), %d cert(s) unused, %s)\n"
+      (if ordered then "ordered" else "unordered") (List.length chain) (List.length unused_certs)
+      (if trusted then "trusted" else "not trusted");
+    print_certlist "  " (List.rev chain);
+    print_certlist "  [UNUSED] " unused_certs
