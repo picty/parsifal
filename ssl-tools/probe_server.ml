@@ -30,6 +30,7 @@ let plaintext_chunk_size = ref 16384
 let timeout = ref 3.0
 (* TODO? *)
 (* let retry = ref 3 *)
+let cas = ref []
 
 
 (* TODO: Add stuff to add/remove/clear a list in getopt? *)
@@ -83,6 +84,11 @@ let deep_parse () =
   enrich_certificate_in_certificates := true;
   enrich_distinguishedName_in_certificate_request := true
 
+let add_ca filename =
+  cas := filename::!cas;
+  ActionDone
+
+
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
@@ -110,6 +116,8 @@ let options = [
 (*  mkopt None "retry" (IntVal retry) "set the number of tentatives"; *)
 
   mkopt None "deep-parse" (TrivialFun deep_parse) "activate deep parsing for certificates/DNs";
+
+  mkopt None "ca" (StringFun add_ca) "select a CA file";
 ]
 
 (* TODO: Move this code to getopt? *)
@@ -120,13 +128,15 @@ type probe_cmd =
 | ScanCompressions
 | ScanVersions
 | ExtractCerts
+| CheckCerts
 
 let probe_cmd_args = [
   "probe", ProbeAndPrint;
   "scan-suites", ScanSuites;
   "scan-compressions", ScanCompressions;
   "scan-versions", ScanVersions;
-  "extract-certs", ExtractCerts
+  "extract-certs", ExtractCerts;
+  "check-certs", CheckCerts;
 ]
 
 let cmd_of_args = function
@@ -245,6 +255,25 @@ let _ =
     | ExtractCerts ->
       let ctx, _, _ = Lwt_unix.run (probe_server prefs !host !port) in
       save_certs ctx.future.f_certificates
+    | CheckCerts ->
+      let ca_store = X509Util.mk_cert_store 100 in
+      let ctx, _, _ = Lwt_unix.run (probe_server prefs !host !port) in
+      let parse_root_ca c =
+	let parse_fun = if !base64
+	  then Base64.parse_base64_container Base64.AnyHeader "base64_container" (X509Util.parse_smart_cert true)
+	  else (X509Util.parse_smart_cert true)
+	in
+	let sc = parse_fun (string_input_of_filename c) in
+	X509Util.add_to_store ca_store sc
+      in
+      List.iter parse_root_ca (List.rev !cas);
+      let parsed_certs = List.mapi
+	(X509Util.sc_of_cert_in_hs_msg false (!host ^ ":" ^ (string_of_int !port)))
+	ctx.future.f_certificates
+      in
+      List.iter (fun c -> print_endline (X509Util.rate_chain c); X509Util.print_chain c; print_newline ())
+	(X509Util.build_certchain parsed_certs ca_store)
+
     | ScanSuites ->
       let rec next_step () =
 	let updated_prefs = { prefs with acceptable_ciphersuites = !suites } in
