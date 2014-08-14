@@ -298,7 +298,7 @@ let mk_client_key_exchange ctx =
   match kx, ctx.future.f_certificates, ctx.future.f_server_key_exchange with
   | KX_RSA, server_cert_opt::_, _ ->
     let server_cert = match server_cert_opt with
-      | Parsed c -> c
+      | Parsed (_, c) -> c
       | Unparsed c_str -> X509.parse_certificate (input_of_string "Server certificate" c_str)
     in
     let n, e = match server_cert.X509.tbsCertificate.X509.subjectPublicKeyInfo.X509.subjectPublicKey with

@@ -270,6 +270,23 @@ let value_of_hex_container = value_of_container
 
 
 
+(* Parse checkpoints and raw values *)
+
+let parse_save_offset input = input.cur_offset
+let parse_seek_offset offset input = input.cur_offset <- offset
+let parse_seek_offsetrel offset input = input.cur_offset <- (input.cur_offset + offset)
+
+type raw_value = string option
+let parse_raw_value offset input =
+  Some (String.sub input.str (input.cur_base + offset) (input.cur_offset - offset))
+let get_raw_value offset input =
+  String.sub input.str (input.cur_base + offset) (input.cur_offset - offset)
+
+let value_of_raw_value = function
+  | None -> VUnit
+  | Some s -> VString (s, true)
+
+
 (* Safe union handling *)
 
 type 'a safe_union = 'a
@@ -311,34 +328,23 @@ let parse_conditional_container condition _name parse_fun input =
 let dump_conditional_container dump_fun buf o = try_dump dump_fun buf o
 let value_of_conditional_container value_of_fun o = try_value_of value_of_fun o
 
-type 'a trivial_union = Parsed of 'a | Unparsed of binstring
+type 'a trivial_union = Parsed of (binstring option * 'a) | Unparsed of binstring
 let parse_trivial_union condition _name parse_fun input =
   if should_enrich condition input.enrich
-  then Parsed (parse_fun input)
+  then begin
+    let saved_offset = parse_save_offset input in
+    let parsed_value = parse_fun input in
+    let raw_value = parse_raw_value saved_offset input in
+    Parsed (raw_value, parsed_value)
+  end
   else Unparsed (parse_rem_binstring input)
 let dump_trivial_union dump_fun buf = function
-  | Parsed x -> dump_fun buf x
+  (* TODO: Should we dump the original value? Check whether it is the same? *)
+  | Parsed (_, x) -> dump_fun buf x
   | Unparsed s -> POutput.add_string buf s
 let value_of_trivial_union value_of_fun = function
-  | Parsed x -> value_of_fun x
+  | Parsed (_, x) -> value_of_fun x
   | Unparsed s -> VUnparsed (VString (s, true))
-
-
-(* Parse checkpoints and raw values *)
-
-let parse_save_offset input = input.cur_offset
-let parse_seek_offset offset input = input.cur_offset <- offset
-let parse_seek_offsetrel offset input = input.cur_offset <- (input.cur_offset + offset)
-
-type raw_value = string option
-let parse_raw_value offset input =
-  Some (String.sub input.str (input.cur_base + offset) (input.cur_offset - offset))
-let get_raw_value offset input =
-  String.sub input.str (input.cur_base + offset) (input.cur_offset - offset)
-
-let value_of_raw_value = function
-  | None -> VUnit
-  | Some s -> VString (s, true)
 
 
 (* Ignore trailing bytes *)

@@ -339,13 +339,13 @@ let extract_future_key = function
   | Some { future = { f_private_key = Some priv_key } } ->
     Pkcs1.RSAPrivateKey priv_key
 
-  | Some { future = { f_certificates = (Parsed {
+  | Some { future = { f_certificates = (Parsed (_, {
       X509.tbsCertificate = {
 	X509.subjectPublicKeyInfo = {
 	  X509.subjectPublicKey = X509.RSA pk
 	}
       }
-    })::_ } } -> Pkcs1.RSAPublicKey pk
+    }))::_ } } -> Pkcs1.RSAPublicKey pk
   | _ -> Pkcs1.NoRSAKey
 
 union handshake_content [enrich; param context] (Unparsed_HSContent) =

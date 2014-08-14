@@ -12,7 +12,7 @@ let test_client port prefs =
   output_record ctx c_sock ch;
   run_automata client_automata ClientHelloSent "" ctx c_sock >>= fun _ ->
   let print_certs = function
-    | Parsed cert ->
+    | Parsed (_, cert) ->
       print_endline (String.concat ", " (List.map X509Basics.string_of_atv (List.flatten cert.X509.tbsCertificate.X509.subject)))
     | _ -> ()
   in
