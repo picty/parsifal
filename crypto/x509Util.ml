@@ -1,4 +1,7 @@
+open X509Basics
+open X509Extensions
 open X509
+open Pkcs1
 
 
 (*************************************)
@@ -155,3 +158,100 @@ let is_trusted store ext_sc =
   with Not_found -> false
 
 let store_iter f store = Hashtbl.iter (fun _ -> f) store.by_hash
+
+
+
+(******************************)
+(* Chain validation functions *)
+(******************************)
+
+type validation_error =
+| DNMismatch
+| KIMismatch
+| SKINotFound
+| SerialNumberMismatch
+| NotaCA
+| InvalidSignature
+| AlgorithmMismatch
+| UnknownSignature
+
+let string_of_validation_error = function
+  | DNMismatch -> "subject_cert.issuer <> issuer_cert.subject"
+  | KIMismatch -> "subject_cert.AKI.KI <> issuer_cert.SKI"
+  | SKINotFound -> "subject_cert.AKI contains a KI, but issuer_cert has no SKI"
+  | SerialNumberMismatch -> "subject_cert.AKI.serialNumber <> issuer_cert.serialNumber"
+  | NotaCA -> "Issuer is not a CA"
+  | InvalidSignature -> "Invalid signature"
+  | AlgorithmMismatch -> "subject_cert.signature_algorithm does not match issuer_cert.public_key"
+  | UnknownSignature -> "Unknown signature algorithm"
+
+
+(* "Unit" test concerning *)
+
+let check_dns issuer subject =
+  if subject.tbsCertificate.issuer <> issuer.tbsCertificate.subject
+  then Some DNMismatch
+  else None
+
+let check_key_identifier issuer subject =
+  match get_extn_by_id [85;29;35] subject, get_extn_by_id [85;29;14] issuer with
+  | Some (AuthorityKeyIdentifier {keyIdentifier = Some aki}), Some (SubjectKeyIdentifier ski)
+    -> if ski <> aki then Some KIMismatch else None
+  | Some (AuthorityKeyIdentifier {keyIdentifier = Some _}), None
+    -> Some SKINotFound
+  | _ -> None
+
+let check_aki_serial issuer subject =
+  match get_extn_by_id [85;29;35] subject with
+  | Some (AuthorityKeyIdentifier {authorityCertIssuer = Some _;
+				  authorityCertSerialNumber = Some sn}) ->
+    if sn <> issuer.tbsCertificate.serialNumber
+    then Some SerialNumberMismatch
+    else None
+  | _ -> None
+
+let check_issuer_ca issuer _ =
+  match issuer.tbsCertificate.version, get_extn_by_id [85;29;19] issuer with
+  | None, _ -> None (* TODO: reject v1 certs? *)
+  | _, Some (BasicConstraints {cA = Some true}) -> None
+  | _, _ -> Some NotaCA
+
+let check_signature issuer subject =
+  match subject.tbsCertificate_raw,
+    issuer.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey,
+    subject.signatureValue with
+    | Some m, RSA {p_modulus = n; p_publicExponent = e}, RSASignature s ->
+      if (try Pkcs1.raw_verify 1 m s n e with Pkcs1.PaddingError -> false)
+      then None
+      else Some InvalidSignature
+    | _, RSA _, _ | _, _, RSASignature _ -> Some AlgorithmMismatch
+    | _, _, _ -> Some UnknownSignature
+
+let link_check_list = [check_dns; check_key_identifier; check_aki_serial; check_issuer_ca; check_signature]
+
+
+let check_link issuer subject =
+  let handle_check check_fun result =
+    match check_fun issuer subject with
+    | None -> result
+    | Some err -> err::result
+  in
+  List.rev (List.fold_right handle_check link_check_list [])
+
+let check_link_bool issuer subject =
+  let rec handle_checks issuer subject = function
+    | [] -> true
+    | check_fun::fs -> match check_fun issuer subject with
+      | None -> handle_checks issuer subject fs
+      | Some _ -> false
+  in
+  handle_checks issuer subject link_check_list
+
+
+let sc_check_link issuer subject =
+  let s_h = hash_of_sc subject in
+  try Hashtbl.find issuer.issued_certs s_h
+  with Not_found ->
+    let res = check_link_bool (cert_of_sc issuer) (cert_of_sc subject) in
+    Hashtbl.replace issuer.issued_certs s_h res;
+    res
