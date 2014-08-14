@@ -116,3 +116,42 @@ let sc_of_cert_in_hs_msg trusted_cert name i = function
       subject_hash = None; issuer_hash = None;
       issued_certs = Hashtbl.create 10;
     }
+
+
+
+(**************)
+(* cert_store *)
+(**************)
+
+type cert_store = {
+  by_subject_hash : (string, smart_certificate) Hashtbl.t;
+  by_hash : (string, smart_certificate) Hashtbl.t;
+}
+
+let mk_cert_store n = {
+  by_subject_hash = Hashtbl.create n;
+  by_hash = Hashtbl.create n;
+}
+
+let add_to_store store sc =
+  let h = hash_of_sc sc in
+  if not (Hashtbl.mem store.by_hash h) then begin
+    let s_h = subject_hash_of_sc sc in
+    Hashtbl.replace store.by_hash h sc;
+    Hashtbl.add store.by_subject_hash s_h sc
+  end
+
+let find_by_subject_hash store s_h =
+  Hashtbl.find_all store.by_subject_hash s_h
+
+let find_trusted_by_subject_hash store s_h =
+  List.filter (fun sc -> sc.trusted_cert) (Hashtbl.find_all store.by_subject_hash s_h)
+
+let is_trusted store ext_sc =
+  try
+    let h = hash_of_sc ext_sc in
+    let sc = Hashtbl.find store.by_hash h in
+    sc.trusted_cert
+  with Not_found -> false
+
+let store_iter f store = Hashtbl.iter (fun _ -> f) store.by_hash
