@@ -262,6 +262,7 @@ let sc_check_link issuer subject =
 (* Certificate chains *)
 (**********************)
 
+(* TODO: add support for validity and revocation? *)
 type cert_chain = {
   chain : smart_certificate list;
   unused_certs : smart_certificate list;
@@ -370,3 +371,66 @@ let check_rfc_certchain hs_msg_certs store =
   | [] -> { chain = []; unused_certs = [];
 	    complete = false;
 	    trusted = false; ordered = false; }
+
+
+(* This function is more generic, and allows to build unordered or
+   even transvalid chains *)
+let build_certchain hs_msg_certs store =
+
+  let rec bottom_up ordered last chain next_certs =
+
+    (* First, we check wether we have hit a self-signed cert *)
+    if sc_check_link last last
+    then [ { chain = last::chain; unused_certs = next_certs;
+	     complete = true; ordered = ordered;
+	     trusted = last.trusted_cert || is_trusted store last; } ]
+
+    else begin
+      (* Else, we need to find candidates for the next link, starting with
+	 certificates present in next_certs, then moving on with CA roots,
+	 and ending with other CAs we might know. *)
+
+      let rec prepare_inmsg_candidates is_ordered previous_certs accu = function
+	| [] -> accu
+	| c::cs ->
+	  let new_previous_certs = (c::previous_certs) in
+	  let c_hash = hash_of_sc c in
+	  if subject_hash_of_sc c = issuer_hash_of_sc last &&
+	    not (List.mem c_hash (List.map hash_of_sc (last::chain))) &&
+	    not (List.mem c_hash (List.map hash_of_sc previous_certs))
+	  then begin
+	    let new_accu = (is_ordered, c, List.rev_append previous_certs cs)::accu in
+	    prepare_inmsg_candidates false new_previous_certs new_accu cs
+	  end else prepare_inmsg_candidates false new_previous_certs accu cs
+      in
+
+      let rec prepare_external_cas is_ordered rem_certs accu = function
+	| [] -> accu
+	| sc::scs ->
+	  let h = hash_of_sc sc in
+	  let new_accu =
+	    if not (List.mem h (List.map (fun (_, c, _) -> hash_of_sc c) accu)) &&
+              not (List.mem h (List.map hash_of_sc (last::chain))) &&
+	      not (List.mem (cert_id_of_sc sc) (List.map cert_id_of_sc (last::chain)))
+	    then (is_ordered, sc, rem_certs)::accu
+	    else accu
+	  in prepare_external_cas is_ordered rem_certs new_accu scs
+      in
+
+      let c1 = prepare_inmsg_candidates ordered [] [] next_certs in
+      let possible_issuers = find_by_subject_hash store (issuer_hash_of_sc last) in
+      let trusted_roots, other_cas = List.partition (fun sc -> sc.trusted_cert) possible_issuers in
+      let c2 = prepare_external_cas ordered next_certs c1 trusted_roots in
+      let candidates = prepare_external_cas false next_certs c2 other_cas in
+
+      let acceptable_issuers = List.filter (fun (_, sc, _) -> sc_check_link sc last) candidates in
+      match acceptable_issuers with
+      (* If no acceptable issuer has been found, this branch is an incomplete chain *)
+      | [] -> [ { chain = last::chain; unused_certs = next_certs;
+		  complete = false; trusted = false; ordered = ordered; } ]
+      | _ -> List.flatten (List.map (fun (o, n, rems) -> bottom_up o n (last::chain) rems) acceptable_issuers)
+    end
+  in
+  match hs_msg_certs with
+  | c::cs -> bottom_up true c [] cs
+  | [] -> []
