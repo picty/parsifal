@@ -332,3 +332,41 @@ let print_chain = function
       (if trusted then "trusted" else "not trusted");
     print_certlist "  " (List.rev chain);
     print_certlist "  [UNUSED] " unused_certs
+
+
+
+(* check_rfc_certchain is a _simple_ function to validate a chain,
+   according to a strict interpretation of the RFC (certs must be
+   ordered) *)
+let check_rfc_certchain hs_msg_certs store =
+  let rec bottom_up unused_certs last chain = function
+    | [] ->
+      if sc_check_link last last
+      then { chain = last::chain; unused_certs = unused_certs;
+	     complete = true; ordered = true;
+	     trusted = is_trusted store last; }
+      else begin
+	let acceptable_issuers =
+	  List.filter
+	    (fun sc -> sc_check_link sc last)
+	    (find_trusted_by_subject_hash store (issuer_hash_of_sc last))
+	in
+	match acceptable_issuers with
+	| [] -> { chain = last::chain; unused_certs = unused_certs;
+		  complete = false;
+		  trusted = false; ordered = true; }
+	| ca::_ -> { chain = ca::last::chain; unused_certs = unused_certs;
+		     complete = true;
+		     trusted = true; ordered = true }
+      end
+    | (next::remaining) as next_certs ->
+      let next_hash = hash_of_sc next in
+      if not (List.mem next_hash (List.map hash_of_sc (last::chain))) && sc_check_link next last
+      then bottom_up unused_certs next (last::chain) remaining
+      else bottom_up (next_certs@unused_certs) last chain []
+  in
+  match hs_msg_certs with
+  | c::cs -> bottom_up [] c [] cs
+  | [] -> { chain = []; unused_certs = [];
+	    complete = false;
+	    trusted = false; ordered = false; }
