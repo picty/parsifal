@@ -88,6 +88,8 @@ let add_ca filename =
   cas := filename::!cas;
   ActionDone
 
+let output_file = ref ""
+
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
@@ -118,6 +120,8 @@ let options = [
   mkopt None "deep-parse" (TrivialFun deep_parse) "activate deep parsing for certificates/DNs";
 
   mkopt None "ca" (StringFun add_ca) "select a CA file";
+
+  mkopt (Some 'o') "output" (StringVal output_file) "select an output file";
 ]
 
 (* TODO: Move this code to getopt? *)
@@ -129,8 +133,10 @@ type probe_cmd =
 | ScanVersions
 | ExtractCerts
 | CheckCerts
+| ProbeToDump
 
 let probe_cmd_args = [
+  "probe2dump", ProbeToDump;
   "probe", ProbeAndPrint;
   "scan-suites", ScanSuites;
   "scan-compressions", ScanCompressions;
@@ -145,7 +151,7 @@ let cmd_of_args = function
       try List.assoc s probe_cmd_args
       with Not_found -> usage "probe_server" options
 	(Some ("Invalid command. Please use one of the following commands: " ^
-		  (String.concat ", " (List.map fst probe_cmd_args))))
+		  (String.concat "\n" (List.map fst probe_cmd_args))))
     end
   | _ -> usage "probe_server" options
     (Some ("Please use one of the following commands: " ^
@@ -200,7 +206,8 @@ let probe_server prefs server port =
   c_sock.output <- exact_dump dump_tls_record ch;
   run_automata probe_automata ([], NothingSoFar) "" ctx c_sock >>= fun (msgs, res) ->
   Lwt_unix.close c_sock.socket >>= fun () ->
-  return (ctx, msgs, res)
+  let remaining_str = BasePTypes.parse_rem_binstring c_sock.input in
+  return (ctx, msgs, remaining_str, res)
 
 
 
@@ -244,7 +251,7 @@ let _ =
     } in
     match cmd with
     | ProbeAndPrint ->
-      let _, msgs, res = Lwt_unix.run (probe_server prefs !host !port) in
+      let _, msgs, _, res = Lwt_unix.run (probe_server prefs !host !port) in
       let print_msg msg = print_endline (print_value ~name:"TLS Record (S->C)" (value_of_tls_record msg)) in
       List.iter print_msg (List.rev msgs);
       begin
@@ -252,12 +259,41 @@ let _ =
 	| NothingSoFar -> ()
 	| Fatal msg -> print_endline msg
       end
+    | ProbeToDump ->
+      let output_result = match !output_file with
+        | "" -> (fun buf -> print_endline (hexdump (POutput.contents buf)))
+        | fn ->
+          let f =
+            try open_out_gen [Open_wronly; Open_creat; Open_excl] 0o644 fn
+            with _ -> failwith ("Unable to create file: " ^ fn)
+          in
+          (fun buf -> POutput.output_buffer f buf; close_out f)
+      in
+      (* Handle SSLv2 answers? *)
+      let _, msgs, remaining_stuff, _ = Lwt_unix.run (probe_server prefs !host !port) in
+      let content_to_dump = POutput.create () in
+      List.iter (dump_tls_record content_to_dump) (List.rev msgs);
+      POutput.add_string content_to_dump remaining_stuff;
+      let open AnswerDump in
+      let answer_dump = {
+	ip_type = 4; (* TODO *)
+	ip_addr = AD_IPv4 "\x00\x00\x00\x00"; (* TODO *)
+	port = !port;
+	name = !host;
+	campaign = 0xff;  (* TODO *)
+	msg_type = 0;
+	timestamp = Int64.of_float (Unix.time ());
+	content = POutput.contents content_to_dump;
+      } in
+      let final_output = POutput.create () in
+      dump_answer_dump_v2 final_output answer_dump;
+      output_result final_output
     | ExtractCerts ->
-      let ctx, _, _ = Lwt_unix.run (probe_server prefs !host !port) in
+      let ctx, _, _, _ = Lwt_unix.run (probe_server prefs !host !port) in
       save_certs ctx.future.f_certificates
     | CheckCerts ->
       let ca_store = X509Util.mk_cert_store 100 in
-      let ctx, _, _ = Lwt_unix.run (probe_server prefs !host !port) in
+      let ctx, _, _, _ = Lwt_unix.run (probe_server prefs !host !port) in
       let parse_root_ca c =
 	let parse_fun = if !base64
 	  then Base64.parse_base64_container Base64.AnyHeader "base64_container" (X509Util.parse_smart_cert true)
@@ -277,7 +313,7 @@ let _ =
     | ScanSuites ->
       let rec next_step () =
 	let updated_prefs = { prefs with acceptable_ciphersuites = !suites } in
-	let ctx, _, res = Lwt_unix.run (probe_server updated_prefs !host !port) in
+	let ctx, _, _, res = Lwt_unix.run (probe_server updated_prefs !host !port) in
 	match res, ctx.future.proposed_ciphersuites with
 	| NothingSoFar, [s] ->
 	  print_endline (string_of_ciphersuite s);
@@ -289,7 +325,7 @@ let _ =
     | ScanCompressions ->
       let rec next_step () =
 	let updated_prefs = { prefs with acceptable_compressions = !compressions } in
-	let ctx, _, res = Lwt_unix.run (probe_server updated_prefs !host !port) in
+	let ctx, _, _, res = Lwt_unix.run (probe_server updated_prefs !host !port) in
 	match res, ctx.future.proposed_compressions with
 	| NothingSoFar, [c] ->
 	  print_endline (string_of_compression_method c);
@@ -311,7 +347,7 @@ let _ =
 	| [] -> ()
 	| (e, i)::r ->
 	  let updated_prefs = { prefs with acceptable_versions = (e, i) } in
-	  let ctx, _, res = Lwt_unix.run (probe_server updated_prefs !host !port) in
+	  let ctx, _, _, res = Lwt_unix.run (probe_server updated_prefs !host !port) in
 	  match res, ctx.future.proposed_versions with
 	  | NothingSoFar, (v1, v2) ->
 	    if v1 <> v2 then begin
