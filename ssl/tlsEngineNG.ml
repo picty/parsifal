@@ -455,7 +455,7 @@ let get_next_automata_input ctx c =
     (* TODO: 4096 should be adjustable *)
     let buf = String.make 4096 ' ' in
     Lwt_unix.read c.socket buf 0 4096 >>= fun n_read ->
-    (* TODO: Handle n_read = 0 correctly *)
+    if n_read = 0 then raise End_of_file;
     c.input <- append_to_input c.input (String.sub buf 0 n_read);
     let rec parse_new_records new_record =
       (* TODO: In fact, we are stuck if input enriches too much here  *)
