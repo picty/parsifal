@@ -45,7 +45,7 @@ let timeout = ref 3.0
 (* TODO? *)
 (* let retry = ref 3 *)
 let cas = ref []
-let host_file = ref ""
+let hosts_file = ref ""
 let campaign_number = ref 0xff
 
 
@@ -116,6 +116,7 @@ let options = [
   mkopt None "der" (Clear base64) "use DER format";
 
   mkopt (Some 'H') "host" (StringVal host_ref) "host to contact";
+  mkopt None "hosts-file" (StringVal hosts_file) "set a list of hosts to probe (only for probe2dump)";
   mkopt (Some 'p') "port" (IntVal port_ref) "port to probe";
 
   mkopt (Some 'V') "version" (StringFun update_both_versions) "set the record and ClientHello versions";
@@ -233,17 +234,27 @@ let probe_server prefs ((ip, server_name, port) as server_params) =
     timeout = Some !timeout;
     plaintext_chunk_size = !plaintext_chunk_size;
   } in
-  init_client_connection ~options:c_opts server_params >>= fun c_sock ->
-  if !debug_level >=. InfoDebug
-  then prerr_endline ("Connected to " ^ server_name ^ ":" ^ (string_of_int port));
-  let ch = mk_client_hello ctx in
-  if !debug_level >=. FullDebug
-  then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));
-  c_sock.output <- exact_dump dump_tls_record ch;
-  run_automata probe_automata ([], NothingSoFar) "" ctx c_sock >>= fun (msgs, res) ->
-  Lwt_unix.close c_sock.socket >>= fun () ->
-  let remaining_str = BasePTypes.parse_rem_binstring c_sock.input in
-  return (ctx, msgs, remaining_str, res)
+  let probe_t () =
+    init_client_connection ~options:c_opts server_params >>= fun c_sock ->
+    if !debug_level >=. InfoDebug
+    then prerr_endline ("Connected to " ^ server_name ^ ":" ^ (string_of_int port));
+    let ch = mk_client_hello ctx in
+    if !debug_level >=. FullDebug
+    then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));
+    c_sock.output <- exact_dump dump_tls_record ch;
+    run_automata probe_automata ([], NothingSoFar) "" ctx c_sock >>= fun (msgs, res) ->
+    Lwt_unix.close c_sock.socket >>= fun () ->
+    let remaining_str = BasePTypes.parse_rem_binstring c_sock.input in
+    return (ctx, msgs, remaining_str, res)
+  and error_t = function
+    | Unix.Unix_error (errno, syscall, additional) ->
+      if !debug_level >=. InfoDebug
+      then prerr_endline ("Unix error (" ^ Unix.error_message errno ^
+                             ") during " ^ syscall ^ "(" ^ additional ^ ")");
+      return (ctx, [], "", Fatal "UnixError")
+    | e -> fail e
+  in
+  try_bind probe_t return error_t
 
 
 
@@ -272,6 +283,29 @@ let save_certs prefix certs =
   Printf.printf "Saved %d certificates\n" n_certs
 
 
+let read_hosts_from_file hosts_file port =
+  let f = open_in hosts_file in
+  let rec read_aux accu =
+    let line =
+      try Some (input_line f)
+      with End_of_file -> None
+    in
+    match line with
+    | None -> List.rev accu
+    | Some l ->
+      let new_accu = match List.map String.trim (string_split ':' l) with
+        | ["IP"; ip] -> (return (Unix.inet_addr_of_string ip, ip, port))::accu
+        | ["DNS"; server_name] -> (resolve server_name port)::accu
+        | [] -> accu
+        | s::_ ->
+          if String.length s > 0 && s.[0] = '#'
+          then accu
+          else failwith ("Invalid line in hosts file : " ^ (quote_string l) ^ ".")
+      in read_aux new_accu
+  in
+  read_aux []
+
+
 let extract_cert_t prefs host_t =
   host_t >>= fun ((_, server_name, port) as server_params) ->
   probe_server prefs server_params >>= fun (ctx, _, _, _) ->
@@ -295,9 +329,9 @@ let _ =
       server_names = [];
     } in
 
-    let hosts_threads = match !host_file, !host_ref with
+    let hosts_threads = match !hosts_file, !host_ref with
       | "", h -> [resolve h !port_ref]
-      | _hs, _ -> (* hosts_from_file hs p *) failwith "Not implemented yet"
+      | hs, _ -> read_hosts_from_file hs !port_ref
     in
 
     match cmd, hosts_threads with
@@ -422,6 +456,7 @@ let _ =
       List.iter (AnswerDump.dump_answer_dump_v2 final_output) answer_dumps;
       output_result final_output
   with
-    | End_of_file -> ()
-    | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
-    | e -> prerr_endline (Printexc.to_string e)
+  | End_of_file -> ()
+  | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
+  | Failure msg -> prerr_endline msg
+  | e -> prerr_endline (Printexc.to_string e)
