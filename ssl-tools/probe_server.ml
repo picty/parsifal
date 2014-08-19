@@ -26,13 +26,15 @@ let rec_version = ref V_TLSv1
 let ch_version = ref V_TLSv1
 let suites = ref [TLS_RSA_WITH_RC4_128_SHA]
 let compressions = ref [CM_Null]
+let use_extensions = ref true
+let send_SNI = ref true
 let plaintext_chunk_size = ref 16384
 let timeout = ref 3.0
 (* TODO? *)
 (* let retry = ref 3 *)
 let cas = ref []
-
 let host_file = ref ""
+let campaign_number = ref 0xff
 
 
 (* TODO: Add stuff to add/remove/clear a list in getopt? *)
@@ -122,7 +124,14 @@ let options = [
 
   mkopt None "ca" (StringFun add_ca) "select a CA file";
 
+  mkopt None "campaign" (IntVal campaign_number) "set the campaign number for dump outputs";
   mkopt (Some 'o') "output" (StringVal output_file) "select an output file";
+
+  (* TODO: Add a shortcut in Getopt to handle with/without in one line *)
+  mkopt None "with-extensions" (Set use_extensions) "activate the extension in the ClientHello (default)";
+  mkopt None "without-extensions" (Clear use_extensions) "deactivate the extension in the ClientHello";
+  mkopt None "with-SNI" (Set send_SNI) "send the Server Name Indication (default) (with-extensions must be set)";
+  mkopt None "without-SNI" (Clear send_SNI) "do not send the Server Name Indication";
 ]
 
 (* TODO: Move this code to getopt? *)
@@ -159,6 +168,10 @@ let cmd_of_args = function
 	(String.concat ", " (List.map fst probe_cmd_args))))
 
 
+let get_sni_name ip hostname =
+  let ip_str = Unix.string_of_inet_addr ip in
+  if ip_str = hostname then None else Some hostname
+
 
 
 (*********************)
@@ -194,8 +207,13 @@ let probe_automata (msgs_received, _) input _global_ctx ctx =
   | Nothing -> (msgs_received, NothingSoFar), Wait
   | InternalMsgIn _ -> (msgs_received, NothingSoFar), Wait
 
-let probe_server prefs ((_, server_name, port) as server_params) =
-  let ctx = empty_context prefs in
+let probe_server prefs ((ip, server_name, port) as server_params) =
+  let server_names = match get_sni_name ip server_name with
+    | None -> []
+    | Some n -> [n]
+  in
+  let real_prefs = { prefs with server_names = server_names } in
+  let ctx = empty_context real_prefs in
   let c_opts = {
     verbose = !verbose; timeout = Some !timeout;
     plaintext_chunk_size = !plaintext_chunk_size;
@@ -253,11 +271,11 @@ let _ =
       acceptable_versions = (!rec_version, !ch_version);
       acceptable_ciphersuites = !suites;
       acceptable_compressions = !compressions;
-      use_extensions = false;
+      use_extensions = !use_extensions;
       available_certificates = [];
       directive_behaviour = false;
-      send_SNI = false;
-      server_names = []
+      send_SNI = !send_SNI;
+      server_names = [];
     } in
 
     let hosts_threads = match !host_file, !host_ref with
@@ -366,8 +384,8 @@ let _ =
         (* Handle SSLv2 answers? *)
         probe_server prefs server_params >>= fun (_, msgs, remaining_stuff, _) ->
         let content_to_dump = POutput.create () in
-        let ip_str = Unix.string_of_inet_addr ip in
-        let name_str = if ip_str = hostname then "" else hostname in
+        let ip_str = Unix.string_of_inet_addr ip
+        and name_str = pop_opt "" (get_sni_name ip hostname) in
         List.iter (dump_tls_record content_to_dump) (List.rev msgs);
         POutput.add_string content_to_dump remaining_stuff;
         let open AnswerDump in
@@ -376,7 +394,7 @@ let _ =
           ip_addr = AD_IPv4 (PTypes.ipv4_of_string ip_str);
           port = port;
           name = name_str;
-          campaign = 0xff;  (* TODO *)
+          campaign = !campaign_number;
           msg_type = 0;
           timestamp = Int64.of_float (Unix.time ());
           content = POutput.contents content_to_dump;
