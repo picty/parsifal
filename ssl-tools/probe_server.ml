@@ -18,7 +18,19 @@ open TlsEngineNG
 (* Option handling *)
 (*******************)
 
-let verbose = ref false
+type debug_level = Quiet | InfoDebug | FullDebug
+let debug_level = ref Quiet
+let set_debug_level = function
+  | 0 -> debug_level := Quiet; ActionDone
+  | 1 -> debug_level := InfoDebug; ActionDone
+  | 2 -> debug_level := FullDebug; ActionDone
+  | _ -> ShowUsage (Some "Wrong debug level (acceptable valuse are 0 - quiet, 1 - connections, 2 - messages)")
+let int_of_debug_level = function
+  | Quiet -> 0
+  | InfoDebug -> 1
+  | FullDebug -> 2
+let (>=.) d1 d2 = (int_of_debug_level d1) >= (int_of_debug_level d2)
+
 let base64 = ref true
 let host_ref = ref "www.google.com"
 let port_ref = ref 443
@@ -96,7 +108,10 @@ let output_file = ref ""
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
-  mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
+  mkopt (Some 'q') "quiet" (TrivialFun (fun () -> debug_level := Quiet)) "print less info to stderr";
+  mkopt (Some 'v') "verbose" (TrivialFun (fun () -> debug_level := FullDebug)) "print more info to stderr";
+  mkopt (Some 'd') "debug-level" (IntFun set_debug_level) "change the debug level (0-2)";
+
   mkopt None "pem" (Set base64) "use PEM format (default)";
   mkopt None "der" (Clear base64) "use DER format";
 
@@ -215,13 +230,15 @@ let probe_server prefs ((ip, server_name, port) as server_params) =
   let real_prefs = { prefs with server_names = server_names } in
   let ctx = empty_context real_prefs in
   let c_opts = {
-    verbose = !verbose; timeout = Some !timeout;
+    timeout = Some !timeout;
     plaintext_chunk_size = !plaintext_chunk_size;
   } in
   init_client_connection ~options:c_opts server_params >>= fun c_sock ->
-  if !verbose then Printf.fprintf Pervasives.stderr "Connected to %s:%d\n" server_name port;
+  if !debug_level >=. InfoDebug
+  then prerr_endline ("Connected to " ^ server_name ^ ":" ^ (string_of_int port));
   let ch = mk_client_hello ctx in
-  if !verbose then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));
+  if !debug_level >=. FullDebug
+  then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));
   c_sock.output <- exact_dump dump_tls_record ch;
   run_automata probe_automata ([], NothingSoFar) "" ctx c_sock >>= fun (msgs, res) ->
   Lwt_unix.close c_sock.socket >>= fun () ->
@@ -323,8 +340,8 @@ let _ =
 	| NothingSoFar, [s] ->
 	  print_endline (string_of_ciphersuite s);
 	  if remove_from_list suites s then next_step ()
-	| NothingSoFar, _ -> if !verbose then prerr_endline "Unexpected result."
-	| Fatal msg, _ -> if !verbose then prerr_endline msg
+	| NothingSoFar, _ -> if !debug_level >=. InfoDebug then prerr_endline "Unexpected result."
+	| Fatal msg, _ -> if !debug_level >=. InfoDebug then prerr_endline msg
       in
       next_step ()
     | ScanCompressions, [host_t] ->
@@ -335,8 +352,8 @@ let _ =
 	| NothingSoFar, [c] ->
 	  print_endline (string_of_compression_method c);
 	  if remove_from_list compressions c then next_step ()
-	| NothingSoFar, _ -> if !verbose then prerr_endline "Unexpected result."
-	| Fatal msg, _ -> if !verbose then prerr_endline msg
+	| NothingSoFar, _ -> if !debug_level >=. InfoDebug then prerr_endline "Unexpected result."
+	| Fatal msg, _ -> if !debug_level >=. InfoDebug  then prerr_endline msg
       in
       next_step ()
     | ScanVersions, [host_t] ->
@@ -356,13 +373,13 @@ let _ =
 	  match res, ctx.future.proposed_versions with
 	  | NothingSoFar, (v1, v2) ->
 	    if v1 <> v2 then begin
-	      if !verbose then prerr_endline "Unexpected result."
+	      if !debug_level >=. InfoDebug  then prerr_endline "Unexpected result."
 	    end else begin
 	      Printf.printf "%s,%s -> %s\n" (string_of_tls_version e)
 		(string_of_tls_version i) (string_of_tls_version v1);
 	      next_step r
 	    end
-	  | Fatal msg, _ -> if !verbose then prerr_endline msg
+	  | Fatal msg, _ -> if !debug_level >=. InfoDebug  then prerr_endline msg
       in next_step all_cases
 
     | (ProbeAndPrint|CheckCerts|ExtractCerts|ScanSuites|ScanCompressions|ScanVersions), _ ->

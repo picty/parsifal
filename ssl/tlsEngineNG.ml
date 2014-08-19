@@ -397,12 +397,10 @@ let catch_eof = function
 
 type connection_options = {
   timeout : float option;
-  verbose : bool;
   plaintext_chunk_size : int;
 }
 let default_options = {
   timeout = Some 5.0;
-  verbose = false;
   plaintext_chunk_size = 16384;
 }
 
