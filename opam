@@ -1,0 +1,32 @@
+opam-version: "1.2"
+name: "parsifal"
+version: "0.1"
+maintainer: "Pierre Chambart <pierre.chambart@ocamlpro.com>"
+author: "Olivier Levillain (ANSSI)"
+homepage: "https://github.com/ANSSI-FR/parsifal/"
+bug-reports: "https://github.com/ANSSI-FR/parsifal/issues"
+license: "CECIL 2.0"
+build: [
+  make
+]
+install: [
+  make "LIBDIR=%{lib}%" "BINDIR=%{bin}%" "install"
+]
+remove: [
+  ["ocamlfind" "remove" "parsifal_core"]
+  ["ocamlfind" "remove" "parsifal_crypto"]
+  ["ocamlfind" "remove" "parsifal_formats"]
+  ["ocamlfind" "remove" "parsifal_kerby"]
+  ["ocamlfind" "remove" "parsifal_lwt"]
+  ["ocamlfind" "remove" "parsifal_net"]
+  ["ocamlfind" "remove" "parsifal_pgp"]
+  ["ocamlfind" "remove" "parsifal_ssl"]
+  ["ocamlfind" "remove" "parsifal_syntax"]
+]
+depends: [
+  "ocamlfind" {build}
+  "camlidl"
+  "lwt"
+  "cryptokit"
+  "ounit"
+]
