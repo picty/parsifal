@@ -242,12 +242,20 @@ struct next_protocol = {
 
 
 type prefs = {
+  (* generic prefs *)
   random_generator : RandomEngine.state;
   acceptable_versions : tls_version * tls_version;
   acceptable_ciphersuites : ciphersuite list;
   acceptable_compressions : compression_method list;
-  directive_behaviour : bool;
+  use_extensions : bool;
   available_certificates : (X509.certificate list * Pkcs1.rsa_private_key) list;
+
+  (* server-side prefs *)
+  directive_behaviour : bool;
+
+  (* client-side prefs *)
+  send_SNI : bool;   (* Of course, SNI can be disabled if use_extensions is false *)
+  server_names : string list;
 }
 
 type random_generator_type =
@@ -265,8 +273,11 @@ let default_prefs rng_type =
     acceptable_versions = (V_SSLv3, V_TLSv1_2);
     acceptable_ciphersuites = [TLS_RSA_WITH_RC4_128_SHA];
     acceptable_compressions = [CM_Null];
-    directive_behaviour = false;
+    use_extensions = true;
     available_certificates = [];
+    directive_behaviour = false;
+    send_SNI = true;
+    server_names = [];
   }
 
 

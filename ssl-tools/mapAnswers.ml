@@ -97,8 +97,11 @@ let parse_all_tls_records answer =
     acceptable_versions = (V_Unknown 0, V_Unknown 0xffff);
     acceptable_ciphersuites = [];
     acceptable_compressions = [];
+    use_extensions = false;
+    available_certificates = [];
     directive_behaviour = false;
-    available_certificates = []
+    send_SNI = false;
+    server_names = [];
   } in
   let ctx = empty_context prefs in
   let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_v2_ip answer.ip_addr) answer.content in

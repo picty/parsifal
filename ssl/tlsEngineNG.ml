@@ -235,18 +235,40 @@ let mk_ccs_msg ctx = {
 }
 
 
+let mk_sni_client_ext accu ctx = match ctx.preferences.send_SNI, ctx.preferences.server_names with
+  | false, _ | _, [] -> accu
+  | true, ns ->
+    let mk_name n = {sni_name_type = NT_HostName; sni_name = HostName n} in
+    let sni = {
+      extension_type = HE_ServerName;
+      extension_data = ServerName (ClientServerName (List.map mk_name ns))
+    } in
+    sni::accu
+
+(* TODO: Add support for Elliptic Curves *)
+let mk_client_exts ctx =
+  mk_sni_client_ext [] ctx
+
 let mk_client_hello ctx =
   ctx.future.proposed_versions <- ctx.preferences.acceptable_versions;
   ctx.future.proposed_ciphersuites <- ctx.preferences.acceptable_ciphersuites;
   ctx.future.proposed_compressions <- ctx.preferences.acceptable_compressions;
   let client_random = String.make 32 '\x00' in (* TODO! *)
+  let extensions =
+    if ctx.preferences.use_extensions
+    then begin
+      match mk_client_exts ctx with
+      | [] -> None    (* This is debatable *)
+      | es -> Some es
+    end else None
+  in
   let ch = {
     client_version = snd ctx.future.proposed_versions;
     client_random = client_random;
     client_session_id = ""; (* TODO? *)
     ciphersuites = ctx.future.proposed_ciphersuites;
     compression_methods = ctx.future.proposed_compressions;
-    client_extensions = None (* TODO! *)
+    client_extensions = extensions
   } in
   update_with_client_hello ctx ch;
   mk_handshake_msg ctx HT_ClientHello (ClientHello ch)

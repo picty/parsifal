@@ -253,8 +253,11 @@ let _ =
       acceptable_versions = (!rec_version, !ch_version);
       acceptable_ciphersuites = !suites;
       acceptable_compressions = !compressions;
+      use_extensions = false;
+      available_certificates = [];
       directive_behaviour = false;
-      available_certificates = []
+      send_SNI = false;
+      server_names = []
     } in
 
     let hosts_threads = match !host_file, !host_ref with

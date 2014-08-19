@@ -52,4 +52,7 @@ Check wether the presence of \x00 works in CN/SAN/etc.
 Check whether a non-AC signed certificate is accepted
 
 Check whether the SKE signature is checked (aka the gotofail bug)
+
+Check whether an empty "extensions" field is a problem (specific case of extensions intolerance)
+Check how the client react to extensions when none were sent
 *)
