@@ -1,0 +1,15 @@
+
+bin: [
+  "pci/test_pci"
+  "tools/asn1parse"
+  "tools/parsifal"
+  "tools/picodig"
+  "ssl-tools/probe_server"
+  "ssl-tools/x509show"
+  "ssl-tools/extractSessions"
+  "ssl-tools/mapAnswers"
+  "ssl-tools/sslrevproxy"
+  "ssl-tools/serveranswer"
+  "ssl-tools/sslproxy"
+  "ssl-tools/disturber"
+]
