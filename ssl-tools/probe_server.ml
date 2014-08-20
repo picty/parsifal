@@ -32,8 +32,11 @@ let int_of_debug_level = function
 let (>=.) d1 d2 = (int_of_debug_level d1) >= (int_of_debug_level d2)
 
 let base64 = ref true
+let cas = ref []
 let host_ref = ref "www.google.com"
 let port_ref = ref 443
+
+(* TLS preferences *)
 let rec_version = ref V_TLSv1
 let ch_version = ref V_TLSv1
 let suites = ref [TLS_RSA_WITH_RC4_128_SHA]
@@ -44,10 +47,11 @@ let plaintext_chunk_size = ref 16384
 let timeout = ref 3.0
 (* TODO? *)
 (* let retry = ref 3 *)
-let cas = ref []
+
+(* probe2dump specific options *)
 let hosts_file = ref ""
 let campaign_number = ref 0xff
-
+let max_inflight_requests = ref 1
 
 (* TODO: Add stuff to add/remove/clear a list in getopt? *)
 let remove_from_list list elt =
@@ -142,6 +146,7 @@ let options = [
 
   mkopt None "campaign" (IntVal campaign_number) "set the campaign number for dump outputs";
   mkopt (Some 'o') "output" (StringVal output_file) "select an output file";
+  mkopt None "max-parallel-requests" (IntVal max_inflight_requests) "set the maximum number of parallel threads";
 
   (* TODO: Add a shortcut in Getopt to handle with/without in one line *)
   mkopt None "with-extensions" (Set use_extensions) "activate the extension in the ClientHello (default)";
@@ -430,7 +435,38 @@ let _ =
           in
           (fun buf -> POutput.output_buffer f buf; close_out f)
       in
+
+      let mk_lock, lock_t, unlock_t =
+        if !max_inflight_requests > 0
+        then begin
+          let mutex = Lwt_mutex.create ()
+          and inflight_requests = ref 0
+          and cond = Lwt_condition.create () in
+          let lock_t () =
+            let rec lock_aux_t () =
+              if !inflight_requests < !max_inflight_requests
+              then begin
+                incr inflight_requests;
+                Lwt_mutex.unlock mutex;
+                return ()
+              end else begin
+                Lwt_condition.wait ~mutex:mutex cond >>= lock_aux_t
+              end
+            in
+            Lwt_mutex.lock mutex >>= lock_aux_t
+          and unlock_t () =
+            Lwt_mutex.lock mutex >>= fun () ->
+            decr inflight_requests;
+            Lwt_mutex.unlock mutex;
+            Lwt_condition.signal cond ();
+            return ()
+          in
+          (return (), lock_t, unlock_t)
+        end else (return (), return, return)
+      in
+
       let probe_one_host host_t =
+        lock_t () >>= fun () ->
         host_t >>= fun ((ip, hostname, port) as server_params) ->
         (* Handle SSLv2 answers? *)
         probe_server prefs server_params >>= fun (_, msgs, remaining_stuff, _) ->
@@ -440,6 +476,7 @@ let _ =
         List.iter (dump_tls_record content_to_dump) (List.rev msgs);
         POutput.add_string content_to_dump remaining_stuff;
         let open AnswerDump in
+        unlock_t () >>= fun () ->
         return {
           ip_type = 4;
           ip_addr = AD_IPv4 (PTypes.ipv4_of_string ip_str);
@@ -451,7 +488,7 @@ let _ =
           content = POutput.contents content_to_dump;
         }
       in
-      let answer_dumps = Lwt_unix.run (Lwt_list.map_s probe_one_host hosts_t) in
+      let answer_dumps = Lwt_unix.run (mk_lock >>= fun () -> Lwt_list.map_p probe_one_host hosts_t) in
       let final_output = POutput.create () in
       List.iter (AnswerDump.dump_answer_dump_v2 final_output) answer_dumps;
       output_result final_output
