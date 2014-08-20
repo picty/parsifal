@@ -704,6 +704,8 @@ let parse_all_records dir ctx input =
         let proceed = match clr_content with
           | None -> true
           | Some (cur_ct, cur_v, _) ->
+	    (* Only merge Handshake and AppData records *)
+	    (cur_ct = CT_Handshake || cur_ct = CT_ApplicationData) &&
             cur_ct = r.content_type && cur_v = r.record_version
         in
         let status = match proceed, r.record_content with
