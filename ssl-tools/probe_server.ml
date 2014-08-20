@@ -257,6 +257,8 @@ let probe_server prefs ((ip, server_name, port) as server_params) =
       then prerr_endline ("Unix error (" ^ Unix.error_message errno ^
                              ") during " ^ syscall ^ "(" ^ additional ^ ")");
       return (ctx, [], "", Fatal "UnixError")
+    | ConnectionTimeout ->
+      return (ctx, [], "", Fatal "ConnectionTimeout")
     | e -> fail e
   in
   try_bind probe_t return error_t
