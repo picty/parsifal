@@ -20,8 +20,8 @@ open TlsEngineNG
 
 let verbose = ref false
 let base64 = ref true
-let host = ref "www.google.com"
-let port = ref 443
+let host_ref = ref "www.google.com"
+let port_ref = ref 443
 let rec_version = ref V_TLSv1
 let ch_version = ref V_TLSv1
 let suites = ref [TLS_RSA_WITH_RC4_128_SHA]
@@ -32,9 +32,10 @@ let timeout = ref 3.0
 (* let retry = ref 3 *)
 let cas = ref []
 
+let host_file = ref ""
+
 
 (* TODO: Add stuff to add/remove/clear a list in getopt? *)
-
 let remove_from_list list elt =
   list := List.filter (fun x -> x <> elt) !list;
   !list <> []
@@ -97,8 +98,8 @@ let options = [
   mkopt None "pem" (Set base64) "use PEM format (default)";
   mkopt None "der" (Clear base64) "use DER format";
 
-  mkopt (Some 'H') "host" (StringVal host) "host to contact";
-  mkopt (Some 'p') "port" (IntVal port) "port to probe";
+  mkopt (Some 'H') "host" (StringVal host_ref) "host to contact";
+  mkopt (Some 'p') "port" (IntVal port_ref) "port to probe";
 
   mkopt (Some 'V') "version" (StringFun update_both_versions) "set the record and ClientHello versions";
   mkopt None "record-version" (StringFun (update_version rec_version)) "set the record versions";
@@ -151,7 +152,7 @@ let cmd_of_args = function
       try List.assoc s probe_cmd_args
       with Not_found -> usage "probe_server" options
 	(Some ("Invalid command. Please use one of the following commands: " ^
-		  (String.concat "\n" (List.map fst probe_cmd_args))))
+	  (String.concat "\n" (List.map fst probe_cmd_args))))
     end
   | _ -> usage "probe_server" options
     (Some ("Please use one of the following commands: " ^
@@ -193,14 +194,14 @@ let probe_automata (msgs_received, _) input _global_ctx ctx =
   | Nothing -> (msgs_received, NothingSoFar), Wait
   | InternalMsgIn _ -> (msgs_received, NothingSoFar), Wait
 
-let probe_server prefs server port =
+let probe_server prefs ((_, server_name, port) as server_params) =
   let ctx = empty_context prefs in
   let c_opts = {
     verbose = !verbose; timeout = Some !timeout;
     plaintext_chunk_size = !plaintext_chunk_size;
   } in
-  init_client_connection ~options:c_opts server port >>= fun c_sock ->
-  if !verbose then Printf.fprintf Pervasives.stderr "Connected to %s:%d\n" server port;
+  init_client_connection ~options:c_opts server_params >>= fun c_sock ->
+  if !verbose then Printf.fprintf Pervasives.stderr "Connected to %s:%d\n" server_name port;
   let ch = mk_client_hello ctx in
   if !verbose then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));
   c_sock.output <- exact_dump dump_tls_record ch;
@@ -211,11 +212,11 @@ let probe_server prefs server port =
 
 
 
-let save_certs certs =
+let save_certs prefix certs =
   let ext = if !base64 then ".pem" else ".der" in
   let rec save_one_cert i = function
     | cert::r ->
-      let cert_name = !host ^ "-" ^ (string_of_int i) ^ ext in
+      let cert_name = prefix ^ "-" ^ (string_of_int i) ^ ext in
       let f =
 	try open_out_gen [Open_wronly; Open_creat; Open_excl] 0o644 cert_name
 	with _ -> failwith ("Unable to create file: " ^ cert_name)
@@ -236,6 +237,12 @@ let save_certs certs =
   Printf.printf "Saved %d certificates\n" n_certs
 
 
+let extract_cert_t prefs host_t =
+  host_t >>= fun ((_, server_name, port) as server_params) ->
+  probe_server prefs server_params >>= fun (ctx, _, _, _) ->
+  return (server_name, port, ctx.future.f_certificates)
+
+
 let _ =
   try
     TlsDatabase.enrich_suite_hash ();
@@ -249,9 +256,15 @@ let _ =
       directive_behaviour = false;
       available_certificates = []
     } in
-    match cmd with
-    | ProbeAndPrint ->
-      let _, msgs, _, res = Lwt_unix.run (probe_server prefs !host !port) in
+
+    let hosts_threads = match !host_file, !host_ref with
+      | "", h -> [resolve h !port_ref]
+      | _hs, _ -> (* hosts_from_file hs p *) failwith "Not implemented yet"
+    in
+
+    match cmd, hosts_threads with
+    | ProbeAndPrint, [host_t] ->
+      let _, msgs, _, res = Lwt_unix.run (host_t >>= probe_server prefs) in
       let print_msg msg = print_endline (print_value ~name:"TLS Record (S->C)" (value_of_tls_record msg)) in
       List.iter print_msg (List.rev msgs);
       begin
@@ -259,41 +272,12 @@ let _ =
 	| NothingSoFar -> ()
 	| Fatal msg -> print_endline msg
       end
-    | ProbeToDump ->
-      let output_result = match !output_file with
-        | "" -> (fun buf -> print_endline (hexdump (POutput.contents buf)))
-        | fn ->
-          let f =
-            try open_out_gen [Open_wronly; Open_creat; Open_excl] 0o644 fn
-            with _ -> failwith ("Unable to create file: " ^ fn)
-          in
-          (fun buf -> POutput.output_buffer f buf; close_out f)
-      in
-      (* Handle SSLv2 answers? *)
-      let _, msgs, remaining_stuff, _ = Lwt_unix.run (probe_server prefs !host !port) in
-      let content_to_dump = POutput.create () in
-      List.iter (dump_tls_record content_to_dump) (List.rev msgs);
-      POutput.add_string content_to_dump remaining_stuff;
-      let open AnswerDump in
-      let answer_dump = {
-	ip_type = 4; (* TODO *)
-	ip_addr = AD_IPv4 "\x00\x00\x00\x00"; (* TODO *)
-	port = !port;
-	name = !host;
-	campaign = 0xff;  (* TODO *)
-	msg_type = 0;
-	timestamp = Int64.of_float (Unix.time ());
-	content = POutput.contents content_to_dump;
-      } in
-      let final_output = POutput.create () in
-      dump_answer_dump_v2 final_output answer_dump;
-      output_result final_output
-    | ExtractCerts ->
-      let ctx, _, _, _ = Lwt_unix.run (probe_server prefs !host !port) in
-      save_certs ctx.future.f_certificates
-    | CheckCerts ->
+    | ExtractCerts, [host_t] ->
+      let prefix, _, certs = Lwt_unix.run (extract_cert_t prefs host_t) in
+      save_certs prefix certs
+    | CheckCerts, [host_t] ->
       let ca_store = X509Util.mk_cert_store 100 in
-      let ctx, _, _, _ = Lwt_unix.run (probe_server prefs !host !port) in
+      let server_name, port, certs = Lwt_unix.run (extract_cert_t prefs host_t) in
       let parse_root_ca c =
 	let parse_fun = if !base64
 	  then Base64.parse_base64_container Base64.AnyHeader "base64_container" (X509Util.parse_smart_cert true)
@@ -304,16 +288,16 @@ let _ =
       in
       List.iter parse_root_ca (List.rev !cas);
       let parsed_certs = List.mapi
-	(X509Util.sc_of_cert_in_hs_msg false (!host ^ ":" ^ (string_of_int !port)))
-	ctx.future.f_certificates
+	(X509Util.sc_of_cert_in_hs_msg false (server_name ^ ":" ^ (string_of_int port)))
+	certs
       in
       List.iter (fun c -> print_endline (X509Util.rate_chain c); X509Util.print_chain c; print_newline ())
 	(X509Util.build_certchain parsed_certs ca_store)
 
-    | ScanSuites ->
+    | ScanSuites, [host_t] ->
       let rec next_step () =
 	let updated_prefs = { prefs with acceptable_ciphersuites = !suites } in
-	let ctx, _, _, res = Lwt_unix.run (probe_server updated_prefs !host !port) in
+	let ctx, _, _, res = Lwt_unix.run (host_t >>= probe_server updated_prefs) in
 	match res, ctx.future.proposed_ciphersuites with
 	| NothingSoFar, [s] ->
 	  print_endline (string_of_ciphersuite s);
@@ -322,10 +306,10 @@ let _ =
 	| Fatal msg, _ -> if !verbose then prerr_endline msg
       in
       next_step ()
-    | ScanCompressions ->
+    | ScanCompressions, [host_t] ->
       let rec next_step () =
 	let updated_prefs = { prefs with acceptable_compressions = !compressions } in
-	let ctx, _, _, res = Lwt_unix.run (probe_server updated_prefs !host !port) in
+	let ctx, _, _, res = Lwt_unix.run (host_t >>= probe_server updated_prefs) in
 	match res, ctx.future.proposed_compressions with
 	| NothingSoFar, [c] ->
 	  print_endline (string_of_compression_method c);
@@ -334,7 +318,7 @@ let _ =
 	| Fatal msg, _ -> if !verbose then prerr_endline msg
       in
       next_step ()
-    | ScanVersions ->
+    | ScanVersions, [host_t] ->
       let versions = [V_SSLv3; V_TLSv1; V_TLSv1_1; V_TLSv1_2; V_Unknown 0x3ff] in
       let rec mk_versions ext int = match ext, int with
 	| [], _ -> []
@@ -347,7 +331,7 @@ let _ =
 	| [] -> ()
 	| (e, i)::r ->
 	  let updated_prefs = { prefs with acceptable_versions = (e, i) } in
-	  let ctx, _, _, res = Lwt_unix.run (probe_server updated_prefs !host !port) in
+	  let ctx, _, _, res = Lwt_unix.run (host_t >>= probe_server updated_prefs) in
 	  match res, ctx.future.proposed_versions with
 	  | NothingSoFar, (v1, v2) ->
 	    if v1 <> v2 then begin
@@ -359,6 +343,46 @@ let _ =
 	    end
 	  | Fatal msg, _ -> if !verbose then prerr_endline msg
       in next_step all_cases
+
+    | (ProbeAndPrint|CheckCerts|ExtractCerts|ScanSuites|ScanCompressions|ScanVersions), _ ->
+      usage "probe_server" options (Some ("Some commands only work with a unique host."))
+
+
+    | ProbeToDump, hosts_t ->
+      let output_result = match !output_file with
+        | "" -> (fun buf -> print_endline (hexdump (POutput.contents buf)))
+        | fn ->
+          let f =
+            try open_out_gen [Open_wronly; Open_creat; Open_excl] 0o644 fn
+            with _ -> failwith ("Unable to create file: " ^ fn)
+          in
+          (fun buf -> POutput.output_buffer f buf; close_out f)
+      in
+      let probe_one_host host_t =
+        host_t >>= fun ((ip, hostname, port) as server_params) ->
+        (* Handle SSLv2 answers? *)
+        probe_server prefs server_params >>= fun (_, msgs, remaining_stuff, _) ->
+        let content_to_dump = POutput.create () in
+        let ip_str = Unix.string_of_inet_addr ip in
+        let name_str = if ip_str = hostname then "" else hostname in
+        List.iter (dump_tls_record content_to_dump) (List.rev msgs);
+        POutput.add_string content_to_dump remaining_stuff;
+        let open AnswerDump in
+        return {
+          ip_type = 4;
+          ip_addr = AD_IPv4 (PTypes.ipv4_of_string ip_str);
+          port = port;
+          name = name_str;
+          campaign = 0xff;  (* TODO *)
+          msg_type = 0;
+          timestamp = Int64.of_float (Unix.time ());
+          content = POutput.contents content_to_dump;
+        }
+      in
+      let answer_dumps = Lwt_unix.run (Lwt_list.map_s probe_one_host hosts_t) in
+      let final_output = POutput.create () in
+      List.iter (AnswerDump.dump_answer_dump_v2 final_output) answer_dumps;
+      output_result final_output
   with
     | End_of_file -> ()
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1

@@ -399,18 +399,22 @@ type server_socket = {
 }
 
 
-let init_client_connection ?options host port =
-  let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-  Lwt_unix.gethostbyname host >>= fun host_entry ->
-  let inet_addr = host_entry.Unix.h_addr_list.(0) in
-  let addr = Unix.ADDR_INET (inet_addr, port) in
+let resolve hostname port =
+  Lwt_unix.gethostbyname hostname >>= fun host_entry ->
+  let ip = host_entry.Unix.h_addr_list.(0) in
+  return (ip, hostname, port)
+
+
+let init_client_connection ?options (ip, hostname, port) =
+  let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0
+  and addr = Unix.ADDR_INET (ip, port) in
   let t = Lwt_unix.connect s addr in
   let timed_t = match options with
     | None | Some { timeout = None } -> t
     | Some { timeout = Some timeout_val } ->
       pick [t; Lwt_unix.sleep timeout_val >>= fun () -> fail ConnectionTimeout]
   in
-  let peer_name = host^":"^(string_of_int port) in
+  let peer_name = hostname^":"^(string_of_int port) in
   timed_t >>= fun () -> return {
     socket = s;
     options = pop_opt default_options options;
