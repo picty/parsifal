@@ -10,7 +10,7 @@ open Base64
 type action =
   | Text | PrettyPrint | JSON | Dump | BinDump
   | Subject | Issuer | Serial | Modulus
-  | CheckSelfSigned | Get | HTTPNames
+  | CheckSelfSigned | Get of string | HTTPNames
 let action = ref Text
 let set_action value = TrivialFun (fun () -> action := value)
 
@@ -21,11 +21,9 @@ let set_print_names value = TrivialFun (fun () -> print_names := value)
 let verbose = ref false
 let keep_going = ref false
 let base64 = ref true
-let path_str = ref ""
 
 let do_get_action path =
-  action := Get;
-  path_str := path;
+  action := Get path;
   ActionDone
 
 let options = [
@@ -46,7 +44,7 @@ let options = [
   mkopt (Some 'm') "modulus" (set_action Modulus) "prints the RSA modulus";
   mkopt (Some 'N') "http-names" (set_action HTTPNames) "prints the CN/IP/DNS embedded";
   mkopt None "check-selfsigned" (set_action CheckSelfSigned) "checks the signature of a self signed";
-  mkopt (Some 'g') "get" (StringFun do_get_action) "Walks through the certificate using a get string";
+  mkopt (Some 'g') "get" (StringFun do_get_action) "walks through the certificate using a get string";
 
   mkopt (Some 'n') "numeric" (Clear resolve_oids) "show numerical fields (do not resolve OIds)";
   mkopt None "resolve-oids" (Set resolve_oids) "show OID names";
@@ -143,10 +141,12 @@ let handle_input input =
     | JSON -> Str.split (Str.regexp_string "\n")
       (Json.json_of_value ~options:{ default_output_options with oo_verbose = !verbose }
 	 (value_of_certificate certificate))
-    | Get ->
-      match get (value_of_certificate certificate) !path_str with
-      | Left _ -> []
-      | Right s -> [s]
+    | Get path ->
+      begin
+        match get (value_of_certificate certificate) path with
+        | Left _ -> []
+        | Right s -> [s]
+      end
   in
   match !print_names with
     | Default ->
