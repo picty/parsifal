@@ -305,8 +305,8 @@ let rate_chain c = match c, n_transvalid c with
 let rate_and_sort_chains cs =
   let compare_chains (g1, c1) (g2, c2) =
     compare
-      (g1, List.length c1.chain, not (is_root_included c1.chain))
-      (g2, List.length c2.chain, not (is_root_included c2.chain))
+      (g1, List.length c1.chain, List.length c1.unused_certs, not (is_root_included c1.chain))
+      (g2, List.length c2.chain, List.length c2.unused_certs, not (is_root_included c2.chain))
   in
   List.sort compare_chains (List.map (fun c -> rate_chain c, c) cs)
 
