@@ -4,6 +4,7 @@ open Pkcs1
 open X509Basics
 open X509Extensions
 open X509
+open X509Util
 open Getopt
 open Base64
 
@@ -11,6 +12,7 @@ type action =
   | Text | PrettyPrint | JSON | Dump | BinDump
   | Subject | Issuer | Serial | Modulus
   | CheckSelfSigned | Get of string | HTTPNames
+  | CheckLink
 let action = ref Text
 let set_action value = TrivialFun (fun () -> action := value)
 
@@ -45,6 +47,7 @@ let options = [
   mkopt (Some 'N') "http-names" (set_action HTTPNames) "prints the CN/IP/DNS embedded";
   mkopt None "check-selfsigned" (set_action CheckSelfSigned) "checks the signature of a self signed";
   mkopt (Some 'g') "get" (StringFun do_get_action) "walks through the certificate using a get string";
+  mkopt (Some 'L') "link" (set_action CheckLink) "checks the link between an authority and potential subjets";
 
   mkopt (Some 'n') "numeric" (Clear resolve_oids) "show numerical fields (do not resolve OIds)";
   mkopt None "resolve-oids" (Set resolve_oids) "show OID names";
@@ -147,6 +150,8 @@ let handle_input input =
         | Left _ -> []
         | Right s -> [s]
       end
+    | CheckLink ->
+      failwith "Internal error: those actions should not be handled here."
   in
   match !print_names with
     | Default ->
@@ -171,18 +176,36 @@ let rec iter_on_names = function
     iter_on_names r
 
 
+let parse_sc trusted c =
+  if !base64
+  then parse_base64_container AnyHeader "base64_container" (parse_smart_cert trusted) c
+  else parse_smart_cert trusted c
 
 let _ =
   let args = parse_args ~progname:"x509show" options Sys.argv in
   try
-    match args with
-    | [] ->
+    match !action, args with
+    | CheckLink, issuer_fn::(_::_ as subject_fns) ->
+      let issuer = parse_sc false (string_input_of_filename issuer_fn) in
+      let handle_one_subject subject_fn =
+        let subject = parse_sc false (string_input_of_filename subject_fn) in
+        let res = match check_link (cert_of_sc issuer) (cert_of_sc subject) with
+	  | [] -> "OK"
+	  | l -> String.concat "\n  " (List.map string_of_validation_error l)
+        in print_endline (subject_fn ^ ": " ^ res)
+      in
+      List.iter handle_one_subject subject_fns
+
+    | CheckLink, _ ->
+      usage "x509show" options (Some "Please provide at least two certificates with --link")
+
+    | _, [] ->
       if !print_names = Default then print_names := DoNotPrintName;
       handle_input (string_input_of_stdin ())
-    | [_] ->
+    | _, [_] ->
       if !print_names = Default then print_names := DoNotPrintName;
       iter_on_names args
-    | _ ->
+    | _, _ ->
       if !print_names = Default then print_names := PrintName;
       iter_on_names args
   with
