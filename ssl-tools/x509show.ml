@@ -12,7 +12,7 @@ type action =
   | Text | PrettyPrint | JSON | Dump | BinDump
   | Subject | Issuer | Serial | Modulus
   | CheckSelfSigned | Get of string | HTTPNames
-  | CheckLink
+  | CheckLink | RFCCheckChain | BuildChains
 let action = ref Text
 let set_action value = TrivialFun (fun () -> action := value)
 
@@ -26,6 +26,12 @@ let base64 = ref true
 
 let do_get_action path =
   action := Get path;
+  ActionDone
+
+let cas = ref []
+let intermediate_cas = ref []
+let add_to_list l elt =
+  l := elt::!l;
   ActionDone
 
 let options = [
@@ -48,9 +54,13 @@ let options = [
   mkopt None "check-selfsigned" (set_action CheckSelfSigned) "checks the signature of a self signed";
   mkopt (Some 'g') "get" (StringFun do_get_action) "walks through the certificate using a get string";
   mkopt (Some 'L') "link" (set_action CheckLink) "checks the link between an authority and potential subjets";
+  mkopt None "rfc-check" (set_action RFCCheckChain) "checks whether a given list of certificates are a valid RFC chain";
+  mkopt (Some 'C') "build-chains" (set_action BuildChains) "checks whether a given list of certificates are a valid RFC chain";
 
   mkopt (Some 'n') "numeric" (Clear resolve_oids) "show numerical fields (do not resolve OIds)";
   mkopt None "resolve-oids" (Set resolve_oids) "show OID names";
+  mkopt None "ca" (StringFun (add_to_list cas)) "select a trusted CA file";
+  mkopt None "intermediate-ca" (StringFun (add_to_list intermediate_cas)) "select an intermediate CA file";
 
   mkopt None "print-names" (set_print_names PrintName) "always prefix the answer with the filename";
   mkopt None "dont-print-names" (set_print_names DoNotPrintName) "never prefix the answer with the filename";
@@ -107,13 +117,29 @@ let pretty_print_certificate cert =
     (pretty_print_extensions tbs.extensions)
 
 
-let handle_input input =
-  let parse_fun =
-    if !base64
-    then parse_base64_container AnyHeader "base64_container" parse_certificate
-    else parse_certificate
+(* TODO: Move this into X509Util? *)
+let parse_sc trusted c =
+  if !base64
+  then parse_base64_container AnyHeader "base64_container" (parse_smart_cert trusted) c
+  else parse_smart_cert trusted c
+
+let parse_and_number i filename =
+  let sc = parse_sc false (string_input_of_filename filename) in
+  sc.pos_in_hs_msg <- Some i;
+  sc
+
+
+let load_cas store trusted filenames =
+  let cas = List.map
+    (fun ca_fn -> parse_sc trusted (string_input_of_filename ca_fn))
+    filenames
   in
-  let certificate = parse_fun input in
+  List.iter (add_to_store store) cas
+
+
+let handle_input input =
+  let sc = parse_sc false input in
+  let certificate = cert_of_sc sc in
   let display = match !action with
     | Serial -> [hexdump certificate.tbsCertificate.serialNumber]
     | CheckSelfSigned ->
@@ -150,7 +176,7 @@ let handle_input input =
         | Left _ -> []
         | Right s -> [s]
       end
-    | CheckLink ->
+    | CheckLink | RFCCheckChain | BuildChains ->
       failwith "Internal error: those actions should not be handled here."
   in
   match !print_names with
@@ -176,11 +202,6 @@ let rec iter_on_names = function
     iter_on_names r
 
 
-let parse_sc trusted c =
-  if !base64
-  then parse_base64_container AnyHeader "base64_container" (parse_smart_cert trusted) c
-  else parse_smart_cert trusted c
-
 let _ =
   let args = parse_args ~progname:"x509show" options Sys.argv in
   try
@@ -198,6 +219,22 @@ let _ =
 
     | CheckLink, _ ->
       usage "x509show" options (Some "Please provide at least two certificates with --link")
+
+    | RFCCheckChain, _ ->
+      let ca_store = X509Util.mk_cert_store 100 in
+      load_cas ca_store true (List.rev !cas);
+      let parsed_certs = List.mapi parse_and_number args in
+      print_chain (check_rfc_certchain parsed_certs ca_store)
+
+    | BuildChains, _ ->
+      let ca_store = X509Util.mk_cert_store 100 in
+      load_cas ca_store true (List.rev !cas);
+      load_cas ca_store false (List.rev !intermediate_cas);
+      let parsed_certs = List.mapi parse_and_number args in
+      let chains = build_certchain parsed_certs ca_store in
+      List.iter
+        (fun (g, c) -> print_endline g; print_chain c; print_newline ())
+        (rate_and_sort_chains chains)
 
     | _, [] ->
       if !print_names = Default then print_names := DoNotPrintName;
