@@ -438,33 +438,14 @@ let _ =
           (fun buf -> POutput.output_buffer f buf; close_out f)
       in
 
-      let mk_lock, lock_t, unlock_t =
+      let lock_t, unlock_t =
         if !max_inflight_requests > 0
         then begin
-          let mutex = Lwt_mutex.create ()
-          and inflight_requests = ref 0
-          and cond = Lwt_condition.create () in
-          let lock_t () =
-            let rec lock_aux_t () =
-              if !inflight_requests < !max_inflight_requests
-              then begin
-                incr inflight_requests;
-                Lwt_mutex.unlock mutex;
-                return ()
-              end else begin
-                Lwt_condition.wait ~mutex:mutex cond >>= lock_aux_t
-              end
-            in
-            Lwt_mutex.lock mutex >>= lock_aux_t
-          and unlock_t () =
-            Lwt_mutex.lock mutex >>= fun () ->
-            decr inflight_requests;
-            Lwt_mutex.unlock mutex;
-            Lwt_condition.signal cond ();
-            return ()
-          in
-          (return (), lock_t, unlock_t)
-        end else (return (), return, return)
+          let sem = Lwt_semaphore.create !max_inflight_requests in
+          let lock_t () = Lwt_semaphore.wait sem
+          and unlock_t () = Lwt_semaphore.post sem; return () in
+          (lock_t, unlock_t)
+        end else (return, return)
       in
 
       let probe_one_host host_t =
@@ -490,7 +471,7 @@ let _ =
           content = POutput.contents content_to_dump;
         }
       in
-      let answer_dumps = Lwt_unix.run (mk_lock >>= fun () -> Lwt_list.map_p probe_one_host hosts_t) in
+      let answer_dumps = Lwt_unix.run (Lwt_list.map_p probe_one_host hosts_t) in
       let final_output = POutput.create () in
       List.iter (AnswerDump.dump_answer_dump_v2 final_output) answer_dumps;
       output_result final_output

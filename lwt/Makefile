@@ -3,7 +3,7 @@ TARGETS =
 MLLIBS = parsifal_lwt
 LIBNAME = parsifal_lwt
 
-parsifal_lwt_SRCS := lwtUtil.ml
+parsifal_lwt_SRCS := lwt_semaphore.ml lwtUtil.ml
 
 # comment this line if not using camlp4
 USE_CAMLP4 = yes
