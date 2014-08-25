@@ -227,12 +227,12 @@ let _ =
   ()
 
 
-let get_extn_by_id id c =
-  match c.tbsCertificate.extensions with
+let get_extn_by_id id extensions =
+  match extensions with
   | None -> None
   | Some es ->
     match List.filter (fun e -> e.extnID = id) es with
-    | [e] -> Some e.extnValue
+    | [e] -> Some (e.extnValue, e.critical)
     | [] -> None
     | _::_::_ ->
       failwith (Printf.sprintf "get_extn_by_id: Duplicate extension (%s)" (string_of_oid id))
@@ -246,8 +246,8 @@ let extract_dns_and_ips c =
   in
 
   let sans =
-    match get_extn_by_id subjectAltName_oid c with
-    | Some (X509Extensions.SubjectAltName gns) ->
+    match get_extn_by_id subjectAltName_oid c.tbsCertificate.extensions with
+    | Some (X509Extensions.SubjectAltName gns, _) ->
       let rec extract_dns_or_ip = function
 	| [] -> []
 	| (X509Extensions.DNSName s)::r ->

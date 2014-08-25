@@ -4,6 +4,82 @@ open X509
 open Pkcs1
 
 
+(***************************)
+(* X.509 extension helpers *)
+(***************************)
+
+let get_basicConstraints extensions =
+  match get_extn_by_id basicConstraints_oid extensions with
+    | None -> None
+    | Some (BasicConstraints bc, critical) -> Some (bc, critical)
+    | _ -> failwith "Parsing error"
+
+let get_authorityKeyIdentifier extensions =
+  match get_extn_by_id authorityKeyIdentifier_oid extensions with
+    | None -> None
+    | Some (AuthorityKeyIdentifier aki, critical) -> Some (aki, critical)
+    | _ -> failwith "Parsing error"
+
+let get_subjectKeyIdentifier extensions =
+  match get_extn_by_id subjectKeyIdentifier_oid extensions with
+    | None -> None
+    | Some (SubjectKeyIdentifier ski, critical) -> Some (ski, critical)
+    | _ -> failwith "Parsing error"
+
+let get_keyUsage extensions =
+  match get_extn_by_id keyUsage_oid extensions with
+    | None -> None
+    | Some (KeyUsage ku, critical) -> Some (ku, critical)
+    | _ -> failwith "Parsing error"
+
+let get_extendedKeyUsage extensions =
+  match get_extn_by_id extendedKeyUsage_oid extensions with
+    | None -> None
+    | Some (ExtendedKeyUsage eku, critical) -> Some (eku, critical)
+    | _ -> failwith "Parsing error"
+
+let get_subjectAltName extensions =
+  match get_extn_by_id subjectAltName_oid extensions with
+    | None -> None
+    | Some (SubjectAltName san, critical) -> Some (san, critical)
+    | _ -> failwith "Parsing error"
+
+let get_authorityInfoAccess extensions =
+  match get_extn_by_id authorityInfoAccess_oid extensions with
+    | None -> None
+    | Some (AuthorityInfoAccess aia, critical) -> Some (aia, critical)
+    | _ -> failwith "Parsing error"
+
+let get_cRLDistributionPoints_ext oid extensions =
+  match get_extn_by_id oid extensions with
+    | None -> None
+    | Some (CRLDistributionPoints crl, critical) -> Some (crl, critical)
+    | _ -> failwith "Parsing error"
+let get_cRLDistributionPoints extensions = get_cRLDistributionPoints_ext crlDistributionPoints_oid extensions
+let get_freshestCRL extensions = get_cRLDistributionPoints_ext freshestCRL_oid extensions
+
+let get_certificatePolicies extensions =
+  match get_extn_by_id certificatePolicies_oid extensions with
+    | None -> None
+    | Some (CertificatePolicies pol, critical) -> Some (pol, critical)
+    | _ -> failwith "Parsing error"
+
+
+let cmpSANType san1 san2 =
+  match (san1, san2) with
+  | (OtherName _ ,OtherName _)
+  | (Rfc822Name _ ,Rfc822Name _)
+  | (DNSName _ ,DNSName _)
+  | (X400Address _ ,X400Address _)
+  | (DirectoryName _ ,DirectoryName _)
+  | (EDIPartyName _ ,EDIPartyName _)
+  | (UniformResourceIdentifier _ ,UniformResourceIdentifier _)
+  | (IPAddress _ ,IPAddress _)
+  | (RegisteredID _ ,RegisteredID _) -> true
+  | _ -> false
+
+
+
 (*************************************)
 (* smart_certificate                 *)
 (* Wrapper around X.509 certificates *)
@@ -194,26 +270,26 @@ let check_dns issuer subject =
   else None
 
 let check_key_identifier issuer subject =
-  match get_extn_by_id authorityKeyIdentifier_oid subject, get_extn_by_id subjectKeyIdentifier_oid issuer with
-  | Some (AuthorityKeyIdentifier {keyIdentifier = Some aki}), Some (SubjectKeyIdentifier ski)
+  match get_authorityKeyIdentifier subject.tbsCertificate.extensions,
+    get_subjectKeyIdentifier issuer.tbsCertificate.extensions with
+  | Some ({keyIdentifier = Some aki}, _), Some (ski, _)
     -> if ski <> aki then Some KIMismatch else None
-  | Some (AuthorityKeyIdentifier {keyIdentifier = Some _}), None
+  | Some ({keyIdentifier = Some _}, _), None
     -> Some SKINotFound
   | _ -> None
 
 let check_aki_serial issuer subject =
-  match get_extn_by_id authorityKeyIdentifier_oid subject with
-  | Some (AuthorityKeyIdentifier {authorityCertIssuer = Some _;
-				  authorityCertSerialNumber = Some sn}) ->
+  match get_authorityKeyIdentifier subject.tbsCertificate.extensions with
+  | Some ({authorityCertIssuer = Some _; authorityCertSerialNumber = Some sn}, _) ->
     if sn <> issuer.tbsCertificate.serialNumber
     then Some SerialNumberMismatch
     else None
   | _ -> None
 
 let check_issuer_ca issuer _ =
-  match issuer.tbsCertificate.version, get_extn_by_id basicConstraints_oid issuer with
+  match issuer.tbsCertificate.version, get_basicConstraints issuer.tbsCertificate.extensions with
   | None, _ -> None (* TODO: reject v1 certs? *)
-  | _, Some (BasicConstraints {cA = Some true}) -> None
+  | _, Some ({cA = Some true}, _) -> None
   | _, _ -> Some NotaCA
 
 let check_signature issuer subject =
