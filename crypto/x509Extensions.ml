@@ -5,9 +5,12 @@ open Asn1PTypes
 open X509Basics
 
 
-(****************)
-(* General Name *)
-(****************)
+(*************************************)
+(* General Name / AltName extensions *)
+(*************************************)
+
+let subjectAltName_oid = [85;29;17]
+let issuerAltName_oid = [85;29;18]
 
 (* TODO? *)
 (* OtherName ::= SEQUENCE { *)
@@ -45,6 +48,9 @@ asn1_alias generalNames = seq_of generalName
 (* Authority Key Identifier *)
 (****************************)
 
+let authorityKeyIdentifier_deprecated_oid = [85;29;1]
+let authorityKeyIdentifier_oid = [85;29;35]
+
 asn1_struct authorityKeyIdentifier = {
   optional keyIdentifier : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of binstring;
   optional authorityCertIssuer : asn1 [(C_ContextSpecific, true, T_Unknown 1)] of (list of generalName);
@@ -58,6 +64,8 @@ asn1_struct authorityKeyIdentifier = {
 (*************)
 (* Key Usage *)
 (*************)
+
+let keyUsage_oid = [85;29;15]
 
 let keyUsage_values = [|
   "digitalSignature";
@@ -77,6 +85,8 @@ let keyUsage_values = [|
 (* Private Key Usage Period *)
 (****************************)
 
+let privateKeyUsagePeriod_oid = [85;29;16]
+
 (* TODO: Add structural check: at least one field should be present *)
 asn1_struct privateKeyUsagePeriod = {
   optional pkup_notBefore : asn1 [(C_ContextSpecific, false, T_Unknown 0)] of der_generalized_time_content;
@@ -89,6 +99,8 @@ asn1_struct privateKeyUsagePeriod = {
 (* Basic Constraints *)
 (*********************)
 
+let basicConstraints_oid = [85;29;19]
+
 asn1_struct basicConstraints = {
   optional cA : der_boolean;
   optional pathLenConstraint : der_smallint
@@ -99,6 +111,8 @@ asn1_struct basicConstraints = {
 (*******************)
 (* NameConstraints *)
 (*******************)
+
+let nameConstraints_oid = [85;29;30]
 
 asn1_struct generalSubtree = {
   gst_base : generalName;
@@ -118,6 +132,9 @@ asn1_struct nameConstraints = {
 (***************************)
 (* CRL Distribution Points *)
 (***************************)
+
+let crlDistributionPoints_oid = [85;29;31]
+let freshestCRL_oid = [85;29;46]
 
 (* TODO: Make the exhaustive meaningful *)
 asn1_union distributionPointName [enrich; exhaustive] (UnparsedDistributionPointName) =
@@ -150,6 +167,8 @@ asn1_alias crlDistributionPoints = seq_of distributionPoint (* TODO: 1 .. MAX *)
 (************************)
 (* Certificate Policies *)
 (************************)
+
+let certificatePolicies_oid = [85;29;32]
 
 (* TODO: Make the exhaustive meaningful *)
 asn1_union displayText [enrich; exhaustive] (UnparsedDisplayText) =
@@ -190,6 +209,7 @@ asn1_alias certificatePolicies = seq_of policyInformation (* 1..MAX *)
 (* Extended Key Usage *)
 (**********************)
 
+let extendedKeyUsage_oid = [85;29;37]
 asn1_alias extendedKeyUsage = seq_of der_oid
 
 
@@ -197,6 +217,8 @@ asn1_alias extendedKeyUsage = seq_of der_oid
 (********************************)
 (* Authority Information Access *)
 (********************************)
+
+let authorityInfoAccess_oid = [43;6;1;5;5;7;1;1]
 
 asn1_struct accessDescription = {
   accessMethod : der_oid;
@@ -208,6 +230,8 @@ asn1_alias authorityInfoAccess = seq_of accessDescription (* TODO: 1 .. MAX *)
 (************)
 (* Logotype *)
 (************)
+
+let logotype_oid = [43;6;1;5;5;7;1;12]
 
 asn1_struct logotypeReference = {
   refStructHash : asn1 [h_sequence] of list of hashAlgAndValue; (* [1..MAX] *)
@@ -283,6 +307,8 @@ asn1_struct logotype = {
 (* NS Cert Type *)
 (****************)
 
+let nsCertType_oid = [96;840;1;113730;1;1]
+
 let nsCertType_values = [|
   "SSL Client";
   "SSL Server";
@@ -297,6 +323,8 @@ let nsCertType_values = [|
 (***********************)
 (* S/MIME Capabilities *)
 (***********************)
+
+let sMIMECapabilities_oid = [42;840;113549;1;9;15]
 
 type capabilityType =
   | CT_Int
@@ -319,6 +347,26 @@ asn1_struct sMIMECapability = {
 }
 asn1_alias sMIMECapabilities = seq_of sMIMECapability
 
+
+
+(****************************)
+(* Remaining extension OIDs *)
+(****************************)
+
+let subjectKeyIdentifier_oid = [85;29;14]
+let nsBaseURL_oid = [96;840;1;113730;1;2]
+let nsRevocationURL_oid = [96;840;1;113730;1;3]
+let nsCARevocationURL_oid = [96;840;1;113730;1;4]
+let nsRenewalURL_oid = [96;840;1;113730;1;7]
+let nsCAPolicyURL_oid = [96;840;1;113730;1;8]
+let nsSSLServerName_oid = [96;840;1;113730;1;12]
+let nsComment_oid = [96;840;1;113730;1;13]
+
+
+
+(************************)
+(* Extension structures *)
+(************************)
 
 union extnValue [enrich] (UnparsedExtension of binstring) =
   | "authorityKeyIdentifier" -> AuthorityKeyIdentifier of authorityKeyIdentifier

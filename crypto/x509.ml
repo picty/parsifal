@@ -163,30 +163,30 @@ let capability_types = [
 ]
 
 let extension_types = [
-  [85;29;1], "authorityKeyIdentifier"; (* Deprecated *)
-  [85;29;14], "subjectKeyIdentifier";
-  [85;29;15], "keyUsage";
-  [85;29;16], "privateKeyUsagePeriod";
-  [85;29;17], "subjectAltName";
-  [85;29;18], "issuerAltName";
-  [85;29;19], "basicConstraints";
-  [85;29;30], "nameConstraints";
-  [85;29;31], "crlDistributionPoints";
-  [85;29;32], "certificatePolicies";
-  [85;29;35], "authorityKeyIdentifier";
-  [85;29;37], "extendedKeyUsage";
-  [85;29;46], "freshestCRL";
-  [43;6;1;5;5;7;1;1], "authorityInfoAccess";
-  [43;6;1;5;5;7;1;12], "logotype";
-  [96;840;1;113730;1;1], "nsCertType";
-  [96;840;1;113730;1;2], "nsBaseURL";
-  [96;840;1;113730;1;3], "nsRevocationURL";
-  [96;840;1;113730;1;4], "nsCARevocationURL";
-  [96;840;1;113730;1;7], "nsRenewalURL";
-  [96;840;1;113730;1;8], "nsCAPolicyURL";
-  [96;840;1;113730;1;12], "nsSSLServerName";
-  [96;840;1;113730;1;13], "nsComment";
-  [42;840;113549;1;9;15], "sMIMECapabilities";
+  authorityKeyIdentifier_deprecated_oid, "authorityKeyIdentifier"; (* Deprecated *)
+  subjectKeyIdentifier_oid, "subjectKeyIdentifier";
+  keyUsage_oid, "keyUsage";
+  privateKeyUsagePeriod_oid, "privateKeyUsagePeriod";
+  subjectAltName_oid, "subjectAltName";
+  issuerAltName_oid, "issuerAltName";
+  basicConstraints_oid, "basicConstraints";
+  nameConstraints_oid, "nameConstraints";
+  crlDistributionPoints_oid, "crlDistributionPoints";
+  certificatePolicies_oid, "certificatePolicies";
+  authorityKeyIdentifier_oid, "authorityKeyIdentifier";
+  extendedKeyUsage_oid, "extendedKeyUsage";
+  freshestCRL_oid, "freshestCRL";
+  authorityInfoAccess_oid, "authorityInfoAccess";
+  logotype_oid, "logotype";
+  nsCertType_oid, "nsCertType";
+  nsBaseURL_oid, "nsBaseURL";
+  nsRevocationURL_oid, "nsRevocationURL";
+  nsCARevocationURL_oid, "nsCARevocationURL";
+  nsRenewalURL_oid, "nsRenewalURL";
+  nsCAPolicyURL_oid, "nsCAPolicyURL";
+  nsSSLServerName_oid, "nsSSLServerName";
+  nsComment_oid, "nsComment";
+  sMIMECapabilities_oid, "sMIMECapabilities";
 ]
 
 
@@ -239,15 +239,14 @@ let get_extn_by_id id c =
 
 
 let extract_dns_and_ips c =
-  let san_oid = Hashtbl.find Asn1PTypes.rev_oid_directory "subjectAltName"
-  and cn_oid = Hashtbl.find Asn1PTypes.rev_oid_directory "commonName" in
+  let cn_oid = Hashtbl.find Asn1PTypes.rev_oid_directory "commonName" in
 
   let cns = List.map (fun atv -> "CN", string_of_atv_value atv.attributeValue)
     (List.filter (fun atv -> atv.attributeType = cn_oid) (List.flatten c.tbsCertificate.subject))
   in
 
   let sans =
-    match get_extn_by_id san_oid c with
+    match get_extn_by_id subjectAltName_oid c with
     | Some (X509Extensions.SubjectAltName gns) ->
       let rec extract_dns_or_ip = function
 	| [] -> []

@@ -194,7 +194,7 @@ let check_dns issuer subject =
   else None
 
 let check_key_identifier issuer subject =
-  match get_extn_by_id [85;29;35] subject, get_extn_by_id [85;29;14] issuer with
+  match get_extn_by_id authorityKeyIdentifier_oid subject, get_extn_by_id subjectKeyIdentifier_oid issuer with
   | Some (AuthorityKeyIdentifier {keyIdentifier = Some aki}), Some (SubjectKeyIdentifier ski)
     -> if ski <> aki then Some KIMismatch else None
   | Some (AuthorityKeyIdentifier {keyIdentifier = Some _}), None
@@ -202,7 +202,7 @@ let check_key_identifier issuer subject =
   | _ -> None
 
 let check_aki_serial issuer subject =
-  match get_extn_by_id [85;29;35] subject with
+  match get_extn_by_id authorityKeyIdentifier_oid subject with
   | Some (AuthorityKeyIdentifier {authorityCertIssuer = Some _;
 				  authorityCertSerialNumber = Some sn}) ->
     if sn <> issuer.tbsCertificate.serialNumber
@@ -211,7 +211,7 @@ let check_aki_serial issuer subject =
   | _ -> None
 
 let check_issuer_ca issuer _ =
-  match issuer.tbsCertificate.version, get_extn_by_id [85;29;19] issuer with
+  match issuer.tbsCertificate.version, get_extn_by_id basicConstraints_oid issuer with
   | None, _ -> None (* TODO: reject v1 certs? *)
   | _, Some (BasicConstraints {cA = Some true}) -> None
   | _, _ -> Some NotaCA
