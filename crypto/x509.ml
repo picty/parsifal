@@ -175,6 +175,7 @@ let extension_types = [
   [85;29;32], "certificatePolicies";
   [85;29;35], "authorityKeyIdentifier";
   [85;29;37], "extendedKeyUsage";
+  [85;29;46], "freshestCRL";
   [43;6;1;5;5;7;1;1], "authorityInfoAccess";
   [43;6;1;5;5;7;1;12], "logotype";
   [96;840;1;113730;1;1], "nsCertType";

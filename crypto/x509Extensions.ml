@@ -343,6 +343,7 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "nsSSLServerName" -> NSSSLServerName of der_ia5string(NoConstraint)
   | "nsComment" -> NSComment of der_ia5string(NoConstraint)
   | "sMIMECapabilities" -> SMIMECapabilities of sMIMECapabilities
+  | "freshestCRL" -> CRLDistributionPoints of crlDistributionPoints
   | "PARSING_FAILURE" -> ExtensionParsingFailure of binstring
 
 
