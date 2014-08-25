@@ -190,8 +190,11 @@ let cmd_of_args = function
 
 
 let get_sni_name ip hostname =
-  let ip_str = Unix.string_of_inet_addr ip in
-  if ip_str = hostname then None else Some hostname
+  match ip with
+  | Some ip_value ->
+    let ip_str = Unix.string_of_inet_addr ip_value in
+    if ip_str = hostname then None else Some hostname
+  | None -> Some hostname
 
 
 
@@ -259,6 +262,8 @@ let probe_server prefs ((ip, server_name, port) as server_params) =
       return (ctx, [], "", Fatal "UnixError")
     | ConnectionTimeout ->
       return (ctx, [], "", Fatal "ConnectionTimeout")
+    | Not_found ->
+      return (ctx, [], "", Fatal "NotFound")
     | e -> fail e
   in
   try_bind probe_t return error_t
@@ -301,13 +306,13 @@ let read_hosts_from_file hosts_file port =
     | None -> List.rev accu
     | Some l ->
       let new_accu = match List.map String.trim (string_split ':' l) with
-        | ["IP"; ip] -> (return (Unix.inet_addr_of_string ip, ip, port))::accu
+        | ["IP"; ip] -> (return (Some (Unix.inet_addr_of_string ip), ip, port))::accu
         | ["DNS"; server_name] -> (resolve server_name port)::accu
         | [] -> accu
         | s::_ ->
-          if String.length s > 0 && s.[0] = '#'
-          then accu
-          else failwith ("Invalid line in hosts file : " ^ (quote_string l) ^ ".")
+          if String.length s = 0 || s.[0] <> '#'
+          then prerr_endline ("Invalid line in hosts file : " ^ (quote_string l) ^ ".");
+	  accu
       in read_aux new_accu
   in
   read_aux []
@@ -450,12 +455,14 @@ let _ =
 
       let probe_one_host host_t =
         lock_t () >>= fun () ->
-        host_t >>= fun ((ip, hostname, port) as server_params) ->
+        host_t >>= fun ((ip_opt, hostname, port) as server_params) ->
         (* Handle SSLv2 answers? *)
         probe_server prefs server_params >>= fun (_, msgs, remaining_stuff, _) ->
         let content_to_dump = POutput.create () in
-        let ip_str = Unix.string_of_inet_addr ip
-        and name_str = pop_opt "" (get_sni_name ip hostname) in
+        let ip_str = match ip_opt with
+	  | Some ip -> Unix.string_of_inet_addr ip
+	  | None -> "0.0.0.0"
+	and name_str = pop_opt "" (get_sni_name ip_opt hostname) in
         List.iter (dump_tls_record content_to_dump) (List.rev msgs);
         POutput.add_string content_to_dump remaining_stuff;
         let open AnswerDump in

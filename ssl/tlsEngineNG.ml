@@ -420,27 +420,36 @@ type server_socket = {
 
 
 let resolve hostname port =
-  Lwt_unix.gethostbyname hostname >>= fun host_entry ->
-  let ip = host_entry.Unix.h_addr_list.(0) in
-  return (ip, hostname, port)
+  let exn_catcher = function
+    | Not_found -> return (None, hostname, port)
+    | e -> fail e
+  and normal_ending res = return (Some res, hostname, port)
+  and main_t () =
+    Lwt_unix.gethostbyname hostname >>= fun host_entry ->
+    let ip = host_entry.Unix.h_addr_list.(0) in
+    return ip
+  in try_bind main_t normal_ending exn_catcher
 
 
-let init_client_connection ?options (ip, hostname, port) =
-  let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0
-  and addr = Unix.ADDR_INET (ip, port) in
-  let t = Lwt_unix.connect s addr in
-  let timed_t = match options with
-    | None | Some { timeout = None } -> t
-    | Some { timeout = Some timeout_val } ->
-      pick [t; Lwt_unix.sleep timeout_val >>= fun () -> fail ConnectionTimeout]
-  in
-  let peer_name = hostname^":"^(string_of_int port) in
-  timed_t >>= fun () -> return {
-    socket = s;
-    options = pop_opt default_options options;
-    input = input_of_string ~verbose:false ~enrich:NeverEnrich peer_name ""; input_records = [];
-    output = "";
-  }
+let init_client_connection ?options (ip_opt, hostname, port) =
+  match ip_opt with
+  | Some ip ->
+    let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0
+    and addr = Unix.ADDR_INET (ip, port) in
+    let t = Lwt_unix.connect s addr in
+    let timed_t = match options with
+      | None | Some { timeout = None } -> t
+      | Some { timeout = Some timeout_val } ->
+	pick [t; Lwt_unix.sleep timeout_val >>= fun () -> fail ConnectionTimeout]
+    in
+    let peer_name = hostname^":"^(string_of_int port) in
+    timed_t >>= fun () -> return {
+      socket = s;
+      options = pop_opt default_options options;
+      input = input_of_string ~verbose:false ~enrich:NeverEnrich peer_name ""; input_records = [];
+      output = "";
+    }
+  | None -> raise Not_found
 
 
 let init_server_connection ?options ?bind_address:(bind_addr=None) ?backlog:(backlog=1024) port =
