@@ -45,7 +45,7 @@ let extract_first_record enrich ctx recs =
     and rec_content = POutput.contents content in
 
     (* Here, we try to enrich the first record from the merged messages *)
-    let new_input = input_of_string ~enrich:enrich input_name rec_content in
+    let new_input = input_of_string ~verbose:false ~enrich:enrich input_name rec_content in
     let saved_offset = parse_save_offset new_input in
     let res = match try_parse ~report:false (parse_record_content ctx ct) new_input with
       | None ->
@@ -321,7 +321,7 @@ let mk_client_key_exchange ctx =
   | KX_RSA, server_cert_opt::_, _ ->
     let server_cert = match server_cert_opt with
       | Parsed (_, c) -> c
-      | Unparsed c_str -> X509.parse_certificate (input_of_string "Server certificate" c_str)
+      | Unparsed c_str -> X509.parse_certificate (input_of_string ~verbose:false "Server certificate" c_str)
     in
     let n, e = match server_cert.X509.tbsCertificate.X509.subjectPublicKeyInfo.X509.subjectPublicKey with
       | X509.RSA x -> x.Pkcs1.p_modulus, x.Pkcs1.p_publicExponent
@@ -438,7 +438,7 @@ let init_client_connection ?options (ip, hostname, port) =
   timed_t >>= fun () -> return {
     socket = s;
     options = pop_opt default_options options;
-    input = input_of_string ~enrich:NeverEnrich peer_name ""; input_records = [];
+    input = input_of_string ~verbose:false ~enrich:NeverEnrich peer_name ""; input_records = [];
     output = "";
   }
 
