@@ -52,6 +52,7 @@ let timeout = ref 3.0
 let hosts_file = ref ""
 let campaign_number = ref 0xff
 let max_inflight_requests = ref 1
+let keep_empty_answers = ref false
 
 (* TODO: Add stuff to add/remove/clear a list in getopt? *)
 let remove_from_list list elt =
@@ -147,6 +148,7 @@ let options = [
   mkopt None "campaign" (IntVal campaign_number) "set the campaign number for dump outputs";
   mkopt (Some 'o') "output" (StringVal output_file) "select an output file";
   mkopt None "max-parallel-requests" (IntVal max_inflight_requests) "set the maximum number of parallel threads";
+  mkopt None "keep-empty-answers" (Set keep_empty_answers) "keep empty answers in the dump file";
 
   (* TODO: Add a shortcut in Getopt to handle with/without in one line *)
   mkopt None "with-extensions" (Set use_extensions) "activate the extension in the ClientHello (default)";
@@ -478,7 +480,12 @@ let _ =
           content = POutput.contents content_to_dump;
         }
       in
-      let answer_dumps = Lwt_unix.run (Lwt_list.map_p probe_one_host hosts_t) in
+      let tmp_answer_dumps = Lwt_unix.run (Lwt_list.map_p probe_one_host hosts_t) in
+      let answer_dumps =
+	if !keep_empty_answers
+	then tmp_answer_dumps
+	else List.filter (fun a -> a.AnswerDump.content <> "") tmp_answer_dumps
+      in
       let final_output = POutput.create () in
       List.iter (AnswerDump.dump_answer_dump_v2 final_output) answer_dumps;
       output_result final_output
