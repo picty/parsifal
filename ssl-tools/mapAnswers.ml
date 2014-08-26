@@ -20,7 +20,7 @@ let filter_ip = ref ""
 let filter_ip_hash = ref None
 let junk_length = ref 16
 let path = ref []
-let v2_answer_dump = ref false
+let v2_answer_dump = ref true
 
 let enrich_style = ref DefaultEnrich
 let set_enrich_level l =
