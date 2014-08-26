@@ -17,6 +17,7 @@ let action = ref IP
 let verbose = ref false
 let maxlen = ref (Some 70)
 let filter_ip = ref ""
+let filter_ip_hash = ref None
 let junk_length = ref 16
 let path = ref []
 let v2_answer_dump = ref false
@@ -38,6 +39,23 @@ let do_get_action path_str =
   action := Get;
   path := (!path)@[path_str];
   ActionDone
+
+let load_filter_ips_from_file filename =
+  let h = match !filter_ip_hash with
+    | None ->
+       let table = Hashtbl.create 100 in
+       filter_ip_hash := Some table;
+       table
+    | Some table -> table
+  in
+  let f = open_in filename in
+  try
+    while true do
+      let line = input_line f in
+      Hashtbl.add h line ()
+    done;
+    ActionDone
+  with End_of_file -> ActionDone
 
 
 let options = [
@@ -70,6 +88,7 @@ let options = [
   mkopt None "enrich-level" (IntFun set_enrich_level) "enrich the structure parsed up to a certain level";
 
   mkopt None "filter-ip" (StringVal filter_ip) "only print info regarding this ip";
+  mkopt None "filter-ips" (StringFun load_filter_ips_from_file) "only print info regarding a set of ips";
 
   mkopt None "versionACSAC" (TrivialFun (fun () -> action := VersionACSAC; update_enrich_level 3)) "only show the version chosen (ACSAC-style)";
   mkopt None "ciphersuiteACSAC" (TrivialFun (fun () -> action := SuiteACSAC; update_enrich_level 3)) "only show the ciphersuite chosen (ACSAC-style)";
@@ -149,11 +168,10 @@ let dump_extract s =
 let handle_answer answer =
   let ip = string_of_v2_ip answer.ip_addr in
   let this_one, again =
-    if !filter_ip = ""
-    then true, true
-    else if !filter_ip = ip
-    then true, false
-    else false, true
+    match !filter_ip, !filter_ip_hash with
+    | "", None -> true, true
+    | _, Some table -> Hashtbl.mem table ip, true
+    | _, _ -> let ok = !filter_ip = ip in ok, not ok
   in
   if this_one then begin
     (* TODO: Take care that an empty answer is correctly signaled! *)
