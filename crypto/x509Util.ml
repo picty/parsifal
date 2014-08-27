@@ -4,6 +4,19 @@ open X509
 open Pkcs1
 
 
+(*******************)
+(* Generic helpers *)
+(*******************)
+
+(* TODO: Add support for multiple cert in one file *)
+(* TODO: Add support for ca-dir parsing *)
+let cert_of_input pem_format input =
+  if pem_format
+  then Base64.parse_base64_container Base64.AnyHeader "base64_container" parse_certificate input
+  else parse_certificate input
+
+
+
 (***************************)
 (* X.509 extension helpers *)
 (***************************)
@@ -179,6 +192,11 @@ let parse_smart_cert trusted_cert input =
   match PTypes.parse_raw_value saved_offset input with
   | None -> sc_of_cert input.Parsifal.cur_name trusted_cert cert
   | Some raw_value -> sc_of_raw_value_and_cert input.Parsifal.cur_name trusted_cert raw_value cert
+
+let sc_of_input pem_format trusted input =
+  if pem_format
+  then Base64.parse_base64_container Base64.AnyHeader "base64_container" (parse_smart_cert trusted) input
+  else parse_smart_cert trusted input
 
 let sc_of_cert_in_hs_msg trusted_cert name i = function
   | PTypes.Parsed (raw_opt, parsed_c) ->

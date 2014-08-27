@@ -365,11 +365,7 @@ let _ =
       let ca_store = X509Util.mk_cert_store 100 in
       let server_name, port, certs = Lwt_unix.run (extract_cert_t prefs host_t) in
       let parse_root_ca c =
-	let parse_fun = if !base64
-	  then Base64.parse_base64_container Base64.AnyHeader "base64_container" (X509Util.parse_smart_cert true)
-	  else (X509Util.parse_smart_cert true)
-	in
-	let sc = parse_fun (string_input_of_filename c) in
+        let sc = X509Util.sc_of_input !base64 true (string_input_of_filename c) in
 	X509Util.add_to_store ca_store sc
       in
       List.iter parse_root_ca (List.rev !cas);

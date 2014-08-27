@@ -6,7 +6,6 @@ open X509Extensions
 open X509
 open X509Util
 open Getopt
-open Base64
 
 type action =
   | Text | PrettyPrint | JSON | Dump | BinDump
@@ -117,28 +116,22 @@ let pretty_print_certificate cert =
     (pretty_print_extensions tbs.extensions)
 
 
-(* TODO: Move this into X509Util? *)
-let parse_sc trusted c =
-  if !base64
-  then parse_base64_container AnyHeader "base64_container" (parse_smart_cert trusted) c
-  else parse_smart_cert trusted c
-
 let parse_and_number i filename =
-  let sc = parse_sc false (string_input_of_filename filename) in
+  let sc = sc_of_input !base64 false (string_input_of_filename filename) in
   sc.pos_in_hs_msg <- Some i;
   sc
 
 
 let load_cas store trusted filenames =
   let cas = List.map
-    (fun ca_fn -> parse_sc trusted (string_input_of_filename ca_fn))
+    (fun ca_fn -> sc_of_input !base64 trusted (string_input_of_filename ca_fn))
     filenames
   in
   List.iter (add_to_store store) cas
 
 
 let handle_input input =
-  let sc = parse_sc false input in
+  let sc = sc_of_input !base64 false input in
   let certificate = cert_of_sc sc in
   let display = match !action with
     | Serial -> [hexdump certificate.tbsCertificate.serialNumber]
@@ -207,9 +200,9 @@ let _ =
   try
     match !action, args with
     | CheckLink, issuer_fn::(_::_ as subject_fns) ->
-      let issuer = parse_sc false (string_input_of_filename issuer_fn) in
+      let issuer = sc_of_input !base64 false (string_input_of_filename issuer_fn) in
       let handle_one_subject subject_fn =
-        let subject = parse_sc false (string_input_of_filename subject_fn) in
+        let subject = sc_of_input !base64 false (string_input_of_filename subject_fn) in
         let res = match check_link (cert_of_sc issuer) (cert_of_sc subject) with
 	  | [] -> "OK"
 	  | l -> String.concat "\n  " (List.map string_of_validation_error l)

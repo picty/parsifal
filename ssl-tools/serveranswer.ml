@@ -167,12 +167,8 @@ let _ =
     let args = parse_args ~progname:"serveranswer" options Sys.argv in
     if !certfile <> ""
     then begin
-      let parse_fun =
-	if !base64
-	then Base64.parse_base64_container Base64.AnyHeader "base64_container" X509.parse_certificate
-	else X509.parse_certificate
-      in
-      certcontent := exact_dump X509.dump_certificate (exact_parse parse_fun (string_input_of_filename !certfile))
+      let sc = X509Util.sc_of_input !base64 false (string_input_of_filename !certfile) in
+      certcontent := X509Util.raw_value_of_sc sc
     end else usage "serveranswer" options (Some "Please provide a certificate.");
     begin
       match args with
