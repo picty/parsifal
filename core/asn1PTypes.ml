@@ -2,6 +2,7 @@ open Parsifal
 open BasePTypes
 open PTypes
 open Asn1Engine
+module Calendar = CalendarLib.Calendar;;
 
 (* Boolean *)
 
@@ -341,17 +342,14 @@ let value_of_der_printable_octetstring_content s = VString (s, false)
 
 (* Time types *)
 
-type time_content = {
-  year : int; month : int; day : int;
-  hour : int; minute : int; second : int;
-}
+type time_content = Calendar.t
 
 let utc_time_re =
   Str.regexp "^\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
 let generalized_time_re =
   Str.regexp "^\\([0-9][0-9][0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
 
-let time_constraint re s input =
+let time_constraint re year_fun s input =
   try
     if Str.string_match re s 0 then begin
       let y = int_of_string (Str.matched_group 1 s)
@@ -362,39 +360,40 @@ let time_constraint re s input =
       and ss = int_of_string (Str.matched_group 6 s) in
       if m = 0 || m > 12 || d = 0 || d > 31 || hh >= 24 || mm > 59 || ss > 59
       then warning InvalidUTCTime input;
-      { year = y; month = m; day = d;
-	hour = hh; minute = mm; second = ss }
+      Calendar.make (year_fun y) m d hh mm ss
     end else fatal_error InvalidUTCTime input
   with _ -> fatal_error InvalidUTCTime input
-
-let utc_time_constraint = time_constraint utc_time_re
-let generalized_time_constraint = time_constraint generalized_time_re
 
 let utc_year_of_int i = i mod 100
 (* TODO: check if it is > or >= *)
 let int_of_utc_year y = if y >= 50 then y + 1900 else y + 2000
 
+let utc_time_constraint = time_constraint utc_time_re int_of_utc_year
+let generalized_time_constraint = time_constraint generalized_time_re id
+
 let string_of_time_content t =
   Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d UTC"
-    t.year t.month t.day t.hour t.minute t.second
+    (Calendar.year t) (Calendar.Date.int_of_month (Calendar.month t))
+    (Calendar.day_of_month t) (Calendar.hour t) (Calendar.minute t) (Calendar.second t)
 let value_of_time_content name t =
   VRecord [
     "@name", VString (name, false);
     "@string_of", VString (string_of_time_content t, false);
-    "year", VInt t.year; "month", VInt t.month;
-    "day", VInt t.day; "hour", VInt t.hour;
-    "minute", VInt t.minute; "second", VInt t.second
+    "year", VInt (Calendar.year t);
+    "month", VInt (Calendar.Date.int_of_month (Calendar.month t));
+    "day", VInt (Calendar.day_of_month t); "hour", VInt (Calendar.hour t);
+    "minute", VInt (Calendar.minute t); "second", VInt (Calendar.second t);
   ]
    
 
 type der_utc_time_content = time_content
 let parse_der_utc_time_content input =
   let res = parse_rem_string input in
-  let tmp = utc_time_constraint res input in
-  { tmp with year = int_of_utc_year tmp.year }
+  utc_time_constraint res input
 let dump_der_utc_time_content buf t =
   POutput.bprintf buf "%2.2d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
-    (utc_year_of_int t.year) t.month t.day t.hour t.minute t.second
+    (utc_year_of_int (Calendar.year t)) (Calendar.Date.int_of_month (Calendar.month t))
+    (Calendar.day_of_month t) (Calendar.hour t) (Calendar.minute t) (Calendar.second t)
 let value_of_der_utc_time_content t = value_of_time_content "utc_time" t
 
 type der_generalized_time_content = time_content
@@ -403,7 +402,8 @@ let parse_der_generalized_time_content input =
   generalized_time_constraint res input
 let dump_der_generalized_time_content buf t =
   POutput.bprintf buf "%4.4d%2.2d%2.2d%2.2d%2.2d%2.2dZ"
-    t.year t.month t.day t.hour t.minute t.second
+    (Calendar.year t) (Calendar.Date.int_of_month (Calendar.month t))
+    (Calendar.day_of_month t) (Calendar.hour t) (Calendar.minute t) (Calendar.second t)
 let value_of_der_generalized_time_content t = value_of_time_content "generalized_time" t
 
 
