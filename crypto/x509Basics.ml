@@ -150,6 +150,10 @@ asn1_union raw_der_time [enrich; exhaustive] (UnparsedTime) =
 
 alias der_time = safe_asn1_union of raw_der_time
 
+let time_of_der_time = function
+  | UTCTime t | GeneralizedTime t -> Some t
+  | UnparsedTime _ -> None
+
 asn1_struct validity = {
   notBefore : der_time;
   notAfter : der_time

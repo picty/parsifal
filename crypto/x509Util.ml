@@ -3,6 +3,8 @@ open X509Extensions
 open X509
 open Pkcs1
 
+module Calendar = CalendarLib.Calendar
+
 
 (*******************)
 (* Generic helpers *)
@@ -185,6 +187,16 @@ let subject_hash_of_sc sc = match sc.subject_hash with
 let cert_id_of_sc sc =
   let c = cert_of_sc sc in
   subject_hash_of_sc sc, c.tbsCertificate.subjectPublicKeyInfo
+
+let validity_of_sc sc =
+  let c = cert_of_sc sc in
+  match time_of_der_time c.tbsCertificate.validity.X509Basics.notBefore,
+    time_of_der_time c.tbsCertificate.validity.X509Basics.notAfter with
+    | Some t1, Some t2 ->
+      Int64.of_float (Calendar.to_unixfloat t1),
+      Int64.of_float (Calendar.to_unixfloat t2)
+    | _ -> failwith "validity_of_sc"
+
 
 let parse_smart_cert trusted_cert input =
   let saved_offset = PTypes.parse_save_offset input in
@@ -528,3 +540,11 @@ let build_certchain hs_msg_certs store =
   match hs_msg_certs with
   | c::cs -> bottom_up true c [] cs
   | [] -> []
+
+
+let compute_chain_validity certs =
+  let constrain_interval (cur_min, cur_max) sc =
+    let nB, nA = validity_of_sc sc in
+    max nB cur_min, min nA cur_max
+  in
+  List.fold_left constrain_interval (0L, Int64.max_int) certs
