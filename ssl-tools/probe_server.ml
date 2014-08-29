@@ -423,7 +423,10 @@ let _ =
 		(string_of_tls_version i) (string_of_tls_version v1);
 	      next_step r
 	    end
-	  | Fatal msg, _ -> if !debug_level >=. InfoDebug  then prerr_endline msg
+	  | Fatal msg, _ ->
+	    Printf.printf "%s,%s -> %s\n" (string_of_tls_version e)
+	      (string_of_tls_version i) msg;
+            next_step r
       in next_step all_cases
 
     | (ProbeAndPrint|CheckCerts|ExtractCerts|ScanSuites|ScanCompressions|ScanVersions), _ ->
