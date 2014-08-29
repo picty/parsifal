@@ -251,7 +251,7 @@ let probe_server prefs ((ip, server_name, port) as server_params) =
     let ch = mk_client_hello ctx in
     if !debug_level >=. FullDebug
     then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));
-    c_sock.output <- exact_dump dump_tls_record ch;
+    output_record ctx c_sock (fun () -> ch);
     run_automata probe_automata ([], NothingSoFar) "" ctx c_sock >>= fun (msgs, res) ->
     Lwt_unix.close c_sock.socket >>= fun () ->
     let remaining_str = BasePTypes.parse_rem_binstring c_sock.input in
