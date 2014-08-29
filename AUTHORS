@@ -8,3 +8,7 @@ Contributors:
  - Thomas Calderon (Kerberos)
  - Anthony Albert (PNG)
  - Florian Maury (OpenPGP, NTP)
+ - Baptiste Gourdin (X.509 validation)
+
+Acknowledgement:
+ - Pierre Chambart (OCamlPro) for OPAM metadata

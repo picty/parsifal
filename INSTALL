@@ -3,6 +3,7 @@ Installation instructions on Debian Wheezy
 Parsifal currently depends on the following OCaml libraries:
 
 * Lwt
+* Calendar
 * Cryptokit
 * Krb5
 * OUnit (for some tests)
@@ -22,6 +23,7 @@ Therefore, to compile Parsifal, you need to ensure you have the following packag
  * ocaml-findlib
  * camlidl
  * liblwt-ocaml-dev
+ * libcalendar-ocaml-dev
  * libcryptokit-ocaml-dev
  * libounit-ocaml-dev
  * libkrb5-dev
@@ -43,5 +45,8 @@ example in subdirectories of your home:
 Notes
 -----
 
-The source code has been checked with Debian Wheezy. In particular,
-the used OCaml version is 3.12. The code also compiles with OCaml 4.01.0
+The source code has been checked with Debian Jessie. In particular,
+the used OCaml version is 4.01. Due to changes in liblwt internals,
+Parsifal is not Debian Wheezy-compatible anymore.
+
+Alternatively, using opam with OCaml 4.01 and Lwt 2.4.3 should work.
