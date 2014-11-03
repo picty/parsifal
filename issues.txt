@@ -39,3 +39,5 @@ REC	30	Add support in the preprocessor for recursive types	open	yeye	preprocesso
 -	33	SSL/TLS client						open	yeye	enhancement
 -	34	SSL/TLS server						open	yeye	enhancement
 -	35	Parsifal does not compile on 32-bit systems		open	yeye	bug,stdlib
+
+-	??	Handle BER/DER correctly				open	yeye	bug,stdlib,preprocessor

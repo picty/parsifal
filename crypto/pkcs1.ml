@@ -174,21 +174,24 @@ let raw_verify typ msg s n e =
   try
     let digest_info = decrypt typ None (n, e) s in
     let input = input_of_string "DigestInfo" digest_info in
-    let asn1_obj = parse_der_object input in
-    (* TODO: This is rather ugly. Could it be a little cleaner *)
-    match asn1_obj with
-      | {a_class = C_Universal; a_tag = T_Sequence; a_content = Constructed
-	[{a_class = C_Universal; a_tag = T_Sequence; a_content = Constructed
-	    [{a_class = C_Universal; a_tag = T_OId; a_content = OId oid};
-	     {a_class = C_Universal; a_tag = T_Null; a_content = Null}]};
-	 {a_class = C_Universal; a_tag = T_OctetString; a_content = String (digest, _)}]}
+    let asn1_obj = exact_parse parse_der_object input in
+    if (exact_dump dump_der_object asn1_obj) = digest_info
+    then
+      (* TODO: This is rather ugly. Could it be a little cleaner *)
+      match asn1_obj with
       | {a_class = C_Universal; a_tag = T_Sequence; a_content = Constructed
 	  [{a_class = C_Universal; a_tag = T_Sequence; a_content = Constructed
-	    [{a_class = C_Universal; a_tag = T_OId; a_content = OId oid}]};
+	      [{a_class = C_Universal; a_tag = T_OId; a_content = OId oid};
+	       {a_class = C_Universal; a_tag = T_Null; a_content = Null}]};
+	   {a_class = C_Universal; a_tag = T_OctetString; a_content = String (digest, _)}]}
+      | {a_class = C_Universal; a_tag = T_Sequence; a_content = Constructed
+	  [{a_class = C_Universal; a_tag = T_Sequence; a_content = Constructed
+	      [{a_class = C_Universal; a_tag = T_OId; a_content = OId oid}]};
 	   {a_class = C_Universal; a_tag = T_OctetString; a_content = String (digest, _)}]} ->
 	let f = get_hash_fun_by_oid oid in
 	f msg = digest
       | _ -> false
+    else false
   with
     | Not_found | ParsingException _ -> false
     | Cryptokit.Error Cryptokit.Message_too_long -> false
