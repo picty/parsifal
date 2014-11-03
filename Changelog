@@ -1,3 +1,28 @@
+2014-11-03 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+	* Pkcs1.raw_verify security fix
+	* Various bugfixes/improvements in tools
+
+2014-08-19 Pierre Chambart <pierre.chambart@ocamlpro.com>
+	* Add first support for OPAM
+
+2014-08-13 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+	* Various crypto bugfixes
+	* Add first support for record protection
+	* Full rewrite of TlsEngineNG to handle Handshake
+	  up until Finished
+
+2014-07-18 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+	* Add name extraction to some tools (mapAnswers and
+	  x509show)
+
+2014-06-03 Thomas Calderon <thomas.calderon@ssi.gouv.fr>
+	* Add support for Keberos encrypted containers using
+	  libkrb5
+	* First support for PK_INIT RSA decryption
+	* Add support for ticket decryption in AP_REQ messages
+	* Add support for some of Kerberos authorization data
+	  (PAC in particular)
+
 2014-04-04 Florian Maury <florian.maury@ssi.gouv.fr>
 	* First description of NTP messages
 	* Add function to read input with read_line
