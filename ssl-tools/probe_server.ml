@@ -401,33 +401,43 @@ let _ =
       in
       next_step ()
     | ScanVersions, [host_t] ->
-      let versions = [V_SSLv3; V_TLSv1; V_TLSv1_1; V_TLSv1_2; V_Unknown 0x3ff] in
-      let rec mk_versions ext int = match ext, int with
-	| [], _ -> []
-	| _::r, [] -> mk_versions r versions
-	| e::_, i::s -> (e, i)::(mk_versions ext s)
+      let versions = [V_SSLv3; V_TLSv1; V_TLSv1_1; V_TLSv1_2;
+                      V_Unknown 0x304; V_Unknown 0x3ff] in
+      let pad_to exp_len s =
+        let s_len = String.length s in
+        if exp_len <= s_len
+        then String.sub s 0 exp_len
+        else begin
+          let padding = exp_len - s_len in
+          let pad1 = padding / 2 and pad2 = (padding + 1) / 2 in
+          (String.make pad1 ' ') ^ s ^ (String.make pad2 ' ')
+        end
       in
-      let all_cases = mk_versions versions versions in
+      let string_of_version = function
+        | V_Unknown x -> Printf.sprintf "0x%4.4x" x
+        | v -> string_of_tls_version v
+      in
 
-      let rec next_step = function
-	| [] -> ()
-	| (e, i)::r ->
+      (* TODO: Print a cool tabular instead of those ugly lines *)
+      let rec next_step accu exts ints = match exts, ints with
+	| [], _ -> ()
+        | e::es, [] ->
+          let cells = (string_of_version e)::(List.rev accu) in
+          print_endline (String.concat "|" (List.map (pad_to 12) cells));
+          next_step [] es versions
+        | e::_, i::is ->
 	  let updated_prefs = { prefs with acceptable_versions = (e, i) } in
 	  let ctx, _, _, res = Lwt_unix.run (host_t >>= probe_server updated_prefs) in
-	  match res, ctx.future.proposed_versions with
-	  | NothingSoFar, (v1, v2) ->
-	    if v1 <> v2 then begin
-	      if !debug_level >=. InfoDebug  then prerr_endline "Unexpected result."
-	    end else begin
-	      Printf.printf "%s,%s -> %s\n" (string_of_tls_version e)
-		(string_of_tls_version i) (string_of_tls_version v1);
-	      next_step r
-	    end
-	  | Fatal msg, _ ->
-	    Printf.printf "%s,%s -> %s\n" (string_of_tls_version e)
-	      (string_of_tls_version i) msg;
-            next_step r
-      in next_step all_cases
+          let result_string = match res, ctx.future.proposed_versions with
+	    | NothingSoFar, (v1, v2) ->
+              if v1 <> v2 then "?!" else string_of_version v1
+	    | Fatal msg, _ -> msg
+          in next_step (result_string::accu) exts is
+      in
+      let headers = ""::(List.map string_of_version versions) in
+      print_endline (String.concat "|" (List.map (pad_to 12) headers));
+      print_endline (String.make (((List.length headers) * 13) - 1) '-');
+      next_step [] versions versions
 
     | (ProbeAndPrint|CheckCerts|ExtractCerts|ScanSuites|ScanCompressions|ScanVersions), _ ->
       usage "probe_server" options (Some ("Some commands only work with a unique host."))
