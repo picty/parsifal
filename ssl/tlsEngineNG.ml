@@ -478,7 +478,7 @@ let accept_client s =
 
 
 let get_next_automata_input ctx c =
-  let dir = pop_opt ClientToServer ctx.direction in
+  let dir = invert_dir (pop_opt ServerToClient ctx.direction) in
   let timeout_t = match c.options.timeout with
     | None -> []
     | Some t -> [Lwt_unix.sleep t >>= fun () -> return Timeout]
