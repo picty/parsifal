@@ -5,9 +5,9 @@ open TlsEnums
 open Tls
 open TlsEngineNG
 
-let test_client port prefs =
+let test_client host port prefs =
   let ctx = { (empty_context prefs) with direction = Some ClientToServer } in
-  resolve "localhost" port >>= init_client_connection >>= fun c_sock ->
+  resolve host port >>= init_client_connection >>= fun c_sock ->
   let ch () = mk_client_hello ctx in
   output_record ctx c_sock ch;
   run_automata client_automata ClientHelloSent "" ctx c_sock >>= fun _ ->
@@ -20,9 +20,20 @@ let test_client port prefs =
   Lwt_unix.close c_sock.socket
 
 let _ =
+  if Array.length Sys.argv <> 3
+  then begin
+    prerr_endline "Usage: test_tls_client [host] [port]";
+    exit 1
+  end;
   try
     TlsDatabase.enrich_suite_hash ();
-    Unix.handle_unix_error Lwt_unix.run (test_client 8080 (default_prefs DummyRNG))
+    let host = Sys.argv.(1)
+    and port = int_of_string Sys.argv.(2) in
+    let prefs = {
+      (default_prefs DummyRNG) with
+        acceptable_ciphersuites = [TLS_RSA_WITH_RC4_128_MD5; TLS_RSA_WITH_AES_128_CBC_SHA]
+    } in
+    Unix.handle_unix_error Lwt_unix.run (test_client host port prefs)
   with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e)
