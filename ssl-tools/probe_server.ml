@@ -246,16 +246,18 @@ let probe_server prefs ((ip, server_name, port) as server_params) =
   } in
   let probe_t () =
     init_client_connection ~options:c_opts server_params >>= fun c_sock ->
-    if !debug_level >=. InfoDebug
-    then prerr_endline ("Connected to " ^ server_name ^ ":" ^ (string_of_int port));
-    let ch = mk_client_hello ctx in
-    if !debug_level >=. FullDebug
-    then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));
-    output_record ctx c_sock (fun () -> ch);
-    run_automata probe_automata ([], NothingSoFar) "" ctx c_sock >>= fun (msgs, res) ->
-    Lwt_unix.close c_sock.socket >>= fun () ->
-    let remaining_str = BasePTypes.parse_rem_binstring c_sock.input in
-    return (ctx, msgs, remaining_str, res)
+    let do_some_work () =
+      if !debug_level >=. InfoDebug
+      then prerr_endline ("Connected to " ^ server_name ^ ":" ^ (string_of_int port));
+      let ch = mk_client_hello ctx in
+      if !debug_level >=. FullDebug
+      then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));
+      output_record ctx c_sock (fun () -> ch);
+      run_automata probe_automata ([], NothingSoFar) "" ctx c_sock >>= fun (msgs, res) ->
+      let remaining_str = BasePTypes.parse_rem_binstring c_sock.input in
+      return (ctx, msgs, remaining_str, res)
+    in
+    finalize do_some_work (fun () -> Lwt_unix.close c_sock.socket)
   and error_t = function
     | Unix.Unix_error (errno, syscall, additional) ->
       if !debug_level >=. InfoDebug

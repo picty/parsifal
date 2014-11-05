@@ -437,19 +437,25 @@ let init_client_connection ?options (ip_opt, hostname, port) =
     let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0
     and addr = Unix.ADDR_INET (ip, port) in
     let t = Lwt_unix.connect s addr in
-    let timed_t = match options with
+    let timed_t () = match options with
       | None | Some { timeout = None } -> t
       | Some { timeout = Some timeout_val } ->
 	pick [t; Lwt_unix.sleep timeout_val >>= fun () -> fail ConnectionTimeout]
     in
     let peer_name = hostname^":"^(string_of_int port) in
-    timed_t >>= fun () -> return {
-      socket = s;
-      options = pop_opt default_options options;
-      input = input_of_string ~verbose:false ~enrich:NeverEnrich peer_name ""; input_records = [];
-      output = "";
-    }
-  | None -> raise Not_found
+    let mk_return_value () =
+      return {
+	  socket = s;
+	  options = pop_opt default_options options;
+	  input = input_of_string ~verbose:false ~enrich:NeverEnrich peer_name ""; input_records = [];
+	  output = "";
+	}
+    and close_sock _ =
+      Lwt_unix.close s >>= fun () ->
+      fail Not_found
+    in
+    try_bind timed_t mk_return_value close_sock
+  | None -> fail Not_found
 
 
 let init_server_connection ?options ?bind_address:(bind_addr=None) ?backlog:(backlog=1024) port =
