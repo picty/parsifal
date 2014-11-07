@@ -21,7 +21,7 @@ CAMLIDL_DIR = `$(OCAMLFIND) query camlidl`
 # use the following variables to add extra flags (not guessed by ocamlfind)
 EXTRA_OCAMLOPT_CC_FLAGS =
 # EXTRA_OCAMLOPT_CC_FLAGS = -package parsifal_syntax
-EXTRA_OCAMLOPT_LD_FLAGS = ../kerby/build/krb5_stubs.o ../kerby/build/krb5_functions.o -cclib -lk5crypto -ccopt "-L $(CAMLIDL_DIR)" -cclib -lcamlidl -cclib -lmylzma -cclib -lmytiano -ccopt -Lbuild/
+EXTRA_OCAMLOPT_LD_FLAGS = ../kerby/build/krb5_stubs.o ../kerby/build/krb5_functions.o -cclib -lkrb5 -cclib -lk5crypto -ccopt "-L $(CAMLIDL_DIR)" -cclib -lcamlidl -cclib -lmylzma -cclib -lmytiano -ccopt -Lbuild/
 EXTRA_OCAMLC_CC_FLAGS =
 # EXTRA_OCAMLC_CC_FLAGS = -package parsifal_syntax
 EXTRA_OCAMLC_LD_FLAGS =
