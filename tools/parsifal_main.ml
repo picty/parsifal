@@ -187,6 +187,8 @@ let mk_parse_value () =
 	oo_verbose = !verbose;
 	maxlen = !maxlen;
 	unfold_aliases = not !no_alias;
+        eol = if !multiple_values then " " else "\n";
+        indent_increment = if !multiple_values then "" else "  ";
     } in
     let v = parse_fun input in
     match !action with
