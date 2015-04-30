@@ -39,7 +39,12 @@ let update_enrich_level l =
 
 type action = All | Get | JSon
 let action = ref All
-let path = ref ""
+let path = ref []
+
+let do_get_action path_str =
+  action := Get;
+  path := (!path)@[path_str];
+  ActionDone
 
 let type_list = ref false
 let input_in_args = ref false
@@ -79,7 +84,7 @@ let options = [
   mkopt (Some 'm') "multiple-values" (Set multiple_values) "each argument is in fact a sequence of values to parse";
 
   mkopt (Some 'a') "all" (TrivialFun (fun () -> action := All)) "show all the information";
-  mkopt (Some 'g') "get" (StringFun (fun s -> action := Get; path := s; ActionDone)) "select the info to extract";
+  mkopt (Some 'g') "get" (StringFun do_get_action) "select the info to extract";
   mkopt (Some 'j') "json" (TrivialFun (fun () -> action := JSon)) "represents the parsed value as a JSON";
 
   mkopt (Some 'B') "base64" (TrivialFun (fun () -> container := Base64Container)) "the data is first decoded as base64";
@@ -195,9 +200,13 @@ let mk_parse_value () =
     | All -> print_endline (print_value ~options:opts v)
     | JSon -> print_endline (Json.json_of_value ~options:opts v)
     | Get ->
-      match get v !path with
-      | Left err -> if !verbose then prerr_endline err
-      | Right s -> print_endline s
+      let get_one_path p =
+        match get v p with
+        | Left err -> if !verbose then prerr_endline err; []
+        | Right s -> [s]
+      in
+      let results = List.flatten (List.map get_one_path !path) in
+      if results <> [] then print_endline (String.concat ", " results)
 
 
 let handle_stdin _ = string_input_of_stdin ~verbose:(!verbose) ~enrich:(!enrich_style) ()
