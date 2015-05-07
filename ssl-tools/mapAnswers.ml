@@ -4,12 +4,13 @@ open Parsifal
 open PTypes
 open AnswerDump
 open TlsEnums
-open Tls
-open Ssl2
 open Getopt
 open X509Basics
 open X509
-open TlsEngineNG
+open Ssl2
+open Tls
+open AnswerDumpUtil
+
 
 type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType | RecordTypes | Get
 	      | VersionACSAC | SuiteACSAC | SaveCertificates of string | HTTPNames
@@ -96,46 +97,6 @@ let options = [
 
 
 
-let parse_all_ssl2_records answer =
-  let rec read_ssl2_records accu i =
-    if not (eos i)
-    then begin
-      match try_parse (parse_ssl2_record { cleartext = true }) i with
-      | Some next -> read_ssl2_records (next::accu) i
-      | None -> List.rev accu, true
-    end else List.rev accu, false
-  in
-  let answer_input = input_of_string ~enrich:(!enrich_style) ~verbose:(!verbose) (string_of_v2_ip answer.ip_addr) answer.content in
-  enrich_record_content := false;
-  let raw_recs, err = read_ssl2_records [] answer_input in
-  raw_recs, None, err
-
-let parse_all_tls_records answer =
-  let prefs = {
-    random_generator = RandomEngine.dummy_random_generator ();
-    acceptable_versions = (V_Unknown 0, V_Unknown 0xffff);
-    acceptable_ciphersuites = [];
-    acceptable_compressions = [];
-    use_extensions = false;
-    available_certificates = [];
-    directive_behaviour = false;
-    send_SNI = false;
-    server_names = [];
-  } in
-  let ctx = empty_context prefs in
-  let answer_input = input_of_string ~verbose:(!verbose) ~enrich:(!enrich_style) (string_of_v2_ip answer.ip_addr) answer.content in
-  let recs, remaining = parse_all_records ServerToClient (Some ctx) answer_input in
-  recs, ctx, remaining
-
-let parse_records_as_values answer =
-  match parse_all_tls_records answer with
-  | [], _, None -> [], false
-  | [], _, Some _ ->
-    let records, _, err = parse_all_ssl2_records answer in
-    List.map value_of_ssl2_record records, err
-  | records, _, x ->
-    List.map value_of_tls_record records, x <> None
-
 let rec get_one_of v = function
   | [] -> None
   | p::ps -> match get v p with
@@ -182,10 +143,10 @@ let handle_answer answer =
         print_endline ip;
 	let opts = { default_output_options with oo_verbose = !verbose; indent = "  " ; maxlen = !maxlen } in
 	begin
-          match parse_all_tls_records answer with
+          match parse_all_tls_records !enrich_style !verbose answer with
 	  | [], _, None -> ()
 	  | [], _, Some _ ->
-            let records, _, error = parse_all_ssl2_records answer in
+            let records, _, error = parse_all_ssl2_records !enrich_style !verbose answer in
             List.iter (fun r -> print_endline (print_value ~options:opts (value_of_ssl2_record r))) records;
             if error then print_endline "  ERROR"
 	  | records, _, rem ->
@@ -196,14 +157,14 @@ let handle_answer answer =
 	    | Some s, true -> print_endline ("  ERROR (Remaining: " ^ (hexdump s) ^ ")")
         end
       | Suite ->
-        let _, ctx, _ = parse_all_tls_records answer in
+        let _, ctx, _ = parse_all_tls_records !enrich_style !verbose answer in
 	begin
 	  match ctx.future.proposed_ciphersuites with
 	  | [cs] -> Printf.printf "%s: %s\n" ip (string_of_ciphersuite cs)
 	  | _ -> if !verbose then Printf.printf "%s: ERROR" ip
         end
       | SKE ->
-        let _, ctx, _ = parse_all_tls_records answer in
+        let _, ctx, _ = parse_all_tls_records !enrich_style !verbose answer in
 	begin
 	  match ctx.future.f_server_key_exchange with
 	  | SKE_DHE { params = params } ->
@@ -213,14 +174,14 @@ let handle_answer answer =
 	  | _ -> if !verbose then Printf.printf "%s: NOT PARSED YET" ip
         end
       | ServerRandom ->
-        let _, ctx, _ = parse_all_tls_records answer in
+        let _, ctx, _ = parse_all_tls_records !enrich_style !verbose answer in
 	begin
 	  match ctx.future.f_server_random with
 	  | "" -> if !verbose then Printf.printf "%s: ERROR" ip
 	  | r -> Printf.printf "%s: %s\n" ip (hexdump r)
         end
       | Scapy ->
-        let records, _, _ = parse_all_tls_records answer in
+        let records, _, _ = parse_all_tls_records !enrich_style !verbose answer in
         let rec convert_to_scapy (len, ps) = function
           | [] -> List.rev ps
           | r::rs ->
@@ -233,7 +194,7 @@ let handle_answer answer =
         in
         Printf.printf "ps = [%s]\n" (String.concat ",\n  " (convert_to_scapy (0, []) records))
       | Pcap ->
-        let records, _, _ = parse_all_tls_records answer in
+        let records, _, _ = parse_all_tls_records !enrich_style !verbose answer in
         let rec convert_to_pcap len ps = function
           | [] -> ()
           | r::rs ->
@@ -245,80 +206,35 @@ let handle_answer answer =
         in
         convert_to_pcap 0 [] records
       | AnswerType ->
-        let records =
-          let tls_records, _, _ = parse_all_tls_records answer in
-          if tls_records <> []
-          then Right tls_records
-          else begin
-            let ssl2_records, _, _ = parse_all_ssl2_records answer in
-            Left ssl2_records
-          end
-        in
-        begin
-          match records, answer.content with
-          | _, "" ->
-            Printf.printf "%s\tE\n" ip
-          | Right [{ content_type = CT_Alert;
-              record_content = Alert a }], _ ->
-            Printf.printf "%s\tA\t%s\t%s\n" ip (string_of_tls_alert_level a.alert_level) (string_of_tls_alert_type a.alert_type)
+         begin
+           match (parse_answer !enrich_style !verbose answer).pa_content with
+           | Empty ->
+              Printf.printf "%s\tE\n" ip
 
-          | Left [{ ssl2_content = SSL2Handshake {
-                      ssl2_handshake_type = SSL2_HT_ERROR;
-                      ssl2_handshake_content = SSL2Error e }}], _ ->
-            Printf.printf "%s\tA\tSSLv2_ALERT\t%s\n" ip (string_of_ssl2_error e)
+           | TLSAlert (_, al, at) ->
+              Printf.printf "%s\tA\t%s\t%s\n" ip (string_of_tls_alert_level al) (string_of_tls_alert_type at)
+           | SSLv2Alert e ->
+              Printf.printf "%s\tA\tSSLv2_ALERT\t%s\n" ip (string_of_ssl2_error e)
 
-          | Right ({ content_type = CT_Handshake;
-(*        TODO:             record_version = ext_v; *)
-                     record_content = Handshake {
-                       handshake_type = HT_ServerHello;
-                       handshake_content = ServerHello {server_version = v; ciphersuite = c} }}::
-                  { content_type = CT_Handshake;
-                    record_content = Handshake {
-                      handshake_type = HT_Certificate;
-                      handshake_content = Certificate ((Parsed (_, cert))::_) }}::_), _
-            -> Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
-            (quote_string (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject))))
+           | TLSHandshake (_, v, c, (Parsed (_, cert))::_) ->
+              let s = String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)) in
+              Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) (string_of_ciphersuite c) (quote_string s)
+           | SSLv2Handshake (v, cs, Parsed (_, cert)) ->
+              let s = String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject))
+              and cs_str = String.concat "," (List.map (fun c -> string_of_value (value_of_ssl2_cipher_spec c)) cs) in
+              Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) cs_str (quote_string s)
 
-          | Left ({ ssl2_content = SSL2Handshake {
-              ssl2_handshake_type = SSL2_HT_SERVER_HELLO;
-              ssl2_handshake_content = SSL2ServerHello {
-                ssl2_server_version = v;
-                ssl2_server_certificate = Parsed (_, cert);
-                ssl2_server_cipher_specs = cs
-              }
-            }}::_), _
-            -> Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v)
-            (String.concat "," (List.map (fun c -> string_of_value (value_of_ssl2_cipher_spec c)) cs))
-            (quote_string (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject))))
+           | TLSHandshake (_, v, c, _) ->
+              Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
+           | SSLv2Handshake (v, cs, _) ->
+              let cs_str = String.concat "," (List.map (fun c -> string_of_value (value_of_ssl2_cipher_spec c)) cs) in
+              Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) cs_str
 
-          | Right ({ content_type = CT_Handshake;
-                     record_content = Handshake {
-                       handshake_type = HT_ServerHello;
-                       handshake_content = ServerHello {server_version = v; ciphersuite = c} }}::_), _
-            -> Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
-
-          | Right ({ content_type = CT_Handshake;
-                     record_content = Handshake {
-                       handshake_type = HT_ClientHello;
-                       handshake_content = ClientHello _ }}::_), _
-            -> Printf.printf "%s\tJ\tClientHello\n" ip
-
-          | _, s ->
-	    if (String.length s >= 7) && (String.sub s 0 7 = "\x15\x03\x01\x00\x02\xff\xff")
-	    then Printf.printf "%s\tJ\tAlert-FF-FF\n" ip
-	    else if String.length s >= 5 then begin
-	      match (String.sub s 0 5) with
-	      | "SSH-1" -> Printf.printf "%s\tJ\tSSH-1\n" ip
-	      | "SSH-2" -> Printf.printf "%s\tJ\tSSH-2\n" ip
-	      | "HTTP/"
-	      | "<!DOC" -> Printf.printf "%s\tJ\tHTTP\n" ip (* Do better ? *)
-		(* qui contient "<!DOCTYPE html" ou "<html>" ou "<HTML>" ou "404 Not Found" *)
-	      (* Handle SMTP? "220 main2 ESMTP." *)
-	      | _ -> Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
-	    end else Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
-        end;
+           | Junk ("", s) -> Printf.printf "%s\tJ\t%s\n" ip (dump_extract s)
+           | Junk (s, _) -> Printf.printf "%s\tJ\t%s\n" ip s
+         end
       | RecordTypes ->
-        let records, _, err = parse_all_tls_records answer in
+        let records, _, err = parse_all_tls_records !enrich_style !verbose answer in
         let rec get_type = function
           | [], false -> []
           | [], true -> ["ERROR"]
@@ -333,33 +249,19 @@ let handle_answer answer =
         let res = String.concat " " (get_type (records, err <> None)) in
         Printf.printf "%s\t%s\n" ip res
       | Subject ->
-        let records, _, _ = parse_all_tls_records answer in
-        let rec extractSubjectOfFirstCert = function
-          | [] -> None
-          | { content_type = CT_Handshake;
-              record_content = Handshake {
-                handshake_type = HT_Certificate;
-                handshake_content = Certificate ((Unparsed cert_string)::_) }}::_ ->
-            begin
-              try
-                let cert = parse_certificate (input_of_string ~verbose:(!verbose) "" cert_string) in
-                Some (String.concat ", " (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
-              with _ -> None
-            end
-          | { content_type = CT_Handshake;
-              record_content = Handshake {
-                handshake_type = HT_Certificate;
-                handshake_content = Certificate ((Parsed (_, cert))::_) }}::_ ->
-            Some (String.concat ", " (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
-          | _::r -> extractSubjectOfFirstCert r
-        in
-        begin
-          match extractSubjectOfFirstCert records with
-            | None -> ()
-            | Some subject -> Printf.printf "%s: %s\n" ip subject
-        end;
+         let subject = match (parse_answer !enrich_style !verbose answer).pa_content with
+           | TLSHandshake (_, _, _, (Parsed (_, cert))::_)
+           | SSLv2Handshake (_, _, Parsed (_, cert)) ->
+              Some (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
+           | _ -> None
+         in
+         begin
+           match subject with
+           | None -> ()
+           | Some subject -> Printf.printf "%s: %s\n" ip subject
+         end;
       | Get ->
-        let records, _ = parse_records_as_values answer in
+        let records, _ = parse_records_as_values !enrich_style !verbose answer in
         let get_one_path p = 
           match get (VList records) p with
           | Left err -> if !verbose then prerr_endline (ip ^ ": " ^ err); []
@@ -369,18 +271,18 @@ let handle_answer answer =
         if results <> [] then Printf.printf "%s: %s\n" ip (String.concat ", " results)
 
 
-     | SuiteACSAC ->
-       begin
-	  match parse_records_as_values answer with
-	  | r::_, _ ->
-	    let result = get_one_of r ["record_content.handshake_content.ciphersuite";
-				       "record_content.ssl2_handshake_content.ssl2_server_cipher_specs.[0]"] in
-	    maybe_print ip result
-	  | _ -> ()
-	end
+      | SuiteACSAC ->
+         begin
+           match (parse_answer !enrich_style !verbose answer).pa_content with
+           | TLSHandshake (_, _, c, _) ->
+              Printf.printf "%s: %s\n" ip (string_of_ciphersuite c)
+           | SSLv2Handshake (_, c::_, _) ->
+              Printf.printf "%s: %s\n" ip (string_of_value (value_of_ssl2_cipher_spec c))
+           | _ -> ()
+         end
       | VersionACSAC ->
 	begin
-	  match parse_records_as_values answer with
+	  match parse_records_as_values !enrich_style !verbose answer with
 	  | r::_, _ ->
 	    let result = get_one_of r ["record_content.handshake_content.server_version";
 				       "record_content.ssl2_handshake_content.ssl2_server_version";
@@ -390,63 +292,38 @@ let handle_answer answer =
 	end
 
       | SaveCertificates dir ->
-        let records, _, _ = parse_all_tls_records answer in
-        let rec saveCerts = function
-          | [] -> 0
-          | { content_type = CT_Handshake;
-              record_content = Handshake {
-                handshake_type = HT_Certificate;
-                handshake_content = Certificate certs }}::_ ->
-	    let rec save_cert i = function
-	      | [] -> i
-	      | c::cs ->
-		(* TODO: save the file as dir/by-hash/HASH and add a hard link *)
-		let s = exact_dump (dump_trivial_union dump_certificate) c in
-		let f = open_out (dir ^ "/" ^ ip ^ "-" ^ (string_of_int i)) in
-		output_string f s;
-		close_out f;
-		save_cert (i+1) cs
-	    in save_cert 0 certs
-          | _::r -> saveCerts r
-        in
-	Printf.printf "%s: %d certificate(s) saved.\n" ip (saveCerts records)
+         let rec save_cert i = function
+	   | [] -> i
+	   | c::cs ->
+	      (* TODO: save the file as dir/by-hash/HASH and add a hard link *)
+	      let s = exact_dump (dump_trivial_union dump_certificate) c in
+	      let f = open_out (dir ^ "/" ^ ip ^ "-" ^ (string_of_int i)) in
+	      output_string f s;
+	      close_out f;
+	      save_cert (i+1) cs
+	 in
+         let n_saved =
+           match (parse_answer !enrich_style !verbose answer).pa_content with
+           | TLSHandshake (_, _, _, certs) -> save_cert 0 certs
+           | SSLv2Handshake (_, _, cert) -> save_cert 0 [cert]
+           | _ -> 0
+         in
+	 Printf.printf "%s: %d certificate(s) saved.\n" ip n_saved
 
       | HTTPNames ->
-        let records =
-          let tls_records, _, _ = parse_all_tls_records answer in
-          if tls_records <> []
-          then Right tls_records
-          else begin
-            let ssl2_records, _, _ = parse_all_ssl2_records answer in
-            Left ssl2_records
-          end
-        in
-	let cert = match records with
-          | Right ({ content_type = CT_Handshake;
-                     record_content = Handshake {
-		       handshake_type = HT_ServerHello;
-		       handshake_content = ServerHello _
-		     }}::
-                  { content_type = CT_Handshake;
-                    record_content = Handshake {
-                      handshake_type = HT_Certificate;
-                      handshake_content = Certificate ((Parsed (_, cert))::_) }}::_)
-          | Left ({ ssl2_content = SSL2Handshake {
-              ssl2_handshake_type = SSL2_HT_SERVER_HELLO;
-              ssl2_handshake_content = SSL2ServerHello {
-                ssl2_server_certificate = Parsed (_, cert);
-              }}}::_)
-	    -> Some cert
-	  | _ -> None
-	in
-	begin
-	  match cert with
-	  | Some c ->
-	    let https_dns_and_ips = extract_dns_and_ips c in
-	    let string_of_dns_or_ip (t, v) = t ^ "=" ^ (quote_string v) in
-	    Printf.printf "%s: %s\n" ip (String.concat ", " (List.map string_of_dns_or_ip https_dns_and_ips))
-	  | None -> ()
-	end
+         let cert = match (parse_answer !enrich_style !verbose answer).pa_content with
+           | TLSHandshake (_, _, _, (Parsed (_,cert))::_)
+           | SSLv2Handshake (_, _, Parsed (_, cert)) -> Some cert
+           | _ -> None
+         in
+	 begin
+	   match cert with
+	   | Some c ->
+	      let https_dns_and_ips = extract_dns_and_ips c in
+	      let string_of_dns_or_ip (t, v) = t ^ "=" ^ (quote_string v) in
+	      Printf.printf "%s: %s\n" ip (String.concat ", " (List.map string_of_dns_or_ip https_dns_and_ips))
+	   | None -> ()
+	 end
   end;
   again
 
