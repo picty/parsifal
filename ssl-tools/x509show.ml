@@ -224,7 +224,7 @@ let _ =
       load_cas ca_store true (List.rev !cas);
       load_cas ca_store false (List.rev !intermediate_cas);
       let parsed_certs = List.mapi parse_and_number args in
-      let chains = build_certchain parsed_certs ca_store in
+      let chains = build_certchain None parsed_certs ca_store in
       List.iter
         (fun (g, c) -> print_endline g; print_chain c; print_newline ())
         (rate_and_sort_chains chains)

@@ -481,7 +481,7 @@ let check_rfc_certchain hs_msg_certs store =
 
 (* This function is more generic, and allows to build unordered or
    even transvalid chains *)
-let build_certchain hs_msg_certs store =
+let build_certchain max_transvalid hs_msg_certs store =
 
   let rec bottom_up ordered last chain next_certs =
 
@@ -526,8 +526,20 @@ let build_certchain hs_msg_certs store =
       let c1 = prepare_inmsg_candidates ordered [] [] next_certs in
       let possible_issuers = find_by_subject_hash store (issuer_hash_of_sc last) in
       let trusted_roots, other_cas = List.partition (fun sc -> sc.trusted_cert) possible_issuers in
-      let c2 = prepare_external_cas ordered next_certs c1 trusted_roots in
-      let candidates = prepare_external_cas false next_certs c2 other_cas in
+
+      (* If we have not yet taken too much external certs, add them to the candidates *)
+      let candidates =
+        let look_into_external = match max_transvalid with
+          | None -> true
+          | Some max ->
+             let n_transvalid = List.fold_left (fun n -> fun c -> match c.pos_in_hs_msg with None -> n+1 | Some _ -> n) 0 (last::chain) in
+             n_transvalid < max
+        in
+        if look_into_external then begin
+          let c2 = prepare_external_cas ordered next_certs c1 trusted_roots in
+          prepare_external_cas false next_certs c2 other_cas
+        end else c1
+      in
 
       let acceptable_issuers = List.filter (fun (_, sc, _) -> sc_check_link sc last) candidates in
       match acceptable_issuers with

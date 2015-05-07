@@ -376,7 +376,7 @@ let _ =
 	certs
       in
       List.iter (fun c -> print_endline (X509Util.rate_chain c); X509Util.print_chain c; print_newline ())
-	(X509Util.build_certchain parsed_certs ca_store)
+	(X509Util.build_certchain None parsed_certs ca_store)
 
     | ScanSuites, [host_t] ->
       let rec next_step () =
