@@ -1,12 +1,21 @@
 open BasePTypes
 
+
+struct answer_dump_v0 [top] = {
+  o_ip : PTypes.ipv4;
+  o_port : uint16;
+  o_msg_type : uint8;
+  o_content : binstring[uint32];
+}
+
+
 struct answer_dump [top] = {
   ad_ip : PTypes.ipv4;
   ad_port : uint16;
   ad_name : string[uint16];
   ad_client_hello_type : uint8;
   ad_msg_type : uint8;
-  ad_content : binstring[uint32]
+  ad_content : binstring[uint32];
 }
 
 
