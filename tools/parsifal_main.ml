@@ -117,6 +117,8 @@ let parse_tls_records_as_value ctx dir i =
   | recs, _ ->
     VList (List.map Tls.value_of_tls_record recs)
 
+let parse_bundled_certificate i =
+  parse_varlen_container parse_uint32 "varlen_container" X509.parse_certificate i
 
 let type_handlers : (string, string * (string_input -> value)) Hashtbl.t = Hashtbl.create 10
 
@@ -124,6 +126,7 @@ let _ =
   Hashtbl.add type_handlers "string" ("String", fun i -> value_of_string (parse_rem_string i));
   Hashtbl.add type_handlers "binstring" ("Binary string", fun i -> value_of_binstring (parse_rem_string i));
   Hashtbl.add type_handlers "x509" ("X509 certificate", fun i -> X509.value_of_certificate (X509.parse_certificate i));
+  Hashtbl.add type_handlers "x509-bundle" ("Bundled X509 certificate", fun i -> X509.value_of_certificate (parse_bundled_certificate i));
   Hashtbl.add type_handlers "asn1" ("ASN.1", fun i -> Asn1PTypes.value_of_der_object (Asn1PTypes.parse_der_object i));
   Hashtbl.add type_handlers "png" ("PNG image", fun i -> Png.value_of_png_file (Png.parse_png_file i));
   Hashtbl.add type_handlers "pe" ("PE executable", fun i -> Pe.value_of_pe_file (Pe.parse_pe_file i));
