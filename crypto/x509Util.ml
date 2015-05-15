@@ -318,7 +318,7 @@ let check_aki_serial issuer subject =
 
 let check_issuer_ca issuer _ =
   match issuer.tbsCertificate.version, get_basicConstraints issuer.tbsCertificate.extensions with
-  | None, _ -> None (* TODO: reject v1 certs? *)
+  | None, _ -> Some NotaCA (* TODO: accept v1 certs? *)
   | _, Some ({cA = Some true}, _) -> None
   | _, _ -> Some NotaCA
 
