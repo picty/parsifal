@@ -164,14 +164,29 @@ let handle_answer answer =
 	  | _ -> if !verbose then Printf.printf "%s: ERROR" ip
         end
       | SKE ->
-        let _, ctx, _ = parse_all_tls_records !enrich_style !verbose answer in
-	begin
-	  match ctx.future.f_server_key_exchange with
-	  | SKE_DHE { params = params } ->
-	    Printf.printf "%s: %s,%s,%s\n" ip (hexdump params.dh_p)
-	      (hexdump params.dh_g) (hexdump params.dh_Ys)
-	  | Unparsed_SKEContent "" -> if !verbose then Printf.printf "%s: NO_SKE" ip
-	  | _ -> if !verbose then Printf.printf "%s: NOT PARSED YET" ip
+        let ctx =
+          try let _, ctx, _ = parse_all_tls_records !enrich_style !verbose answer in ctx
+          with _ -> empty_context (Tls.default_prefs DummyRNG)
+        in
+        begin
+          let subject_hash = match ctx.future.f_certificates with
+            | (Parsed (_, { tbsCertificate = { issuer_raw = Some s } }))::_ -> hexdump (CryptoUtil.sha1sum s)
+            | _ -> "NO-CERT-PARSED"
+          in
+          match ctx.future.f_server_key_exchange with
+          | SKE_DHE { params = params } ->
+            Printf.printf "%s: DHE,%s,%s,%s,%s\n" ip subject_hash (hexdump params.dh_p)
+              (hexdump params.dh_g) (hexdump params.dh_Ys)
+
+          | SKE_ECDHE { ecdhe_params = { ecdh_type = ECCT_NamedCurve;
+                                         ecdh_params = ECP_NamedCurve curve;
+                                         ecdh_public = point} } ->
+            Printf.printf "%s: ECDHE,%s,%s,%s\n" ip subject_hash
+              (string_of_ec_named_curve curve) (hexdump point)
+
+          | SKE_ECDHE _ -> if !verbose then Printf.printf "%s: Non-named curve in ECDHE\n" ip
+          | Unparsed_SKEContent "" -> if !verbose then Printf.printf "%s: NO_SKE\n" ip
+          | _ -> if !verbose then Printf.printf "%s: NOT PARSED YET\n" ip
         end
       | ServerRandom ->
         let _, ctx, _ = parse_all_tls_records !enrich_style !verbose answer in
