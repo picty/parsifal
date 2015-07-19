@@ -205,6 +205,20 @@ asn1_alias certificatePolicies = seq_of policyInformation (* 1..MAX *)
 
 
 
+(******************)
+(* PolicyMappings *)
+(******************)
+
+let policyMappings_oid = [85;29;33]
+
+asn1_struct policyMapping = {
+  issuerDomainPolicy : der_oid;
+  subjectDomainPolicy : der_oid;
+}
+asn1_alias policyMappings = seq_of policyMapping (* 1..MAX *)
+
+
+
 (**********************)
 (* Extended Key Usage *)
 (**********************)
@@ -379,6 +393,7 @@ union extnValue [enrich] (UnparsedExtension of binstring) =
   | "nameConstraints" -> NameConstraints of nameConstraints
   | "crlDistributionPoints" -> CRLDistributionPoints of crlDistributionPoints
   | "certificatePolicies" -> CertificatePolicies of certificatePolicies
+  | "policyMappings" -> PolicyMappings of policyMappings
   | "extendedKeyUsage" -> ExtendedKeyUsage of extendedKeyUsage
   | "authorityInfoAccess" -> AuthorityInfoAccess of authorityInfoAccess
   | "logotype" -> Logotype of logotype

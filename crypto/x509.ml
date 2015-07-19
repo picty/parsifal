@@ -173,6 +173,7 @@ let extension_types = [
   nameConstraints_oid, "nameConstraints";
   crlDistributionPoints_oid, "crlDistributionPoints";
   certificatePolicies_oid, "certificatePolicies";
+  policyMappings_oid, "policyMappings";
   authorityKeyIdentifier_oid, "authorityKeyIdentifier";
   extendedKeyUsage_oid, "extendedKeyUsage";
   freshestCRL_oid, "freshestCRL";
@@ -189,6 +190,8 @@ let extension_types = [
   sMIMECapabilities_oid, "sMIMECapabilities";
 ]
 
+
+(* TODO: Add _oid constants *)
 
 let other_oids = [
   (* Prefixes *)
