@@ -1,6 +1,17 @@
-2014-11-03 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+2014-11-07 Baptiste Gourdin <baptiste.gourdin@gmail.com>
+	* New CRL PType.
+	* First version of x509check tool (not commited
+	  in master branch, integration pending).
+
+2014-11-07 Nicolas Vivet <nicolas.vivet@ssi.gouv.fr>
+	* Bugfix: correctly handle kerberos/heimdal on various
+	  systems.
+
+2014-11-05 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
 	* Pkcs1.raw_verify security fix
 	* Various bugfixes/improvements in tools
+	* Bugfix: probe_server probe2dump leaked file
+	  descriptors.
 
 2014-08-19 Pierre Chambart <pierre.chambart@ocamlpro.com>
 	* Add first support for OPAM
