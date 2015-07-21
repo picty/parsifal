@@ -13,7 +13,7 @@ open AnswerDumpUtil
 
 
 type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType | RecordTypes | Get
-	      | VersionACSAC | SuiteACSAC | SaveCertificates of string | HTTPNames
+              | VersionACSAC | SuiteACSAC | SaveCertificates of string | OutputCerts | HTTPNames
 let action = ref IP
 let verbose = ref false
 let maxlen = ref (Some 70)
@@ -80,6 +80,7 @@ let options = [
   mkopt None "record-types" (TrivialFun (fun () -> action := RecordTypes; update_enrich_level 2)) "prints the records received";
   mkopt None "junk-length" (IntVal junk_length) "Sets the max length of junk stuff to print";
   mkopt None "certificates" (StringFun (fun s -> action := SaveCertificates s; update_enrich_level 3; ActionDone)) "saves certificates";
+  mkopt None "output-certificates" (TrivialFun (fun () -> action := OutputCerts; update_enrich_level 3)) "output certificates as hex strings";
   mkopt None "cn" (TrivialFun (fun () -> action := Subject; update_enrich_level 2)) "show the subect";
   mkopt None "http-names" (TrivialFun (fun () -> action := HTTPNames; update_enrich_level 5)) "prints the answer types";
   mkopt (Some 'g') "get" (StringFun do_get_action) "Walks through the answers using a get string";
@@ -324,6 +325,15 @@ let handle_answer answer =
            | _ -> 0
          in
 	 Printf.printf "%s: %d certificate(s) saved.\n" ip n_saved
+
+      | OutputCerts ->
+         let certs =
+           match (parse_answer !enrich_style !verbose answer).pa_content with
+           | TLSHandshake (_, _, _, certs) -> certs
+           | SSLv2Handshake (_, _, cert) -> [cert]
+           | _ -> []
+         in
+         List.iter (fun c -> print_endline (hexdump (exact_dump (dump_trivial_union dump_certificate) c))) certs
 
       | HTTPNames ->
          let cert = match (parse_answer !enrich_style !verbose answer).pa_content with
