@@ -146,7 +146,7 @@ let options = [
   mkopt None "ca" (StringFun add_ca) "select a CA file";
 
   mkopt None "campaign" (IntVal campaign_number) "set the campaign number for dump outputs";
-  mkopt (Some 'o') "output" (StringVal output_file) "select an output file";
+  mkopt (Some 'o') "output" (StringVal output_file) "select an output file (- for stdout in raw mode, nothing for hex mode)";
   mkopt None "max-parallel-requests" (IntVal max_inflight_requests) "set the maximum number of parallel threads";
   mkopt None "keep-empty-answers" (Set keep_empty_answers) "keep empty answers in the dump file";
 
@@ -448,6 +448,7 @@ let _ =
     | ProbeToDump, hosts_t ->
       let output_result = match !output_file with
         | "" -> (fun buf -> print_endline (hexdump (POutput.contents buf)))
+        | "-" -> (fun buf -> print_endline (POutput.contents buf))
         | fn ->
           let f =
             try open_out_gen [Open_wronly; Open_creat; Open_excl] 0o644 fn
