@@ -1,0 +1,174 @@
+value {
+  value[0] {
+    src: "127.0.0.1"
+    src_port: 55072 (0xd720)
+    dst: "127.0.0.1"
+    dst_port: 8080 (0x1f90)
+    data {
+      data[0] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 01000170030154738ba19c8ef6900867fbaa897d5791cc4c95d86f02b596953cfbebb8ea5c612077ffa9c7cf29f86c728c93e5b761fa7a0ff20f97d4513c8e25d20e512e940f... (372 bytes)
+          }
+        }
+      }
+      data[1] {
+        direction: "S->C" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 02000031030124b82a78225b8ba28ed4293b0886b8dc43a2c3f699fe219dc02b73ece5bc601b000004000009ff01000100002300000b00033e00033b00033830820334308202... (891 bytes)
+          }
+        }
+      }
+      data[2] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 1000010201008dccbe0b54905b527650475a6ccd213fbbf78056390f8d7ca723c0e1fdab06b42f078465b6560ae02381eaafed0a6c9d6110e3626dadcaf10ef52508343eb375... (262 bytes)
+          }
+          payload[1] {
+            content_type: ChangeCipherSpec (20 = 0x14)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 01 (1 bytes)
+          }
+          payload[2] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 73a25e66952d8fc8ce487a8dc2b9be15a3a14dd7242a337f85942037271e426d (32 bytes)
+          }
+        }
+      }
+      data[3] {
+        direction: "S->C" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 040000b600001c2000b0ee075b07ab458fcdde4a6af26e27265fd68ea3f91273f64ee178b308779483dcc01f730120794eefa17e08592a1c5d35b1bc209d5c054a6c80d86aee... (186 bytes)
+          }
+          payload[1] {
+            content_type: ChangeCipherSpec (20 = 0x14)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 01 (1 bytes)
+          }
+          payload[2] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: d7989aed289f452a377442ed975508e792d5b4a793cf46e2e637ecdc1cc555ee (32 bytes)
+          }
+        }
+      }
+      data[4] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: ApplicationData (23 = 0x17)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: dfc0139c2e19d8ab1c557b654579ff9998e187c4e95ab4a0868dbd71da62aab27a98a1e008aa583c7a050518095972bdf9cd2f0bd9ab8a28f0a19e58a91d3c5cf38d471da264... (317 bytes)
+          }
+        }
+      }
+      data[5] {
+        direction: "S->C" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: ApplicationData (23 = 0x17)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: aae45bf53873306b6e4b4c6c87ce250bed1015056be9e70fc14db34dea875d73c7c9cde5324af2790a624b (43 bytes)
+          }
+        }
+      }
+    }
+  }
+  value[1] {
+    src: "127.0.0.1"
+    src_port: 55071 (0xd71f)
+    dst: "127.0.0.1"
+    dst_port: 8080 (0x1f90)
+    data {
+      data[0] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 010001700301ec298367fdffcd46a1927f6206b826a9291b802ffb277df92302db46a0fb58792077ffa9c7cf29f86c728c93e5b761fa7a0ff20f97d4513c8e25d20e512e940f... (372 bytes)
+          }
+        }
+      }
+      data[1] {
+        direction: "S->C" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 020000310301ec00822b35b34f6dbd524cb75e5b968d5c7adc74ba848bb421b04a5f8219a61f000004000009ff01000100002300000b00033e00033b00033830820334308202... (891 bytes)
+          }
+        }
+      }
+      data[2] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 1000010201005c6385908182ad298097d2fe2a83f20b943ea45c3d253fc25cc2da0fa232088ce8a688694aed5274bc5ec90ea5bd0293e2ae764632ce2695d7a6c94091e4c4d0... (262 bytes)
+          }
+          payload[1] {
+            content_type: ChangeCipherSpec (20 = 0x14)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 01 (1 bytes)
+          }
+          payload[2] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 99efc263d0f82f3893bba21e22657f2393795973e751e83d35cd8ade8a9127df (32 bytes)
+          }
+        }
+      }
+      data[3] {
+        direction: "S->C" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 040000b600001c2000b0ee075b07ab458fcdde4a6af26e27265f002261b9a7699d6c97febd11a9bd7572005b2021d096ed0b0657e34d0d1df7f42d0694a6c4ab9850527d165c... (186 bytes)
+          }
+          payload[1] {
+            content_type: ChangeCipherSpec (20 = 0x14)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 01 (1 bytes)
+          }
+          payload[2] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 57fdd967585bdbb416837f9fdec00c529f7fc6b00b5258b19e742d6bb0fe4518 (32 bytes)
+          }
+          payload[3] {
+            content_type: ApplicationData (23 = 0x17)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 810475804e2f50c73b1797a9d4a18fff9b (17 bytes)
+          }
+        }
+      }
+      data[4] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Alert (21 = 0x15)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: c212df966a08160f4149812a9b9020dd47bd (18 bytes)
+          }
+        }
+      }
+    }
+  }
+}
+

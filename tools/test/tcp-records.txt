@@ -1,0 +1,491 @@
+value {
+  value[0] {
+    src: "127.0.0.1"
+    src_port: 55072 (0xd720)
+    dst: "127.0.0.1"
+    dst_port: 8080 (0x1f90)
+    data {
+      data[0] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            record_content {
+              Handshake {
+                handshake_type: ClientHello (1 = 0x1)
+                handshake_content {
+                  ClientHello {
+                    client_version: TLSv1.0 (769 = 0x301)
+                    client_random: 54738ba19c8ef6900867fbaa897d5791cc4c95d86f02b596953cfbebb8ea5c61 (32 bytes)
+                    client_session_id: 77ffa9c7cf29f86c728c93e5b761fa7a0ff20f97d4513c8e25d20e512e940f23 (32 bytes)
+                    ciphersuites {
+                      ciphersuites[0]: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA (49162 = 0xc00a)
+                      ciphersuites[1]: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA (49161 = 0xc009)
+                      ciphersuites[2]: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA (49171 = 0xc013)
+                      ciphersuites[3]: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA (49172 = 0xc014)
+                      ciphersuites[4]: TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA (49160 = 0xc008)
+                      ciphersuites[5]: TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA (49170 = 0xc012)
+                      ciphersuites[6]: TLS_ECDHE_ECDSA_WITH_RC4_128_SHA (49159 = 0xc007)
+                      ciphersuites[7]: TLS_ECDHE_RSA_WITH_RC4_128_SHA (49169 = 0xc011)
+                      ciphersuites[8]: TLS_DHE_RSA_WITH_AES_128_CBC_SHA (51 = 0x33)
+                      ciphersuites[9]: TLS_DHE_DSS_WITH_AES_128_CBC_SHA (50 = 0x32)
+                      ciphersuites[10]: TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA (69 = 0x45)
+                      ciphersuites[11]: TLS_DHE_DSS_WITH_CAMELLIA_128_CBC_SHA (68 = 0x44)
+                      ciphersuites[12]: TLS_DHE_RSA_WITH_AES_256_CBC_SHA (57 = 0x39)
+                      ciphersuites[13]: TLS_DHE_DSS_WITH_AES_256_CBC_SHA (56 = 0x38)
+                      ciphersuites[14]: TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA (136 = 0x88)
+                      ciphersuites[15]: TLS_DHE_DSS_WITH_CAMELLIA_256_CBC_SHA (135 = 0x87)
+                      ciphersuites[16]: TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA (22 = 0x16)
+                      ciphersuites[17]: TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA (19 = 0x13)
+                      ciphersuites[18]: TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA (49156 = 0xc004)
+                      ciphersuites[19]: TLS_ECDH_RSA_WITH_AES_128_CBC_SHA (49166 = 0xc00e)
+                      ciphersuites[20]: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA (49157 = 0xc005)
+                      ciphersuites[21]: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA (49167 = 0xc00f)
+                      ciphersuites[22]: TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA (49155 = 0xc003)
+                      ciphersuites[23]: TLS_ECDH_RSA_WITH_3DES_EDE_CBC_SHA (49165 = 0xc00d)
+                      ciphersuites[24]: TLS_ECDH_ECDSA_WITH_RC4_128_SHA (49154 = 0xc002)
+                      ciphersuites[25]: TLS_ECDH_RSA_WITH_RC4_128_SHA (49164 = 0xc00c)
+                      ciphersuites[26]: TLS_RSA_WITH_AES_128_CBC_SHA (47 = 0x2f)
+                      ciphersuites[27]: TLS_RSA_WITH_CAMELLIA_128_CBC_SHA (65 = 0x41)
+                      ciphersuites[28]: TLS_RSA_WITH_AES_256_CBC_SHA (53 = 0x35)
+                      ciphersuites[29]: TLS_RSA_WITH_CAMELLIA_256_CBC_SHA (132 = 0x84)
+                      ciphersuites[30]: TLS_RSA_WITH_SEED_CBC_SHA (150 = 0x96)
+                      ciphersuites[31]: SSL_RSA_FIPS_WITH_3DES_EDE_CBC_SHA (65279 = 0xfeff)
+                      ciphersuites[32]: TLS_RSA_WITH_3DES_EDE_CBC_SHA (10 = 0xa)
+                      ciphersuites[33]: TLS_RSA_WITH_RC4_128_SHA (5 = 0x5)
+                      ciphersuites[34]: TLS_RSA_WITH_RC4_128_MD5 (4 = 0x4)
+                    }
+                    compression_methods {
+                      compression_methods[0]: Null (0 = 0x0)
+                    }
+                    client_extensions {
+                      client_extensions[0] {
+                        extension_type: ServerName (0 = 0x0)
+                        extension_data {
+                          ServerName {
+                            ClientServerName {
+                              ClientServerName[0] {
+                                sni_name_type: HostName (0 = 0x0)
+                                sni_name {
+                                  HostName: "localhost" (9 bytes)
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                      client_extensions[1] {
+                        extension_type: RenegotiationInfo (65281 = 0xff01)
+                        extension_data {
+                          RenegotiationInfo: 00 (1 bytes)
+                        }
+                      }
+                      client_extensions[2] {
+                        extension_type: EllipticCurves (10 = 0xa)
+                        extension_data {
+                          EllipticCurves {
+                            EllipticCurves[0]: secp256r1 (23 = 0x17)
+                            EllipticCurves[1]: secp384r1 (24 = 0x18)
+                            EllipticCurves[2]: secp521r1 (25 = 0x19)
+                          }
+                        }
+                      }
+                      client_extensions[3] {
+                        extension_type: ECPointFormats (11 = 0xb)
+                        extension_data {
+                          ECPointFormats {
+                            ECPointFormats[0]: Uncompressed (0 = 0x0)
+                          }
+                        }
+                      }
+                      client_extensions[4] {
+                        extension_type: SessionTicket (35 = 0x23)
+                        extension_data {
+                          SessionTicket: 4bf6edede26d9b8a88ccef32cbbd948861a43ff3d7c845d0c67a2ae7981a3679f1339bcf1a4f0d9603071b82872eaf1af04356343aa360bb3fb21a346e2daf601d76c8ad7854... (176 bytes)
+                        }
+                      }
+                      client_extensions[5] {
+                        extension_type: NextProtocolNegotiation (13172 = 0x3374)
+                        extension_data {
+                          NextProtocolNegotiation {
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      data[1] {
+        direction: "S->C" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            record_content {
+              Handshake {
+                handshake_type: ServerHello (2 = 0x2)
+                handshake_content {
+                  ServerHello {
+                    server_version: TLSv1.0 (769 = 0x301)
+                    server_random: 24b82a78225b8ba28ed4293b0886b8dc43a2c3f699fe219dc02b73ece5bc601b (32 bytes)
+                    server_session_id: "" (0 byte)
+                    ciphersuite: TLS_RSA_WITH_RC4_128_MD5 (4 = 0x4)
+                    compression_method: Null (0 = 0x0)
+                    server_extensions {
+                      server_extensions[0] {
+                        extension_type: RenegotiationInfo (65281 = 0xff01)
+                        extension_data {
+                          RenegotiationInfo: 00 (1 bytes)
+                        }
+                      }
+                      server_extensions[1] {
+                        extension_type: SessionTicket (35 = 0x23)
+                        extension_data {
+                          SessionTicket: "" (0 byte)
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          payload[1] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            record_content {
+              Handshake {
+                handshake_type: Certificate (11 = 0xb)
+                handshake_content {
+                  Certificate {
+                    certificates {
+                      certificates[0] {
+                        certificate {
+                          tbsCertificate {
+                            tbsCertificate {
+                              version {
+                                der_smallint: 2 (0x2)
+                              }
+                              serialNumber {
+                                der_integer: 02 (1 bytes)
+                              }
+                              signature {
+                                algorithmIdentifier {
+                                  algorithmId {
+                                    der_oid: "sha256WithRSAEncryption (1.2.840.113549.1.1.11)"
+                                  }
+                                  algorithmParams {
+                                    NoParams {
+                                    }
+                                  }
+                                }
+                              }
+                              issuer: "/C=FR/S=France/O=PF SSL/CN=RSA CA"
+                              validity {
+                                validity {
+                                  notBefore {
+                                    der_time {
+                                      UTCTime: "2013-02-03 12:34:24 UTC"
+                                    }
+                                  }
+                                  notAfter {
+                                    der_time {
+                                      UTCTime: "2013-03-05 12:34:24 UTC"
+                                    }
+                                  }
+                                }
+                              }
+                              subject: "/C=FR/S=France/O=PF SSL/CN=www.pf-ssl.local"
+                              subjectPublicKeyInfo {
+                                subjectPublicKeyInfo {
+                                  algorithm {
+                                    algorithmIdentifier {
+                                      algorithmId {
+                                        der_oid: "rsaEncryption (1.2.840.113549.1.1.1)"
+                                      }
+                                      algorithmParams {
+                                        NoParams {
+                                        }
+                                      }
+                                    }
+                                  }
+                                  subjectPublicKey {
+                                    RSA {
+                                      rsa_public_key {
+                                        p_modulus {
+                                          der_integer: 00c065ba5c79e0aadf658cffad558e5b959e073f4fe50da075695bfb7d5f7d759e6d5f0a70225032fce939d7555a01632f9d3626256f3aa53ebeedb2810b69435579ae55c52ae8cfa3f2e66a646266dc76cec718e89521b7f141a41d8c92356f4c0bcb9a8b7f20f36eb1ab72295e9eff7b669d0cb3ab1aef51acd00cbd4bce52451911747171976c376a1d22ebcf01c056fa14f7d0b4a80754a8726e231815ebcece65d68b286c6e55171d41f07531539d10a9fed8dccaff32974dd0ac85a868bc178b4e547763d19124f20627ef64259e9677fcc9e9e13c68c8c8e0a46772f518404e12de80bd4185886b2226d8a4289cb263f21b8f17b3838bc070e28f82212f (257 bytes)
+                                        }
+                                        p_publicExponent {
+                                          der_integer: 010001 (3 bytes)
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              extensions {
+                                extension_list {
+                                  extension_list[0] {
+                                    extension {
+                                      extnID {
+                                        der_oid: "basicConstraints (2.5.29.19)"
+                                      }
+                                      extnValue {
+                                        BasicConstraints {
+                                          basicConstraints {
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                  extension_list[1] {
+                                    extension {
+                                      extnID {
+                                        der_oid: "keyUsage (2.5.29.15)"
+                                      }
+                                      extnValue {
+                                        KeyUsage {
+                                          der_enumerated_bitstring: "[digitalSignature, keyEncipherment]"
+                                        }
+                                      }
+                                    }
+                                  }
+                                  extension_list[2] {
+                                    extension {
+                                      extnID {
+                                        der_oid: "extendedKeyUsage (2.5.29.37)"
+                                      }
+                                      extnValue {
+                                        ExtendedKeyUsage {
+                                          extendedKeyUsage {
+                                            extendedKeyUsage[0] {
+                                              der_oid: "serverAuth (1.3.6.1.5.5.7.3.1)"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                          signatureAlgorithm {
+                            algorithmIdentifier {
+                              algorithmId {
+                                der_oid: "sha256WithRSAEncryption (1.2.840.113549.1.1.11)"
+                              }
+                              algorithmParams {
+                                NoParams {
+                                }
+                              }
+                            }
+                          }
+                          signatureValue {
+                            RSASignature {
+                              rsa_signature: b25824d2b568ef1bed557b45132c516fb42a3adfa5fc595f859a1074297d8d65f2195e3d5d23d5f5304847ce3528537b91fbd5629503c085100b66dce9cd486c6193e54b62eaa61172315f84a1acc1e4f476fe089b115c407a2689b5e131c03d34298a3968841ecbe2cddde7ca0362f2d14c798630a167e125291f736afb19c2a594f7913ad44906f0ad8ce38c289e22a8fd69c6ea10245b9e51b00459a36e2220617f71a7afa703c4a3ad902fe3bb5df66fdfe5f8c0488ab3f6f347b41a907078b2714da76c75ca175a3b32e7fc8e994bb42af963d4732bd9f656fe74c2386c1fb51c2b5f97d23e3541da490995f16979f20845c2e2bcecffb1a5f8fc08905d (256 bytes)
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          payload[2] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            record_content {
+              Handshake {
+                handshake_type: ServerHelloDone (14 = 0xe)
+                handshake_content {
+                }
+              }
+            }
+          }
+        }
+      }
+      data[2] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            record_content {
+              Handshake {
+                handshake_type: ClientKeyExchange (16 = 0x10)
+                handshake_content {
+                  ClientKeyExchange {
+                    CKE_RSA {
+                      cke_rsa_params: 8dccbe0b54905b527650475a6ccd213fbbf78056390f8d7ca723c0e1fdab06b42f078465b6560ae02381eaafed0a6c9d6110e3626dadcaf10ef52508343eb3750a4cf50bdd12... (256 bytes)
+                    }
+                  }
+                }
+              }
+            }
+          }
+          payload[1] {
+            content_type: ChangeCipherSpec (20 = 0x14)
+            record_version: TLSv1.0 (769 = 0x301)
+            record_content {
+              ChangeCipherSpec {
+                change_cipher_spec_value: ChangeCipherSpec (1 = 0x1)
+              }
+            }
+          }
+          payload[2] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 73a25e66952d8fc8ce487a8dc2b9be15a3a14dd7242a337f85942037271e426d (32 bytes)
+          }
+        }
+      }
+      data[3] {
+        direction: "S->C" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 040000b600001c2000b0ee075b07ab458fcdde4a6af26e27265fd68ea3f91273f64ee178b308779483dcc01f730120794eefa17e08592a1c5d35b1bc209d5c054a6c80d86aee... (186 bytes)
+          }
+          payload[1] {
+            content_type: ChangeCipherSpec (20 = 0x14)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 01 (1 bytes)
+          }
+          payload[2] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: d7989aed289f452a377442ed975508e792d5b4a793cf46e2e637ecdc1cc555ee (32 bytes)
+          }
+        }
+      }
+      data[4] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: ApplicationData (23 = 0x17)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: dfc0139c2e19d8ab1c557b654579ff9998e187c4e95ab4a0868dbd71da62aab27a98a1e008aa583c7a050518095972bdf9cd2f0bd9ab8a28f0a19e58a91d3c5cf38d471da264... (317 bytes)
+          }
+        }
+      }
+      data[5] {
+        direction: "S->C" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: ApplicationData (23 = 0x17)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: aae45bf53873306b6e4b4c6c87ce250bed (17 bytes)
+          }
+          payload[1] {
+            content_type: ApplicationData (23 = 0x17)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 1015056be9e70fc14db34dea875d73c7c9cde5324af2790a624b (26 bytes)
+          }
+        }
+      }
+    }
+  }
+  value[1] {
+    src: "127.0.0.1"
+    src_port: 55071 (0xd71f)
+    dst: "127.0.0.1"
+    dst_port: 8080 (0x1f90)
+    data {
+      data[0] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 010001700301ec298367fdffcd46a1927f6206b826a9291b802ffb277df92302db46a0fb58792077ffa9c7cf29f86c728c93e5b761fa7a0ff20f97d4513c8e25d20e512e940f... (372 bytes)
+          }
+        }
+      }
+      data[1] {
+        direction: "S->C" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 020000310301ec00822b35b34f6dbd524cb75e5b968d5c7adc74ba848bb421b04a5f8219a61f000004000009ff0100010000230000 (53 bytes)
+          }
+          payload[1] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 0b00033e00033b000338308203343082021ca003020102020102300d06092a864886f70d01010b05003040310b3009060355040613024652310f300d06035504081306467261... (834 bytes)
+          }
+          payload[2] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 0e000000 (4 bytes)
+          }
+        }
+      }
+      data[2] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 1000010201005c6385908182ad298097d2fe2a83f20b943ea45c3d253fc25cc2da0fa232088ce8a688694aed5274bc5ec90ea5bd0293e2ae764632ce2695d7a6c94091e4c4d0... (262 bytes)
+          }
+          payload[1] {
+            content_type: ChangeCipherSpec (20 = 0x14)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 01 (1 bytes)
+          }
+          payload[2] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 99efc263d0f82f3893bba21e22657f2393795973e751e83d35cd8ade8a9127df (32 bytes)
+          }
+        }
+      }
+      data[3] {
+        direction: "S->C" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 040000b600001c2000b0ee075b07ab458fcdde4a6af26e27265f002261b9a7699d6c97febd11a9bd7572005b2021d096ed0b0657e34d0d1df7f42d0694a6c4ab9850527d165c... (186 bytes)
+          }
+          payload[1] {
+            content_type: ChangeCipherSpec (20 = 0x14)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 01 (1 bytes)
+          }
+          payload[2] {
+            content_type: Handshake (22 = 0x16)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 57fdd967585bdbb416837f9fdec00c529f7fc6b00b5258b19e742d6bb0fe4518 (32 bytes)
+          }
+          payload[3] {
+            content_type: ApplicationData (23 = 0x17)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: 810475804e2f50c73b1797a9d4a18fff9b (17 bytes)
+          }
+        }
+      }
+      data[4] {
+        direction: "C->S" (4 bytes)
+        payload {
+          payload[0] {
+            content_type: Alert (21 = 0x15)
+            record_version: TLSv1.0 (769 = 0x301)
+            [Unparsed]_record_content: c212df966a08160f4149812a9b9020dd47bd (18 bytes)
+          }
+        }
+      }
+    }
+  }
+}
+

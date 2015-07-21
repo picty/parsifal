@@ -1,0 +1,11 @@
+value {
+  value[0] {
+    value[0][0]: "GET / HTTP/1.1\x0d\nHost: localhost:8080\x0d\nUser-Agent: Mozilla/5.0 (X11; Li..." (301 bytes)
+    value[0][1]: "\nSECRET !!\n" (11 bytes)
+  }
+  value[1] {
+    value[1][0]: "" (0 byte)
+    value[1][1]: "\n" (1 bytes)
+  }
+}
+

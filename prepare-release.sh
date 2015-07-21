@@ -68,6 +68,8 @@ OCAMLPATH="$TMPDIR/lib" make -C tutorial/tar-steps byte
 OCAMLPATH="$TMPDIR/lib" make -C tutorial/png-steps byte
 OCAMLPATH="$TMPDIR/lib" make -C tutorial/csr-steps byte
 
+info "Checking tls-decrypt feature"
+( cd tools/test; ./tls-decrypt-test.sh )
 echo "Seems OK to me..."
 
 
