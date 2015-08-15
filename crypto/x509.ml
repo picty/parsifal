@@ -14,6 +14,7 @@ type subjectPublicKeyType =
   | SPK_DSA of DSAKey.dsa_params
   | SPK_DH of DHKey.dh_params
   | SPK_RSA
+  | SPK_EC of ECKey.ec_params
   | SPK_Unknown
 
 let subjectPublicKeyType_directory : (int list, algorithmParams option -> subjectPublicKeyType) Hashtbl.t = Hashtbl.create 10
@@ -27,6 +28,7 @@ union subjectPublicKey [enrich] (UnparsedPublicKey of binstring) =
   | SPK_DSA _params -> DSA of DSAKey.dsa_public_key
   | SPK_DH _params -> DH of DHKey.dh_public_key
   | SPK_RSA -> RSA of Pkcs1.rsa_public_key
+  | SPK_EC _params -> EC of ECKey.ec_public_key
 
 asn1_struct subjectPublicKeyInfo = {
   algorithm : algorithmIdentifier;
@@ -42,6 +44,7 @@ asn1_struct subjectPublicKeyInfo = {
 type signatureType =
   | ST_DSA
   | ST_RSA
+  | ST_ECDSA
   | ST_Unknown
 
 let signatureType_directory : (int list, algorithmParams option -> signatureType) Hashtbl.t = Hashtbl.create 10
@@ -54,7 +57,7 @@ let signatureType_of_algo algo =
 union signature [enrich] (UnparsedSignature of binstring) =
   | ST_DSA -> DSASignature of DSAKey.dsa_signature
   | ST_RSA -> RSASignature of Pkcs1.rsa_signature
-
+  | ST_ECDSA -> ECDSASignature of ECKey.ecdsa_signature
 
 
 (***********************)
@@ -130,10 +133,15 @@ let dh_spk_of_param = function
   | Some (DHParams dp) -> SPK_DH dp
   | _ -> SPK_Unknown
 
+let ec_spk_of_param = function
+  | Some (ECParams ecp) -> SPK_EC ecp
+  | _ -> SPK_Unknown
+
 let public_key_types = [
   [42;840;113549;1;1;1], "rsaEncryption", APT_Null, (fun _ -> SPK_RSA);
   [42;840;10040;4;1], "dsa", APT_DSAParams, dsa_spk_of_param;
   [42;840;10046;2;1], "dh-public-number" , APT_DHParams, dh_spk_of_param;
+  [42;840;10045;2;1], "ecPublicKey", APT_ECParams, ec_spk_of_param;
 ]
 
 let signature_types = [
@@ -149,6 +157,7 @@ let signature_types = [
   [43;14;3;2;29], "sha1WithRSAEncryption", APT_Null, (fun _ -> ST_RSA);
   [96;840;1;101;3;4;3;1], "dsaWithSha224", APT_Null, (fun _ -> ST_DSA);
   [96;840;1;101;3;4;3;2], "dsaWithSha256", APT_Null, (fun _ -> ST_DSA);
+  [42;840;10045;4;3;3], "ecdsaWithSha384", APT_Null, (fun _ -> ST_ECDSA);
 ]
 
 let capability_types = [
@@ -217,6 +226,37 @@ let other_oids = [
 
   [43;6;1;5;5;7;48;1], "id-ad-ocsp";
   [43;6;1;5;5;7;48;2], "id-ad-caIssuers";
+
+  [43;132;0;1], "sect163k1";
+  [43;132;0;2], "sect163r1";
+  [43;132;0;3], "sect239k1";
+  [43;132;0;4], "sect113r1";
+  [43;132;0;5], "sect113r2";
+  [43;132;0;6], "secp112r1";
+  [43;132;0;7], "secp112r2";
+  [43;132;0;8], "secp160r1";
+  [43;132;0;9], "secp160k1";
+  [43;132;0;10], "secp256k1";
+  [43;132;0;15], "sect163r2";
+  [43;132;0;16], "sect283k1";
+  [43;132;0;17], "sect283r1";
+  [43;132;0;22], "sect131r1";
+  [43;132;0;24], "sect193r1";
+  [43;132;0;25], "sect193r2";
+  [43;132;0;26], "sect233k1";
+  [43;132;0;27], "sect233r1";
+  [43;132;0;28], "secp128r1";
+  [43;132;0;29], "secp128r2";
+  [43;132;0;30], "secp160r2";
+  [43;132;0;31], "secp192k1";
+  [43;132;0;32], "secp224k1";
+  [43;132;0;33], "secp224r1";
+  [43;132;0;34], "secp384r1";
+  [43;132;0;35], "secp521r1";
+  [43;132;0;36], "sect409k1";
+  [43;132;0;37], "sect409r1";
+  [43;132;0;38], "sect571k1";
+  [43;132;0;39], "sect571r1";
 ]
 
 

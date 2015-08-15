@@ -105,6 +105,7 @@ type algorithmParamsType =
   | APT_Null
   | APT_DSAParams
   | APT_DHParams
+  | APT_ECParams
   | APT_DES3Params
   | APT_Unknown
 
@@ -120,6 +121,7 @@ union algorithmParams [enrich] (UnparsedParams of der_object) =
   | APT_Null -> NoParams of der_null
   | APT_DSAParams -> DSAParams of DSAKey.dsa_params
   | APT_DHParams -> DHParams of DHKey.dh_params
+  | APT_ECParams -> ECParams of ECKey.ec_params
   | APT_DES3Params -> DES3Params of der_octetstring
 
 asn1_struct algorithmIdentifier = {

@@ -3,7 +3,7 @@ TARGETS =
 MLLIBS = parsifal_crypto
 LIBNAME = parsifal_crypto
 
-parsifal_crypto_SRCS := dHKey.ml dSAKey.ml x509Basics.ml x509Extensions.ml cryptoUtil.ml \
+parsifal_crypto_SRCS := dHKey.ml dSAKey.ml eCKey.ml x509Basics.ml x509Extensions.ml cryptoUtil.ml \
 		        randomEngine.ml pkcs1.ml x509.ml pkcs7.ml x509Util.ml crl.ml
 
 # comment this line if not using camlp4
