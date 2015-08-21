@@ -219,43 +219,12 @@ let value_of_enrich_blocker = value_of_container
 
 type 'a hex_container = 'a
 
-let reverse_hex_chars =
-  [|-1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-     0;  1;  2;  3;  4;  5;  6;  7;  8;  9; -1; -1; -1; -1; -1; -1;
-    -1; 10; 11; 12; 13; 14; 15; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; 10; 11; 12; 13; 14; 15; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
-    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1|]
-
-let extract_4bits input =
-  let c = parse_byte input in
-  match reverse_hex_chars.(c) with
-  | -1 -> raise (ParsingException (InvalidHexString "invalid character", _h_of_si input))
-  | res -> res
-
-let hexparse input =
-  let len = input.cur_length - input.cur_offset in
-  if len mod 2 <> 0 then raise (ParsingException (InvalidHexString "odd-length string", _h_of_si input));
-  let res = String.make (len / 2) ' ' in
-  for i = 0 to (len / 2) - 1 do
-    let hibits = extract_4bits input in
-    let lobits = extract_4bits input in
-    res.[i] <- char_of_int ((hibits lsl 4) lor lobits)
-  done;
-  res
-
 let parse_hex_container name parse_fun input =
-  let content = hexparse input in
+  let s = parse_rem_string input in
+  let content =
+    try hexparse s
+    with InvalidHexStringException e -> raise (ParsingException (InvalidHexString e, _h_of_si input))
+  in
   let new_input = get_in_container input name content in
   let res = parse_fun new_input in
   check_empty_input true new_input;

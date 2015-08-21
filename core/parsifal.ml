@@ -58,6 +58,43 @@ let hexdump s =
   res
 
 
+exception InvalidHexStringException of string
+
+let reverse_hex_chars =
+  [|-1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+     0;  1;  2;  3;  4;  5;  6;  7;  8;  9; -1; -1; -1; -1; -1; -1;
+    -1; 10; 11; 12; 13; 14; 15; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; 10; 11; 12; 13; 14; 15; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1;
+    -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1; -1|]
+
+let extract_4bits c =
+  match reverse_hex_chars.(c) with
+  | -1 -> raise (InvalidHexStringException "invalid character")
+  | res -> res
+
+let hexparse s =
+  let len = String.length s in
+  if len mod 2 <> 0 then raise (InvalidHexStringException "odd-length string");
+  let res = String.make (len / 2) ' ' in
+  for i = 0 to (len / 2) - 1 do
+    let hibits = extract_4bits (int_of_char s.[2 * i]) in
+    let lobits = extract_4bits (int_of_char s.[2 * i + 1]) in
+    res.[i] <- char_of_int ((hibits lsl 4) lor lobits)
+  done;
+  res
+
+
 let string_split c s =
   let rec aux offset =
     try
