@@ -107,6 +107,7 @@ let parse_tls_records_as_value ctx dir i =
   | [], None -> VUnit
   | [], Some _ ->
     begin
+      i.cur_offset <- 0;
       match try_parse (Ssl2.parse_ssl2_record { Ssl2.cleartext = true }) i with
       | None -> VError "No SSLv2 nor TLS message could be parsed"
       | Some first ->
