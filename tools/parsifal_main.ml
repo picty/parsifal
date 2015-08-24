@@ -136,6 +136,7 @@ let _ =
   Hashtbl.add type_handlers "answer-dump-v1" ("Answer dump v1", fun i -> AnswerDump.value_of_answer_dump (AnswerDump.parse_answer_dump i));
   Hashtbl.add type_handlers "answer-dump" ("Answer dump v2", fun i -> AnswerDump.value_of_answer_dump_v2 (AnswerDump.parse_answer_dump_v2 i));
   Hashtbl.add type_handlers "tls" ("SSL/TLS record", parse_tls_records_as_value ctx ServerToClient);
+  Hashtbl.add type_handlers "sslv2" ("SSLv2 record", fun i -> Ssl2.value_of_ssl2_record (Ssl2.parse_ssl2_record { Ssl2.cleartext = true } i));
   Hashtbl.add type_handlers "pcap-tls" ("PCAP containing TLS messages",
     fun i -> PcapContainers.value_of_oriented_tcp_container (fun x -> x)
       (PcapContainers.parse_oriented_tcp_container init_ctx !port "HTTPS" (parse_tls_records_as_value ctx) i));
