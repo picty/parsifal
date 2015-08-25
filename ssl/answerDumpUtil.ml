@@ -103,12 +103,27 @@ let parse_records_as_values enrich_style verbose answer =
     List.map value_of_tls_record records, x <> None
 
 
+type parsed_ssl2_handshake = {
+  version : tls_version;
+  cipher_specs : ssl2_cipher_spec list;
+  certificate : certificate trivial_union;
+}
+
+type parsed_tls_handshake = {
+  record_version : tls_version;
+  server_hello_version : tls_version;
+  ciphersuite : ciphersuite;
+  compression_method : compression_method;
+  extensions : hello_extension list option;
+  certificates : (certificate trivial_union) list;
+}
+
 type parsed_answer_content =
   | Empty
   | Junk of string * binstring
-  | SSLv2Handshake of tls_version * ssl2_cipher_spec list * certificate trivial_union
+  | SSLv2Handshake of parsed_ssl2_handshake
   | SSLv2Alert of ssl2_error
-  | TLSHandshake of tls_version * tls_version * ciphersuite * (certificate trivial_union) list
+  | TLSHandshake of parsed_tls_handshake
   | TLSAlert of tls_version * tls_alert_level * tls_alert_type
 
 type parsed_answer = {
@@ -144,18 +159,36 @@ let parse_answer enrich_style verbose answer =
                record_content = Handshake {
                  handshake_type = HT_Certificate;
                  handshake_content = Certificate certs }}::_), _ ->
-       TLSHandshake (ext_v, sh.server_version, sh.ciphersuite, certs)
+       TLSHandshake {
+           record_version = ext_v;
+           server_hello_version = sh.server_version;
+           ciphersuite = sh.ciphersuite;
+           compression_method = sh.compression_method;
+           extensions = sh.server_extensions;
+           certificates = certs
+         }
     | Left ({ ssl2_content = SSL2Handshake {
                 ssl2_handshake_type = SSL2_HT_SERVER_HELLO;
                 ssl2_handshake_content = SSL2ServerHello sh }}::_), _ ->
-       SSLv2Handshake (sh.ssl2_server_version, sh.ssl2_server_cipher_specs, sh.ssl2_server_certificate)
+       SSLv2Handshake {
+           version = sh.ssl2_server_version;
+           cipher_specs = sh.ssl2_server_cipher_specs;
+           certificate = sh.ssl2_server_certificate
+         }
     | Right ({ content_type = CT_Handshake;
                record_version = ext_v;
                record_content = Handshake {
                  handshake_type = HT_ServerHello;
                  handshake_content = ServerHello sh }}::_), _ ->
        (* TODO: Should this [] be a None to explicitly say "No Certificate message found"? *)
-       TLSHandshake (ext_v, sh.server_version, sh.ciphersuite, [])
+       TLSHandshake {
+           record_version = ext_v;
+           server_hello_version = sh.server_version;
+           ciphersuite = sh.ciphersuite;
+           compression_method = sh.compression_method;
+           extensions = sh.server_extensions;
+           certificates = []
+         }
 
     | Right ({ content_type = CT_Handshake;
                record_content = Handshake {

@@ -232,17 +232,17 @@ let handle_answer answer =
            | SSLv2Alert e ->
               Printf.printf "%s\tA\tSSLv2_ALERT\t%s\n" ip (string_of_ssl2_error e)
 
-           | TLSHandshake (_, v, c, (Parsed (_, cert))::_) ->
+           | TLSHandshake {server_hello_version = v; ciphersuite = c; certificates = (Parsed (_, cert))::_} ->
               let s = String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)) in
               Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) (string_of_ciphersuite c) (quote_string s)
-           | SSLv2Handshake (v, cs, Parsed (_, cert)) ->
+           | SSLv2Handshake {version = v; cipher_specs = cs; certificate = Parsed (_, cert)} ->
               let s = String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject))
               and cs_str = String.concat "," (List.map (fun c -> string_of_value (value_of_ssl2_cipher_spec c)) cs) in
               Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) cs_str (quote_string s)
 
-           | TLSHandshake (_, v, c, _) ->
+           | TLSHandshake {server_hello_version = v; ciphersuite = c} ->
               Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
-           | SSLv2Handshake (v, cs, _) ->
+           | SSLv2Handshake {version = v; cipher_specs = cs} ->
               let cs_str = String.concat "," (List.map (fun c -> string_of_value (value_of_ssl2_cipher_spec c)) cs) in
               Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) cs_str
 
@@ -266,8 +266,8 @@ let handle_answer answer =
         Printf.printf "%s\t%s\n" ip res
       | Subject ->
          let subject = match (parse_answer !enrich_style !verbose answer).pa_content with
-           | TLSHandshake (_, _, _, (Parsed (_, cert))::_)
-           | SSLv2Handshake (_, _, Parsed (_, cert)) ->
+           | TLSHandshake {certificates = (Parsed (_, cert))::_}
+           | SSLv2Handshake {certificate = Parsed (_, cert)} ->
               Some (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
            | _ -> None
          in
@@ -290,9 +290,9 @@ let handle_answer answer =
       | SuiteACSAC ->
          begin
            match (parse_answer !enrich_style !verbose answer).pa_content with
-           | TLSHandshake (_, _, c, _) ->
+           | TLSHandshake {ciphersuite = c} ->
               Printf.printf "%s: %s\n" ip (string_of_ciphersuite c)
-           | SSLv2Handshake (_, c::_, _) ->
+           | SSLv2Handshake {cipher_specs = c::_} ->
               Printf.printf "%s: %s\n" ip (string_of_value (value_of_ssl2_cipher_spec c))
            | _ -> ()
          end
@@ -320,8 +320,8 @@ let handle_answer answer =
 	 in
          let n_saved =
            match (parse_answer !enrich_style !verbose answer).pa_content with
-           | TLSHandshake (_, _, _, certs) -> save_cert 0 certs
-           | SSLv2Handshake (_, _, cert) -> save_cert 0 [cert]
+           | TLSHandshake h -> save_cert 0 h.certificates
+           | SSLv2Handshake h -> save_cert 0 [h.certificate]
            | _ -> 0
          in
 	 Printf.printf "%s: %d certificate(s) saved.\n" ip n_saved
@@ -329,16 +329,16 @@ let handle_answer answer =
       | OutputCerts ->
          let certs =
            match (parse_answer !enrich_style !verbose answer).pa_content with
-           | TLSHandshake (_, _, _, certs) -> certs
-           | SSLv2Handshake (_, _, cert) -> [cert]
+           | TLSHandshake h -> h.certificates
+           | SSLv2Handshake h -> [h.certificate]
            | _ -> []
          in
          List.iter (fun c -> print_endline (hexdump (exact_dump (dump_trivial_union dump_certificate) c))) certs
 
       | HTTPNames ->
          let cert = match (parse_answer !enrich_style !verbose answer).pa_content with
-           | TLSHandshake (_, _, _, (Parsed (_,cert))::_)
-           | SSLv2Handshake (_, _, Parsed (_, cert)) -> Some cert
+           | TLSHandshake {certificates = (Parsed (_,cert))::_}
+           | SSLv2Handshake {certificate = Parsed (_, cert)} -> Some cert
            | _ -> None
          in
 	 begin
