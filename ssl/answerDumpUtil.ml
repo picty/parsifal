@@ -112,6 +112,7 @@ type parsed_ssl2_handshake = {
 type parsed_tls_handshake = {
   record_version : tls_version;
   server_hello_version : tls_version;
+  server_random : binstring;
   ciphersuite : ciphersuite;
   compression_method : compression_method;
   extensions : hello_extension list option;
@@ -162,6 +163,7 @@ let parse_answer enrich_style verbose answer =
        TLSHandshake {
            record_version = ext_v;
            server_hello_version = sh.server_version;
+           server_random = sh.server_random;
            ciphersuite = sh.ciphersuite;
            compression_method = sh.compression_method;
            extensions = sh.server_extensions;
@@ -184,6 +186,7 @@ let parse_answer enrich_style verbose answer =
        TLSHandshake {
            record_version = ext_v;
            server_hello_version = sh.server_version;
+           server_random = sh.server_random;
            ciphersuite = sh.ciphersuite;
            compression_method = sh.compression_method;
            extensions = sh.server_extensions;
