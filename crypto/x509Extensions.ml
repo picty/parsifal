@@ -198,7 +198,7 @@ asn1_struct policyQualifierInfo = {
 asn1_alias policyQualifiers = seq_of policyQualifierInfo (* TODO: 1..MAX *)
 
 asn1_struct policyInformation = {
-  policyIdentifer : der_oid;
+  policyIdentifier : der_oid;
   optional policyQualifiers : policyQualifiers
 }
 asn1_alias certificatePolicies = seq_of policyInformation (* 1..MAX *)
