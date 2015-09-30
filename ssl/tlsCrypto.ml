@@ -39,6 +39,9 @@ let hmac hash_fun block_len k m =
 let hmac_md5 = hmac md5sum 64
 let hmac_sha1 = hmac sha1sum 64
 let hmac_sha256 = hmac sha256sum 64
+let hmac_sha384 = hmac sha384sum 128
+let hmac_sha512 = hmac sha512sum 128
+let hmac_sha224 = hmac sha224sum 64
 
 
 let tls_P_hash hmac_fun hash_len secret seed len =
@@ -82,7 +85,8 @@ let choose_prf version prf_hash = match version, prf_hash with
   | V_SSLv3, _ -> failwith "Not implemented: SSLv3 PRF"
   | (V_TLSv1 | V_TLSv1_1), _ -> tls1_prf
   | V_TLSv1_2, (PRF_Default | PRF_SHA256) ->  tls12_prf (hmac_sha256, 32)
-  | V_TLSv1_2, (PRF_SHA384 | PRF_Unknown) ->  failwith "Not implemented: PRF hash function"
+  | V_TLSv1_2, PRF_SHA384 ->  tls12_prf (hmac_sha384, 48)
+  | V_TLSv1_2, PRF_Unknown ->  failwith "Not implemented: PRF hash function"
   | V_Unknown _, _ -> failwith "Not implemented: PRF choice using an unknown version"
 
 

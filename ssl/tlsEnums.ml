@@ -597,7 +597,6 @@ type hash_function =
   | HF_SHA256
   | HF_SHA384
 
-
 type integrity_algorithm =
   | MAC_HMAC of hash_function
   | MAC_AEAD

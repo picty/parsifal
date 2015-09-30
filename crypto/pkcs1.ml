@@ -245,9 +245,9 @@ let hash_fun_list = [
   [42;840;113549;2;5], "md5", X509Basics.APT_Null, md5sum;
   [43;14;3;2;26], "sha1", X509Basics.APT_Null, sha1sum;
   [96;840;1;101;3;4;2;1], "sha256", X509Basics.APT_Null, sha256sum;
-(*  "sha384", [96;840;1;101;3;4;2;2], sha384sum;
-  "sha512", [96;840;1;101;3;4;2;3], sha512sum;
-  "sha224", [96;840;1;101;3;4;2;4], sha224sum;*)
+  [96;840;1;101;3;4;2;2], "sha384", X509Basics.APT_Null, sha384sum;
+  [96;840;1;101;3;4;2;3], "sha512", X509Basics.APT_Null, sha512sum;
+  [96;840;1;101;3;4;2;4], "sha224", X509Basics.APT_Null, sha224sum;
 ]
 
 let _ =
