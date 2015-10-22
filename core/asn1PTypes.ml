@@ -349,15 +349,28 @@ let utc_time_re =
 let generalized_time_re =
   Str.regexp "^\\([0-9][0-9][0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)Z$"
 
+(* Seconds are mandatory in DER UTCTime representation *)
+(* TODO: There should be a laxist mode. The next best thing is a global switch *)
+let utc_time_laxist_re =
+  Str.regexp "^\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)?Z$"
+let generalized_time_laxist_re =
+  Str.regexp "^\\([0-9][0-9][0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)\\([0-9][0-9]\\)?Z$"
+
+let accept_der_time_without_seconds = ref false
+
+let get_utc_time_re () = if !accept_der_time_without_seconds then utc_time_laxist_re else utc_time_re
+let get_generalized_time_re () = if !accept_der_time_without_seconds then generalized_time_laxist_re else generalized_time_re
+
+
 let time_constraint re year_fun s input =
   try
-    if Str.string_match re s 0 then begin
+    if Str.string_match (re()) s 0 then begin
       let y = int_of_string (Str.matched_group 1 s)
       and m = int_of_string (Str.matched_group 2 s)
       and d = int_of_string (Str.matched_group 3 s)
       and hh = int_of_string (Str.matched_group 4 s)
       and mm = int_of_string (Str.matched_group 5 s)
-      and ss = int_of_string (Str.matched_group 6 s) in
+      and ss = try int_of_string (Str.matched_group 6 s) with Not_found -> 0 in
       if m = 0 || m > 12 || d = 0 || d > 31 || hh >= 24 || mm > 59 || ss > 59
       then warning InvalidUTCTime input;
       Calendar.make (year_fun y) m d hh mm ss
@@ -368,8 +381,8 @@ let utc_year_of_int i = i mod 100
 (* TODO: check if it is > or >= *)
 let int_of_utc_year y = if y >= 50 then y + 1900 else y + 2000
 
-let utc_time_constraint = time_constraint utc_time_re int_of_utc_year
-let generalized_time_constraint = time_constraint generalized_time_re id
+let utc_time_constraint = time_constraint get_utc_time_re int_of_utc_year
+let generalized_time_constraint = time_constraint get_generalized_time_re id
 
 let string_of_time_content t =
   Printf.sprintf "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d UTC"
