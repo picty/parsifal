@@ -56,8 +56,11 @@ let keep_empty_answers = ref false
 
 (* TODO: Add stuff to add/remove/clear a list in getopt? *)
 let remove_from_list list elt =
-  list := List.filter (fun x -> x <> elt) !list;
-  !list <> []
+  let new_list = List.filter (fun x -> x <> elt) !list in
+  if new_list <> !list then begin
+    list := new_list;
+    !list <> []
+  end else false
 
 let clear_suites () = suites := []
 let add_suite s =
