@@ -570,3 +570,10 @@ let compute_chain_validity certs =
     max nB cur_min, min nA cur_max
   in
   List.fold_left constrain_interval (0L, Int64.max_int) certs
+
+
+
+let relax_x509_constraints () =
+  Asn1PTypes.accept_der_time_without_seconds := true;
+  accept_x509_identical_extensions := true;
+  accept_unknown_signature := true

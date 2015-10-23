@@ -72,6 +72,7 @@ let load_aes_ticket_key filename =
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
+  mkopt None "laxist" (TrivialFun X509Util.relax_x509_constraints) "relax some constraints on certificate parsing";
   mkopt None "maxlen" (IntFun (fun i -> maxlen := Some i; ActionDone)) "set the string max length";
   mkopt None "no-maxlen" (TrivialFun (fun () -> maxlen := None)) "reset the string max length";
   mkopt None "no-alias" (Set no_alias) "remove alias structure from output";

@@ -36,6 +36,7 @@ let add_to_list l elt =
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'v') "verbose" (Set verbose) "print more info to stderr";
+  mkopt None "laxist" (TrivialFun relax_x509_constraints) "relax some constraints on certificate parsing";
   mkopt (Some 'k') "keep-going" (Set keep_going) "keep working even when errors arise";
   mkopt None "pem" (Set base64) "use PEM format (default)";
   mkopt None "der" (Clear base64) "use DER format";

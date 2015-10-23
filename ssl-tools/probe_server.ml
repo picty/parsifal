@@ -118,6 +118,7 @@ let options = [
   mkopt (Some 'h') "help" Usage "show this help";
   mkopt (Some 'q') "quiet" (TrivialFun (fun () -> debug_level := Quiet)) "print less info to stderr";
   mkopt (Some 'v') "verbose" (TrivialFun (fun () -> debug_level := FullDebug)) "print more info to stderr";
+  mkopt None "laxist" (TrivialFun X509Util.relax_x509_constraints) "relax some constraints on certificate parsing";
   mkopt (Some 'd') "debug-level" (IntFun set_debug_level) "change the debug level (0-2)";
 
   mkopt None "pem" (Set base64) "use PEM format (default)";
