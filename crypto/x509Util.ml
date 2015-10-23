@@ -322,16 +322,26 @@ let check_issuer_ca issuer _ =
   | _, Some ({cA = Some true}, _) -> None
   | _, _ -> Some NotaCA
 
+let accept_unknown_signature = ref false
+
 let check_signature issuer subject =
   match subject.tbsCertificate_raw,
+    issuer.tbsCertificate.subjectPublicKeyInfo.algorithm.algorithmParams,
     issuer.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey,
     subject.signatureValue with
-    | Some m, RSA {p_modulus = n; p_publicExponent = e}, RSASignature s ->
+    | Some m, _, RSA {p_modulus = n; p_publicExponent = e}, RSASignature s ->
       if (try Pkcs1.raw_verify 1 m s n e with Pkcs1.PaddingError -> false)
       then None
       else Some InvalidSignature
-    | _, RSA _, _ | _, _, RSASignature _ -> Some AlgorithmMismatch
-    | _, _, _ -> Some UnknownSignature
+    | _, _, RSA _, _ | _, _, _, RSASignature _ -> Some AlgorithmMismatch
+
+    | Some _, Some DSAParams _, DSA _, DSASignature _ ->
+       (* TODO: Implement DSA verification *)
+       if !accept_unknown_signature then None else Some UnknownSignature
+    | _, _, DSA _, _ | _, _, _, DSASignature _ -> Some AlgorithmMismatch
+
+    | _, _, _, _ ->
+       if !accept_unknown_signature then None else Some UnknownSignature
 
 let link_check_list = [check_dns; check_key_identifier; check_aki_serial; check_issuer_ca; check_signature]
 
