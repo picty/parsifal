@@ -270,6 +270,8 @@ let _ =
   ()
 
 
+let accept_x509_identical_extensions = ref false
+
 let get_extn_by_id id extensions =
   match extensions with
   | None -> None
@@ -277,9 +279,16 @@ let get_extn_by_id id extensions =
     match List.filter (fun e -> e.extnID = id) es with
     | [e] -> Some (e.extnValue, e.critical)
     | [] -> None
-    | _::_::_ ->
-      failwith (Printf.sprintf "get_extn_by_id: Duplicate extension (%s)" (string_of_oid id))
-
+    | e::es ->
+      if !accept_x509_identical_extensions then begin
+        let rec all_equal reference = function
+          | [] -> true
+          | x::xs -> x = reference && all_equal reference xs
+        in
+        if all_equal e es
+        then Some (e.extnValue, e.critical) (* TODO: This should be a warning... We are a bit laxist *)
+        else failwith (Printf.sprintf "get_extn_by_id: Duplicate (and different) extensions (%s)" (string_of_oid id))
+      end else failwith (Printf.sprintf "get_extn_by_id: Duplicate extension (%s)" (string_of_oid id))
 
 let extract_dns_and_ips c =
   let cn_oid = Hashtbl.find Asn1PTypes.rev_oid_directory "commonName" in
