@@ -22,7 +22,7 @@ let check_rsa_sig csr =
   let csr_raw = exact_dump dump_certificationRequestInfo csr.certificationRequestInfo in
   match csr.certificationRequestInfo.subjectPublicKeyInfo.subjectPublicKey, csr.signatureValue with
     | RSA {p_modulus = n; p_publicExponent = e}, RSASignature s ->
-      (try Pkcs1.raw_verify 1 csr_raw s n e with Pkcs1.PaddingError -> false)
+      (try ignore (Pkcs1.raw_verify 1 csr_raw s n e); true with Pkcs1.PaddingError -> false)
     | _ -> failwith "Unknown signature"
 
 let check_no_nullchar csr =

@@ -142,7 +142,7 @@ let handle_input input =
 	certificate.signatureValue
 	with
 	| Some m, RSA {p_modulus = n; p_publicExponent = e}, RSASignature s ->
-	  (try Pkcs1.raw_verify 1 m s n e with Pkcs1.PaddingError -> false)
+          Pkcs1.raw_verify 1 m s n e = CryptoUtil.SignatureOK
 	| _ -> false
       in [string_of_bool (result)]
     | Subject -> ["[" ^ String.concat ", " (List.map string_of_atv (List.flatten certificate.tbsCertificate.subject)) ^ "]"]

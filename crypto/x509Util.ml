@@ -279,7 +279,7 @@ type validation_error =
 | NotaCA
 | InvalidSignature
 | AlgorithmMismatch
-| UnknownSignature
+| UnknownAlgorithm
 
 let string_of_validation_error = function
   | DNMismatch -> "subject_cert.issuer <> issuer_cert.subject"
@@ -289,7 +289,7 @@ let string_of_validation_error = function
   | NotaCA -> "Issuer is not a CA"
   | InvalidSignature -> "Invalid signature"
   | AlgorithmMismatch -> "subject_cert.signature_algorithm does not match issuer_cert.public_key"
-  | UnknownSignature -> "Unknown signature algorithm"
+  | UnknownAlgorithm -> "Unknown signature algorithm"
 
 
 (* "Unit" test concerning *)
@@ -316,9 +316,11 @@ let check_aki_serial issuer subject =
     else None
   | _ -> None
 
+let accept_v1_cas = ref false
+
 let check_issuer_ca issuer _ =
   match issuer.tbsCertificate.version, get_basicConstraints issuer.tbsCertificate.extensions with
-  | None, _ -> Some NotaCA (* TODO: accept v1 certs? *)
+  | None, _ -> if !accept_v1_cas then None else Some NotaCA
   | _, Some ({cA = Some true}, _) -> None
   | _, _ -> Some NotaCA
 
@@ -330,18 +332,22 @@ let check_signature issuer subject =
     issuer.tbsCertificate.subjectPublicKeyInfo.subjectPublicKey,
     subject.signatureValue with
     | Some m, _, RSA {p_modulus = n; p_publicExponent = e}, RSASignature s ->
-      if (try Pkcs1.raw_verify 1 m s n e with Pkcs1.PaddingError -> false)
-      then None
-      else Some InvalidSignature
+      begin
+        match Pkcs1.raw_verify 1 m s n e with
+        | SignatureOK -> None
+        | InvalidSignature -> Some InvalidSignature
+        | UnknownSignatureAlgorithm _ | UnknownHashAlgorithm _ ->
+           if !accept_unknown_signature then None else Some UnknownAlgorithm
+      end
     | _, _, RSA _, _ | _, _, _, RSASignature _ -> Some AlgorithmMismatch
 
     | Some _, Some DSAParams _, DSA _, DSASignature _ ->
        (* TODO: Implement DSA verification *)
-       if !accept_unknown_signature then None else Some UnknownSignature
+       if !accept_unknown_signature then None else Some UnknownAlgorithm
     | _, _, DSA _, _ | _, _, _, DSASignature _ -> Some AlgorithmMismatch
 
     | _, _, _, _ ->
-       if !accept_unknown_signature then None else Some UnknownSignature
+       if !accept_unknown_signature then None else Some UnknownAlgorithm
 
 let link_check_list = [check_dns; check_key_identifier; check_aki_serial; check_issuer_ca; check_signature]
 
@@ -576,4 +582,5 @@ let compute_chain_validity certs =
 let relax_x509_constraints () =
   Asn1PTypes.accept_der_time_without_seconds := true;
   accept_x509_identical_extensions := true;
-  accept_unknown_signature := true
+  accept_unknown_signature := true;
+  accept_v1_cas := true

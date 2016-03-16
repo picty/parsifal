@@ -1,3 +1,15 @@
+type signature_result =
+  | SignatureOK
+  | UnknownSignatureAlgorithm of string
+  | UnknownHashAlgorithm of string
+  | InvalidSignature
+
+let string_of_signature_result = function
+  | SignatureOK -> "Signature OK"
+  | UnknownSignatureAlgorithm s -> "Unknown Signature Algorithm: " ^ s
+  | UnknownHashAlgorithm s -> "Unknown Hash Algorithm: " ^ s
+  | InvalidSignature -> "Invalid Signature"
+
 let md5sum s = Cryptokit.hash_string (Cryptokit.Hash.md5 ()) s;;
 let sha1sum s = Cryptokit.hash_string (Cryptokit.Hash.sha1 ()) s;;
 let sha256sum s = Cryptokit.hash_string (Cryptokit.Hash.sha256 ()) s;;

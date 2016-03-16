@@ -55,12 +55,12 @@ let get_hash_fun_by_name n =
   try
     let oid = Hashtbl.find rev_oid_directory n in
     let f = Hashtbl.find hash_funs oid in
-    (oid, f)
-  with Not_found -> raise (NotFound ("Unknown hash function " ^ n))
+    Right (oid, f)
+  with Not_found -> Left (UnknownHashAlgorithm n)
 
 let get_hash_fun_by_oid oid =
-  try Hashtbl.find hash_funs oid
-  with Not_found -> raise (NotFound ("Unknown hash oid " ^ (string_of_oid oid)))
+  try Right (Hashtbl.find hash_funs oid)
+  with Not_found -> Left (UnknownHashAlgorithm (string_of_oid oid))
 
 
 
@@ -158,7 +158,11 @@ let decrypt block_type expected_len (modulus, exponent) c =
 
 
 let raw_sign rnd_state typ hash msg n d =
-  let oid, f = get_hash_fun_by_name hash in
+  let oid, f = match get_hash_fun_by_name hash with
+    | Right v -> v
+    | Left ((UnknownHashAlgorithm _) as e) -> raise (NotFound (string_of_signature_result e))
+    | Left e -> failwith (string_of_signature_result e)
+  in
   let digest = f msg in
   let asn1_structure = {
     X509Basics.hash_function = {
@@ -188,14 +192,17 @@ let raw_verify typ msg s n e =
 	  [{a_class = C_Universal; a_tag = T_Sequence; a_content = Constructed
 	      [{a_class = C_Universal; a_tag = T_OId; a_content = OId oid}]};
 	   {a_class = C_Universal; a_tag = T_OctetString; a_content = String (digest, _)}]} ->
-	let f = get_hash_fun_by_oid oid in
-	f msg = digest
-      | _ -> false
-    else false
+        begin
+          match get_hash_fun_by_oid oid with
+          | Right f -> if f msg = digest then SignatureOK else InvalidSignature
+          | Left result -> result
+        end
+      | _ -> InvalidSignature
+    else InvalidSignature
   with
-    | Not_found | ParsingException _ -> false
-    | Cryptokit.Error Cryptokit.Message_too_long -> false
-    | NotFound _ -> false
+    | PaddingError | ParsingException _ -> InvalidSignature
+    | Cryptokit.Error Cryptokit.Message_too_long -> InvalidSignature
+    | _ -> InvalidSignature (* TODO: Handle this differently *)
 
 
 
