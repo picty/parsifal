@@ -245,33 +245,58 @@ let mk_sni_client_ext accu ctx = match ctx.preferences.send_SNI, ctx.preferences
     } in
     sni::accu
 
-(* TODO: Add support for Elliptic Curves *)
-let mk_client_exts ctx =
-  mk_sni_client_ext [] ctx
+(* TODO: Add support for Elliptic Curves and other extensions *)
+let mk_client_exts extra_exts ctx =
+  (mk_sni_client_ext extra_exts ctx)
 
-let mk_client_hello ctx =
-  ctx.future.proposed_versions <- ctx.preferences.acceptable_versions;
-  ctx.future.proposed_ciphersuites <- ctx.preferences.acceptable_ciphersuites;
-  ctx.future.proposed_compressions <- ctx.preferences.acceptable_compressions;
+let mk_client_hello ?extra_exts:(extra_exts=[]) ctx =
   let client_random = String.make 32 '\x00' in (* TODO! *)
   let extensions =
     if ctx.preferences.use_extensions
     then begin
-      match mk_client_exts ctx with
+      match mk_client_exts extra_exts ctx with
       | [] -> None    (* This is debatable *)
       | es -> Some es
     end else None
   in
   let ch = {
-    client_version = snd ctx.future.proposed_versions;
+    client_version = snd ctx.preferences.acceptable_versions;
     client_random = client_random;
     client_session_id = ""; (* TODO? *)
-    ciphersuites = ctx.future.proposed_ciphersuites;
-    compression_methods = ctx.future.proposed_compressions;
+    ciphersuites = ctx.preferences.acceptable_ciphersuites;
+    compression_methods = ctx.preferences.acceptable_compressions;
     client_extensions = extensions
   } in
   update_with_client_hello ctx ch;
   mk_handshake_msg ctx HT_ClientHello (ClientHello ch)
+
+
+let mk_ssl2_client_hello ctx =
+  let client_random = String.make 32 '\x00' in (* TODO! *)
+  let ch = SSL2Handshake {
+    ssl2_handshake_type = SSL2_HT_CLIENT_HELLO;
+    ssl2_handshake_content = SSL2ClientHello {
+      ssl2_client_version = snd ctx.preferences.acceptable_versions;
+      ssl2_client_cipher_specs_length = 3 * (List.length ctx.preferences.acceptable_ciphersuites);
+      ssl2_client_session_id_length = 0;
+      ssl2_challenge_length = String.length client_random;
+      ssl2_client_cipher_specs = ctx.preferences.acceptable_ciphersuites;
+      ssl2_client_session_id = "";
+      ssl2_challenge = client_random;
+      }
+    }
+  in
+
+  let fake_output = POutput.create () in
+  dump_ssl2_content fake_output ch;
+  let len = POutput.length fake_output in
+  {
+    ssl2_short_header = true;
+    ssl2_header = SSL2ShortHeader len;
+    ssl2_content = ch;
+    ssl2_padding = "";
+  }
+
 
 let rec find_first_match preferred_list other_list =
   match preferred_list with
@@ -588,6 +613,13 @@ let output_record ctx conn r_fun =
     | CT_ChangeCipherSpec -> update_with_CCS dir ctx
     | _ -> ()
   end;
+  conn.output <- POutput.contents result
+
+
+let output_ssl2_record conn ssl2_r =
+  let result = POutput.create () in
+  POutput.add_string result conn.output;
+  dump_ssl2_record result ssl2_r;  (* TODO: This is very specific to CH *)
   conn.output <- POutput.contents result
 
 

@@ -293,9 +293,6 @@ v0.3 (may 2013)
    * check_sslserver (see check_sslserver.ml for a complete TODO)
    * rewrite server-answer with the following options
      + implement control over record splitting
-   * improve probe-server
-     + add SSLv2 support
-     + add a way to handle TLS extensions
    * bgpdump and/or obsdump
    * x509check (enrich the x509 object before analysing!)
    * chaincheck

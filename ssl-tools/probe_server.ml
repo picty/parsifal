@@ -6,6 +6,7 @@ open Getopt
 
 open Parsifal
 open TlsEnums
+open Ssl2
 open Tls
 open TlsEngineNG
 
@@ -18,6 +19,7 @@ open TlsEngineNG
 (* Option handling *)
 (*******************)
 
+(* TODO: Move this into a generic framework? *)
 type debug_level = Quiet | InfoDebug | FullDebug
 let debug_level = ref Quiet
 let set_debug_level = function
@@ -43,6 +45,7 @@ let suites = ref [TLS_RSA_WITH_RC4_128_SHA]
 let compressions = ref [CM_Null]
 let use_extensions = ref true
 let send_SNI = ref true
+let extra_extensions = ref []
 let plaintext_chunk_size = ref 16384
 let timeout = ref 3.0
 (* TODO? *)
@@ -253,10 +256,17 @@ let probe_server prefs ((ip, server_name, port) as server_params) =
     let do_some_work () =
       if !debug_level >=. InfoDebug
       then prerr_endline ("Connected to " ^ server_name ^ ":" ^ (string_of_int port));
-      let ch = mk_client_hello ctx in
-      if !debug_level >=. FullDebug
-      then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));
-      output_record ctx c_sock (fun () -> ch);
+      if fst real_prefs.acceptable_versions = V_SSLv2 then begin
+        let ssl2_ch = mk_ssl2_client_hello ctx in
+        if !debug_level >=. FullDebug
+        then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_ssl2_record ssl2_ch));
+        output_ssl2_record c_sock ssl2_ch;
+      end else begin
+        let ch = mk_client_hello ~extra_exts:!extra_extensions ctx in
+        if !debug_level >=. FullDebug
+        then prerr_endline (print_value ~name:"Sending Handshake (C->S)" (value_of_tls_record ch));
+        output_record ctx c_sock (fun () -> ch);
+      end;
       run_automata probe_automata ([], NothingSoFar) "" ctx c_sock >>= fun (msgs, res) ->
       let remaining_str = BasePTypes.parse_rem_binstring c_sock.input in
       return (ctx, msgs, remaining_str, res)
