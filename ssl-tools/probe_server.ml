@@ -116,6 +116,46 @@ let add_ca filename =
 
 let output_file = ref ""
 
+let update_params_from_stimulus filename =
+  let i = string_input_of_filename ~enrich:(AlwaysEnrich) filename in
+  match try_parse (Tls.parse_tls_record None) i with
+  | None ->
+     begin
+       match try_parse (Ssl2.parse_ssl2_record { Ssl2.cleartext = true }) i with
+       | Some { ssl2_content = SSL2Handshake
+                { ssl2_handshake_content = SSL2ClientHello ch } } ->
+          rec_version := V_SSLv2;
+          ch_version := ch.ssl2_client_version;
+          suites := ch.ssl2_client_cipher_specs;
+          compressions := [CM_Null];
+          use_extensions := false;
+          send_SNI := true;
+          if !debug_level >=. InfoDebug
+          then prerr_endline ("Parsed an SSLv2 stimulus from \"" ^ filename ^ "\"");
+          ActionDone
+       | _ -> ShowUsage (Some "Invalid stimulus")
+     end
+  | Some { record_version = rec_v;
+           record_content = Handshake
+           { handshake_content = ClientHello ch } } ->
+     rec_version := rec_v;
+     ch_version := ch.client_version;
+     suites := ch.ciphersuites;
+     compressions := ch.compression_methods;
+     begin
+       match ch.client_extensions with
+       | None -> use_extensions := false
+       | Some es ->
+          use_extensions := true;
+          let sni_ext, other_exts = List.partition (fun e -> e.extension_type = HE_ServerName) es in
+          send_SNI := sni_ext != [];
+          extra_extensions := other_exts;
+     end;
+     if !debug_level >=. InfoDebug
+     then prerr_endline ("Parsed an SSLv3/TLS stimulus from \"" ^ filename ^ "\"");
+     ActionDone
+  | _ -> ShowUsage (Some "Invalid stimulus")
+
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
@@ -135,6 +175,7 @@ let options = [
   mkopt None "record-version" (StringFun (update_version rec_version)) "set the record versions";
   mkopt None "client-hello-version" (StringFun (update_version ch_version)) "set the ClientHello versions";
 
+  mkopt None "stimulus" (StringFun update_params_from_stimulus) "set the parameters from a given stimulus";
   mkopt (Some 'C') "clear-suites" (TrivialFun clear_suites) "reset the list of suites";
   mkopt (Some 'A') "add-suite" (StringFun add_suite) "add a suite to the list of suites";
   mkopt None "all-suites" (TrivialFun all_suites) "add all the known suites";
