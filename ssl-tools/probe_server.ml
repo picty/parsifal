@@ -215,6 +215,7 @@ type probe_cmd =
 | ExtractCerts
 | CheckCerts
 | ProbeToDump
+| ShowStimulus
 
 let probe_cmd_args = [
   "probe2dump", ProbeToDump;
@@ -224,6 +225,7 @@ let probe_cmd_args = [
   "scan-versions", ScanVersions;
   "extract-certs", ExtractCerts;
   "check-certs", CheckCerts;
+  "show-stimulus", ShowStimulus;
 ]
 
 let cmd_of_args = function
@@ -280,6 +282,26 @@ let probe_automata (msgs_received, _) input _global_ctx ctx =
 
   | Nothing -> (msgs_received, NothingSoFar), Wait
   | InternalMsgIn _ -> (msgs_received, NothingSoFar), Wait
+
+let show_stimulus prefs (ip, server_name, _) =
+  let server_names = match get_sni_name ip server_name with
+    | None -> []
+    | Some n -> [n]
+  in
+  let real_prefs = { prefs with server_names = server_names } in
+  let ctx = empty_context real_prefs in
+  let v =
+    if fst real_prefs.acceptable_versions = V_SSLv2 then begin
+      let ssl2_ch = mk_ssl2_client_hello ctx in
+      value_of_ssl2_record ssl2_ch
+    end else begin
+      let ch = mk_client_hello ~extra_exts:!extra_extensions ctx in
+      value_of_tls_record ch
+    end
+  in
+  print_endline (print_value ~name:"Stimulus" v);
+  return ()
+
 
 let probe_server prefs ((ip, server_name, port) as server_params) =
   let server_names = match get_sni_name ip server_name with
@@ -496,7 +518,10 @@ let _ =
       print_endline (String.make (((List.length headers) * 13) - 1) '-');
       next_step [] versions versions
 
-    | (ProbeAndPrint|CheckCerts|ExtractCerts|ScanSuites|ScanCompressions|ScanVersions), _ ->
+    | ShowStimulus, [host_t] ->
+       Lwt_unix.run (host_t >>= show_stimulus prefs)
+
+    | (ProbeAndPrint|CheckCerts|ExtractCerts|ScanSuites|ScanCompressions|ScanVersions|ShowStimulus), _ ->
       usage "probe_server" options (Some ("Some commands only work with a unique host."))
 
 
@@ -556,6 +581,7 @@ let _ =
       let final_output = POutput.create () in
       List.iter (AnswerDump.dump_answer_dump_v2 final_output) answer_dumps;
       output_result final_output
+
   with
   | End_of_file -> ()
   | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
