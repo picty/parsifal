@@ -389,6 +389,7 @@ let read_hosts_from_file hosts_file port =
       let new_accu = match List.map String.trim (string_split ':' l) with
         | ["IP"; ip] -> (return (Some (Unix.inet_addr_of_string ip), ip, port))::accu
         | ["DNS"; server_name] -> (resolve server_name port)::accu
+        | ["DNS"; server_name; ip] -> (return (Some (Unix.inet_addr_of_string ip), server_name, port))::accu
         | [] -> accu
         | s::_ ->
           if String.length s = 0 || s.[0] <> '#'
