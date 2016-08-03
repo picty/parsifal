@@ -518,26 +518,31 @@ let get_next_automata_input ctx c =
   let rec input_fun () =
     (* TODO: 4096 should be adjustable *)
     let buf = String.make 4096 ' ' in
-    Lwt_unix.read c.socket buf 0 4096 >>= fun n_read ->
-    if n_read = 0 then raise End_of_file;
-    c.input <- append_to_input c.input (String.sub buf 0 n_read);
-    let rec parse_new_records new_record =
-      (* TODO: In fact, we are stuck if input enriches too much here  *)
-      (* TODO: Should we check for that? *)
-      match try_parse (parse_tls_record None) c.input with
-      | None -> new_record
-      | Some ({ record_content = Unparsed_Record ciphertext } as r) ->
-        c.input <- drop_used_string c.input;
-        let integrity, plaintext = match ctx.decrypt dir r.content_type r.record_version ciphertext with
-          | true, content -> true, ctx.expand dir content
-          | false, content -> false, content
+    let handle_read_bytes n_read =
+      if n_read = 0
+      then fail End_of_file
+      else begin
+        c.input <- append_to_input c.input (String.sub buf 0 n_read);
+        let rec parse_new_records new_record =
+          (* TODO: In fact, we are stuck if input enriches too much here  *)
+          (* TODO: Should we check for that? *)
+          match try_parse (parse_tls_record None) c.input with
+          | None -> new_record
+          | Some ({ record_content = Unparsed_Record ciphertext } as r) ->
+             c.input <- drop_used_string c.input;
+             let integrity, plaintext = match ctx.decrypt dir r.content_type r.record_version ciphertext with
+               | true, content -> true, ctx.expand dir content
+               | false, content -> false, content
+             in
+             c.input_records <- c.input_records@[integrity, {r with record_content = Unparsed_Record plaintext}];
+             parse_new_records true
+          | Some _ -> failwith "get_next_automata_input: unexpected early parsed record"
         in
-        c.input_records <- c.input_records@[integrity, {r with record_content = Unparsed_Record plaintext}];
-        parse_new_records true
-      | Some _ -> failwith "get_next_automata_input: unexpected early parsed record"
-    in
-    enrich_new_records (parse_new_records false)
-
+        enrich_new_records (parse_new_records false);
+      end
+    and handle_exception _ = fail End_of_file in
+    try_bind (fun () -> Lwt_unix.read c.socket buf 0 4096) handle_read_bytes handle_exception
+        
   and enrich_new_records new_record_pending =
     if new_record_pending then begin
       (* TODO: Should it really be AlwaysEnrich here? *)
