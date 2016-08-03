@@ -527,15 +527,15 @@ let _ =
 
 
     | ProbeToDump, hosts_t ->
-      let output_result = match !output_file with
-        | "" -> (fun buf -> print_endline (hexdump (POutput.contents buf)))
-        | "-" -> (fun buf -> print_endline (POutput.contents buf))
+      let output_result, close_file = match !output_file with
+        | "" -> (fun buf -> print_endline (hexdump (POutput.contents buf))), (fun () -> ())
+        | "-" -> (fun buf -> print_endline (POutput.contents buf)), (fun () -> ())
         | fn ->
           let f =
             try open_out_gen [Open_wronly; Open_creat; Open_excl] 0o644 fn
             with _ -> failwith ("Unable to create file: " ^ fn)
           in
-          (fun buf -> POutput.output_buffer f buf; close_out f)
+          (fun buf -> POutput.output_buffer f buf), (fun () -> close_out f)
       in
 
       let lock_t, unlock_t =
@@ -548,10 +548,28 @@ let _ =
         end else (return, return)
       in
 
+      let stuff_to_write = Lwt_sequence.create () in
+      let rec write_stuff () =
+        let write_one_answer answer =
+          if !keep_empty_answers || answer.AnswerDump.content <> ""
+          then begin
+            let o = POutput.create () in
+            AnswerDump.dump_answer_dump_v2 o answer;
+            output_result o
+          end
+        in
+        if Lwt_sequence.is_empty stuff_to_write
+        then Lwt_unix.sleep 1.0 >>= write_stuff
+        else begin
+          match Lwt_sequence.take_r stuff_to_write with
+          | None -> close_file (); return ()
+          | Some answer -> write_one_answer answer; write_stuff ()
+        end
+      in
+
       let probe_one_host host_t =
         lock_t () >>= fun () ->
         host_t >>= fun ((ip_opt, hostname, port) as server_params) ->
-        (* Handle SSLv2 answers? *)
         probe_server prefs server_params >>= fun (_, msgs, remaining_stuff, _) ->
         let content_to_dump = POutput.create () in
         let ip_str = match ip_opt with
@@ -562,7 +580,7 @@ let _ =
         POutput.add_string content_to_dump remaining_stuff;
         let open AnswerDump in
         unlock_t () >>= fun () ->
-        return {
+        let answer = {
           ip_type = 4;
           ip_addr = AD_IPv4 (PTypes.ipv4_of_string ip_str);
           port = port;
@@ -571,17 +589,18 @@ let _ =
           msg_type = 0;
           timestamp = Int64.of_float (Unix.time ());
           content = POutput.contents content_to_dump;
-        }
+        } in
+        ignore (Lwt_sequence.add_l (Some answer) stuff_to_write);
+        return ()
       in
-      let tmp_answer_dumps = Lwt_unix.run (Lwt_list.map_p probe_one_host hosts_t) in
-      let answer_dumps =
-	if !keep_empty_answers
-	then tmp_answer_dumps
-	else List.filter (fun a -> a.AnswerDump.content <> "") tmp_answer_dumps
+
+      let send_eof () =
+        ignore (Lwt_sequence.add_l None stuff_to_write);
+        return ()
       in
-      let final_output = POutput.create () in
-      List.iter (AnswerDump.dump_answer_dump_v2 final_output) answer_dumps;
-      output_result final_output
+      let probes = Lwt.join (List.map (fun host_t -> probe_one_host host_t) hosts_t) in
+      let ending_probes = probes >>= send_eof in
+      Lwt_unix.run (Lwt.join [write_stuff (); ending_probes])
 
   with
   | End_of_file -> ()
