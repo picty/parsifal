@@ -423,7 +423,7 @@ let _ =
       server_names = [];
       known_master_secrets = [];
     } in
-
+    let _ = Lwt_unix.on_signal Sys.sigpipe (fun _ -> ()) in
     let hosts_threads = match !hosts_file, !host_ref with
       | "", h -> [resolve h !port_ref]
       | hs, _ -> read_hosts_from_file hs !port_ref
@@ -567,7 +567,6 @@ let _ =
           | Some answer -> write_one_answer answer; write_stuff ()
         end
       in
-
       let probe_one_host host_t =
         lock_t () >>= fun () ->
         host_t >>= fun ((ip_opt, hostname, port) as server_params) ->
