@@ -35,7 +35,7 @@ Extensions:
  - Secure Renego support
  - insecure renego tolerance
  - support for client-initiated renego
- - check whether an empty "extensions" field is a problem (specific case of extensions intolerance)
+ - check whether an empty "extensions" field is a problem (specific case of extensions intolerance, especially at the end of the list)
 
 Random:
  - check for the ServerRandom quality (is it constant? does it depend on the ClientRandom?)
