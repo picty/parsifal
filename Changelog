@@ -1,4 +1,8 @@
-2014-11-07 Baptiste Gourdin <baptiste.gourdin@gmail.com>
+2016-12-30 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
+	* Various bugfixes to make parsifal and concerto work
+	  on recent versions of the OCaml compiler.
+
+2015-07-19 Baptiste Gourdin <baptiste.gourdin@gmail.com>
 	* New CRL PType.
 	* First version of x509check tool (not commited
 	  in master branch, integration pending).
@@ -78,12 +82,12 @@
 	* New helper in core: string_input_of_stdin
 
 2014-01-20 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
-	* Issue 14: Improve debug info on parsing errors
+	* Issue #14: Improve debug info on parsing errors
 	  (the name used for a container is now the name of
 	  the struct field or the PType [union/alias])
 
 2014-01-15 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
-	* Issue 11: Allow for more flexible enum patterns
+	* Issue #11: Allow for more flexible enum patterns
           (multiple and range patterns)
 
 2014-01-11 Olivier Levillain <olivier.levillain@ssi.gouv.fr>
