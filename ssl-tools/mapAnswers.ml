@@ -12,8 +12,9 @@ open Tls
 open AnswerDumpUtil
 
 
-type action = IP | Dump | All | Suite | SKE | Subject | ServerRandom | Scapy | Pcap | AnswerType | RecordTypes | Get
-              | VersionACSAC | SuiteACSAC | SaveCertificates of string | OutputCerts | HTTPNames
+type action = IP | Dump | All | AllJson | Suite | SKE | Subject | ServerRandom | Scapy | Pcap
+              | AnswerType | RecordTypes | Get | VersionACSAC | SuiteACSAC | SaveCertificates of string
+              | OutputCerts | HTTPNames
 let action = ref IP
 let verbose = ref false
 let maxlen = ref (Some 70)
@@ -70,6 +71,7 @@ let options = [
   mkopt (Some '1') "ad1" (Clear v2_answer_dump) "use the v1 answer_dump";
 
   mkopt (Some 'a') "all" (TrivialFun (fun () -> action := All)) "show all the information and records of an answer";
+  mkopt (Some 'j') "json" (TrivialFun (fun () -> action := AllJson)) "show all the information and records of an answer (JSON)";
   mkopt (Some 'I') "ip" (TrivialFun (fun () -> action := IP)) "only show the IP of the answers";
   mkopt (Some 'D') "dump" (TrivialFun (fun () -> action := Dump)) "dumps the answers";
   mkopt (Some 's') "ciphersuite" (TrivialFun (fun () -> action := Suite; update_enrich_level 2)) "only show the ciphersuite chosen";
@@ -157,6 +159,19 @@ let handle_answer answer =
 	    | None, _ -> ()
 	    | Some _, false -> print_endline "  ERROR"
 	    | Some s, true -> print_endline ("  ERROR (Remaining: " ^ (hexdump s) ^ ")")
+        end
+      | AllJson ->
+	let opts = { default_output_options with oo_verbose = !verbose; indent = "  " ; maxlen = !maxlen } in
+	begin
+          match parse_all_tls_records !enrich_style !verbose answer with
+	  | [], _, None -> ()
+	  | [], _, Some _ ->
+             let records, _, error = parse_all_ssl2_records !enrich_style !verbose answer in
+             let record_values = VList [VString (ip, false); VBool error; VList (List.map (fun r -> value_of_ssl2_record r) records)] in
+             print_endline (Json.json_of_value ~options:opts record_values);
+	  | records, _, rem ->
+             let record_values = VList [VString (ip, false); VBool (rem != None); VList (List.map (fun r -> value_of_tls_record r) records)] in
+             print_endline (Json.json_of_value ~options:opts record_values);
         end
       | Suite ->
         let _, ctx, _ = parse_all_tls_records !enrich_style !verbose answer in
