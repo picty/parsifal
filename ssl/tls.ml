@@ -1,4 +1,3 @@
-open Parsifal
 open BasePTypes
 open Parsifal
 open PTypes

@@ -1,5 +1,3 @@
-open Random
-
 open OUnit
 
 open Parsifal
@@ -17,7 +15,7 @@ let random_string len () =
   done;
   res
 
-let ntimes n f () = for i = 1 to n do f (); done
+let ntimes n f () = for _i = 1 to n do f (); done
 
 
 let str_wrap parse_fun s = exact_parse parse_fun (input_of_string "" s)

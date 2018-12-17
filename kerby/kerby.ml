@@ -1,11 +1,7 @@
-open Parsifal
-open PTypes
 open Asn1PTypes
 open Asn1Engine
-open X509Basics
 open Padata
 open KerberosTypes
-open KerbyContainers
 
 
 (* NOT USED *)

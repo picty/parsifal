@@ -1,6 +1,4 @@
-open Parsifal
 open BasePTypes
-open PTypes
 
 enum etype_type (16, UnknownVal UnknownEncryptType) =
   | 1  -> DES_CBC_CRC

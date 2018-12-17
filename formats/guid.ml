@@ -1,6 +1,5 @@
 open Parsifal
 open BasePTypes
-open PTypes
 
 type guid = {
   data1: uint32le;

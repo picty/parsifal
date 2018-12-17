@@ -1,5 +1,4 @@
 open Lwt
-open Unix
 open Parsifal
 open LwtUtil
 open TlsEnums

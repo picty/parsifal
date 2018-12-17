@@ -334,9 +334,9 @@ let check_signature issuer subject =
     | Some m, _, RSA {p_modulus = n; p_publicExponent = e}, RSASignature s ->
       begin
         match Pkcs1.raw_verify 1 m s n e with
-        | SignatureOK -> None
-        | InvalidSignature -> Some InvalidSignature
-        | UnknownSignatureAlgorithm _ | UnknownHashAlgorithm _ ->
+        | CryptoUtil.SignatureOK -> None
+        | CryptoUtil.InvalidSignature -> Some InvalidSignature
+        | CryptoUtil.UnknownSignatureAlgorithm _ | CryptoUtil.UnknownHashAlgorithm _ ->
            if !accept_unknown_signature then None else Some UnknownAlgorithm
       end
     | _, _, RSA _, _ | _, _, _, RSASignature _ -> Some AlgorithmMismatch

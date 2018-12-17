@@ -565,7 +565,7 @@ let get_next_automata_input ctx c =
   match c.input_records with
     | [] | (true, { record_content = Unparsed_Record _ })::_ ->
       let input_t = if c.input_records = [] then [input_fun ()] else [enrich_new_records true] in
-      let rec output_t =
+      let output_t =
         if c.output = ""
         then []
         else [output_fun ()]

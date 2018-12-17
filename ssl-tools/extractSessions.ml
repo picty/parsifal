@@ -3,7 +3,6 @@ open LwtUtil
 open Parsifal
 open PTypes
 open Pcap
-open TlsEnums
 open Tls
 open Getopt
 

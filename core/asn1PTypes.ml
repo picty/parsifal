@@ -522,7 +522,7 @@ and parse_der_constructed_content input =
   in parse_aux []
 
 
-let rec dump_der_object buf o =
+let rec dump_der_object buf (o : der_object) =
   produce_der_object (o.a_class, (isConstructed o), o.a_tag) dump_der_object_content buf o.a_content
 
 and dump_der_object_content buf = function
@@ -563,7 +563,7 @@ let string_of_der_object _ = "der_object"
 let rec value_of_der_object o =
   value_of_der_object_content o.a_content
 
-and mk_elt o =
+and mk_elt (o : der_object) =
   let name = print_header (o.a_class, isConstructed o, o.a_tag)
   and value = value_of_der_object_content o.a_content in
   (name, value)

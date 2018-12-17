@@ -1,5 +1,4 @@
 open OUnit
-open TlsEnums
 open TlsCrypto
 
 let aggregate exit_code = function

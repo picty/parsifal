@@ -1,7 +1,4 @@
 open Lwt
-open Lwt_io
-open LwtUtil
-open Unix
 open Getopt
 
 open Parsifal
