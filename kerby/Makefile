@@ -14,6 +14,7 @@ CC = gcc
 OCAML_LIBS = unix str cryptokit parsifal_syntax parsifal_core parsifal_net parsifal_crypto
 
 CAMLIDL_DIR = `$(OCAMLFIND) query camlidl`
+STDLIB_DIR = `$(OCAMLFIND) query stdlib`
 
 # use the following variables to add extra flags (not guessed by ocamlfind)
 EXTRA_OCAMLOPT_CC_FLAGS = -package parsifal_syntax
@@ -28,10 +29,10 @@ include ../Makefile.ocaml
 
 
 build/krb5_stubs.o: krb5_stubs.c
-	gcc -DDEBUG -Wall -I$(CAMLIDL_DIR) -c -o $@ $<
+	gcc -DDEBUG -Wall -I$(CAMLIDL_DIR) -I$(STDLIB_DIR) -c -o $@ $<
 
 build/krb5_functions.o: krb5_functions.c
-	gcc -DDEBUG -Wall -I$(CAMLIDL_DIR) -c -o $@ $<
+	gcc -DDEBUG -Wall -I$(CAMLIDL_DIR) -I$(STDLIB_DIR) -c -o $@ $<
 
 build/krb5.cmo: build/krb5_stubs.o build/krb5_functions.o
 build/krb5.cmx: build/krb5_stubs.o build/krb5_functions.o
