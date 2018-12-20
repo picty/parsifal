@@ -2,14 +2,13 @@ open Parsifal
 open BasePTypes
 open Asn1Engine
 open Asn1PTypes
-open CryptoUtil
 
 (*********)
 (* Types *)
 (*********)
 
 asn1_struct rsa_private_key = {
-  version : der_smallint;
+  pkcs1_version : der_smallint;
   modulus : der_integer;
   publicExponent : der_integer;
   privateExponent : der_integer;
@@ -56,11 +55,11 @@ let get_hash_fun_by_name n =
     let oid = Hashtbl.find rev_oid_directory n in
     let f = Hashtbl.find hash_funs oid in
     Right (oid, f)
-  with Not_found -> Left (UnknownHashAlgorithm n)
+  with Not_found -> Left (CryptoUtil.UnknownHashAlgorithm n)
 
 let get_hash_fun_by_oid oid =
   try Right (Hashtbl.find hash_funs oid)
-  with Not_found -> Left (UnknownHashAlgorithm (string_of_oid oid))
+  with Not_found -> Left (CryptoUtil.UnknownHashAlgorithm (string_of_oid oid))
 
 
 
@@ -108,14 +107,14 @@ let encrypt rnd_state block_type d n c =
   if d_len > k - 11
   then raise MessageTooLong;
   let encryption_block = format_encryption_block rnd_state block_type (k - d_len - 3) d in
-  exp_mod encryption_block c normalized_n
+  CryptoUtil.exp_mod encryption_block c normalized_n
 
 
 (* TODO: block_type should be optional *)
 
 let decrypt block_type expected_len (modulus, exponent) c =
   let normalized_n = normalize_modulus modulus in
-  let encryption_block = exp_mod c exponent normalized_n in
+  let encryption_block = CryptoUtil.exp_mod c exponent normalized_n in
   let res = ref true in
 
   if encryption_block.[0] != '\x00'
@@ -160,8 +159,8 @@ let decrypt block_type expected_len (modulus, exponent) c =
 let raw_sign rnd_state typ hash msg n d =
   let oid, f = match get_hash_fun_by_name hash with
     | Right v -> v
-    | Left ((UnknownHashAlgorithm _) as e) -> raise (NotFound (string_of_signature_result e))
-    | Left e -> failwith (string_of_signature_result e)
+    | Left ((CryptoUtil.UnknownHashAlgorithm _) as e) -> raise (NotFound (CryptoUtil.string_of_signature_result e))
+    | Left e -> failwith (CryptoUtil.string_of_signature_result e)
   in
   let digest = f msg in
   let asn1_structure = {
@@ -194,15 +193,15 @@ let raw_verify typ msg s n e =
 	   {a_class = C_Universal; a_tag = T_OctetString; a_content = String (digest, _)}]} ->
         begin
           match get_hash_fun_by_oid oid with
-          | Right f -> if f msg = digest then SignatureOK else InvalidSignature
+          | Right f -> if f msg = digest then CryptoUtil.SignatureOK else CryptoUtil.InvalidSignature
           | Left result -> result
         end
-      | _ -> InvalidSignature
-    else InvalidSignature
+      | _ -> CryptoUtil.InvalidSignature
+    else CryptoUtil.InvalidSignature
   with
-    | PaddingError | ParsingException _ -> InvalidSignature
-    | Cryptokit.Error Cryptokit.Message_too_long -> InvalidSignature
-    | _ -> InvalidSignature (* TODO: Handle this differently *)
+    | PaddingError | ParsingException _ -> CryptoUtil.InvalidSignature
+    | Cryptokit.Error Cryptokit.Message_too_long -> CryptoUtil.InvalidSignature
+    | _ -> CryptoUtil.InvalidSignature (* TODO: Handle this differently *)
 
 
 
@@ -249,12 +248,12 @@ let load_rsa_private_key filename =
 (************************)
 
 let hash_fun_list = [
-  [42;840;113549;2;5], "md5", X509Basics.APT_Null, md5sum;
-  [43;14;3;2;26], "sha1", X509Basics.APT_Null, sha1sum;
-  [96;840;1;101;3;4;2;1], "sha256", X509Basics.APT_Null, sha256sum;
-  [96;840;1;101;3;4;2;2], "sha384", X509Basics.APT_Null, sha384sum;
-  [96;840;1;101;3;4;2;3], "sha512", X509Basics.APT_Null, sha512sum;
-  [96;840;1;101;3;4;2;4], "sha224", X509Basics.APT_Null, sha224sum;
+  [42;840;113549;2;5], "md5", X509Basics.APT_Null, CryptoUtil.md5sum;
+  [43;14;3;2;26], "sha1", X509Basics.APT_Null, CryptoUtil.sha1sum;
+  [96;840;1;101;3;4;2;1], "sha256", X509Basics.APT_Null, CryptoUtil.sha256sum;
+  [96;840;1;101;3;4;2;2], "sha384", X509Basics.APT_Null, CryptoUtil.sha384sum;
+  [96;840;1;101;3;4;2;3], "sha512", X509Basics.APT_Null, CryptoUtil.sha512sum;
+  [96;840;1;101;3;4;2;4], "sha224", X509Basics.APT_Null, CryptoUtil.sha224sum;
 ]
 
 let _ =

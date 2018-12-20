@@ -248,7 +248,7 @@ let handle_answer answer =
            | SSLv2Alert e ->
               Printf.printf "%s\tA\tSSLv2_ALERT\t%s\n" ip (string_of_ssl2_error e)
 
-           | TLSHandshake {server_hello_version = v; ciphersuite = c; certificates = (Parsed (_, cert))::_} ->
+           | TLSHandshake {sh_version = v; sh_ciphersuite = c; server_certificates = (Parsed (_, cert))::_} ->
               let s = String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)) in
               Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) (string_of_ciphersuite c) (quote_string s)
            | SSLv2Handshake {version = v; cipher_specs = cs; certificate = Parsed (_, cert)} ->
@@ -256,7 +256,7 @@ let handle_answer answer =
               and cs_str = String.concat "," (List.map (fun c -> string_of_value (value_of_ssl2_cipher_spec c)) cs) in
               Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) cs_str (quote_string s)
 
-           | TLSHandshake {server_hello_version = v; ciphersuite = c} ->
+           | TLSHandshake {sh_version = v; sh_ciphersuite = c} ->
               Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
            | SSLv2Handshake {version = v; cipher_specs = cs} ->
               let cs_str = String.concat "," (List.map (fun c -> string_of_value (value_of_ssl2_cipher_spec c)) cs) in
@@ -282,7 +282,7 @@ let handle_answer answer =
         Printf.printf "%s\t%s\n" ip res
       | Subject ->
          let subject = match (parse_answer !enrich_style !verbose answer).pa_content with
-           | TLSHandshake {certificates = (Parsed (_, cert))::_}
+           | TLSHandshake {server_certificates = (Parsed (_, cert))::_}
            | SSLv2Handshake {certificate = Parsed (_, cert)} ->
               Some (String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)))
            | _ -> None
@@ -306,7 +306,7 @@ let handle_answer answer =
       | SuiteACSAC ->
          begin
            match (parse_answer !enrich_style !verbose answer).pa_content with
-           | TLSHandshake {ciphersuite = c} ->
+           | TLSHandshake {sh_ciphersuite = c} ->
               Printf.printf "%s: %s\n" ip (string_of_ciphersuite c)
            | SSLv2Handshake {cipher_specs = c::_} ->
               Printf.printf "%s: %s\n" ip (string_of_value (value_of_ssl2_cipher_spec c))
@@ -336,7 +336,7 @@ let handle_answer answer =
 	 in
          let n_saved =
            match (parse_answer !enrich_style !verbose answer).pa_content with
-           | TLSHandshake h -> save_cert 0 h.certificates
+           | TLSHandshake h -> save_cert 0 h.server_certificates
            | SSLv2Handshake h -> save_cert 0 [h.certificate]
            | _ -> 0
          in
@@ -345,7 +345,7 @@ let handle_answer answer =
       | OutputCerts ->
          let certs =
            match (parse_answer !enrich_style !verbose answer).pa_content with
-           | TLSHandshake h -> h.certificates
+           | TLSHandshake h -> h.server_certificates
            | SSLv2Handshake h -> [h.certificate]
            | _ -> []
          in
@@ -353,7 +353,7 @@ let handle_answer answer =
 
       | HTTPNames ->
          let cert = match (parse_answer !enrich_style !verbose answer).pa_content with
-           | TLSHandshake {certificates = (Parsed (_,cert))::_}
+           | TLSHandshake {server_certificates = (Parsed (_,cert))::_}
            | SSLv2Handshake {certificate = Parsed (_, cert)} -> Some cert
            | _ -> None
          in

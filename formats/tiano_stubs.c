@@ -12,11 +12,11 @@
 
 #include "EfiTianoDecompress.h"
 
-static void error(char *s)
+/* static void error(char *s)
 {
 	fprintf(stderr, "ERROR %s\n", s);
 	exit(1);
-}
+} */
 
 CAMLprim value caml_tiano_getsize(value buf, value buf_size)
 {

@@ -110,13 +110,13 @@ type parsed_ssl2_handshake = {
 }
 
 type parsed_tls_handshake = {
-  record_version : tls_version;
-  server_hello_version : tls_version;
-  server_random : binstring;
-  ciphersuite : ciphersuite;
-  compression_method : compression_method;
-  extensions : hello_extension list option;
-  certificates : (certificate trivial_union) list;
+  sh_record_version : tls_version;
+  sh_version : tls_version;
+  sh_random : binstring;
+  sh_ciphersuite : ciphersuite;
+  sh_compression_method : compression_method;
+  sh_extensions : hello_extension list option;
+  server_certificates : (certificate trivial_union) list;
 }
 
 type parsed_answer_content =
@@ -161,13 +161,13 @@ let parse_answer enrich_style verbose answer =
                  handshake_type = HT_Certificate;
                  handshake_content = Certificate certs }}::_), _ ->
        TLSHandshake {
-           record_version = ext_v;
-           server_hello_version = sh.server_version;
-           server_random = sh.server_random;
-           ciphersuite = sh.ciphersuite;
-           compression_method = sh.compression_method;
-           extensions = sh.server_extensions;
-           certificates = certs
+           sh_record_version = ext_v;
+           sh_version = sh.server_version;
+           sh_random = sh.server_random;
+           sh_ciphersuite = sh.ciphersuite;
+           sh_compression_method = sh.compression_method;
+           sh_extensions = sh.server_extensions;
+           server_certificates = certs
          }
     | Left ({ ssl2_content = SSL2Handshake {
                 ssl2_handshake_type = SSL2_HT_SERVER_HELLO;
@@ -184,13 +184,13 @@ let parse_answer enrich_style verbose answer =
                  handshake_content = ServerHello sh }}::_), _ ->
        (* TODO: Should this [] be a None to explicitly say "No Certificate message found"? *)
        TLSHandshake {
-           record_version = ext_v;
-           server_hello_version = sh.server_version;
-           server_random = sh.server_random;
-           ciphersuite = sh.ciphersuite;
-           compression_method = sh.compression_method;
-           extensions = sh.server_extensions;
-           certificates = []
+           sh_record_version = ext_v;
+           sh_version = sh.server_version;
+           sh_random = sh.server_random;
+           sh_ciphersuite = sh.ciphersuite;
+           sh_compression_method = sh.compression_method;
+           sh_extensions = sh.server_extensions;
+           server_certificates = []
          }
 
     | Right ({ content_type = CT_Handshake;
