@@ -6,6 +6,7 @@ set -e
 # Script initialization
 
 PROGNAME=$0
+[ -n "$TMPDIR" ] || TMPDIR="/tmp"
 
 error () {
 	echo "Error: $1" >&2
@@ -34,7 +35,8 @@ fi
 
 # Temporary dir creation
 
-TMPDIR=$(mktemp -d "/tmp/parsifal_XXXXXX")
+mkdir -p "$TMPDIR"
+TMPDIR=$(mktemp -d "$TMPDIR/parsifal_XXXXXX")
 info "Using temporary dir $TMPDIR"
 
 cd "$PARSIFAL_DIR"
