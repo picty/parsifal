@@ -3,21 +3,11 @@ open LwtUtil
 open Parsifal
 open Pe
 open Getopt
-open Unix
 open PTypes
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
 ]
-
-let get_file_content filename =
-  let f = open_in filename in
-  let fd = descr_of_in_channel f in
-  let stats = fstat fd in
-  let len = stats.st_size in
-  let res = String.make len ' ' in
-  really_input f res 0 len;
-  res
 
 let parse_secdir_entry filename entry =
   let s = get_file_content filename in

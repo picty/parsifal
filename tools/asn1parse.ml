@@ -2,7 +2,6 @@ open Parsifal
 open Asn1Engine
 open Asn1PTypes
 open Getopt
-open X509
 open PTypes
 open Base64
 

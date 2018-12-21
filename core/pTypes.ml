@@ -23,11 +23,14 @@ let value_of_ipv4 s =
   ]
 
 let ipv4_of_string s =
-  let res = String.make 4 ' ' in
+  let res = Bytes.make 4 ' ' in
   match List.map (fun x -> char_of_int (int_of_string x)) (string_split '.' s) with
   | [w;x;y;z] ->
-    res.[0] <- w; res.[1] <- x; res.[2] <- y; res.[3] <- z;
-    res
+    Bytes.set res 0 w;
+    Bytes.set res 1 x;
+    Bytes.set res 2 y;
+    Bytes.set res 3 z;
+    Bytes.to_string res  (* TODO: Should be an unsafe_to_string? *)
   | _ -> raise (ParsingException (CustomException ("Invalid IPv4 (" ^ (quote_string s) ^ ")"), []))
 
 
@@ -40,13 +43,13 @@ let dump_ipv6 buf ipv6 = POutput.add_string buf ipv6
 
 (* TODO: Compress it! *)
 let string_of_ipv6 s =
-  let res = String.make 39 ':' in
+  let res = Bytes.make 39 ':' in
   for i = 0 to 15 do
-    let x = int_of_char (String.get s i) in
-    res.[(i / 2) + i * 2] <- hexa_char.[(x lsr 4) land 0xf];
-    res.[(i / 2) + i * 2 + 1] <- hexa_char.[x land 0xf];
+    let x = int_of_char s.[i] in
+    Bytes.set res ((i / 2) + i * 2) hexa_char.[(x lsr 4) land 0xf];
+    Bytes.set res ((i / 2) + i * 2 + 1) hexa_char.[x land 0xf];
   done;
-  res
+  Bytes.to_string res  (* TODO: Should be an unsafe_to_string? *)
 
 let value_of_ipv6 s =
   let elts = [s.[0]; s.[1]; s.[2]; s.[3];

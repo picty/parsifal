@@ -64,16 +64,6 @@ let handle_timeout state =
 let dumb_update _ _ = None
 
 
-let rec _really_write o s p l =
-  Lwt_unix.write o s p l >>= fun n ->
-  if l = n then
-    Lwt.return ()
-  else
-    _really_write o s (p + n) (l - n)
-
-let really_write o s = _really_write o s 0 (String.length s)
-
-
 let write_record o record =
   let s = exact_dump_tls_record record in
   really_write o s

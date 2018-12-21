@@ -66,7 +66,7 @@ let get_guid_of_value v =
 
 let filename_cleanup s =
   let len = String.length s in
-  let ret = String.make len '\x00' in
+  let ret = Bytes.make len '\x00' in
   let i = ref 0 in
   let j = ref 0 in
   while !i < len do
@@ -80,13 +80,13 @@ let filename_cleanup s =
       | _ -> Some c
     in
     match c2 with
-    | Some c -> ret.[!j] <- c; j := !j + 1; ()
+    | Some c -> Bytes.set ret !j c; j := !j + 1; ()
     | None   -> ()
     end
     ;
     incr i
   done;
-  String.sub ret 0 !j
+  Bytes.sub_string ret 0 !j
 
 (* Same as List.mapi
  * Reimplemented t work with ocaml < 4

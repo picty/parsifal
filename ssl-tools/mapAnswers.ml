@@ -115,19 +115,15 @@ let maybe_print ip = function
 let dump_extract s =
   let len2consider = min !junk_length (String.length s) in
   let s2consider = String.sub s 0 len2consider in
-  let hex_s = hexdump s2consider
-  and printable_s = String.copy s2consider in
-  let rec mk_printable_s i =
-    if i < len2consider
-    then begin
-      let c = int_of_char (printable_s.[i]) in
-      if c < 32 || c > 126
-      then printable_s.[i] <- '.';
-      mk_printable_s (i+1)
-    end
-  in
-  mk_printable_s 0;
-  Printf.sprintf "%s (%s)" hex_s printable_s
+  let hex_s = hexdump s2consider in
+  let printable_buf = Buffer.create len2consider in
+  for i = 0 to len2consider - 1 do
+    let c = int_of_char s2consider.[i] in
+    if c < 32 || c > 126
+    then Buffer.add_char printable_buf '.'
+    else Buffer.add_char printable_buf s2consider.[i]
+  done;
+  Printf.sprintf "%s (%s)" hex_s (Buffer.contents printable_buf)
 
 
 let handle_answer answer =

@@ -3,7 +3,7 @@ external lzma_getsize: string -> int -> int = "caml_lzma_getsize"
 (* lzma_decode src src_size dst dst_size -> 0 if success
  * dst must be of size dst_size, and must be big enough
  *)
-external lzma_decode: string -> int -> string -> int -> int = "caml_lzma_decode"
+external lzma_decode: string -> int -> bytes -> int -> int = "caml_lzma_decode"
 
 type 'a lzma_container = 'a
 val parse_lzma_container :

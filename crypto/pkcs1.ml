@@ -82,22 +82,26 @@ let normalize_modulus n =
   String.sub n to_drop new_len
 
 let format_encryption_block rnd_state block_type padding_len d =
-  let padding = match block_type with
-    | 0 -> String.make padding_len '\x00'
-    | 1 -> String.make padding_len '\xff'
+  let buf = Buffer.create (padding_len + (String.length d)) in
+  Buffer.add_char buf '\x00';
+  Buffer.add_char buf (char_of_int block_type);
+  begin
+    match block_type with
+    | 0 -> Buffer.add_string buf (String.make padding_len '\x00')
+    | 1 -> Buffer.add_string buf (String.make padding_len '\xff')
     | 2 ->
       let s = RandomEngine.random_string rnd_state padding_len in
       (* TODO: This introduces a bias towards 0xff which should be avoided *)
       for i = 0 to padding_len - 1 do
 	if s.[i] = '\x00'
-	then s.[i] <- '\xff'
+        then Buffer.add_char buf '\xff'
+        else Buffer.add_char buf s.[i]
       done;
-      s
     | _ -> raise InvalidBlockType
-  in
-  let tmp1 = String.make 1 '\x00' in
-  let tmp2 = String.make 1 (char_of_int block_type) in
-  tmp1 ^ tmp2 ^ padding ^ tmp1 ^ d
+  end;
+  Buffer.add_char buf '\x00';
+  Buffer.add_string buf d;
+  Buffer.contents buf
 
 
 let encrypt rnd_state block_type d n c =

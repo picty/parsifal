@@ -21,18 +21,18 @@ let update_crc crc buf pos len =
 
 let crc32 s =
   let int32res = update_crc 0l s 0 (String.length s) in
-  let res = String.make 4 '\x00' in
-  res.[0] <- char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 24) 0xFFl));
-  res.[1] <- char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 16) 0xFFl));
-  res.[2] <- char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 8) 0xFFl));
-  res.[3] <- char_of_int (Int32.to_int (Int32.logand int32res 0xFFl));
-  res
+  let res = Bytes.make 4 '\x00' in
+  Bytes.set res 0 (char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 24) 0xFFl)));
+  Bytes.set res 1 (char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 16) 0xFFl)));
+  Bytes.set res 2 (char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 8) 0xFFl)));
+  Bytes.set res 3 (char_of_int (Int32.to_int (Int32.logand int32res 0xFFl)));
+  Bytes.to_string res  (* TODO: Should be an unsafe_to_string? *)
 
 let crc32le s =
   let int32res = update_crc 0l s 0 (String.length s) in
-  let res = String.make 4 '\x00' in
-  res.[3] <- char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 24) 0xFFl));
-  res.[2] <- char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 16) 0xFFl));
-  res.[1] <- char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 8) 0xFFl));
-  res.[0] <- char_of_int (Int32.to_int (Int32.logand int32res 0xFFl));
-  res
+  let res = Bytes.make 4 '\x00' in
+  Bytes.set res 3 (char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 24) 0xFFl)));
+  Bytes.set res 2 (char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 16) 0xFFl)));
+  Bytes.set res 1 (char_of_int (Int32.to_int (Int32.logand (Int32.shift_right_logical int32res 8) 0xFFl)));
+  Bytes.set res 0 (char_of_int (Int32.to_int (Int32.logand int32res 0xFFl)));
+  Bytes.to_string res  (* TODO: Should be an unsafe_to_string? *)

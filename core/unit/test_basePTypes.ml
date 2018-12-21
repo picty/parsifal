@@ -7,11 +7,11 @@ open OUnit
 (* TODO: Move those funs elsewhere *)
 
 let random_string len () =
-  let res = String.make len '\x00' in
+  let res = Bytes.make len '\x00' in
   for i = 0 to (len - 1) do
-    res.[i] <- char_of_int (Random.int 256)
+    Bytes.set res i (char_of_int (Random.int 256))
   done;
-  res
+  Bytes.to_string res (* TODO: Use unsafe_to_string *)
 
 let ntimes n f () = for _i = 1 to n do f (); done
 

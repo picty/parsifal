@@ -71,6 +71,10 @@ let add_string buf s =
   clean_slate buf;
   Buffer.add_string buf.buffer s
 
+let add_bytes buf s =
+  clean_slate buf;
+  Buffer.add_bytes buf.buffer s
+
 let add_substring buf s index len =
   clean_slate buf;
   Buffer.add_substring buf.buffer s index len

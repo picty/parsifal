@@ -9,7 +9,7 @@ let string_xor a b =
   let n_a = String.length a
   and n_b = String.length b in
   if n_a <> n_b then raise CryptoMayhem;
-  let res = String.copy b in
+  let res = b in
   Cryptokit.xor_string a 0 res 0 n_a;
   res
 
@@ -174,7 +174,10 @@ class tls_length =
     method pad buffer used =
       let n = String.length buffer - used in
       assert (n > 0 && n < 256);
-      String.fill buffer used n (Char.chr (n-1))
+      (* TODO: This unsafe use is a hack due to the use of Cryptokit 1.10 *)
+      (*       This is only needed when using this version of the library *)
+      (*       and will be removed in the next version of Parsifal.       *)
+      Bytes.fill (Bytes.unsafe_of_string buffer) used n (Char.chr (n-1))
     method strip buffer =
       let blocksize = String.length buffer in
       let n = Char.code buffer.[blocksize - 1] in

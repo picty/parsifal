@@ -171,11 +171,11 @@ let ask host name =
   let inet_addr = host_entry.Unix.h_addr_list.(0) in
   let addr = Unix.ADDR_INET (inet_addr, 53) in
   (* TODO: Check the length! *)
-  ignore (Unix.sendto s dns_str 0 (String.length dns_str) [] addr);
-  let res = String.make 65536 '\x00' in
+  ignore (Unix.sendto s (Bytes.of_string dns_str) 0 (String.length dns_str) [] addr);
+  let res = Bytes.create 65536 in
   (* TODO: Use the future lwt_wrapper? *)
   let (l, _peer) = Unix.recvfrom s res 0 65536 [] in
-  let answer = String.sub res 0 l in
+  let answer = Bytes.sub_string res 0 l in
   print_endline (print_value (value_of_dns_message (parse_dns_message (input_of_string "DNS Answer" answer))))
 
 let _ =

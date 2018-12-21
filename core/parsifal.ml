@@ -49,13 +49,13 @@ let hexa_char = "0123456789abcdef"
 
 let hexdump s =
   let len = String.length s in
-  let res = String.make (len * 2) ' ' in
+  let res = Bytes.make (len * 2) ' ' in
   for i = 0 to (len - 1) do
     let x = int_of_char (String.get s i) in
-    res.[i * 2] <- hexa_char.[(x lsr 4) land 0xf];
-    res.[i * 2 + 1] <- hexa_char.[x land 0xf];
+    Bytes.set res (i * 2) (hexa_char.[(x lsr 4) land 0xf]);
+    Bytes.set res (i * 2 + 1) (hexa_char.[x land 0xf]);
   done;
-  res
+  Bytes.to_string res  (* TODO: Should be an unsafe_to_string? *)
 
 
 exception InvalidHexStringException of string
@@ -86,13 +86,13 @@ let extract_4bits c =
 let hexparse s =
   let len = String.length s in
   if len mod 2 <> 0 then raise (InvalidHexStringException "odd-length string");
-  let res = String.make (len / 2) ' ' in
+  let res = Bytes.make (len / 2) ' ' in
   for i = 0 to (len / 2) - 1 do
     let hibits = extract_4bits (int_of_char s.[2 * i]) in
     let lobits = extract_4bits (int_of_char s.[2 * i + 1]) in
-    res.[i] <- char_of_int ((hibits lsl 4) lor lobits)
+    Bytes.set res i (char_of_int ((hibits lsl 4) lor lobits))
   done;
-  res
+  Bytes.to_string res  (* TODO: Should be an unsafe_to_string? *)
 
 
 let string_split c s =
@@ -251,9 +251,9 @@ let print_parsing_exception = function
 exception ParsingException of parsing_exception * history
 exception ParsingStop
 
-let value_not_in_enum s x h = raise (ParsingException (ValueNotInEnum (String.copy s, x), h))
+let value_not_in_enum s x h = raise (ParsingException (ValueNotInEnum (s, x), h))
 
-let not_implemented s = raise (ParsingException (NotImplemented (String.copy s), []))
+let not_implemented s = raise (ParsingException (NotImplemented s, []))
 
 let string_of_exception e h = (print_parsing_exception e) ^ (print_history h)
 
@@ -713,10 +713,10 @@ let get_file_content filename =
   let fd = open_in_bin filename in
   try
     let len = in_channel_length fd in
-    let res = String.make len '\x00' in
+    let res = Bytes.create len in
     really_input fd res 0 len;
     close_in fd;
-    res
+    Bytes.to_string res
   with e ->
     close_in fd;
     raise e
@@ -727,12 +727,12 @@ let string_input_of_filename ?verbose:(verbose=false) ?enrich:(enrich=DefaultEnr
 
 let string_input_of_stdin ?verbose:(verbose=false) ?enrich:(enrich=DefaultEnrich) () =
    let input_string = Buffer.create 4096 in
-   let buf = String.create 4096 in
+   let buf = Bytes.create 4096 in
    let rec read_more () =
      try
        let n = input stdin buf 0 4096 in
          if n <> 0 then begin
-           Buffer.add_substring input_string buf 0 n;
+           Buffer.add_subbytes input_string buf 0 n;
            read_more ()
          end else
            Buffer.contents input_string

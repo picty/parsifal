@@ -80,16 +80,16 @@ let dump_der_smallint_content buf i =
     else 1 + (compute_size (rem lsr 8))
   in
   let sz = compute_size i in
-  let res = String.make sz '\x00' in
+  let res = Bytes.make sz '\x00' in
   let rec mk_content where rem =
     if rem = 0 then ()
     else begin
-      res.[where] <- char_of_int (rem land 0xff);
+      Bytes.set res where (char_of_int (rem land 0xff));
       mk_content (where - 1) (rem lsr 8)
     end
   in
   mk_content (sz-1) i;
-  POutput.add_string buf res
+  POutput.add_bytes buf res
 
 let value_of_der_smallint_content i = VInt i
 

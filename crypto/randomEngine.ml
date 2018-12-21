@@ -10,9 +10,7 @@ let refresh_bh h s x =
   let n = String.length !s in
   let tmp = h ("extract" ^ x) in
   if n = String.length tmp then begin
-    for i = 0 to n-1 do
-      tmp.[i] <- char_of_int ((int_of_char tmp.[i]) lxor (int_of_char !s.[i]))
-    done;
+    Cryptokit.xor_string !s 0 tmp 0 n;
     s := h ("G_prime" ^ tmp)
   end else raise InvalidRandomState
 
@@ -76,10 +74,10 @@ let seeded_random_generator seed =
 
 let default_random_generator () =
   let f = open_in "/dev/urandom" in
-  let seed = String.make 32 ' ' in
+  let seed = Bytes.create 32 in
   really_input f seed 0 32;
   close_in f;
-  seeded_random_generator seed
+  seeded_random_generator (Bytes.to_string seed)
 
 let dummy_random_generator () = {
   seed = (fun _ -> ());

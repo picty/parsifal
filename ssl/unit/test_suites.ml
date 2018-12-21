@@ -6,11 +6,11 @@ open TlsCrypto
 
 
 let random_string len =
-  let res = String.make len '\x00' in
+  let res = Bytes.make len '\x00' in
   for i = 0 to (len - 1) do
-    res.[i] <- char_of_int (Random.int 256)
+    Bytes.set res i (char_of_int (Random.int 256))
   done;
-  res
+  Bytes.to_string res (* TODO: Use unsafe_to_string *)
 
 let aggregate exit_code = function
   | RSuccess _ -> exit_code
@@ -40,12 +40,12 @@ let mk_idempotence_suite name encrypt decrypt n maxlen =
 
 
 let test_integrity encrypt decrypt data =
-  let encrypted_msg = encrypt CT_ApplicationData V_TLSv1 data in
-  let len = String.length encrypted_msg in
+  let encrypted_msg = Bytes.of_string (encrypt CT_ApplicationData V_TLSv1 data) in
+  let len = Bytes.length encrypted_msg in
   let pos = Random.int len in
   let delta = (Random.int 255) + 1 in
-  encrypted_msg.[pos] <- char_of_int ((int_of_char encrypted_msg.[pos]) lxor delta);
-  let integrity, _ =  decrypt CT_ApplicationData V_TLSv1 encrypted_msg in
+  Bytes.set encrypted_msg pos (char_of_int ((int_of_char (Bytes.get encrypted_msg pos)) lxor delta));
+  let integrity, _ =  decrypt CT_ApplicationData V_TLSv1 (Bytes.to_string encrypted_msg) in
   assert_bool "integrity check should have failed" (not integrity)
 
 let mk_check_integrity_check name encrypt decrypt n maxlen =

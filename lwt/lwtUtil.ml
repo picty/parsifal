@@ -8,7 +8,7 @@ let rec _really_write o s p l =
   else
     _really_write o s (p + n) (l - n)
 
-let really_write o s = _really_write o s 0 (String.length s)
+let really_write o s = _really_write o (Bytes.of_string s) 0 (String.length s)
 
 
 
@@ -85,12 +85,12 @@ let lwt_parse_wrapper parse_fun lwt_input =
     then Lwt.wrap1 parse_fun lwt_input.string_input
     else match try_parse parse_fun lwt_input.string_input with
     | None ->
-      let buf = String.make 8192 '\x00' in
+      let buf = Bytes.create 8192 in
       Lwt_io.read_into lwt_input.lwt_ch buf 0 8192 >>= fun n_read ->
       if n_read == 0
       then lwt_input.lwt_eof <- true
       else begin
-	let new_string_input = append_to_input lwt_input.string_input (String.sub buf 0 n_read) in
+	let new_string_input = append_to_input lwt_input.string_input (Bytes.sub_string buf 0 n_read) in
 	lwt_input.string_input <- new_string_input
       end;
       try_str_parse ()

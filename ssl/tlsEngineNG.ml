@@ -517,12 +517,12 @@ let get_next_automata_input ctx c =
 
   let rec input_fun () =
     (* TODO: 4096 should be adjustable *)
-    let buf = String.make 4096 ' ' in
+    let buf = Bytes.create 4096 in
     let handle_read_bytes n_read =
       if n_read = 0
       then fail End_of_file
       else begin
-        c.input <- append_to_input c.input (String.sub buf 0 n_read);
+        c.input <- append_to_input c.input (Bytes.sub_string buf 0 n_read);
         let rec parse_new_records new_record =
           (* TODO: In fact, we are stuck if input enriches too much here  *)
           (* TODO: Should we check for that? *)
@@ -557,7 +557,7 @@ let get_next_automata_input ctx c =
 
   let output_fun () =
     let len = String.length c.output in
-    Lwt_unix.write c.socket c.output 0 len >>= fun n_written ->
+    Lwt_unix.write c.socket (Bytes.of_string c.output) 0 len >>= fun n_written ->   (* TODO: Use unsafe_of_string? *)
     c.output <- String.sub c.output n_written (len - n_written);
     return Nothing
   in

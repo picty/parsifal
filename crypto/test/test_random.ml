@@ -5,10 +5,10 @@ open CryptoUtil
 let state = make_bh_prng sha256sum "tititoto"
 
 let reseed_urandom () =
-  let seed = String.make 1024 ' ' in
+  let seed = Bytes.create 1024 in
   let f = open_in "/dev/urandom" in
   really_input f seed 0 1024;
-  state.seed seed
+  state.seed (Bytes.to_string seed)
 
 let reseed s = state.seed s; ActionDone
 let print_random_int n = print_endline (string_of_int (random_int state n)); ActionDone

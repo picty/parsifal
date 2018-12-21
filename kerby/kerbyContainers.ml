@@ -12,8 +12,8 @@ let value_of_crypto_container value_of_fun = function
 
 
 (* UGLY AES *)
-let byte_array_to_string = fun a -> let s = String.create (Array.length a) in
-  Array.iteri (fun i x -> String.set s i x) a; s;;
+let byte_array_to_string = fun a -> let s = Bytes.create (Array.length a) in
+  Array.iteri (fun i x -> Bytes.set s i x) a; s;;
 
 let string_to_byte_array = fun s -> Array.init (String.length s) (fun i-> s.[i]);;
 
@@ -44,7 +44,7 @@ let parse_aes_container usage kvno aes_key name parse_fun input =
   | None -> Encrypted s
   | Some k ->
     let decrypted_s = aes_decrypt usage kvno s k in
-    let new_input = get_in_container input name decrypted_s in
+    let new_input = get_in_container input name (Bytes.to_string decrypted_s) in  (* TODO: Use unsafe_to_string? *)
     let res = parse_fun new_input in
     check_empty_input true new_input;
     Decrypted res

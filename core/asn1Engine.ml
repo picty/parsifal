@@ -189,16 +189,16 @@ let dump_der_length buf l =
   let rec aux res i = function
     | 0 -> ()
     | lg ->
-      res.[i] <- char_of_int (lg land 0xff);
+      Bytes.set res i (char_of_int (lg land 0xff));
       aux res (i-1) (lg lsr 8)
   in
   if l < 0x80
   then POutput.add_byte buf l
   else
     let len_len = compute_len 0 l in
-    let res = String.make (len_len + 1) (char_of_int (len_len lor 0x80)) in
+    let res = Bytes.make (len_len + 1) (char_of_int (len_len lor 0x80)) in
     aux res len_len l;
-    POutput.add_string buf res
+    POutput.add_bytes buf res
 
 let produce_der_object hdr dump_content buf v =
   dump_der_header buf hdr;

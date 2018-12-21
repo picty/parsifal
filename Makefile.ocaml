@@ -17,7 +17,7 @@ OCAMLOPTS_CC = $(GEN_INCLUDES) $(EXTRA_OCAMLOPT_CC_FLAGS) -I $(BUILD_DIR)
 OCAMLOPTS_LD = $(GEN_INCLUDES) $(GEN_LIBS) $(EXTRA_OCAMLOPT_LD_FLAGS)
 OCAMLC_CC = $(GEN_BYTE_INCLUDES) $(EXTRA_OCAMLC_CC_FLAGS)
 OCAMLC_LD = $(GEN_BYTE_INCLUDES) $(GEN_BYTE_LIBS) $(EXTRA_OCAMLC_LD_FLAGS)
-OCAML_COMPILER_OPTIONS = -w +a-3-4-6-9-31-32-41-44-45-48 -warn-error +a
+OCAML_COMPILER_OPTIONS = -safe-string -w +a-4-6-9-31-32-41-44-45-48 -warn-error +a
 
 # install options
 LIBDIR ?= /usr/local/lib/ocaml
@@ -31,12 +31,12 @@ all: real_all
 
 define TARGET_template
  $(1)_OBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmx)
- $(1): $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -o $$@ $(OCAMLOPTS_LD) $$^
+ $(1): $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -o $$@ $(OCAMLOPTS_LD) $(OCAML_COMPILER_OPTIONS) $$^
 
  $(1)_BOBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmo)
- $(1).byte: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -o $$@ $(OCAMLC_LD) $$^
+ $(1).byte: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -o $$@ $(OCAMLC_LD) $(OCAML_COMPILER_OPTIONS) $$^
 
- $(1).top: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLMKTOP) -o $$@ $(OCAMLC_LD) $$^
+ $(1).top: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLMKTOP) -o $$@ $(OCAMLC_LD) $(OCAML_COMPILER_OPTIONS) $$^
 
  ALL_INCS   += $$($(1)_INCS)
  ALL_SRCS   += $$($(1)_SRCS)
@@ -110,14 +110,14 @@ $(BUILD_DIR)/%.cmx: %.ml
 ifdef USE_CAMLP4
 	$(OCAMLFIND) $(OCAMLOPT) -o $@ -c -g $(OCAMLOPTS_CC) $(OCAML_COMPILER_OPTIONS) -syntax camlp4o $<
 else
-	$(OCAMLOPT) -o $@ -c -g $(OCAMLOPTS_CC) $<
+	$(OCAMLOPT) -o $@ -c -g $(OCAMLOPTS_CC) $(OCAML_COMPILER_OPTIONS) $<
 endif
 
 $(BUILD_DIR)/%.cmo: %.ml
 ifdef USE_CAMLP4
 	$(OCAMLFIND) $(OCAMLC) -o $@ -c -g $(OCAMLOPTS_CC) $(OCAML_COMPILER_OPTIONS) -syntax camlp4o $<
 else
-	$(OCAMLC) -o $@ -c -g $(OCAMLOPTS_CC) $<
+	$(OCAMLC) -o $@ -c -g $(OCAMLOPTS_CC) $(OCAML_COMPILER_OPTIONS) $<
 endif
 
 

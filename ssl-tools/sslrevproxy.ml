@@ -60,7 +60,7 @@ let rec extract_server_name = function
 
 
 let rec forward i o =
-  let s = String.create 1024 in
+  let s = Bytes.create 1024 in
   Lwt_unix.read i s 0 1024 >>= fun l ->
   if l > 0 then begin
     _really_write o s 0 l >>= fun () ->
