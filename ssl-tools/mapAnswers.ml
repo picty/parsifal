@@ -390,7 +390,7 @@ let _ =
     then print_string (Pcap.std_pcap_hdr_str);
     let open_files = function
       | [] -> input_of_channel ~verbose:(!verbose) "(stdin)" Lwt_io.stdin >>= fun x -> return [x]
-      | _ -> Lwt_list.map_s input_of_filename args
+      | _ -> Lwt_list.map_s (fun fn -> input_of_filename fn) args
     in
     Lwt_unix.run (open_files args >>= Lwt_list.iter_s handle_one_file);
   with

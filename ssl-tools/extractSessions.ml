@@ -158,7 +158,7 @@ let _ =
     let args = parse_args ~progname:"extractSessions" options Sys.argv in
     let open_files = function
       | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= fun x -> return [x]
-      | _ -> Lwt_list.map_s input_of_filename args
+      | _ -> Lwt_list.map_s (fun fn -> input_of_filename fn) args
     in
     Lwt_unix.run (open_files args >>= Lwt_list.iter_s handle_one_file);
   with

@@ -85,7 +85,7 @@ let rec expr_of_pat = function
   | p -> Loc.raise (loc_of_patt p) (Failure "pattern not supported for asn1_unions")
 
 
-let mk_multiple_args_fun _loc fname argnames ?optargs:(optargnames=[]) body =
+let mk_multiple_args_fun_with_optargs _loc fname argnames optargnames body =
   let rec _mk_multiple_args_fun = function
     | [] -> body
     | arg::r -> <:expr< fun $ <:patt< $lid:arg$ >> $ -> $exp:_mk_multiple_args_fun r$ >>
@@ -97,6 +97,7 @@ let mk_multiple_args_fun _loc fname argnames ?optargs:(optargnames=[]) body =
   let b = <:binding< $pat: <:patt< $lid:fname$ >> $ = $exp:_mk_multiple_optargs_fun optargnames$ >>
   in <:str_item< value $b$ >>
 
+let mk_multiple_args_fun _loc fname argnames body = mk_multiple_args_fun_with_optargs _loc fname argnames [] body
 
 let rec mk_sequence _loc = function
   | [] -> <:str_item< >>

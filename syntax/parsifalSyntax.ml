@@ -339,7 +339,7 @@ let mk_specific_funs _loc c =
       let mk_case (p, e) = <:match_case< $p$ -> $e$ >> in
       let cases = List.map mk_case cases in
       let body = <:expr< fun [ $list:cases$ ] >> in
-      mk_multiple_args_fun _loc fname argnames ~optargs:optargnames body
+      mk_multiple_args_fun_with_optargs _loc fname argnames optargnames body
     in
 
     let mk_string_of_enum =

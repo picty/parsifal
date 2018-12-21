@@ -7,7 +7,7 @@ open TlsEngineNG
 
 let test_client host port prefs =
   let ctx = { (empty_context prefs) with direction = Some ClientToServer } in
-  resolve host port >>= init_client_connection >>= fun c_sock ->
+  resolve host port >>= (fun resolved_host -> init_client_connection resolved_host) >>= fun c_sock ->
   let ch () = mk_client_hello ctx in
   output_record ctx c_sock ch;
   run_automata client_automata ClientHelloSent "" ctx c_sock >>= fun _ ->

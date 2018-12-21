@@ -70,7 +70,7 @@ let input_of_channel ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name
 	   string_input = string_input }
 
 let input_of_fd ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) name fd =
-  let ch = Lwt_io.of_fd Lwt_io.input fd in
+  let ch = Lwt_io.of_fd ~mode:Lwt_io.input fd in
   input_of_channel ~verbose:verbose ~enrich:enrich name ch
 
 let input_of_filename ?verbose:(verbose=true) ?enrich:(enrich=DefaultEnrich) filename =
