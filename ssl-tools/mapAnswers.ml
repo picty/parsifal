@@ -247,14 +247,14 @@ let handle_answer answer =
            | TLSHandshake {sh_version = v; sh_ciphersuite = c; server_certificates = (Parsed (_, cert))::_} ->
               let s = String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject)) in
               Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) (string_of_ciphersuite c) (quote_string s)
-           | SSLv2Handshake {version = v; cipher_specs = cs; certificate = Parsed (_, cert)} ->
+           | SSLv2Handshake {ssl2_version = v; cipher_specs = cs; certificate = Parsed (_, cert)} ->
               let s = String.concat "" (List.map string_of_atv (List.flatten cert.tbsCertificate.subject))
               and cs_str = String.concat "," (List.map (fun c -> string_of_value (value_of_ssl2_cipher_spec c)) cs) in
               Printf.printf "%s\tH\t%s\t%s\t%s\n" ip (string_of_tls_version v) cs_str (quote_string s)
 
            | TLSHandshake {sh_version = v; sh_ciphersuite = c} ->
               Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) (string_of_ciphersuite c)
-           | SSLv2Handshake {version = v; cipher_specs = cs} ->
+           | SSLv2Handshake {ssl2_version = v; cipher_specs = cs} ->
               let cs_str = String.concat "," (List.map (fun c -> string_of_value (value_of_ssl2_cipher_spec c)) cs) in
               Printf.printf "%s\tH\t%s\t%s\tNoCertParsed\n" ip (string_of_tls_version v) cs_str
 

@@ -56,16 +56,6 @@ let print_header = function
   | C_ContextSpecific, isC, t -> Printf.sprintf "[%d] %s" (int_of_asn1_tag t) (prim_or_cons isC)
   | C_Private, isC, t -> Printf.sprintf "[PRIVATE %d] %s" (int_of_asn1_tag t) (prim_or_cons isC)
 
-type der_info = {
-  a_offset : int;
-  a_hlen : int;
-  a_length : int;
-  a_class : asn1_class;
-  a_isConstructed : bool;
-  a_tag : asn1_tag;
-}
-
-
 type asn1_exception =
   | UnexpectedHeader of (asn1_class * bool * asn1_tag) * (asn1_class * bool * asn1_tag) option
   | BooleanNotInNormalForm
@@ -148,29 +138,13 @@ let check_header ((exp_c, exp_isC, exp_t) as exp_hdr) input ((c, isC, t) as hdr)
   if hdr <> exp_hdr
   then fatal_error (UnexpectedHeader ((c, isC, t), Some (exp_c, exp_isC, exp_t))) input
 
-let _extract_der_object header_constraint name parse_content input =
-  let offset = input.cur_base + input.cur_offset in
-  let old_cur_offset = input.cur_offset in
+let extract_der_object header_constraint name parse_content input =
   let c, isC, t = extract_der_header input in
   check_header header_constraint input (c, isC, t);
   let len = extract_der_length input in
-  let hlen = input.cur_offset - old_cur_offset in
   let new_input = get_in input name len in
-  let der_info = {
-    a_offset = offset;
-    a_hlen = hlen;
-    a_length = len;
-    a_class = c;
-    a_isConstructed = isC;
-    a_tag = t;
-  }
-  and raw_string () = String.sub input.str offset (len+hlen) in
   let res = parse_content new_input in
   get_out input new_input;
-  res, der_info, raw_string
-
-let extract_der_object header_constraint name parse_content input =
-  let res, _, _ = _extract_der_object header_constraint name parse_content input in
   res
 
 

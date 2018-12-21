@@ -104,7 +104,7 @@ let parse_records_as_values enrich_style verbose answer =
 
 
 type parsed_ssl2_handshake = {
-  version : tls_version;
+  ssl2_version : tls_version;
   cipher_specs : ssl2_cipher_spec list;
   certificate : certificate trivial_union;
 }
@@ -173,7 +173,7 @@ let parse_answer enrich_style verbose answer =
                 ssl2_handshake_type = SSL2_HT_SERVER_HELLO;
                 ssl2_handshake_content = SSL2ServerHello sh }}::_), _ ->
        SSLv2Handshake {
-           version = sh.ssl2_server_version;
+           ssl2_version = sh.ssl2_server_version;
            cipher_specs = sh.ssl2_server_cipher_specs;
            certificate = sh.ssl2_server_certificate
          }

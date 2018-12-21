@@ -6,18 +6,6 @@ open TlsEnums
 
 (* Suite description *)
 
-type ciphersuite_description = {
-  suite_name : ciphersuite;
-  kx : key_exchange_algorithm;
-  au : authentication_algorithm;
-  enc : encryption_algorithm;
-  mac : integrity_algorithm;
-  prf : pseudo_random_function;
-  export : bool;
-  min_version : int;
-  max_version : int;
-}
-
 let ciphersuite_descriptions = Hashtbl.create 300
 
 let find_csdescr cs =
