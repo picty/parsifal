@@ -5,7 +5,7 @@ open PTypes
 alias association_id = uint16
 alias keyid = uint32
 
-alias reference_clock_code = string(4)
+alias reference_clock_code [novalueof] = string(4)
 
 let value_of_reference_clock_code refcode =
     let value =
@@ -935,7 +935,7 @@ struct extension_fields = {
     value: binstring(field_len);
 }
 
-alias kiss_of_death_code = string(4)
+alias kiss_of_death_code [novalueof] = string(4)
 
 let value_of_kiss_of_death_code kod =
     let value =

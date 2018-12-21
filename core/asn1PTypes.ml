@@ -336,7 +336,7 @@ let value_of_der_octetstring_content s = VString (s, true)
 asn1_alias der_octetstring = primitive [T_OctetString] der_octetstring_content(no_constraint)
 
 
-alias der_printable_octetstring_content [param constr] = der_octetstring_content(constr)
+alias der_printable_octetstring_content [param constr; novalueof] = der_octetstring_content(constr)
 let value_of_der_printable_octetstring_content s = VString (s, false)
 
 

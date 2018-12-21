@@ -113,7 +113,7 @@ let value_of_domain d =
   ]
 
 
-struct soa_rdata [both_param ctx] = {
+struct soa_rdata [both_param ctx; novalueof] = {
   soa_mname : domain[ctx];
   soa_rname : domain[ctx];
   soa_serial: uint32;
@@ -123,7 +123,6 @@ struct soa_rdata [both_param ctx] = {
   soa_minimum : uint32
 }
 
-(* TODO: value_of overload is a hack. *)
 let value_of_soa_rdata soa_rdata =
   let mname = String.concat "." (string_of_domain soa_rdata.soa_mname) in
   let rname = String.concat "." (string_of_domain soa_rdata.soa_rname) in
@@ -148,12 +147,11 @@ struct hinfo_rdata = {
   hinfo_os : string[uint8];
 }
 
-struct mx_rdata [both_param ctx] = {
+struct mx_rdata [both_param ctx; novalueof] = {
   mx_preference : uint16;
   mx_host : domain[ctx]
 }
 
-(* TODO: value_of overload is a hack. *)
 let value_of_mx_rdata mx_rdata =
   let content = string_of_domain mx_rdata.mx_host in
   let domain = String.concat "." content in
@@ -165,7 +163,7 @@ let value_of_mx_rdata mx_rdata =
   ]
 
 
-alias txt_rdata = list of string[uint8]
+alias txt_rdata [novalueof] = list of string[uint8]
 let value_of_txt_rdata txt_rdata = VString (String.concat "." txt_rdata, false)
 
 

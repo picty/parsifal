@@ -124,7 +124,7 @@ struct rom_image = {
 *)
 
 
-alias rom_image = rom_content
+alias rom_image [noparse] = rom_content
 
 let parse_rom_image input =
   let pos = parse_save_offset input in

@@ -91,22 +91,22 @@ let handle_client client_side =
 
 
 
-let rec my_accept sock =
-  Lwt_unix.accept sock >>= fun (s, _) ->
-  prerr_endline "Connexion accepted";
-  match Lwt_unix.fork () with
-  | 0 ->
-    Lwt_unix.close sock >>= fun () ->
-    begin
-      match Lwt_unix.fork () with
-      | 0 ->
-        catch (fun () -> handle_client s) catcher >>= fun () ->
-        Lwt_unix.close s
-      | _ -> exit 0
-    end;
-  | _ ->
-    Lwt_unix.close s >>= fun () ->
-    my_accept sock
+(* let rec my_accept sock = *)
+(*   Lwt_unix.accept sock >>= fun (s, _) -> *)
+(*   prerr_endline "Connexion accepted"; *)
+(*   match Lwt_unix.fork () with *)
+(*   | 0 -> *)
+(*     Lwt_unix.close sock >>= fun () -> *)
+(*     begin *)
+(*       match Lwt_unix.fork () with *)
+(*       | 0 -> *)
+(*         catch (fun () -> handle_client s) catcher >>= fun () -> *)
+(*         Lwt_unix.close s *)
+(*       | _ -> exit 0 *)
+(*     end; *)
+(*   | _ -> *)
+(*     Lwt_unix.close s >>= fun () -> *)
+(*     my_accept sock *)
 
 let rec my_accept sock =
   Lwt_unix.accept sock >>= fun (s, _) ->

@@ -66,7 +66,7 @@ let string_of_atv atv =
 
 (* TODO: Add constraints on set of [min, max] *)
 asn1_alias rdn = set_of atv  (* min = 1 *)
-asn1_alias distinguishedName = seq_of rdn
+asn1_alias distinguishedName [novalueof] = seq_of rdn
 
 let string_of_distinguishedName dn =
   String.concat "" (List.map string_of_atv (List.flatten dn))

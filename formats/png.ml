@@ -135,7 +135,7 @@ struct image_standard_rgb_profile = {
 
 
 (* Image textual data - Latin-1 *)
-struct image_textual_data = {
+struct image_textual_data [novalueof] = {
   key_word : length_constrained_container(AtMost 80) of cstring;
   text : string;
 }
@@ -144,7 +144,7 @@ let value_of_image_textual_data t = VString (t.key_word ^ ": " ^ t.text, false)
 
 
 (* Image compressed textual data - Latin-1 *)
-struct image_compressed_textual_data = {
+struct image_compressed_textual_data [novalueof] = {
   key_word : length_constrained_container(AtMost 80) of cstring;
   textual_compression_method : uint8;
   text_compress : ZLib.zlib_container of string;
@@ -155,7 +155,7 @@ let value_of_image_compressed_textual_data t = VString (t.key_word ^ ": " ^ t.te
 
 (* Image international textual data *)
 (* String: ...UTF-8... ? *)
-struct image_international_textual_data = {
+struct image_international_textual_data [novalueof] = {
   key_word : length_constrained_container(AtMost 80) of cstring;
   compression_flag : compression_flag;
   compression_method : compression_method;
@@ -174,7 +174,7 @@ union image_background_color_type [enrich] (UnparsedChunkContent) =
 | Indexedcolor -> IndexedcolorBackgroundColor of uint8 (* Palette index *)
 | GrayscaleWithAlphaChannel -> GrayscaleWithAlphaChannelBackgroundColor of uint16
 | TruecolorWithAlphaChannel -> TruecolorWithAlphaChannelBackgroundColor of truecolor_definition
-
+ 
 
 (* Image physical pixel dimension - ratio - pixe number by unit *)
 struct image_physical_pixel_dimension = {
@@ -208,7 +208,7 @@ struct image_suggested_palette = {
 
 
 (* Image time - Last modification date *)
-struct image_time = {
+struct image_time [novalueof] = {
   year : uint16;
   month : uint8;
   day : uint8;

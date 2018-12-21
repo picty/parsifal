@@ -15,11 +15,14 @@ type param_type = ParseParam | DumpParam | BothParam | ContextParam
 
 type parsifal_option =
   | LittleEndian
-  | ExactParser
   | NoAlias
   | EnrichByDefault
   | ExhaustiveChoices
   | Param of (param_type * string) list
+  | ExactParser
+  | NoDump
+  | NoParse
+  | NoValueOf
 
 type 'a choice = Loc.t * string * 'a   (* loc, constructor name *)
 
@@ -110,18 +113,22 @@ let opts_of_seq_expr expr =
   let opt_of_exp e =
     let _loc = loc_of_expr e in
     match e with
-    | <:expr< $lid:"top"$ >>        -> [_loc, ExactParser]
-    | <:expr< $lid:"enrich"$ >>     -> [_loc, EnrichByDefault]
-    | <:expr< $lid:"exhaustive"$ >> -> [_loc, ExhaustiveChoices]
-    | <:expr< $lid:"noalias"$ >>    -> [_loc, NoAlias]
+    | <:expr< $lid:"top"$ >>            -> [_loc, ExactParser]
+    | <:expr< $lid:"enrich"$ >>         -> [_loc, EnrichByDefault]
+    | <:expr< $lid:"exhaustive"$ >>     -> [_loc, ExhaustiveChoices]
     | <:expr< $lid:"parse_param"$ $e$ >>
-    | <:expr< $lid:"param"$ $e$ >>  ->
+    | <:expr< $lid:"param"$ $e$ >>      ->
       [_loc, Param (List.map (fun e -> (ParseParam, lid_of_expr e)) (list_of_com_expr e))]
-    | <:expr< $lid:"dump_param"$ $e$ >>  ->
+    | <:expr< $lid:"dump_param"$ $e$ >> ->
       [_loc, Param (List.map (fun e -> (DumpParam, lid_of_expr e)) (list_of_com_expr e))]
-    | <:expr< $lid:"both_param"$ $e$ >>  ->
+    | <:expr< $lid:"both_param"$ $e$ >> ->
       [_loc, Param (List.map (fun e -> (BothParam, lid_of_expr e)) (list_of_com_expr e))]
-    | <:expr< $lid:"little_endian"$ >>   -> [_loc, LittleEndian]
+    | <:expr< $lid:"little_endian"$ >>  -> [_loc, LittleEndian]
+    | <:expr< $lid:"noalias"$ >>        -> [_loc, NoAlias]
+    | <:expr< $lid:"nodump"$ >>         -> [_loc, NoDump]
+    | <:expr< $lid:"noparse"$ >>        -> [_loc, NoParse]
+    | <:expr< $lid:"novalueof"$ >>      -> [_loc, NoValueOf]
+
     | _ -> Loc.raise (loc_of_expr e) (Failure "unknown option")
   in
   List.concat (List.map opt_of_exp (list_of_sem_expr expr))
@@ -296,8 +303,8 @@ let mk_type _loc c =
     | Enum enum ->
       let ctors = List.map (fun (_loc, n, _) -> <:ctyp< $uid:n$ >>) (keep_unique_cons enum.echoices) in
       let suffix_choice = match enum.unknown_behaviour with
-	| UnknownVal v -> [ <:ctyp< $ <:ctyp< $uid:v$ >> $ of int >> ]
-	| _ -> []
+        | UnknownVal v -> [ <:ctyp< $ <:ctyp< $uid:v$ >> $ of int >> ]
+        | _ -> []
       in
       <:ctyp< [ $list:ctors@suffix_choice$ ] >>
 
@@ -309,13 +316,13 @@ let mk_type _loc c =
     | Union union
     | ASN1Union union ->
       let rec mk_ctors = function
-	| [] ->
-	  [ <:ctyp< $ <:ctyp< $uid:union.unparsed_constr$ >> $ of
-	      $ocaml_type_of_ptype _loc union.unparsed_type$ >> ]
-	| (_loc, n, (_, PT_Empty))::r -> 
-	  (<:ctyp< $uid:n$ >>)::(mk_ctors r)
-	| (_loc, n, (_, t))::r ->
-	  ( <:ctyp< $ <:ctyp< $uid:n$ >> $ of
+        | [] ->
+          [ <:ctyp< $ <:ctyp< $uid:union.unparsed_constr$ >> $ of
+              $ocaml_type_of_ptype _loc union.unparsed_type$ >> ]
+        | (_loc, n, (_, PT_Empty))::r ->
+          (<:ctyp< $uid:n$ >>)::(mk_ctors r)
+        | (_loc, n, (_, t))::r ->
+          ( <:ctyp< $ <:ctyp< $uid:n$ >> $ of
           $ocaml_type_of_ptype _loc t$ >> )::(mk_ctors r)
       in
       <:ctyp< [ $list:mk_ctors (keep_unique_cons union.uchoices)$ ] >>
@@ -346,11 +353,11 @@ let mk_specific_funs _loc c =
       let mk_case (_loc, n, (_, d)) = <:patt< $uid:n$ >>, <:expr< $str:d$ >> in
       let _cases = List.map mk_case (keep_unique_cons enum.echoices) in
       let cases = match enum.unknown_behaviour with
-	| UnknownVal v ->
-	  let p = <:patt< $ <:patt< $uid:v$ >> $ $ <:patt< $lid:"i"$ >> $ >>
-	  and e = <:expr< $str:"Unknown " ^ c.name ^ " ("$ ^ (string_of_int i) ^ $str:")"$ >>
-	  in _cases@[p, e]
-	| _ -> _cases
+        | UnknownVal v ->
+          let p = <:patt< $ <:patt< $uid:v$ >> $ $ <:patt< $lid:"i"$ >> $ >>
+          and e = <:expr< $str:"Unknown " ^ c.name ^ " ("$ ^ (string_of_int i) ^ $str:")"$ >>
+          in _cases@[p, e]
+        | _ -> _cases
       and fname = "string_of_" ^ c.name in
       (fname, [], [], cases)
 
@@ -358,11 +365,11 @@ let mk_specific_funs _loc c =
       let mk_case (_loc, n, (v, _)) = <:patt< $uid:n$ >>, <:expr< $int:v$ >> in
       let _cases = List.map mk_case (keep_unique_cons enum.echoices) in
       let cases = match enum.unknown_behaviour with
-	| UnknownVal v ->
-	  let p = <:patt< $ <:patt< $uid:v$ >> $ $ <:patt< $lid:"i"$ >> $ >>
-	  and e = <:expr< $lid:"i"$ >>
-	  in _cases@[p, e]
-	| _ -> _cases
+        | UnknownVal v ->
+          let p = <:patt< $ <:patt< $uid:v$ >> $ $ <:patt< $lid:"i"$ >> $ >>
+          and e = <:expr< $lid:"i"$ >>
+          in _cases@[p, e]
+        | _ -> _cases
       and fname = "int_of_" ^ c.name in
       (fname, [], [], cases)
 
@@ -370,14 +377,14 @@ let mk_specific_funs _loc c =
       let mk_case (_loc, n, (v, _)) = <:patt< $int:v$ >>, <:expr< $uid:n$ >> in
       let _cases = List.map mk_case enum.echoices in
       let last_p, last_e, optargs = match enum.unknown_behaviour with
-	| UnknownVal v ->
-	  <:patt< $lid:"i"$ >>,
-	  <:expr< $ <:expr< $uid:v$ >> $ $ <:expr< $lid:"i"$ >> $ >>,
-	  []
-	| Exception ->
-	  <:patt< $lid:"i"$ >>,
-	  <:expr< Parsifal.value_not_in_enum $str:c.name$ $lid:"i"$ $lid:"history"$ >>,
-	  ["history", <:expr< $uid:"[]"$ >> ]
+        | UnknownVal v ->
+          <:patt< $lid:"i"$ >>,
+          <:expr< $ <:expr< $uid:v$ >> $ $ <:expr< $lid:"i"$ >> $ >>,
+          []
+        | Exception ->
+          <:patt< $lid:"i"$ >>,
+          <:expr< Parsifal.value_not_in_enum $str:c.name$ $lid:"i"$ $lid:"history"$ >>,
+          ["history", <:expr< $uid:"[]"$ >> ]
       in
       let cases = _cases@[last_p, last_e]
       and fname = c.name ^ "_of_int" in
@@ -395,7 +402,7 @@ let mk_specific_funs _loc c =
     in
 
     let fns = [mk_int_of_enum; mk_string_of_enum;
-	       mk_enum_of_int; mk_enum_of_string] in
+               mk_enum_of_int; mk_enum_of_string] in
     List.map mk_pm_fun fns
   | _ -> []
 
@@ -412,8 +419,8 @@ let rec parse_fun_of_ptype _loc name t =
       apply_exprs _loc (exp_qname _loc m ("parse_" ^ n)) (filter_params ParseParam "parse_" e)
     | PT_CustomContainer (m, n, e, subtype) ->
       apply_exprs _loc (exp_qname _loc m ("parse_" ^ n))
-	((filter_params ParseParam "parse_" e)@
-	    [ <:expr< $str:name$ >> ; parse_fun_of_ptype _loc name subtype])
+        ((filter_params ParseParam "parse_" e)@
+            [ <:expr< $str:name$ >> ; parse_fun_of_ptype _loc name subtype])
 
 
 
@@ -430,49 +437,49 @@ let mk_parse_fun _loc c =
       (* Add a AlwaysAligned option? Or on the contrary *)
       (* Rewrite parse_bits to be efficient when things are aligned? *)
       if enum.size mod 8 = 0 then begin
-	let le = (if c <.> LittleEndian then "le" else "") in
-	let parse_int_fun = mkname "BasePTypes" ("parse_uint" ^ (string_of_int enum.size) ^ le)
-	and eoi = <:expr< $lid:c.name ^ "_of_int"$ >> in
-	[ mk_compose eoi parse_int_fun <:expr< input >> ]
+        let le = (if c <.> LittleEndian then "le" else "") in
+        let parse_int_fun = mkname "BasePTypes" ("parse_uint" ^ (string_of_int enum.size) ^ le)
+        and eoi = <:expr< $lid:c.name ^ "_of_int"$ >> in
+        [ mk_compose eoi parse_int_fun <:expr< input >> ]
       end else begin
-	let parse_int_fun = <:expr< Parsifal.parse_bits $int:string_of_int enum.size$ >>
-	and eoi = <:expr< $lid:c.name ^ "_of_int"$ >> in
-	[ mk_compose eoi parse_int_fun <:expr< input >> ]
+        let parse_int_fun = <:expr< Parsifal.parse_bits $int:string_of_int enum.size$ >>
+        and eoi = <:expr< $lid:c.name ^ "_of_int"$ >> in
+        [ mk_compose eoi parse_int_fun <:expr< input >> ]
       end
 
     | Struct fields ->
       let rec parse_fields = function
-	| [] ->
-	  let single_assign (_loc, n, _, _) = <:rec_binding< $lid:n$ = $exp: <:expr< $lid:n$ >> $ >> in
-	  let assignments = List.map single_assign (keep_built_fields fields) in
-	  <:expr< { $list:assignments$ } >>
-	| (_loc, n, t, attribute)::r ->
-	  let tmp = parse_fields r
-	  and f = parse_fun_of_ptype _loc n t in
-	  let parse_f = match attribute with
-	    | Optional -> <:expr< $mkname "Parsifal" "try_parse"$ $f$ >>
-	    | _ -> f
-	  in
-	  mk_let_in n <:expr< $parse_f$ input >> tmp
+        | [] ->
+          let single_assign (_loc, n, _, _) = <:rec_binding< $lid:n$ = $exp: <:expr< $lid:n$ >> $ >> in
+          let assignments = List.map single_assign (keep_built_fields fields) in
+          <:expr< { $list:assignments$ } >>
+        | (_loc, n, t, attribute)::r ->
+          let tmp = parse_fields r
+          and f = parse_fun_of_ptype _loc n t in
+          let parse_f = match attribute with
+            | Optional -> <:expr< $mkname "Parsifal" "try_parse"$ $f$ >>
+            | _ -> f
+          in
+          mk_let_in n <:expr< $parse_f$ input >> tmp
       in [parse_fields (keep_parsed_fields fields)]
 
     | Union union ->
       let mk_case = function
-	| (_loc, cons, (p, PT_Empty)) ->
-	  <:match_case< $p$ -> $ <:expr< $uid:cons$ >> $ >>
-	| (_loc, cons, (p, t)) ->
-	  let f = parse_fun_of_ptype _loc c.name t in
-	  <:match_case< $p$ -> $mk_union_res f cons$ >>
+        | (_loc, cons, (p, PT_Empty)) ->
+          <:match_case< $p$ -> $ <:expr< $uid:cons$ >> $ >>
+        | (_loc, cons, (p, t)) ->
+          let f = parse_fun_of_ptype _loc c.name t in
+          <:match_case< $p$ -> $mk_union_res f cons$ >>
       and mk_unparsed =
-	let f = parse_fun_of_ptype _loc c.name union.unparsed_type in
-	mk_union_res f union.unparsed_constr
+        let f = parse_fun_of_ptype _loc c.name union.unparsed_type in
+        mk_union_res f union.unparsed_constr
       in
       let parsed_cases = List.map mk_case union.uchoices
       and last_case = <:match_case< _ -> $mk_unparsed$ >> in
       let cases = if c <.> ExhaustiveChoices then parsed_cases else parsed_cases@[last_case] in
       [ <:expr< if Parsifal.should_enrich $lid:"enrich_" ^ c.name$ input.$mkname "Parsifal" "enrich"$
-	then match discriminator with [ $list:cases$ ]
-	else $mk_unparsed$ >> ]
+        then match discriminator with [ $list:cases$ ]
+        else $mk_unparsed$ >> ]
 
     | Alias atype ->
       [ <:expr< $parse_fun_of_ptype _loc c.name atype$ input >> ]
@@ -486,12 +493,12 @@ let mk_parse_fun _loc c =
 
     | ASN1Union union ->
       let mk_case (_loc, cons, (p, t)) =
-	let parse_fun = parse_fun_of_ptype _loc c.name t in
-	<:match_case< $p$ -> $ <:expr< $uid:cons$ ($parse_fun$ new_input) >> $ >>
+        let parse_fun = parse_fun_of_ptype _loc c.name t in
+        <:match_case< $p$ -> $ <:expr< $uid:cons$ ($parse_fun$ new_input) >> $ >>
       in
       let parsed_cases = List.map mk_case union.uchoices
       and last_case =
-	<:match_case< (c, _, t) as h -> $ <:expr< $uid:union.unparsed_constr$
+        <:match_case< (c, _, t) as h -> $ <:expr< $uid:union.unparsed_constr$
           (Asn1PTypes.mk_object c t (Asn1PTypes.parse_der_object_content h new_input)) >> $ >>
       in
       let enrich_flag = <:expr< input.$mkname "Parsifal" "enrich"$ >>
@@ -499,12 +506,12 @@ let mk_parse_fun _loc c =
       and default_fun = exp_qname _loc (Some "Asn1PTypes") "parse_der_object" in
 
       [ <:expr<
-	  let aux h new_input = match h with
-	      [ $list:(parsed_cases@[last_case])$ ]
-	  in
-	  if Parsifal.should_enrich $lid:"enrich_" ^ c.name$ $enrich_flag$
-	  then $wrapper_fun$ aux input
-	  else $mk_union_res default_fun union.unparsed_constr$ >> ]
+          let aux h new_input = match h with
+              [ $list:(parsed_cases@[last_case])$ ]
+          in
+          if Parsifal.should_enrich $lid:"enrich_" ^ c.name$ $enrich_flag$
+          then $wrapper_fun$ aux input
+          else $mk_union_res default_fun union.unparsed_constr$ >> ]
 
   in
   let res_name = "parse_" ^ c.name in
@@ -513,13 +520,11 @@ let mk_parse_fun _loc c =
 
 
 let mk_exact_parse_fun _loc c =
-  if c <.> ExactParser then begin
-    let partial_params = List.map (fun p -> <:expr< $lid:p$ >>) (keep_parse_params c.params)
-    and params = (keep_parse_params c.params)@["input"] in
-    let parse_fun = apply_exprs _loc (exp_qname _loc None ("parse_" ^ c.name)) partial_params in
-    let body = <:expr< Parsifal.exact_parse $parse_fun$ input >> in
-    [ mk_multiple_args_fun _loc ("exact_parse_" ^ c.name) params body ]
-  end else []
+  let partial_params = List.map (fun p -> <:expr< $lid:p$ >>) (keep_parse_params c.params)
+  and params = (keep_parse_params c.params)@["input"] in
+  let parse_fun = apply_exprs _loc (exp_qname _loc None ("parse_" ^ c.name)) partial_params in
+  let body = <:expr< Parsifal.exact_parse $parse_fun$ input >> in
+  [ mk_multiple_args_fun _loc ("exact_parse_" ^ c.name) params body ]
 
 
 
@@ -534,7 +539,7 @@ let rec dump_fun_of_ptype _loc t =
       apply_exprs _loc (exp_qname _loc m ("dump_" ^ n)) (filter_params DumpParam "dump_" e)
     | PT_CustomContainer (m, n, e, subtype) ->
       apply_exprs _loc (exp_qname _loc m ("dump_" ^ n))
-	((filter_params DumpParam "dump_" e)@[dump_fun_of_ptype _loc subtype])
+        ((filter_params DumpParam "dump_" e)@[dump_fun_of_ptype _loc subtype])
 
 
 let mk_dump_fun _loc c =
@@ -555,28 +560,28 @@ let mk_dump_fun _loc c =
 
   | Struct fields ->
     let rec dump_fields = function
-      | [] -> <:expr< () >>
-      | (_loc, n, t, o)::r ->
-	let tmp = dump_fields r in
-	match t, o with
-	| PT_Empty, DumpArg -> <:expr< let $lid:n$ = $lid:c.name$.$lid:n$ in $tmp$ >>
-	| t, DumpCheckpoint ->
-	  let f = dump_fun_of_ptype _loc t in
-	  <:expr< let $lid:n$ = $f$ buf in $tmp$ >>
-	| t, Optional ->
-	  let f = <:expr< Parsifal.try_dump $dump_fun_of_ptype _loc t$ >> in
-	  <:expr< let $lid:"_" ^ n$ = $f$ buf $lid:c.name$.$lid:n$ in $tmp$ >>
-	| _ ->
-	  let f = dump_fun_of_ptype _loc t in
-	  <:expr< let $lid:"_" ^ n$ = $f$ buf $lid:c.name$.$lid:n$ in $tmp$ >>
+    | [] -> <:expr< () >>
+    | (_loc, n, t, o)::r ->
+      let tmp = dump_fields r in
+        match t, o with
+        | PT_Empty, DumpArg -> <:expr< let $lid:n$ = $lid:c.name$.$lid:n$ in $tmp$ >>
+        | t, DumpCheckpoint ->
+          let f = dump_fun_of_ptype _loc t in
+          <:expr< let $lid:n$ = $f$ buf in $tmp$ >>
+        | t, Optional ->
+          let f = <:expr< Parsifal.try_dump $dump_fun_of_ptype _loc t$ >> in
+          <:expr< let $lid:"_" ^ n$ = $f$ buf $lid:c.name$.$lid:n$ in $tmp$ >>
+        | _ ->
+          let f = dump_fun_of_ptype _loc t in
+          <:expr< let $lid:"_" ^ n$ = $f$ buf $lid:c.name$.$lid:n$ in $tmp$ >>
     in [dump_fields (keep_dumped_fields fields)]
 
   | Union union ->
     let mk_case = function
       | _loc, cons, (_, PT_Empty) ->
-	<:match_case< $ <:patt< $uid:cons$ >> $ -> () >>
+        <:match_case< $ <:patt< $uid:cons$ >> $ -> () >>
       | _loc, cons, (_, t) ->
-	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
+        <:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
         $ <:expr< $dump_fun_of_ptype _loc t$ buf x >> $ >>
     and last_case =
       <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
@@ -609,13 +614,11 @@ let mk_dump_fun _loc c =
 
 
 let mk_exact_dump_fun _loc c =
-  if c <.> ExactParser then begin
-    let partial_params = List.map (fun p -> <:expr< $lid:p$ >>) (keep_dump_params c.params)
-    and params = (keep_dump_params c.params)@[c.name] in
-    let dump_fun = apply_exprs _loc (exp_qname _loc None ("dump_" ^ c.name)) partial_params in
-    let body = <:expr< Parsifal.exact_dump $dump_fun$ $lid:c.name$ >> in
-    [ mk_multiple_args_fun _loc ("exact_dump_" ^ c.name) params body ]
-  end else []
+  let partial_params = List.map (fun p -> <:expr< $lid:p$ >>) (keep_dump_params c.params)
+  and params = (keep_dump_params c.params)@[c.name] in
+  let dump_fun = apply_exprs _loc (exp_qname _loc None ("dump_" ^ c.name)) partial_params in
+  let body = <:expr< Parsifal.exact_dump $dump_fun$ $lid:c.name$ >> in
+  [ mk_multiple_args_fun _loc ("exact_dump_" ^ c.name) params body ]
 
 
 
@@ -625,11 +628,10 @@ let mk_exact_dump_fun _loc c =
 
 let rec value_of_fun_of_ptype _loc t =
   match t with
-    | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
-    | PT_Custom (m, n, _) -> exp_qname _loc m ("value_of_" ^ n)
-    | PT_CustomContainer (m, n, _, subtype) ->
-      <:expr< $exp_qname _loc m ("value_of_" ^ n)$ $value_of_fun_of_ptype _loc subtype$ >>
-
+  | PT_Empty -> Loc.raise _loc (Failure "Empty types should never be concretized")
+  | PT_Custom (m, n, _) -> exp_qname _loc m ("value_of_" ^ n)
+  | PT_CustomContainer (m, n, _, subtype) ->
+     <:expr< $exp_qname _loc m ("value_of_" ^ n)$ $value_of_fun_of_ptype _loc subtype$ >>
 
 
 let mk_value_of_fun _loc c =
@@ -654,14 +656,14 @@ let mk_value_of_fun _loc c =
   | ASN1Union union ->
     let mk_case case = match case, c <.> NoAlias with
       | (_loc, cons, (_, PT_Empty)), false ->
-	<:match_case< $ <:patt< $uid:cons$ >> $ -> Parsifal.VAlias ( $str:cons$, Parsifal.VUnit ) >>
+        <:match_case< $ <:patt< $uid:cons$ >> $ -> Parsifal.VAlias ( $str:cons$, Parsifal.VUnit ) >>
       | (_loc, cons, (_, PT_Empty)), true ->
-	<:match_case< $ <:patt< $uid:cons$ >> $ -> Parsifal.VUnit >>
+        <:match_case< $ <:patt< $uid:cons$ >> $ -> Parsifal.VUnit >>
       | (_loc, cons, (_, t)), false ->
-	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
-	$ <:expr< Parsifal.VAlias ( $str:cons$, $value_of_fun_of_ptype _loc t$ x ) >> $ >>
+        <:match_case< ( $ <:patt< $uid:cons$ >> $  x ) ->
+        $ <:expr< Parsifal.VAlias ( $str:cons$, $value_of_fun_of_ptype _loc t$ x ) >> $ >>
       | (_loc, cons, (_, t)), true ->
-	<:match_case< ( $ <:patt< $uid:cons$ >> $  x ) -> $ <:expr< $value_of_fun_of_ptype _loc t$ x >> $ >>
+        <:match_case< ( $ <:patt< $uid:cons$ >> $  x ) -> $ <:expr< $value_of_fun_of_ptype _loc t$ x >> $ >>
     in
     let last_case =
       <:match_case< ( $ <:patt< $uid:union.unparsed_constr$ >> $  x ) ->
@@ -680,7 +682,6 @@ let mk_value_of_fun _loc c =
     else <:expr< Parsifal.VAlias ( $str:c.name$, $value_of_content$ $lid:c.name$ ) >>
 
   in [ mk_multiple_args_fun _loc ("value_of_" ^ c.name) [c.name] body ]
-
 
 
 (************************)
@@ -719,6 +720,13 @@ let check_options construction options =
   let o, p = aux options in
   o, List.concat p
 
+let meta_mk option then_fun else_fun _loc c =
+  if c <.> option
+  then then_fun _loc c
+  else else_fun _loc c
+
+let mk_nothing _ _ = []
+
 let mk_parsifal_construction _loc name raw_opts specific_descr =
   let options, raw_params = check_options specific_descr raw_opts in
   let params = match specific_descr with
@@ -726,12 +734,15 @@ let mk_parsifal_construction _loc name raw_opts specific_descr =
     | _ -> raw_params
   in
   let pc = { name = lid_of_ident name;
-	     options = options;
-	     params = params;
-	     construction = specific_descr }
+             options = options;
+             params = params;
+             construction = specific_descr }
   and funs = [ mk_decls; mk_type; mk_specific_funs;
-	       mk_parse_fun; mk_exact_parse_fun;
-	       mk_dump_fun; mk_exact_dump_fun; mk_value_of_fun ] in
+               meta_mk NoParse mk_nothing mk_parse_fun;
+               meta_mk ExactParser mk_exact_parse_fun mk_nothing;
+               meta_mk NoDump mk_nothing mk_dump_fun;
+               meta_mk ExactParser mk_exact_dump_fun mk_nothing;
+               meta_mk NoValueOf mk_nothing mk_value_of_fun ] in
   mk_sequence _loc (List.concat (List.map (fun f -> f _loc pc) funs))
 
 

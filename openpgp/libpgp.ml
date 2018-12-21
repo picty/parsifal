@@ -52,7 +52,7 @@ let dump_mpint buf i =
 let value_of_mpint i = VBigInt i
 
 (* §3.5 *)
-alias timefield = uint32
+alias timefield [novalueof] = uint32
 
 let value_of_timefield t =
     let value = (Unix.localtime (float_of_int t)) in
@@ -708,7 +708,7 @@ let parse_computed_keyid structure_start content input =
 
 let value_of_computed_keyid = value_of_binstring
 
-alias computed_fingerprint = binstring
+alias computed_fingerprint [noparse] = binstring
 
 let parse_computed_fingerprint structure_start content input =
     (*sanity checks*)
@@ -951,7 +951,7 @@ struct packet = {
 alias openpgp_message = list of packet
 
 
-alias junk_to_armor = string
+alias junk_to_armor [noparse] = string
 
 let parse_junk_to_armor input =
     let rec locate_armor offset input = (* returns the offset of the opening banner *)
@@ -970,7 +970,8 @@ let parse_junk_to_armor input =
     let waste_length = (locate_armor input.cur_offset input) - input.cur_offset in
     parse_string waste_length input
 
-alias conditional_string = string
+alias conditional_string [noparse] = string
+
 let parse_conditional_string predicate input =
     let rec parse_ignored_string_aux acc predicate input =
         let next_char = (peek_uint8 input) in
@@ -985,7 +986,7 @@ let parse_conditional_string predicate input =
 
 alias whitespace = conditional_string(fun x -> match x with | 0x20 | 0x9 -> true | _ -> false)
 
-alias message_type = string
+alias message_type [noparse] = string
 
 let parse_message_type input =
     let rtrim s =
@@ -1054,7 +1055,7 @@ let dump_radix64_body_container dump_fun buf i =
 let value_of_radix64_body_container val_fun i =
     val_fun i
 
-alias radix64_checksum = uint32
+alias radix64_checksum [noparse; nodump] = uint32
 
 let parse_radix64_checksum input =
     let rec build_list_val cnt l input =

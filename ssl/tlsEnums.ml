@@ -78,7 +78,7 @@ enum hs_message_type (8, UnknownVal HT_Unknown) =
   | 67 -> HT_NextProtocol, "NextProtocol"
 
 exception InvalidTLSCiphersuite
-enum ciphersuite (16, UnknownVal TLS_UnknownSuite) =
+enum ciphersuite [nodump] (16, UnknownVal TLS_UnknownSuite) =
   | 0x010080 -> SSL2_CK_RC4_128_WITH_MD5
   | 0x020080 -> SSL2_CK_RC4_128_EXPORT40_WITH_MD5
   | 0x030080 -> SSL2_CK_RC2_128_CBC_WITH_MD5
@@ -420,14 +420,14 @@ enum ciphersuite (16, UnknownVal TLS_UnknownSuite) =
   | 0xffe0 -> SSL_RSA_FIPS_WITH_3DES_EDE_CBC_SHA_bis
   | 0xffe1 -> SSL_RSA_FIPS_WITH_DES_CBC_SHA_bis
 
-(* TODO: Do better by generalising this behabiour? *)
+(* TODO: Do better by generalising this behaviour? *)
 let dump_ciphersuite buf cs =
   let tmp = int_of_ciphersuite cs in
   if tmp land (lnot 0xffff) = 0
   then BasePTypes.dump_uint16 buf tmp
   else raise InvalidTLSCiphersuite
 
-alias ssl2_cipher_spec = ciphersuite
+alias ssl2_cipher_spec [noparse; nodump] = ciphersuite
 let parse_ssl2_cipher_spec input = ciphersuite_of_int (BasePTypes.parse_uint24 input)
 let dump_ssl2_cipher_spec buf cs = BasePTypes.dump_uint24 buf (int_of_ciphersuite cs)
 
