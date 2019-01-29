@@ -233,6 +233,35 @@ type secret_log_entry =
 | RSA_PMS of string * string
 | MS of string * string
 
+let mk_known_secrets ?verbose:(verbose=false) ms_only filename =
+  let rec read_line accu f =
+    try
+      let l = input_line f in
+      match string_split ' ' l with
+      | ["RSA"; enc_pms; clr_pms] ->
+         let new_accu = if ms_only then accu else
+            (RSA_PMS (hexparse enc_pms, hexparse clr_pms))::accu in
+        read_line new_accu f
+      | ["CLIENT_RANDOM"; cr; clr_ms] ->
+         let new_accu = (MS (hexparse cr, hexparse clr_ms))::accu in
+         read_line new_accu f
+      | _ ->
+         if String.length l > 0 && l.[0] <> '#'
+         then raise (Failure "Invalid line")
+         else read_line accu f
+    with
+    | End_of_file ->  List.rev accu
+    | _ ->
+      if verbose
+      then prerr_string "Invalid line in sslkeylogfile.";
+      read_line accu f
+  in
+  if filename = ""  then [] else begin
+    let f = open_in filename in
+    read_line [] f
+  end
+
+
 type prefs = {
   (* generic prefs *)
   random_generator : RandomEngine.state;

@@ -67,39 +67,11 @@ let load_aes_ticket_key filename =
   with _ -> ShowUsage (Some "Please supply a valid AES key.")
 
 
-(* TODO: Move this? *)
-let mk_known_secrets ms_only filename =
-  let rec read_line accu f =
-    let l_opt =
-      try Some (input_line f)
-      with End_of_file -> None
-    in
-    match l_opt with
-    | None -> List.rev accu
-    | Some l ->
-      match string_split ' ' l with
-      | ["RSA"; enc_pms; clr_pms] ->
-         (* TODO: Handle hexparse exceptions *)
-         let new_accu = if ms_only then accu else
-            (Tls.RSA_PMS (hexparse enc_pms, hexparse clr_pms))::accu in
-        read_line new_accu f
-      | ["CLIENT_RANDOM"; cr; clr_ms] ->
-         (* TODO: Handle hexparse exceptions *)
-         let new_accu = (Tls.MS (hexparse cr, hexparse clr_ms))::accu in
-         read_line new_accu f
-      | _ -> read_line accu f
-  in
-  if filename = ""  then [] else begin
-    let f = open_in filename in
-    read_line [] f
-  end
-
 let ctx = ref (Tls.empty_context (Tls.default_prefs Tls.DummyRNG))
 let init_ctx () =
-  let secrets = mk_known_secrets false !keylogfile in
+  let secrets = Tls.mk_known_secrets false !keylogfile in
   let prefs = { (Tls.default_prefs Tls.DummyRNG) with Tls.known_master_secrets = secrets } in
   ctx := Tls.empty_context prefs
-
 
 let options = [
   mkopt (Some 'h') "help" Usage "show this help";
