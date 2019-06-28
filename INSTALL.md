@@ -49,7 +49,7 @@ Compilation environment using OPAM
 You must first install opam as root, as well as some required dependencies:
 
     # apt-get install opam
-    # apt-get git m4 libkrb5-dev pkg-config zlib1g-dev libgmp-dev
+    # apt-get install git m4 libkrb5-dev pkg-config zlib1g-dev libgmp-dev
 
 The rest of the procedure can be done as an unprivileged user:
 
