@@ -36,9 +36,12 @@ let host_ref = ref "www.google.com"
 let port_ref = ref 443
 
 (* TLS preferences *)
-let rec_version = ref V_TLSv1
-let ch_version = ref V_TLSv1
-let suites = ref [TLS_RSA_WITH_RC4_128_SHA]
+let rec_version = ref V_TLSv1_2
+let ch_version = ref V_TLSv1_2
+let suites = ref [TLS_RSA_WITH_RC4_128_SHA; TLS_RSA_WITH_AES_256_CBC_SHA;
+                  TLS_DHE_RSA_WITH_AES_256_CBC_SHA; TLS_RSA_WITH_AES_128_GCM_SHA256;
+                  TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256; TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256;
+                  TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256; TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256]
 let compressions = ref [CM_Null]
 let use_extensions = ref true
 let send_SNI = ref true
