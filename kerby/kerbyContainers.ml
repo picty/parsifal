@@ -43,11 +43,13 @@ let parse_aes_container usage kvno aes_key name parse_fun input =
   match aes_key with
   | None -> Encrypted s
   | Some k ->
-    let decrypted_s = aes_decrypt usage kvno s k in
-    let new_input = get_in_container input name (Bytes.to_string decrypted_s) in  (* TODO: Use unsafe_to_string? *)
-    let res = parse_fun new_input in
-    check_empty_input true new_input;
-    Decrypted res
+    try
+      let decrypted_s = aes_decrypt usage kvno s k in
+      let new_input = get_in_container input name (Bytes.to_string decrypted_s) in  (* TODO: Use unsafe_to_string? *)
+      let res = parse_fun new_input in
+      check_empty_input true new_input;
+      Decrypted res
+    with _ -> Encrypted s
 
 let dump_aes_container _dump_fun _o = failwith "Pouet"
 

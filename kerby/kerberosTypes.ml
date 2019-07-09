@@ -278,6 +278,7 @@ asn1_struct enc_ticket_part =
   optional renew_till : cspe [8] of der_kerberos_time;
   optional caddr : cspe [9] of binstring;
   optional authorization_data : cspe [10] of authorization_data;
+  optional enc_ticket_part_stuff : binstring;
 }
 
 struct ticket_content [param key] =
