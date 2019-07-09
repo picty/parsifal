@@ -139,16 +139,27 @@ type parsed_answer = {
 
 let parse_answer enrich_style verbose answer =
   let records = parse_all_records enrich_style verbose answer in
-  let parsed_content = match records, answer.content with
-    | _, "" -> Empty
-
-    | Right [{ content_type = CT_Alert;
+  let rec extract_parse_content = function
+    | Right ({ content_type = CT_Alert;
                record_version = v;
-               record_content = Alert a }], _ ->
+               record_content = Alert {
+                 alert_level = AL_Warning;
+                 alert_type = at }}::next) ->
+       begin
+         match extract_parse_content (Right next) with
+         | (TLSHandshake _ | TLSAlert (_, AL_Fatal, _)) as real_parsed_content
+           -> real_parsed_content
+         | _ -> TLSAlert (v, AL_Warning, at)
+       end
+
+    | Right ({ content_type = CT_Alert;
+               record_version = v;
+               record_content = Alert a }::_) ->
        TLSAlert (v, a.alert_level, a.alert_type)
+
     | Left [{ ssl2_content = SSL2Handshake {
                 ssl2_handshake_type = SSL2_HT_ERROR;
-                ssl2_handshake_content = SSL2Error e }}], _ ->
+                ssl2_handshake_content = SSL2Error e }}] ->
        SSLv2Alert e
 
     | Right ({ content_type = CT_Handshake;
@@ -159,7 +170,7 @@ let parse_answer enrich_style verbose answer =
              { content_type = CT_Handshake;
                record_content = Handshake {
                  handshake_type = HT_Certificate;
-                 handshake_content = Certificate certs }}::_), _ ->
+                 handshake_content = Certificate certs }}::_) ->
        TLSHandshake {
            sh_record_version = ext_v;
            sh_version = sh.server_version;
@@ -171,7 +182,7 @@ let parse_answer enrich_style verbose answer =
          }
     | Left ({ ssl2_content = SSL2Handshake {
                 ssl2_handshake_type = SSL2_HT_SERVER_HELLO;
-                ssl2_handshake_content = SSL2ServerHello sh }}::_), _ ->
+                ssl2_handshake_content = SSL2ServerHello sh }}::_) ->
        SSLv2Handshake {
            ssl2_version = sh.ssl2_server_version;
            cipher_specs = sh.ssl2_server_cipher_specs;
@@ -181,7 +192,7 @@ let parse_answer enrich_style verbose answer =
                record_version = ext_v;
                record_content = Handshake {
                  handshake_type = HT_ServerHello;
-                 handshake_content = ServerHello sh }}::_), _ ->
+                 handshake_content = ServerHello sh }}::_) ->
        (* TODO: Should this [] be a None to explicitly say "No Certificate message found"? *)
        TLSHandshake {
            sh_record_version = ext_v;
@@ -196,22 +207,26 @@ let parse_answer enrich_style verbose answer =
     | Right ({ content_type = CT_Handshake;
                record_content = Handshake {
                  handshake_type = HT_ClientHello;
-                 handshake_content = ClientHello _ }}::_), s ->
-       Junk ("ClientHello", s)
-    | _, s ->
-       let guess =
-         if (String.length s >= 7) && (String.sub s 0 7 = "\x15\x03\x01\x00\x02\xff\xff")
-         then "Alert-FF-FF"
-         else if String.length s >= 5 then begin
-           match (String.sub s 0 5) with
-	   | "SSH-1" -> "SSH-1"
-	   | "SSH-2" -> "SSH-2"
-	   | "HTTP/"
-	   | "<!DOC" -> "HTTP"
-	   (* Handle SMTP? "220 main2 ESMTP." *)
-	   | _ -> ""
-         end else ""
-       in Junk (guess, s)
+                 handshake_content = ClientHello _ }}::_) ->
+       Junk ("ClientHello", answer.content)
+
+    | _ ->
+       if answer.content = ""
+       then Empty
+       else
+         let guess =
+           if String.length answer.content >= 5 then
+             match (String.sub answer.content 0 5) with
+             | "SSH-1" -> "SSH-1"
+             | "SSH-2" -> "SSH-2"
+             | "HTTP/"
+             | "<!DOC" -> "HTTP"
+             (* Handle SMTP? "220 main2 ESMTP." *)
+             | _ -> ""
+           else ""
+         in Junk (guess, answer.content)
+  in
+  let parsed_content = extract_parse_content records
   in {
     pa_ip = answer.ip_addr;
     pa_port = answer.port;
