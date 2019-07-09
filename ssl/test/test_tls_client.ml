@@ -33,7 +33,7 @@ let _ =
       (default_prefs DummyRNG) with
         acceptable_ciphersuites = [TLS_RSA_WITH_RC4_128_MD5; TLS_RSA_WITH_AES_128_CBC_SHA]
     } in
-    Unix.handle_unix_error Lwt_unix.run (test_client host port prefs)
+    Unix.handle_unix_error Lwt_main.run (test_client host port prefs)
   with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e)

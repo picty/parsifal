@@ -108,7 +108,7 @@ let handle_file input =
 
 let _ =
   try
-    Lwt_unix.run (input_of_filename "test.tar" >>= handle_file)
+    Lwt_main.run (input_of_filename "test.tar" >>= handle_file)
   with
   | ParsingException (e, h) -> prerr_endline (string_of_exception e h)
   | e -> prerr_endline (Printexc.to_string e)

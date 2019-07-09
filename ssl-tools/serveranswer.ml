@@ -175,11 +175,14 @@ let _ =
       | _ -> failwith "Invalid command"
     end;
     enrich_record_content := true;
-    let socket = new_socket () in
-    Lwt_unix.setsockopt socket Unix.SO_REUSEADDR true;
-    Lwt_unix.bind socket local_addr;
-    Lwt_unix.listen socket 1024;
-    Lwt_unix.run (accept socket)
+    let server =
+      let socket = new_socket () in
+      Lwt_unix.setsockopt socket Unix.SO_REUSEADDR true;
+      Lwt_unix.Versioned.bind_2 socket local_addr >>= fun () ->
+      Lwt_unix.listen socket 1024;
+      accept socket
+    in
+    Lwt_main.run (server)
   with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> prerr_endline (Printexc.to_string e); exit 1

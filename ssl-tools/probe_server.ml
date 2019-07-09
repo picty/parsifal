@@ -427,7 +427,7 @@ let _ =
 
     match cmd, hosts_threads with
     | ProbeAndPrint, [host_t] ->
-      let _, msgs, _, res = Lwt_unix.run (host_t >>= probe_server prefs) in
+      let _, msgs, _, res = Lwt_main.run (host_t >>= probe_server prefs) in
       let print_msg msg = print_endline (print_value ~name:"TLS Record (S->C)" (value_of_tls_record msg)) in
       List.iter print_msg (List.rev msgs);
       begin
@@ -436,11 +436,11 @@ let _ =
 	| Fatal msg -> print_endline msg
       end
     | ExtractCerts, [host_t] ->
-      let prefix, _, certs = Lwt_unix.run (extract_cert_t prefs host_t) in
+      let prefix, _, certs = Lwt_main.run (extract_cert_t prefs host_t) in
       save_certs prefix certs
     | CheckCerts, [host_t] ->
       let ca_store = X509Util.mk_cert_store 100 in
-      let server_name, port, certs = Lwt_unix.run (extract_cert_t prefs host_t) in
+      let server_name, port, certs = Lwt_main.run (extract_cert_t prefs host_t) in
       let parse_root_ca c =
         let sc = X509Util.sc_of_input !base64 true (string_input_of_filename c) in
 	X509Util.add_to_store ca_store sc
@@ -456,7 +456,7 @@ let _ =
     | ScanSuites, [host_t] ->
       let rec next_step () =
 	let updated_prefs = { prefs with acceptable_ciphersuites = !suites } in
-	let ctx, _, _, res = Lwt_unix.run (host_t >>= probe_server updated_prefs) in
+	let ctx, _, _, res = Lwt_main.run (host_t >>= probe_server updated_prefs) in
 	match res, ctx.future.proposed_ciphersuites with
 	| NothingSoFar, [s] ->
 	  print_endline (string_of_ciphersuite s);
@@ -468,7 +468,7 @@ let _ =
     | ScanCompressions, [host_t] ->
       let rec next_step () =
 	let updated_prefs = { prefs with acceptable_compressions = !compressions } in
-	let ctx, _, _, res = Lwt_unix.run (host_t >>= probe_server updated_prefs) in
+	let ctx, _, _, res = Lwt_main.run (host_t >>= probe_server updated_prefs) in
 	match res, ctx.future.proposed_compressions with
 	| NothingSoFar, [c] ->
 	  print_endline (string_of_compression_method c);
@@ -504,7 +504,7 @@ let _ =
           next_step [] es versions
         | e::_, i::is ->
 	  let updated_prefs = { prefs with acceptable_versions = (e, i) } in
-	  let ctx, _, _, res = Lwt_unix.run (host_t >>= probe_server updated_prefs) in
+	  let ctx, _, _, res = Lwt_main.run (host_t >>= probe_server updated_prefs) in
           let result_string = match res, ctx.future.proposed_versions with
 	    | NothingSoFar, (v1, v2) ->
               if v1 <> v2 then "?!" else string_of_version v1
@@ -517,7 +517,7 @@ let _ =
       next_step [] versions versions
 
     | ShowStimulus, [host_t] ->
-       Lwt_unix.run (host_t >>= show_stimulus prefs)
+       Lwt_main.run (host_t >>= show_stimulus prefs)
 
     | (ProbeAndPrint|CheckCerts|ExtractCerts|ScanSuites|ScanCompressions|ScanVersions|ShowStimulus), _ ->
       usage "probe_server" options (Some ("Some commands only work with a unique host."))
@@ -597,7 +597,7 @@ let _ =
       in
       let probes = Lwt.join (List.map (fun host_t -> probe_one_host host_t) hosts_t) in
       let ending_probes = probes >>= send_eof in
-      Lwt_unix.run (Lwt.join [write_stuff (); ending_probes])
+      Lwt_main.run (Lwt.join [write_stuff (); ending_probes])
 
   with
   | End_of_file -> ()

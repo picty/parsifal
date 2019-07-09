@@ -89,7 +89,7 @@ let _ =
 	| NoAction, _ -> fail (Failure "Please give an action (--test, --create or --extract)")
       end
     in
-    Lwt_unix.run t;
+    Lwt_main.run t;
   with
   | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
   | e -> prerr_endline (Printexc.to_string e); exit 1

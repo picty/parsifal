@@ -37,7 +37,7 @@ let main =
     let t = match args with
       | [filename] -> parse_file filename
       | _ -> usage "test_pe" options (Some "Please provide exactly one filename.")
-    in Lwt_unix.run t;
+    in Lwt_main.run t;
   with
   | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
   | e -> prerr_endline (Printexc.to_string e); exit 1

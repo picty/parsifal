@@ -42,14 +42,14 @@ let date_string_of_tm tm =
 (* Ugly Windows time conversion *)
 let convert_time low high =
     if ((low <> 0xffffffff) && (high <> 0x7fffffff)) then
-    let windows_tick = Big_int.big_int_of_int 10000000 in
-    let sec_to_unix_epoch = Big_int.big_int_of_int 11644473600 in
-    let bigl = Big_int.big_int_of_int low in
-    let bigh = Big_int.big_int_of_int high in
-    let tmp = Big_int.shift_left_big_int bigh 32 in
-    let res = Big_int.add_big_int tmp bigl in
-    let time = Big_int.sub_big_int (Big_int.div_big_int res windows_tick) sec_to_unix_epoch in
-    let gtime = Unix.gmtime (Big_int.float_of_big_int time) in
+    let windows_tick = Int64.of_int 10000000 in
+    let sec_to_unix_epoch = Int64.of_int 11644473600 in
+    let bigl = Int64.of_int low in
+    let bigh = Int64.of_int high in
+    let tmp = Int64.shift_left bigh 32 in
+    let res = Int64.add tmp bigl in
+    let time = Int64.sub (Int64.div res windows_tick) sec_to_unix_epoch in
+    let gtime = Unix.gmtime (Int64.to_float time) in
     (date_string_of_tm gtime);
     else
       "Unspecified date";

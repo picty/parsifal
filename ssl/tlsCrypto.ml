@@ -9,9 +9,9 @@ let string_xor a b =
   let n_a = String.length a
   and n_b = String.length b in
   if n_a <> n_b then raise CryptoMayhem;
-  let res = b in
+  let res = Bytes.of_string b in
   Cryptokit.xor_string a 0 res 0 n_a;
-  res
+  Bytes.to_string res
 
 (* TODO: Move this elsewhere? Reuse Cryptokit? *)
 let hmac hash_fun block_len k m =
@@ -172,19 +172,19 @@ let rc4_encrypt mac_fun _mac_len mac_key enc_key seq_num_ref =
 class tls_length =
   object
     method pad buffer used =
-      let n = String.length buffer - used in
+      let n = Bytes.length buffer - used in
       assert (n > 0 && n < 256);
       (* TODO: This unsafe use is a hack due to the use of Cryptokit 1.10 *)
       (*       This is only needed when using this version of the library *)
       (*       and will be removed in the next version of Parsifal.       *)
-      Bytes.fill (Bytes.unsafe_of_string buffer) used n (Char.chr (n-1))
+      Bytes.fill buffer used n (Char.chr (n-1))
     method strip buffer =
-      let blocksize = String.length buffer in
-      let n = Char.code buffer.[blocksize - 1] in
+      let blocksize = Bytes.length buffer in
+      let n = Char.code (Bytes.get buffer (blocksize - 1)) in
       if n+1 > blocksize then raise (Cryptokit.Error Cryptokit.Bad_padding);
       (* Characters blocksize - n to blocksize - 1 must be equal to n *)
       for i = blocksize - n - 1 to blocksize - 2 do
-        if Char.code buffer.[i] <> n then raise (Cryptokit.Error Cryptokit.Bad_padding)
+        if Char.code (Bytes.get buffer i) <> n then raise (Cryptokit.Error Cryptokit.Bad_padding)
       done;
       blocksize - n - 1
   end

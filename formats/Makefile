@@ -30,7 +30,7 @@ build/unlzma.o: unlzma.c unlzma.h
 	$(CC) -o $@ -c -g -fPIC $<
 
 build/lzma_stubs.o: lzma_stubs.c unlzma.h
-	$(OCAMLC) -o $@ -c -g $< && mv $(@F) $@
+	$(OCAMLC) -c -g $< && mv $(@F) $@
 
 build/libmylzma.a: build/lzma_stubs.o build/unlzma.o build/lzma.cmx
 	ocamlmklib -o mylzma -Lbuild/ $^ && \
@@ -47,7 +47,7 @@ build/EfiTianoDecompress.o: EfiTianoDecompress.c EfiTianoDecompress.h basetypes.
 	$(CC) -o $@ -c -g -fPIC $<
 
 build/tiano_stubs.o: tiano_stubs.c EfiTianoDecompress.h basetypes.h
-	$(OCAMLC) -o $@ -c -g $< && mv $(@F) $@
+	$(OCAMLC) -c -g $< && mv $(@F) $@
 
 build/libmytiano.a: build/tiano_stubs.o build/EfiTianoDecompress.o build/tiano.cmx
 	ocamlmklib -o mytiano -Lbuild/ $^ && \

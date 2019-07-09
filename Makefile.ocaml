@@ -17,7 +17,7 @@ OCAMLOPTS_CC = $(GEN_INCLUDES) $(EXTRA_OCAMLOPT_CC_FLAGS) -I $(BUILD_DIR)
 OCAMLOPTS_LD = $(GEN_INCLUDES) $(GEN_LIBS) $(EXTRA_OCAMLOPT_LD_FLAGS)
 OCAMLC_CC = $(GEN_BYTE_INCLUDES) $(EXTRA_OCAMLC_CC_FLAGS)
 OCAMLC_LD = $(GEN_BYTE_INCLUDES) $(GEN_BYTE_LIBS) $(EXTRA_OCAMLC_LD_FLAGS)
-OCAML_COMPILER_OPTIONS = -safe-string -w +a-4-9-31-41-44 -warn-error +a
+OCAML_COMPILER_OPTIONS = -safe-string -w +a-4-9-31-41-44-58 -warn-error +a
 
 # install options
 LIBDIR ?= /usr/local/lib/ocaml
@@ -55,7 +55,7 @@ define MLLIB_template
  $(BUILD_DIR)/$(1).cmxa: $$($(1)_OBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLOPT) -a -o $$@ $(EXTRA_CMXA_LD_FLAGS) $$^
 
  $(1)_BOBJS := $$($(1)_SRCS:%.ml=$(BUILD_DIR)/%.cmo)
- $(BUILD_DIR)/$(1).cma: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -a -o $$@ $(OCAMLC_LD) $$^
+ $(BUILD_DIR)/$(1).cma: $$($(1)_BOBJS) $$($(1)_LIBS:%=-l%) ; $(OCAMLC) -a -o $$@ $(OCAMLC_LD) $(OCAML_COMPILER_OPTIONS) $$^
 
  META_TO_BUILD = $(BUILD_DIR)/META
  ALL_INCS   += $$($(1)_INCS)

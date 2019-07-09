@@ -39,7 +39,7 @@ let process_helper verbose parse_fun handle_fun dump_fun =
   let t =
     input_of_channel ~verbose:(verbose) "(stdin)" Lwt_io.stdin >>= fun (input : lwt_input) ->
     handle_one_answer input
-  in Lwt_unix.run t
+  in Lwt_main.run t
 
 
 

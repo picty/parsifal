@@ -120,5 +120,4 @@ let _ =
   and accept_port = int_of_string (Sys.argv.(2)) in
   read_config config_file;
   enrich_record_content := true;
-  let socket = server_socket accept_port in
-  Lwt_unix.run (my_accept socket)
+  Lwt_main.run (server_socket accept_port >>= my_accept)

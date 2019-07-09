@@ -333,7 +333,7 @@ let _ =
     | [filename] -> input_of_filename filename >>= handle_input
     | _ -> failwith "Too many files given"
   in
-  try Lwt_unix.run t;
+  try Lwt_main.run t;
   with
     | ParsingException (OutOfBounds, _) -> ()
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h)

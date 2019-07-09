@@ -88,5 +88,4 @@ let rec accept sock =
 
 let _ =
   let _ = parse_args ~progname:"sslproxy" options Sys.argv in
-  let socket = LwtUtil.server_socket 8080 in
-  Lwt_unix.run (accept socket)
+  Lwt_main.run (LwtUtil.server_socket 8080 >>= accept)

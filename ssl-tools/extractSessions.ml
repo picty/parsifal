@@ -160,7 +160,7 @@ let _ =
       | [] -> input_of_channel "(stdin)" Lwt_io.stdin >>= fun x -> return [x]
       | _ -> Lwt_list.map_s (fun fn -> input_of_filename fn) args
     in
-    Lwt_unix.run (open_files args >>= Lwt_list.iter_s handle_one_file);
+    Lwt_main.run (open_files args >>= Lwt_list.iter_s handle_one_file);
   with
     | ParsingException (e, h) -> prerr_endline (string_of_exception e h); exit 1
     | e -> print_endline (Printexc.to_string e); exit 1

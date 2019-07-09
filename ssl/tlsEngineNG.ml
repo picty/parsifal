@@ -491,9 +491,9 @@ let init_server_connection ?options ?bind_address:(bind_addr=None) ?backlog:(bac
   in
   let local_addr = Unix.ADDR_INET (inet_addr, port) in
   Lwt_unix.setsockopt s Unix.SO_REUSEADDR true;
-  Lwt_unix.bind s local_addr;
+  Lwt_unix.Versioned.bind_2 s local_addr >>= fun () ->
   Lwt_unix.listen s backlog;
-  { s_socket = s; s_options = pop_opt default_options options }
+  return { s_socket = s; s_options = pop_opt default_options options }
 
 let accept_client s =
   Lwt_unix.accept s.s_socket >>= fun (sock, peer_info) ->

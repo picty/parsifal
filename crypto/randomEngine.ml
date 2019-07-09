@@ -8,10 +8,10 @@ exception InvalidRandomState
 
 let refresh_bh h s x =
   let n = String.length !s in
-  let tmp = h ("extract" ^ x) in
-  if n = String.length tmp then begin
+  let tmp = Bytes.of_string (h ("extract" ^ x)) in
+  if n = Bytes.length tmp then begin
     Cryptokit.xor_string !s 0 tmp 0 n;
-    s := h ("G_prime" ^ tmp)
+    s := h ("G_prime" ^ (Bytes.to_string tmp))
   end else raise InvalidRandomState
 
 let next_bh h s () =

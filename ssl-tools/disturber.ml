@@ -115,5 +115,4 @@ let rec accept sock =
 let _ =
   let _ = parse_args ~progname:"disturber" options Sys.argv in
   if !output_name <> "" then output_file := open_out !output_name;
-  let socket = LwtUtil.server_socket 8000in
-  Lwt_unix.run (accept socket)
+  Lwt_main.run (LwtUtil.server_socket 8000 >>= accept)
