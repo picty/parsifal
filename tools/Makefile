@@ -12,7 +12,7 @@ CC = gcc
 
 # use the following lines to guess .cmxa files from libs names.
 # remember, libs are always lowercase
-OCAML_LIBS = unix lwt lwt.unix str calendar zarith result cryptokit \
+OCAML_LIBS = unix result lwt lwt.unix str calendar zarith cryptokit \
 	parsifal_syntax parsifal_core parsifal_lwt parsifal_crypto \
 	parsifal_net parsifal_formats parsifal_ssl parsifal_kerby parsifal_pgp
 

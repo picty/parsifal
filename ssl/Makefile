@@ -12,7 +12,8 @@ CC = gcc
 
 # use the following lines to guess .cmxa files from libs names.
 # remember, libs are always lowercase
-OCAML_LIBS = unix lwt lwt.unix str cryptokit parsifal_syntax parsifal_core parsifal_lwt \
+OCAML_LIBS = unix result lwt lwt.unix str zarith cryptokit \
+	parsifal_syntax parsifal_core parsifal_lwt \
 	parsifal_crypto parsifal_net
 
 # use the following variables to add extra flags (not guessed by ocamlfind)

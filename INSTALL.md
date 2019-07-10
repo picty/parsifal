@@ -3,26 +3,23 @@ Installation instructions
 
 Parsifal currently depends on the following OCaml libraries:
 
-* Lwt (>= 2.4.3)
+* Lwt
 * Calendar
-* Cryptokit (>= 1.10)
+* Cryptokit
 * OUnit (for some tests)
 
 To compile Parsifal, you also need the following tools:
 
 * Make
-* OCaml 4.02.3
+* OCaml
 * OCaml-findlib
 * OCaml IDL
 * krb5
 * xz-utils
 
-Since only libcryptokit 1.09 is currently available in Debian stable
-(jessie), you might have to rely on opam.
 
-
-Compilation environment for Debian Stretch
-------------------------------------------
+Compilation environment for Debian Buster
+-----------------------------------------
 
 To compile Parsifal, you need to ensure you have the following Debian
 packages installed:
@@ -32,6 +29,7 @@ packages installed:
 * ocaml
 * ocaml-findlib
 * camlidl
+* camlp4
 * liblwt-ocaml-dev
 * libcalendar-ocaml-dev
 * libcryptokit-ocaml-dev
@@ -40,21 +38,23 @@ packages installed:
 
 This can be achieved using the following command line, as root:
 
-    # apt-get install git make ocaml ocaml-findlib camlidl liblwt-ocaml-dev libcalendar-ocaml-dev libcryptokit-ocaml-dev libounit-ocaml-dev libkrb5-dev
+    # apt-get install git make ocaml ocaml-findlib camlidl camlp4 liblwt-ocaml-dev libcalendar-ocaml-dev libcryptokit-ocaml-dev libounit-ocaml-dev libkrb5-dev
+
+Parsifal v0.3 is compatible with Debian Stretch, but the current
+version does not compile on Stretch or earlier versions of Debian. If
+you encounter such problems, you might need to rely on opam.
 
 
 Compilation environment using OPAM
 ----------------------------------
 
-You must first install opam as root, as well as some required dependencies:
+You must first install some required dependencies:
 
-    # apt-get install opam
     # apt-get install git m4 libkrb5-dev pkg-config zlib1g-dev libgmp-dev
 
 The rest of the procedure can be done as an unprivileged user:
 
-    % opam init --comp 4.02.3
-    % opam install ocamlfind camlp4 lwt=2.5.2 calendar cryptokit=1.10 ounit camlidl
+    % opam install ocamlfind camlp4 lwt calendar cryptokit ounit camlidl
 
 
 
@@ -65,7 +65,7 @@ Assuming you want to compile parsifal in the ~/parsifal directory, you
 can then type in the following commands:
 
     % cd
-    % git clone https://github.com/ANSSI-FR/parsifal
+    % git clone https://github.com/picty/parsifal
     % cd parsifal
     % make
 
@@ -80,14 +80,10 @@ location, for example in subdirectories of your home directory:
     % LIBDIR=$HOME/.ocamlpath BINDIR=$HOME/bin make install
 
 
-
 Notes
 -----
 
-With opam, only OCaml 4.02.3 has been tested. Other versions could
-work, but compilation will fail with the latest one, due to the
-bytes/string evolution in recent versions.
+These instructions have been tested with Debian Buster, and with opam
+1.2 (and OCaml 4.05.0 and 4.06.0).
 
-Since Cryptokit 1.11 depends on ZArith and Lwt 2.6.0 depends on
-Result, the compilation fails if you use the latest versions.  The
-Makefile should be adapted to handle this properly.
+It could also work with other versions of opam and of the compiler.

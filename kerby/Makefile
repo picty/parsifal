@@ -11,7 +11,7 @@ CC = gcc
 
 # use the following lines to guess .cmxa files from libs names.
 # remember, libs are always lowercase
-OCAML_LIBS = unix str cryptokit parsifal_syntax parsifal_core parsifal_net parsifal_crypto
+OCAML_LIBS = unix str zarith cryptokit parsifal_syntax parsifal_core parsifal_net parsifal_crypto
 
 CAMLIDL_DIR = `$(OCAMLFIND) query camlidl`
 STDLIB_DIR = `$(OCAMLFIND) query stdlib`
