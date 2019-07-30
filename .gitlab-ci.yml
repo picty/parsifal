@@ -1,0 +1,8 @@
+stages:
+        - test
+
+test-buster:
+        image: pictyeye/parsifal-test:buster
+        stage: test
+        script:
+                ./prepare-release.sh
