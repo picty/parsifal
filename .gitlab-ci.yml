@@ -1,8 +1,14 @@
 stages:
         - test
 
-test-buster:
-        image: pictyeye/parsifal-test:buster
+test-opam2-ocaml4.05:
+        image: pictyeye/parsifal-test:opam2-ocaml-4.05
+        stage: test
+        script:
+                ./prepare-release.sh
+
+test-opam2-ocaml4.06:
+        image: pictyeye/parsifal-test:opam2-ocaml-4.06
         stage: test
         script:
                 ./prepare-release.sh
