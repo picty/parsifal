@@ -69,3 +69,11 @@ compilation process.
 Finally, tutorial/ and papers/ contain the documentation and submitted
 papers describing parsifal, whereas docs contains RFCs and official
 specs.
+
+
+A Docker image is available in the pictyeye/parsifal repository on Docker
+Hub. It allows to use parsifal tools, such as probe_server:
+
+    % docker run -ti --rm pictyeye/parsifal
+    root@2cdbe79c9809:/# probe_server -H www.perdu.com extract-certs
+    Saved 2 certificates

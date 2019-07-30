@@ -2,6 +2,9 @@
 
 set -e
 
+PROGDIR="$(dirname "$0")"
+cd $PROGDIR
+
 docker build -t parsifal-test:opam2-ocaml-4.06 --build-arg OCAML_VERSION=4.06 opam2
 docker build -t parsifal-test:opam2-ocaml-4.05 --build-arg OCAML_VERSION=4.05 opam2
 docker build -t parsifal-test:buster buster
