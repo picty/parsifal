@@ -59,8 +59,11 @@ let decode_rev_chunk b = function
 
 
 let rec debaser expect_dash b b64chunk input =
-  if eos input then false
-  else begin
+  if eos input then begin
+    if b64chunk = []
+    then false
+    else raiseB64 "Missing bytes" input
+  end else begin
     let c = drop_while (fun c -> reverse_base64_chars.(c) = -2) input in
     let v = reverse_base64_chars.(c) in
     if v >= -1 then begin
