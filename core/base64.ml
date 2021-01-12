@@ -42,12 +42,14 @@ let raiseB64 s i =
 
 (* Useful real base64 funs *)
 
-let decode_rev_chunk b = function
-  | [-1; -1; v2; v1] -> 
+let decode_rev_chunk b input = function
+  | [-1; -1; v2; v1] ->
+    if (v2 land 0xf) != 0 then raiseB64 "Invalid B64 quartet" input;
     POutput.add_byte b ((v1 lsl 2) lor (v2 lsr 4));
     None
   | [-1; v3; v2; v1] ->
-    POutput.add_byte b ((v1 lsl 2) lor (v2 lsr 4));
+     if (v3 land 0x3) != 0 then raiseB64 "Invalid B64 quartet" input;
+     POutput.add_byte b ((v1 lsl 2) lor (v2 lsr 4));
     POutput.add_byte b (((v2 land 0xf) lsl 4) lor (v3 lsr 2));
     None
   | [v4; v3; v2; v1] ->
@@ -67,7 +69,7 @@ let rec debaser expect_dash b b64chunk input =
     let c = drop_while (fun c -> reverse_base64_chars.(c) = -2) input in
     let v = reverse_base64_chars.(c) in
     if v >= -1 then begin
-      match decode_rev_chunk b (v::b64chunk) with
+      match decode_rev_chunk b input (v::b64chunk) with
       | None -> false
       | Some new_chunk -> debaser expect_dash b new_chunk input
     end else begin

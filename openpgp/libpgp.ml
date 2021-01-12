@@ -1068,7 +1068,7 @@ let parse_radix64_checksum input =
     in
     let buf = POutput.create () in
     let listval = (build_list_val 4 [] input) in
-    let _ = Base64.decode_rev_chunk buf listval in
+    let _ = Base64.decode_rev_chunk buf input listval in
     ((POutput.byte_at buf 0) lsl 16) lor ((POutput.byte_at buf 1) lsl 8) lor (POutput.byte_at buf 2)
 
 let dump_radix64_checksum _buf _radix64_checksum = not_implemented "yeah"
